@@ -1,0 +1,10 @@
+// app global css in SCSS form
+@font-face {
+  font-family: customfont;
+  src: url(./fonts/Roboto-Regular.ttf);
+}
+
+// declare a class which applies it
+* {
+  font-family: 'customfont';
+}
