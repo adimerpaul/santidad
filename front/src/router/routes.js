@@ -1,3 +1,4 @@
+import LoginPage from 'pages/LoginPage.vue'
 
 const routes = [
   {
@@ -6,6 +7,10 @@ const routes = [
     children: [
       { path: '', component: () => import('pages/IndexPage.vue') }
     ]
+  },
+  {
+    path: '/login',
+    component: LoginPage
   },
 
   // Always leave this as last one,
