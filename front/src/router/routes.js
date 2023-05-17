@@ -1,11 +1,15 @@
 import LoginPage from 'pages/LoginPage.vue'
+import MainLayout from 'layouts/MainLayout.vue'
+import IndexPage from 'pages/IndexPage.vue'
+import ProductosPage from 'pages/ProductosPage.vue'
 
 const routes = [
   {
     path: '/',
-    component: () => import('layouts/MainLayout.vue'),
+    component: MainLayout,
     children: [
-      { path: '', component: () => import('pages/IndexPage.vue') }
+      { path: '', component: IndexPage, meta: { requiresAuth: true } },
+      { path: 'productos', component: ProductosPage, meta: { requiresAuth: true } }
     ]
   },
   {

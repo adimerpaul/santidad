@@ -21,7 +21,11 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'agencia_id'
     ];
+    public function agencia(){
+        return $this->belongsTo(Agencia::class);
+    }
 
     /**
      * The attributes that should be hidden for serialization.

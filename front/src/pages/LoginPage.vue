@@ -1,16 +1,19 @@
 <template>
   <q-layout>
     <q-page-container>
-      <q-page>
+      <q-page class="bg-grey-4">
         <div class="row">
-          <div class="col-12 col-md-3"></div>
-          <div class="col-12 col-md-6">
-            <q-card class="q-mt-lg">
+          <div class="col-12 col-md-4"></div>
+          <div class="col-12 col-md-4 q-pa-xs">
+            <q-card class="q-mt-md">
               <q-card-section class="text-center">
-                <div class="text-h6">Iniciar sesión</div>
-                <q-img src="logoSela.png" width="150px" />
-                <div class="text-h6">
-                  Control de pozos, tanques y redes
+                <div class="text-h5 text-bold">Iniciar sesión</div>
+                <q-img src="logo1.png" width="150px" />
+                <div class="text-h6 text-bold">
+                  Farmacia
+                </div>
+                <div class="text-subtitle2 text-bold">
+                  Santidad divina
                 </div>
               </q-card-section>
               <q-card-section>
@@ -41,6 +44,7 @@
                     label="Iniciar sesión"
                     color="primary"
                     no-caps
+                    rounded
                     icon="o_login"
                     :loading="loading"
                     class="full-width"
@@ -50,7 +54,7 @@
               </q-card-section>
             </q-card>
           </div>
-          <div class="col-12 col-md-3"></div>
+          <div class="col-12 col-md-4"></div>
         </div>
       </q-page>
     </q-page-container>
@@ -68,6 +72,11 @@ export default {
       passwordVisible: false
     }
   },
+  mounted () {
+    if (this.$store.isLoggedIn) {
+      this.$router.push('/')
+    }
+  },
   methods: {
     login () {
       this.loading = true
@@ -77,9 +86,9 @@ export default {
       })
         .then(response => {
           this.$store.user = response.data.user
-          this.$store.isLogged = true
+          this.$store.isLoggedIn = true
           this.$axios.defaults.headers.common.Authorization = `Bearer ${response.data.token}`
-          localStorage.setItem('tokenControl', response.data.token)
+          localStorage.setItem('tokenSantidad', response.data.token)
           this.$router.push('/')
         })
         .catch(error => {
