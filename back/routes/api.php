@@ -18,9 +18,11 @@ use Illuminate\Support\Facades\Route;
 //    return $request->user();
 //});
 Route::post('/login',[\App\Http\Controllers\UserController::class,'login']);
+Route::post('upload/{id}/{option}', [\App\Http\Controllers\UploadController::class, 'upload']);
 Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::post('/me', [\App\Http\Controllers\UserController::class,'me']);
     Route::post('/logout', [\App\Http\Controllers\UserController::class,'logout']);
     Route::resource('/user',\App\Http\Controllers\UserController::class);
-    Route::resource('/personas',\App\Http\Controllers\PersonaController::class);
+    Route::resource('/categories',\App\Http\Controllers\CategoryController::class);
+    Route::resource('/products',\App\Http\Controllers\ProductController::class);
 });
