@@ -8,12 +8,12 @@
           </template>
         </q-input>
       </div>
-      <div class="col-5 col-md-2 text-right">
-        <q-btn color="black" no-caps flat icon="o_file_download">
+      <div class="col-5 col-md-3">
+        <q-btn color="black" no-caps flat icon="o_file_download" @click="downloadReport">
           <div class="q-page-xs subrayado"> Descargar reporte</div>
         </q-btn>
       </div>
-      <div class="col-7 col-md-4 text-right">
+      <div class="col-7 col-md-3 text-right">
         <q-btn :loading="loading" color="green" rounded no-caps icon="add_circle_outline" label="Nuevo producto" @click="showAddProduct">
           <q-tooltip>Crear nuevo producto</q-tooltip>
         </q-btn>
@@ -45,14 +45,14 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-subtitle2 text-grey">Costo total de inventario</q-item-label>
-                <q-item-label class="text-bold text-h6 text-green-7">Bs {{costoTotalProducts}}</q-item-label>
+                <q-item-label :class="`text-bold text-h6 text-${costoTotalProducts>0?'green':'red'}`">{{costoTotalProducts}} Bs</q-item-label>
               </q-item-section>
             </q-item>
           </q-card-section>
         </q-card>
       </div>
       <div class="col-12 col-md-4 q-pa-xs flex flex-center">
-        <q-btn outline no-caps icon="o_edit" class="full-width" label="Editar categoria"/>
+        <q-btn outline no-caps icon="o_edit" class="full-width" label="Editar categoria" @click="categoryDialog=true" />
       </div>
       <div class="col-12 col-md-4 q-pa-xs">
         <q-select class="bg-white" emit-value map-options dense outlined
@@ -88,8 +88,8 @@
             <div class="row cursor-pointer" v-if="products.length>0">
               <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
                 <q-card @click="clickDetalleProducto(p)">
-                  <q-img :src="p.imagen.includes('http')?p.imagen:`${url}../images/${p.imagen}`" width="100%" height="100px">
-                    <div class="absolute-bottom text-center text-subtitle2">
+                  <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="100px">
+                    <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;">
                       {{p.nombre}}
                     </div>
                   </q-img>
@@ -118,16 +118,77 @@
       </div>
     </div>
     <q-dialog v-model="productDialog" position="right" maximized>
-      <q-card class="modalWithCard">
+      <q-card style="width: 500px; max-width: 80vw;">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-subtitle2 text-bold text-grey">
-            {{ productAction === 'create' ? 'Nuevo producto' : 'Editar producto' }}
+            {{ productAction === 'create' ? 'Nuevo producto' : productAction === 'edit' ? 'Editar producto' : 'Detalle de producto' }}
           </div>
           <q-space/>
           <q-btn icon="o_highlight_off" flat round dense v-close-popup />
         </q-card-section>
         <q-card-section>
-          <q-form @submit="productSave">
+          <q-form v-if="productAction === 'ver'">
+            <div class="flex flex-center">
+              <q-img :src="product.imagen.includes('http')?product.imagen:`${$url}../images/${product.imagen}`" width="200px" height="200px">
+                <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;">
+                  {{product.nombre}}
+                </div>
+              </q-img>
+            </div>
+            <q-card-section class="q-pa-none q-ma-none">
+              <div class="text-center text-subtitle2">{{ product.precio }} Bs</div>
+              <div :class="product.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">{{ product.cantidad }} Disponible</div>
+            </q-card-section>
+            <q-card flat bordered class="bg-grey-1">
+              <q-card-section>
+                <div class="row">
+                  <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
+                      <q-icon name="o_qr_code_2" class="text-grey" size="20px" />
+                      Codigo de barras
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="text-grey text-caption text-right">{{ product.barra }}</div>
+                  </div>
+                  <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
+                      <q-icon name="o_paid" class="text-grey" size="20px" />
+                      Precio
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="text-grey text-caption text-right">{{ product.precio }} Bs</div>
+                  </div>
+                  <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
+                      <q-icon name="o_shopping_bag" class="text-grey" size="20px" />
+                      Costo
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="text-grey text-caption text-right">{{ product.costo }} Bs</div>
+                  </div>
+                  <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
+                      <q-icon name="o_shopping_cart" class="text-grey" size="20px" />
+                      Categoria
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="text-grey text-caption text-right" v-if="product.category">{{ product.category.name }}</div>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+            <div class="row">
+              <div class="col-12 text-subtitle2 text-bold">
+                Descripción
+              </div>
+              <div class="col-12 text-grey">
+                {{ product.descripcion}}
+              </div>
+              <div class="col-6">
+                <q-btn :loading="loading" icon="o_delete" label="Eliminar" rounded dense color="red" @click="productDelete" no-caps class="full-width" />
+              </div>
+              <div class="col-6">
+                <q-btn :loading="loading" icon="o_edit" label="Editar" outline rounded dense color="grey" @click="productAction = 'edit'" no-caps class="full-width" />
+              </div>
+            </div>
+          </q-form>
+          <q-form @submit="productSave" v-if="productAction === 'create' || productAction === 'edit'">
             <div class="flex flex-center">
               <q-uploader
                 accept=".jpg, .png"
@@ -142,6 +203,7 @@
                 :url="`${$url}upload/${product.id}/fileCreate`"
                 stack-label="upload image"/>
             </div>
+            <q-input outlined v-model="product.imagen" label="Imagen" dense hint="Selecciona una imagen" />
             <div class="text-grey text-caption">Te recomendamos que la imagen tenga un tamaño de 500 x 500 px en formato PNG y pese máximo 2MB.</div>
             <q-input outlined v-model="product.nombre" label="Nombre del producto*" dense hint="Recuerda, este debe ser único en tu inventario" :rules="[val => !!val || 'Este campo es requerido']" />
             <q-input outlined v-model="product.barra" label="Código de barras" dense hint="Escríbelo o escanéalo" />
@@ -165,6 +227,33 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+    <q-dialog v-model="categoryDialog" position="right" maximized>
+      <q-card style="width: 500px; max-width: 80vw;">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-subtitle2 text-bold text-grey">
+            Editar categoria
+          </div>
+          <q-space/>
+          <q-btn icon="o_highlight_off" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section>
+          <q-table flat bordered :rows="categoriesTable" hide-header
+                   :columns="categoriesTableColumns" :rows-per-page-options="[0]" >
+            <template v-slot:body="props">
+              <q-tr :props="props">
+                <q-td :props="props" key="name">
+                  {{props.row.name}}
+                </q-td>
+                <q-td :props="props" key="actions">
+                  <q-btn flat dense round color="grey" icon="o_edit" class="cursor-pointer" @click="categoryEdit(props.row)"/>
+                  <q-btn flat dense round color="red" icon="o_delete" class="cursor-pointer" @click="categoryDelete(props.row)"/>
+                </q-td>
+              </q-tr>
+            </template>
+          </q-table>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -178,6 +267,7 @@ export default {
       last_page: 1,
       loading: false,
       productDialog: false,
+      categoryDialog: false,
       productAction: 'create',
       products: [],
       totalProducts: 0,
@@ -186,13 +276,20 @@ export default {
       categories: [
         { name: 'Ver todas las categorias', id: 0 }
       ],
+      categoriesTable: [],
+      categorySelected: {},
+      categoriesTableColumns: [
+        { name: 'name', label: 'Nombre', field: 'name', align: 'left', sortable: true },
+        { name: 'actions', label: 'Acciones', field: 'actions', align: 'right', sortable: false }
+      ],
       order: 'id',
       orders: [
         { label: 'Ordenar por', value: 'id' },
         { label: 'Menor precio', value: 'precio asc' },
         { label: 'Mayor precio', value: 'precio desc' },
         { label: 'Menor cantidad', value: 'cantidad asc' },
-        { label: 'Mayor cantidad', value: 'cantidad desc' }
+        { label: 'Mayor cantidad', value: 'cantidad desc' },
+        { label: 'Orden alfabetico', value: 'nombre asc' }
       ],
       costoTotalProducts: 0
     }
@@ -202,12 +299,87 @@ export default {
     this.productsGet()
   },
   methods: {
-    // handleKeyUp (e) {
-    //   console.log(this.search)
-    //   // if (e.keyCode === 13) {
-    //   //   this.productsGet()
-    //   // }
-    // },
+    productDelete () {
+      this.$q.dialog({
+        title: 'Eliminar producto',
+        message: `¿Estás seguro de eliminar el producto ${this.product.nombre}?`,
+        cancel: true,
+        persistent: true
+      }).onOk(() => {
+        this.loading = true
+        this.$axios.delete(`products/${this.product.id}`)
+          .then(response => {
+            this.productDialog = false
+            this.loading = false
+            this.productsGet()
+            this.$alert.success(`El producto ${this.product.nombre} fue eliminado correctamente`)
+          })
+          .catch(error => {
+            this.loading = false
+            this.$alert.error(error.response.data.message)
+          })
+      })
+    },
+    downloadReport () {
+      const data = [
+        {
+          columns: [
+            { value: 'id', label: 'ID' },
+            { value: 'nombre', label: 'Nombre' },
+            { value: 'barra', label: 'Código de barras' },
+            { value: 'cantidad', label: 'Cantidad' },
+            { value: 'costo', label: 'Costo' },
+            { value: 'precio', label: 'Precio' },
+            { value: 'activo', label: 'Activo' },
+            { value: 'imagen', label: 'Imagen' },
+            { value: 'descripcion', label: 'Descripción' },
+            // { label: 'User', value: 'user' }, // Top level data
+            // { label: 'Age', value: (row) => row.age + 'years' }, // Custom format
+            { label: 'Categoria', value: (row) => (row.category ? row.category.name || '' : '') } // Run functions
+          ],
+          content: this.products
+        }
+      ]
+      this.$excel.export(data)
+    },
+    categoryDelete (category) {
+      this.$q.dialog({
+        title: 'Eliminar categoria',
+        message: '¿Estás seguro de eliminar esta categoria?',
+        cancel: true,
+        persistent: true
+      }).onOk(() => {
+        this.$axios.delete(`categories/${category.id}`).then(res => {
+          this.categoriesGet()
+          this.$alert.success('Categoria eliminada correctamente')
+        }).catch(err => {
+          this.$alert.error('No se puede eliminar la categoria porque tiene productos asociados')
+          console.log(err)
+        })
+      })
+    },
+    categoryEdit (category) {
+      this.categorySelected = category
+      this.categoryDialog = false
+      this.$q.dialog({
+        title: 'Editar categoria',
+        message: 'Ingresa el nuevo nombre de la categoria',
+        prompt: {
+          model: category.name,
+          type: 'text'
+        },
+        cancel: true,
+        persistent: true
+      }).onOk(data => {
+        this.$axios.put(`categories/${category.id}`, { name: data }).then(res => {
+          this.categoriesGet()
+          this.$alert.success('Categoria editada correctamente')
+        }).catch(err => {
+          console.log(err)
+          this.$alert.error('No se pudo editar la categoria')
+        })
+      })
+    },
     productSave () {
       this.loading = true
       if (this.productAction === 'create') {
@@ -218,16 +390,10 @@ export default {
         }).catch(err => {
           this.loading = false
           console.log(err)
-          this.$q.notify({
-            color: 'red-5',
-            textColor: 'white',
-            icon: 'warning',
-            message: err.response.data.message,
-            position: 'top'
-          })
+          this.$alert.error(err.response.data.message)
         })
       } else {
-        this.$axios.put('products', this.product).then(res => {
+        this.$axios.put(`products/${this.product.id}`, this.product).then(res => {
           this.loading = false
           this.productDialog = false
           this.productsGet()
@@ -273,13 +439,12 @@ export default {
     },
     errorFn (err) {
       console.log(err)
-      this.$q.notify({
-        color: 'red-4',
-        textColor: 'white',
-        icon: 'cloud_done',
-        position: 'top',
-        message: 'Error al subir la imagen, intente nuevamente el nombre no debe contener espacios o ñ'
-      })
+      this.$alert.error('Error al subir la imagen, intente nuevamente el nombre no debe contener espacios o ñ')
+    },
+    clickDetalleProducto (product) {
+      this.product = product
+      this.productDialog = true
+      this.productAction = 'ver'
     },
     showAddProduct () {
       this.productAction = 'create'
@@ -290,6 +455,7 @@ export default {
       this.categories = [{ name: 'Ver todas las categorias', id: 0 }]
       this.$axios.get('categories').then(response => {
         this.categories = this.categories.concat(response.data)
+        this.categoriesTable = response.data
       }).catch(error => {
         console.log(error)
       })
@@ -304,13 +470,7 @@ export default {
         }
       }).onOk(data => {
         if (data === '') {
-          this.$q.notify({
-            color: 'red-5',
-            textColor: 'white',
-            icon: 'warning',
-            message: 'El nombre de la categoria no puede estar vacio',
-            position: 'top'
-          })
+          this.$alert.error('El nombre de la categoria no puede estar vacio')
           return
         }
         this.$axios.post('categories', { name: data }).then(response => {
