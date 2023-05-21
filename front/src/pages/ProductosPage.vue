@@ -177,7 +177,7 @@
               <div class="col-12 text-subtitle2 text-bold">
                 Descripción
               </div>
-              <div class="col-12 text-grey">
+              <div class="col-12 text-grey q-pa-xs">
                 {{ product.descripcion}}
               </div>
               <div class="col-6">
