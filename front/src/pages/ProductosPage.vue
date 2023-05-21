@@ -2,19 +2,24 @@
   <q-page class="bg-grey-2 q-pa-xs">
     <div class="row">
       <div class="col-12 col-md-6 bg-white">
-        <q-input outlined v-model="search" label="Buscar producto" dense clearable @keyup.enter="searchProduct">
+        <q-input outlined v-model="search" label="Buscar producto" dense clearable @update:model-value="productsGet" debounce="500">
           <template v-slot:prepend>
-            <q-icon name="search" class="cursor-pointer" @click="searchProduct" />
+            <q-icon name="search" class="cursor-pointer" />
           </template>
         </q-input>
       </div>
-      <div class="col-6 col-md-3 text-right">
+      <div class="col-5 col-md-2 text-right">
         <q-btn color="black" no-caps flat icon="o_file_download">
           <div class="q-page-xs subrayado"> Descargar reporte</div>
         </q-btn>
       </div>
-      <div class="col-6 col-md-3 text-right">
-        <q-btn color="green" rounded no-caps icon="add_circle_outline" label="Nuevo producto" @click="showAddProduct" />
+      <div class="col-7 col-md-4 text-right">
+        <q-btn :loading="loading" color="green" rounded no-caps icon="add_circle_outline" label="Nuevo producto" @click="showAddProduct">
+          <q-tooltip>Crear nuevo producto</q-tooltip>
+        </q-btn>
+        <q-btn :loading="loading" icon="refresh" dense color="grey-7" flat @click="productsGet">
+          <q-tooltip>Actualizar</q-tooltip>
+        </q-btn>
       </div>
       <div class="col-12 col-md-6 q-pa-xs">
         <q-card class="">
@@ -25,7 +30,7 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-subtitle2 text-grey">Total referencia</q-item-label>
-                <q-item-label class="text-bold text-h6">5</q-item-label>
+                <q-item-label class="text-bold text-h6">{{totalProducts}}</q-item-label>
               </q-item-section>
             </q-item>
           </q-card-section>
@@ -40,7 +45,7 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-subtitle2 text-grey">Costo total de inventario</q-item-label>
-                <q-item-label class="text-bold text-h6 text-green-7">Bs 4545</q-item-label>
+                <q-item-label class="text-bold text-h6 text-green-7">Bs {{costoTotalProducts}}</q-item-label>
               </q-item-section>
             </q-item>
           </q-card-section>
@@ -50,7 +55,10 @@
         <q-btn outline no-caps icon="o_edit" class="full-width" label="Editar categoria"/>
       </div>
       <div class="col-12 col-md-4 q-pa-xs">
-        <q-select class="bg-white" emit-value map-options dense outlined v-model="category" option-value="id" option-label="name" :options="categories">
+        <q-select class="bg-white" emit-value map-options dense outlined
+                  v-model="category" option-value="id" option-label="name" :options="categories"
+                  @update:model-value="productsGet"
+        >
           <template v-slot:before>
             <q-btn color="green" dense size="15px" flat no-caps icon="o_add_circle_outline" @click="showAddCategory">
               <q-tooltip>Crear categoria</q-tooltip>
@@ -58,20 +66,59 @@
           </template>
         </q-select>
       </div>
-<!--      <div class="col-2 col-md-1 q-pa-xs items-center flex flex-center">-->
-<!--        <q-btn color="green" dense rounded no-caps icon="o_add">-->
-<!--          <q-tooltip>Crear categoria</q-tooltip>-->
-<!--        </q-btn>-->
-<!--      </div>-->
       <div class="col-12 col-md-4 q-pa-xs">
-        <q-select class="bg-white" label="Ordenar" dense outlined v-model="order" :options="orders" />
+        <q-select class="bg-white" label="Ordenar" dense outlined v-model="order"
+                  :options="orders" map-options emit-value
+                  option-value="value" option-label="label"
+                  @update:model-value="productsGet"
+        />
+      </div>
+      <div class="col-12 flex flex-center">
+        <q-pagination
+          v-model="current_page"
+          :max="last_page"
+          :max-pages="6"
+          boundary-numbers
+          @update:model-value="productsGet"
+        />
       </div>
       <div class="col-12">
-        <pre>{{products}}</pre>
+        <q-card>
+          <q-card-section>
+            <div class="row cursor-pointer" v-if="products.length>0">
+              <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
+                <q-card @click="clickDetalleProducto(p)">
+                  <q-img :src="p.imagen.includes('http')?p.imagen:`${url}../images/${p.imagen}`" width="100%" height="100px">
+                    <div class="absolute-bottom text-center text-subtitle2">
+                      {{p.nombre}}
+                    </div>
+                  </q-img>
+                  <q-card-section class="q-pa-none q-ma-none">
+                    <div class="text-center text-subtitle2">{{ p.precio }} Bs</div>
+                    <div :class="p.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">{{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}</div>
+                  </q-card-section>
+                </q-card>
+              </div>
+            </div>
+            <q-card v-else>
+              <q-card-section>
+                <div class="row">
+                  <div class="col-12 flex flex-center">
+                    <q-avatar size="150px" font-size="150px" color="white" text-color="grey" icon="view_in_ar" />
+                  </div>
+                  <div class="col-12">
+                    <div class="text-bold text-grey text-center">No encontramos productos para tu búsqueda.</div>
+                    <div class="text-bold text-grey text-center">Intenta con otra palabra o agrega productos a tu Inventario.</div>
+                  </div>
+                </div>
+              </q-card-section>
+            </q-card>
+          </q-card-section>
+        </q-card>
       </div>
     </div>
     <q-dialog v-model="productDialog" position="right" maximized>
-      <q-card style="width: 400px;max-width: 90vw;">
+      <q-card class="modalWithCard">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-subtitle2 text-bold text-grey">
             {{ productAction === 'create' ? 'Nuevo producto' : 'Editar producto' }}
@@ -110,8 +157,6 @@
             <q-input outlined v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
             <q-select class="bg-white" emit-value map-options label="Categoria" dense outlined v-model="product.category_id" option-value="id" option-label="name" :options="categories" hint="Selecciona una categoria"/>
             <q-input type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>
-<!--            <pre>{{product.category_id}}</pre>-->
-<!--            <pre>{{categories}}</pre>-->
             <q-btn class="full-width" rounded
                    :color="!product.nombre || !product.precio ? 'grey' : 'green'"
                    :disable="!product.nombre || !product.precio"
@@ -128,24 +173,28 @@ export default {
   name: 'ProductosPage',
   data () {
     return {
+      current_page: 1,
       search: '',
+      last_page: 1,
       loading: false,
       productDialog: false,
       productAction: 'create',
       products: [],
+      totalProducts: 0,
       product: { cantidad: 0, nombre: '', barra: '', costo: 0, precio: 0, descripcion: '', category_id: 0 },
-      category: 'Ver todas las categorias',
+      category: 0,
       categories: [
         { name: 'Ver todas las categorias', id: 0 }
       ],
-      order: 'Ordenar por',
+      order: 'id',
       orders: [
-        { label: 'Ordenar por', value: 'Ordenar por' },
-        { label: 'Menor precio', value: 'menor' },
-        { label: 'Mayor precio', value: 'mayor' },
-        { label: 'Menor stock', value: 'menor' },
-        { label: 'Mayor stock', value: 'mayor' }
-      ]
+        { label: 'Ordenar por', value: 'id' },
+        { label: 'Menor precio', value: 'precio asc' },
+        { label: 'Mayor precio', value: 'precio desc' },
+        { label: 'Menor cantidad', value: 'cantidad asc' },
+        { label: 'Mayor cantidad', value: 'cantidad desc' }
+      ],
+      costoTotalProducts: 0
     }
   },
   created () {
@@ -153,6 +202,12 @@ export default {
     this.productsGet()
   },
   methods: {
+    // handleKeyUp (e) {
+    //   console.log(this.search)
+    //   // if (e.keyCode === 13) {
+    //   //   this.productsGet()
+    //   // }
+    // },
     productSave () {
       this.loading = true
       if (this.productAction === 'create') {
@@ -184,9 +239,15 @@ export default {
     },
     productsGet () {
       this.loading = true
-      this.$axios.get('products').then(res => {
+      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}`).then(res => {
         this.loading = false
-        this.products = res.data
+        // console.log(res.data.products)
+        this.totalProducts = res.data.products.total
+        this.products = res.data.products.data
+        // console.log(this.products)
+        this.last_page = res.data.products.last_page
+        this.current_page = res.data.products.current_page
+        this.costoTotalProducts = parseFloat(res.data.costoTotal).toFixed(2)
       }).catch(err => {
         this.loading = false
         console.log(err)
@@ -212,13 +273,13 @@ export default {
     },
     errorFn (err) {
       console.log(err)
-      // this.$q.notify({
-      //   color: 'red-4',
-      //   textColor: 'white',
-      //   icon: 'cloud_done',
-      //   position: 'top',
-      //   message: 'Error al subir la imagen, intente nuevamente el nombre no debe contener espacios o ñ'
-      // })
+      this.$q.notify({
+        color: 'red-4',
+        textColor: 'white',
+        icon: 'cloud_done',
+        position: 'top',
+        message: 'Error al subir la imagen, intente nuevamente el nombre no debe contener espacios o ñ'
+      })
     },
     showAddProduct () {
       this.productAction = 'create'
@@ -242,20 +303,25 @@ export default {
           type: 'text'
         }
       }).onOk(data => {
+        if (data === '') {
+          this.$q.notify({
+            color: 'red-5',
+            textColor: 'white',
+            icon: 'warning',
+            message: 'El nombre de la categoria no puede estar vacio',
+            position: 'top'
+          })
+          return
+        }
         this.$axios.post('categories', { name: data }).then(response => {
           this.categoriesGet()
         }).catch(error => {
           console.log(error)
         })
       })
-    },
-    searchProduct () {
-      console.log(this.search)
     }
+  },
+  computed: {
   }
 }
 </script>
-
-<style scoped>
-
-</style>
