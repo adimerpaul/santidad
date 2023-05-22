@@ -3,6 +3,7 @@ import axios from 'axios'
 import { useCounterStore } from 'stores/example-store'
 import { Alert } from 'src/addons/Alert'
 import { Excel } from 'src/addons/Excel'
+import moment from 'moment'
 // Be careful when using SSR for cross-request state pollution
 // due to creating a Singleton instance here;
 // If any client changes this (global) instance, it might be a
@@ -17,6 +18,24 @@ export default boot(({ app, router }) => {
   app.config.globalProperties.$url = import.meta.env.VITE_API_BACK
   app.config.globalProperties.$alert = Alert
   app.config.globalProperties.$excel = Excel
+  app.config.globalProperties.$metodoPago = ['Efectivo', 'Tarjeta', 'Transferencia', 'Otro']
+  app.config.globalProperties.$filters = {
+    dateDmYHis (value) {
+      const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Nov', 'Dic']
+      const mes = meses[moment(String(value)).format('MM') - 1]
+      if (!value) return ''
+      const date = moment(String(value)).format('DD') + ' ' + mes + ' ' + moment(String(value)).format('YYYY') + ' ' + moment(String(value)).format('hh:mm A')
+      return date
+    },
+    capitalize (value) {
+      if (!value) return ''
+      return value.charAt(0).toUpperCase() + value.slice(1)
+    },
+    upperCase (value) {
+      if (!value) return ''
+      return value.toUpperCase()
+    }
+  }
   app.config.globalProperties.$store = useCounterStore()
   const token = localStorage.getItem('tokenSantidad')
   if (token) {

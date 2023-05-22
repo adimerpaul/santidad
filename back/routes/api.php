@@ -25,4 +25,9 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::resource('/user',\App\Http\Controllers\UserController::class);
     Route::resource('/categories',\App\Http\Controllers\CategoryController::class);
     Route::resource('/products',\App\Http\Controllers\ProductController::class);
+    Route::resource('/clients',\App\Http\Controllers\ClientController::class);
+    Route::get('/providers',[\App\Http\Controllers\ClientController::class,'providers']);
+    Route::resource('/sales',\App\Http\Controllers\SalesController::class);
+    Route::post('/salesGasto',[\App\Http\Controllers\SalesController::class,'salesGasto']);
+    Route::get('/betweenDates/{fechaInicio}/{fechaFin}',[\App\Http\Controllers\SalesController::class,'betweenDates']);
 });
