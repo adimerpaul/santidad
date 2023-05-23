@@ -18,8 +18,12 @@ class Product extends Model
         'imagen',
         'descripcion',
         "category_id",
+        "agencia_id"
     ];
     public function category(){
         return $this->belongsTo(Category::class);
+    }
+    public function agencia(){
+        return $this->belongsTo(Agencia::class);
     }
 }

@@ -26,6 +26,7 @@ class ProductFactory extends Factory
             'imagen' => $this->faker->imageUrl(640, 480, 'product', true),
             'descripcion' => $this->faker->text,
             "category_id" => $this->faker->numberBetween(1, 12),
+            "agencia_id" => $this->faker->numberBetween(1, 4),
         ];
     }
 }

@@ -51,10 +51,10 @@
           </q-card-section>
         </q-card>
       </div>
-      <div class="col-12 col-md-4 q-pa-xs flex flex-center">
+      <div class="col-12 col-md-3 q-pa-xs flex flex-center">
         <q-btn outline no-caps icon="o_edit" class="full-width" label="Editar categoria" @click="categoryDialog=true" />
       </div>
-      <div class="col-12 col-md-4 q-pa-xs">
+      <div class="col-12 col-md-3 q-pa-xs">
         <q-select class="bg-white" emit-value map-options dense outlined
                   v-model="category" option-value="id" option-label="name" :options="categories"
                   @update:model-value="productsGet"
@@ -66,10 +66,17 @@
           </template>
         </q-select>
       </div>
-      <div class="col-12 col-md-4 q-pa-xs">
+      <div class="col-12 col-md-3 q-pa-xs">
         <q-select class="bg-white" label="Ordenar" dense outlined v-model="order"
                   :options="orders" map-options emit-value
                   option-value="value" option-label="label"
+                  @update:model-value="productsGet"
+        />
+      </div>
+      <div class="col-12 col-md-3 q-pa-xs">
+        <q-select class="bg-white" label="Agencia" dense outlined v-model="agencia"
+                  :options="agencias" map-options emit-value
+                  option-value="id" option-label="nombre"
                   @update:model-value="productsGet"
         />
       </div>
@@ -164,6 +171,13 @@
                     <div class="text-grey text-caption text-right">{{ product.costo }} Bs</div>
                   </div>
                   <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
+                    <q-icon name="o_local_shipping" class="text-grey" size="20px" />
+                    Agencia
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="text-grey text-caption text-right" v-if="product.agencia">{{ product.agencia.nombre }}</div>
+                  </div>
+                  <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
                       <q-icon name="o_shopping_cart" class="text-grey" size="20px" />
                       Categoria
                   </div>
@@ -219,6 +233,7 @@
             <q-input outlined v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
             <q-select class="bg-white" emit-value map-options label="Categoria" dense outlined v-model="product.category_id" option-value="id" option-label="name" :options="categories" hint="Selecciona una categoria"/>
             <q-input type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>
+            <q-select class="bg-white" emit-value map-options label="Agencia" dense outlined v-model="product.agencia_id" option-value="id" option-label="nombre" :options="agencias" hint="Selecciona una agencia" :rules="[val => !!val || 'Este campo es requerido']"/>
             <q-btn class="full-width" rounded
                    :color="!product.nombre || !product.precio ? 'grey' : 'green'"
                    :disable="!product.nombre || !product.precio"
@@ -271,6 +286,8 @@ export default {
       productAction: 'create',
       products: [],
       totalProducts: 0,
+      agencias: [],
+      agencia: 0,
       product: { cantidad: 0, nombre: '', barra: '', costo: 0, precio: 0, descripcion: '', category_id: 0 },
       category: 0,
       categories: [
@@ -296,9 +313,18 @@ export default {
   },
   created () {
     this.categoriesGet()
+    this.agenciasGet()
     this.productsGet()
   },
   methods: {
+    agenciasGet () {
+      this.agencias = [{ nombre: 'Selecciona una agencia', id: 0 }]
+      this.$axios.get('agencias').then(response => {
+        this.agencias = this.agencias.concat(response.data)
+      }).catch(error => {
+        this.$alert.error(error.response.data.message)
+      })
+    },
     productDelete () {
       this.$q.dialog({
         title: 'Eliminar producto',
@@ -405,7 +431,7 @@ export default {
     },
     productsGet () {
       this.loading = true
-      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}`).then(res => {
+      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia}`).then(res => {
         this.loading = false
         // console.log(res.data.products)
         this.totalProducts = res.data.products.total
@@ -449,7 +475,7 @@ export default {
     showAddProduct () {
       this.productAction = 'create'
       this.productDialog = true
-      this.product = { cantidad: 0, nombre: '', barra: '', costo: 0, precio: 0, descripcion: '', category_id: 0 }
+      this.product = { cantidad: 0, nombre: '', barra: '', costo: 0, precio: 0, descripcion: '', category_id: 0, agencia_id: 0 }
     },
     categoriesGet () {
       this.categories = [{ name: 'Ver todas las categorias', id: 0 }]

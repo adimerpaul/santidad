@@ -25,6 +25,8 @@ return new class extends Migration
             $table->string('descripcion')->nullable();
             $table->unsignedBigInteger("category_id")->nullable();
             $table->foreign("category_id")->references("id")->on("categories");
+            $table->unsignedBigInteger("agencia_id")->nullable();
+            $table->foreign("agencia_id")->references("id")->on("agencias");
             $table->timestamps();
         });
     }
