@@ -13,7 +13,7 @@
         </q-btn>
       </div>
       <div class="col-12 col-md-3 text-right">
-        <q-btn :loading="loading" color="green-4" dense rounded no-caps icon="add_circle_outline" label="Nuevo venta" @click="showAddProduct">
+        <q-btn :loading="loading" color="green-4" dense rounded no-caps icon="add_circle_outline" label="Nuevo venta" to="/sale">
           <q-tooltip>Crear nueva venta</q-tooltip>
         </q-btn>
         <q-btn :loading="loading" color="red-4" dense rounded no-caps icon="remove_circle_outline" label="Nuevo gasto" @click="saleAddGasto">
@@ -25,6 +25,9 @@
       </div>
       <div class="col-12 col-md-4 q-pa-xs">
         <q-card class="" flat bordered>
+          <q-tooltip anchor="top middle" self="bottom middle">
+            Total de ventas
+          </q-tooltip>
           <q-card-section class="q-pa-none">
             <q-item>
               <q-item-section avatar>
@@ -40,6 +43,9 @@
       </div>
       <div class="col-12 col-md-4 q-pa-xs">
         <q-card class="" flat bordered>
+          <q-tooltip anchor="top middle" self="bottom middle">
+            Total Ingresos
+          </q-tooltip>
           <q-card-section class="q-pa-none">
             <q-item>
               <q-item-section avatar>
@@ -55,6 +61,9 @@
       </div>
       <div class="col-12 col-md-4 q-pa-xs">
         <q-card class="" flat bordered>
+          <q-tooltip anchor="top middle" self="bottom middle">
+            Total Gastos
+          </q-tooltip>
           <q-card-section class="q-pa-none">
             <q-item>
               <q-item-section avatar>
@@ -96,7 +105,7 @@
                 <p>{{ $filters.dateDmYHis(props.row.fechaEmision) }}</p>
               </q-td>
               <q-td key="egresoingreso" :props="props">
-                <q-chip :color="`${props.row.tipoVenta=='Ingreso'?'green':'red'}-7`" :text-color="`${props.row.tipoVenta=='Ingreso'?'green':'red'}-2`" dense flat :label="props.row.tipoVenta"/>
+                <q-chip :color="`${props.row.tipoVenta=='Ingreso'?'green':'red'}-5`" text-color="white" dense flat :label="props.row.tipoVenta"/>
               </q-td>
             </q-tr>
           </template>

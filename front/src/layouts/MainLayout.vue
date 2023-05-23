@@ -33,49 +33,86 @@
     <q-drawer
       v-model="leftDrawerOpen"
       show-if-above
-      bordered
+      :width="220"
+      :breakpoint="400"
     >
-<!--      <q-list>-->
-<!--        <q-item-label-->
-<!--          header-->
-<!--        >-->
-<!--          Essential Links-->
-<!--        </q-item-label>-->
-
-<!--        <EssentialLink-->
-<!--          v-for="link in essentialLinks"-->
-<!--          :key="link.title"-->
-<!--          v-bind="link"-->
-<!--        />-->
-<!--        <pre>{{essentialLinks}}</pre>-->
-<!--      </q-list>-->
       <q-layout>
         <q-header class="bg-white">
-<!--          <q-toolbar>-->
-<!--            <q-toolbar-title>-->
-<!--              <span class="text-bold text-grey">Menú</span>-->
-<!--            </q-toolbar-title>-->
-<!--          </q-toolbar>-->
           <q-list bordered padding class="text-black">
             <q-item-label header class="text-bold">
-              Menú
+              Menu principal
             </q-item-label>
             <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/">
-              <q-item-section avatar>
-                <q-icon name="o_store" />
-              </q-item-section>
+              <q-item-section avatar><q-icon name="o_store" /></q-item-section>
               <q-item-section>
-                <q-item-label>Venta</q-item-label>
-                <q-item-label caption class="text-grey">Venta de productos</q-item-label>
+                <q-item-label>
+                  Movimientos
+                  <q-tooltip anchor="top middle" self="bottom middle">
+                    Movimientos de caja
+                  </q-tooltip>
+                </q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-expansion-item expand-separator icon="o_engineering" label="Siat" >
+              <q-expansion-item dense exact :header-inset-level="0.5" expand-separator icon="o_psychology" label="Cuis" default-opened to="/cuis" hide-expand-icon  />
+              <q-expansion-item dense exact :header-inset-level="0.5" expand-separator icon="o_business_center" label="sincronizacion" default-opened to="/sincronizacion" hide-expand-icon  />
+              <q-expansion-item dense exact :header-inset-level="0.5" expand-separator icon="link" label="Cufd" default-opened to="/cufd" hide-expand-icon  />
+              <q-expansion-item dense exact :header-inset-level="0.5" expand-separator icon="list" label="Evento significativo" default-opened to="/eventoSignificativo" hide-expand-icon  />
+            </q-expansion-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/sale">
+              <q-item-section avatar><q-icon name="o_shopping_cart" /></q-item-section>
+              <q-item-section>
+                <q-item-label>
+                  Venta
+                  <q-tooltip anchor="top middle" self="bottom middle">
+                    Venta de productos
+                  </q-tooltip>
+                </q-item-label>
               </q-item-section>
             </q-item>
             <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productos">
-              <q-item-section avatar>
-                <q-icon name="o_local_mall" />
-              </q-item-section>
+              <q-item-section avatar><q-icon name="o_local_mall" /></q-item-section>
               <q-item-section>
                 <q-item-label>Productos</q-item-label>
-                <q-item-label caption class="text-grey">Productos disponibles</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Administrar productos
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/clientes">
+              <q-item-section avatar><q-icon name="o_face" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Clientes</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Administrar clientes
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/proveedores">
+              <q-item-section avatar><q-icon name="o_assignment_ind" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Proveedores</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Administrar proveedores
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/reportes">
+              <q-item-section avatar><q-icon name="o_print" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Reportes</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Consultar reportes
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/users">
+              <q-item-section avatar><q-icon name="o_manage_accounts" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Usuarios</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Administrar usuarios
+                </q-tooltip>
               </q-item-section>
             </q-item>
           </q-list>
