@@ -30,10 +30,6 @@ export default boot(({ app, router }) => {
     capitalize (value) {
       if (!value) return ''
       return value.charAt(0).toUpperCase() + value.slice(1)
-    },
-    upperCase (value) {
-      if (!value) return ''
-      return value.toUpperCase()
     }
   }
   app.config.globalProperties.$store = useCounterStore()
@@ -45,10 +41,12 @@ export default boot(({ app, router }) => {
     app.config.globalProperties.$axios.post('me').then((res) => {
       // console.log(res.data)
       useCounterStore().user = res.data
+      // useCounterStore().agencia_id = res.data.agencia_id
     }).catch(() => {
       app.config.globalProperties.$axios.defaults.headers.common.Authorization = ''
       useCounterStore().user = {}
       localStorage.removeItem('tokenSantidad')
+      localStorage.removeItem('agencia_id')
       useCounterStore().isLoggedIn = false
       router.push('/login')
     }).finally(() => {

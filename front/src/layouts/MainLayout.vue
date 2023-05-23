@@ -33,7 +33,7 @@
     <q-drawer
       v-model="leftDrawerOpen"
       show-if-above
-      :width="220"
+      :width="200"
       :breakpoint="400"
     >
       <q-layout>
@@ -54,10 +54,10 @@
               </q-item-section>
             </q-item>
             <q-expansion-item expand-separator icon="o_engineering" label="Siat" >
-              <q-expansion-item dense exact :header-inset-level="0.5" expand-separator icon="o_psychology" label="Cuis" default-opened to="/cuis" hide-expand-icon  />
-              <q-expansion-item dense exact :header-inset-level="0.5" expand-separator icon="o_business_center" label="sincronizacion" default-opened to="/sincronizacion" hide-expand-icon  />
-              <q-expansion-item dense exact :header-inset-level="0.5" expand-separator icon="link" label="Cufd" default-opened to="/cufd" hide-expand-icon  />
-              <q-expansion-item dense exact :header-inset-level="0.5" expand-separator icon="list" label="Evento significativo" default-opened to="/eventoSignificativo" hide-expand-icon  />
+              <q-expansion-item dense exact :header-inset-level="0.3" expand-separator icon="o_psychology" label="Cuis" default-opened to="/cuis" hide-expand-icon  />
+              <q-expansion-item dense exact :header-inset-level="0.3" expand-separator icon="o_business_center" label="sincronizacion" default-opened to="/sincronizacion" hide-expand-icon  />
+              <q-expansion-item dense exact :header-inset-level="0.3" expand-separator icon="link" label="Cufd" default-opened to="/cufd" hide-expand-icon  />
+              <q-expansion-item dense exact :header-inset-level="0.3" expand-separator icon="list" label="Evento significativo" default-opened to="/eventoSignificativo" hide-expand-icon  />
             </q-expansion-item>
             <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/sale">
               <q-item-section avatar><q-icon name="o_shopping_cart" /></q-item-section>
@@ -112,6 +112,15 @@
                 <q-item-label>Usuarios</q-item-label>
                 <q-tooltip anchor="top middle" self="bottom middle">
                   Administrar usuarios
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosPorCencer">
+              <q-item-section avatar><q-icon name="o_store" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Por cencer</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Productos por cencer
                 </q-tooltip>
               </q-item-section>
             </q-item>
@@ -184,6 +193,7 @@ export default {
           this.$axios.defaults.headers.common.Authorization = ''
           this.$store.user = {}
           localStorage.removeItem('tokenSantidad')
+          localStorage.removeItem('agencia_id')
           this.$store.isLoggedIn = false
           this.$q.loading.hide()
           this.$router.push('/login')

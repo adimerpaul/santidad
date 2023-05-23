@@ -91,7 +91,7 @@
       </div>
       <div class="col-12">
         <q-card>
-          <q-card-section>
+          <q-card-section class="q-pa-xs">
             <div class="row cursor-pointer" v-if="products.length>0">
               <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
                 <q-card @click="clickDetalleProducto(p)">

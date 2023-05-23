@@ -5,7 +5,9 @@ export const useCounterStore = defineStore('counter', {
     counter: 0,
     user: {},
     isLoggedIn: !!localStorage.getItem('tokenSantidad'),
-    loading: false
+    agencia_id: parseInt(localStorage.getItem('agencia_id')),
+    loading: false,
+    productosVenta: []
   }),
   getters: {
     doubleCount: (state) => state.counter * 2

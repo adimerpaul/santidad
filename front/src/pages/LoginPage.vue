@@ -22,7 +22,6 @@
                     v-model="username"
                     label="Usuario"
                     filled
-                    clearable
                     lazy-rules
                     :rules="[val => val.length > 0 || 'El usuario es requerido']"
                   />
@@ -86,9 +85,11 @@ export default {
       })
         .then(response => {
           this.$store.user = response.data.user
+          this.$store.agencia_id = response.data.user.agencia_id
           this.$store.isLoggedIn = true
           this.$axios.defaults.headers.common.Authorization = `Bearer ${response.data.token}`
           localStorage.setItem('tokenSantidad', response.data.token)
+          localStorage.setItem('agencia_id', response.data.user.agencia_id)
           this.$router.push('/')
         })
         .catch(error => {

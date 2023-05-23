@@ -14,7 +14,9 @@ class ProductController extends Controller{
         $ordenar = request()->get('order', 'id');
         $category_id = request()->get('category', 'id');
         $agencia_id = request()->get('agencia', 'id');
-        $paginate = request()->get('paginate', 60);
+//        if ($agencia_id== 'null' || $agencia_id == 'undefined') $agencia_id = 0;
+//        if ($category_id== 'null' || $category_id == 'undefined') $category_id = 0;
+        $paginate = request()->get('paginate', 30);
         if ($category_id == 0 && $agencia_id == 0){
             $products = Product::where('nombre', 'ilike', "%$search%")
                 ->orderByRaw($ordenar)
