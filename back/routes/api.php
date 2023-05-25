@@ -27,8 +27,10 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::resource('/agencias',\App\Http\Controllers\AgenciaController::class);
     Route::resource('/products',\App\Http\Controllers\ProductController::class);
     Route::resource('/clients',\App\Http\Controllers\ClientController::class);
+    Route::resource('/documents',\App\Http\Controllers\DocumentController::class);
     Route::get('/providers',[\App\Http\Controllers\ClientController::class,'providers']);
     Route::resource('/sales',\App\Http\Controllers\SalesController::class);
     Route::post('/salesGasto',[\App\Http\Controllers\SalesController::class,'salesGasto']);
+    Route::post('searchClient', [\App\Http\Controllers\ClientController::class,'searchClient']);
     Route::get('/betweenDates/{fechaInicio}/{fechaFin}',[\App\Http\Controllers\SalesController::class,'betweenDates']);
 });

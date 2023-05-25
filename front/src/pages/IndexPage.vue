@@ -88,7 +88,7 @@
           </template>
           <template v-slot:body="props">
             <q-tr :props="props">
-              <q-td key="concepto" :props="props">
+              <q-td key="concepto" :props="props" style="max-width: 220px;overflow: auto">
                 <q-btn icon="o_local_atm" size="15px" :color="`${props.row.tipoVenta=='Ingreso'?'green':'red'}-7`" :class="`bg-${props.row.tipoVenta=='Ingreso'?'green':'red'}-2`" dense flat />
                 <span class="text-grey q-ml-xs">{{ props.row.concepto }}</span>
               </q-td>

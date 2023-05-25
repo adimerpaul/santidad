@@ -32,6 +32,8 @@ return new class extends Migration
             $table->integer("codigoDocumentoSector")->nullable();
             $table->string("leyenda")->nullable();
             $table->string("venta")->default('R');
+            $table->double("aporte",11,2)->nullable();
+            $table->string("qr")->nullable()->default('No');
             $table->unsignedBigInteger("user_id")->nullable();
 //            $table->foreign("user_id")->references("id")->on("users");
             $table->unsignedBigInteger("cufd_id")->nullable();

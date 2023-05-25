@@ -187,6 +187,85 @@
         </q-card>
       </div>
     </div>
+    <q-dialog v-model="saleDialog">
+      <q-card style="width: 750px; max-width: 90vw;">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Realizar venta</div>
+          <q-space />
+          <q-btn flat round dense icon="close" v-close-popup />
+        </q-card-section>
+        <q-form @submit.prevent="saleInsert">
+          <q-card-section>
+            <div class="row">
+              <div class="col-6 col-md-3">
+                <q-input outlined dense label="NIT/CARNET" @keyup="searchClient" required v-model="client.numeroDocumento"   />
+<!--                <pre>{{client}}</pre>-->
+<!--                <pre>{{document}}</pre>-->
+              </div>
+              <div class="col-6 col-md-3">
+                <q-input outlined dense label="Complemento"  @keyup="searchClient" v-model="client.complemento" style="text-transform: uppercase"/>
+              </div>
+              <div class="col-12 col-md-6">
+                <q-input outlined dense label="Nombre Razon Social" required v-model="client.nombreRazonSocial" style="text-transform: uppercase" />
+              </div>
+              <div class="col-12 col-md-6">
+<!--                @update:model-value="validarnit"-->
+                <q-select v-model="document" outlined dense :options="documents" />
+              </div>
+              <div class="col-12 col-md-6">
+                <q-input outlined dense label="Email"  v-model="client.email" type="email" />
+              </div>
+            </div>
+          </q-card-section>
+          <q-separator/>
+          <q-card-section>
+            <div class="row">
+              <div class="col-6 col-md-2">
+                <q-input outlined dense label="TOTAL A PAGAR:" readonly v-model="total" />
+              </div>
+              <div class="col-6 col-md-3">
+                <q-input outlined dense label="EFECTIVO BS."  v-model="efectivo" />
+              </div>
+              <div class="col-6 col-md-2">
+                <q-input outlined dense label="CAMBIO:" readonly v-model="cambio" />
+              </div>
+              <div class="col-6 col-md-2">
+                <q-checkbox v-model="aporte" :label="textoCambio"
+                            :class="`bg-${parseFloat(efectivo)> parseFloat(total)?'green':'red'} text-white full-width bi-border-all`"
+                            :disable="parseFloat(efectivo)> parseFloat(total)?false:true">
+                  <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">
+                    Si el cliente paga con un monto mayor al total, se registrará el cambio como un aporte.
+                  </q-tooltip>
+                </q-checkbox>
+              </div>
+<!--              <div class="col-6 col-md-2 q-pl-xs">-->
+<!--                <q-checkbox v-model="qr" label="QR"-->
+<!--                            :class="`bg-${parseFloat(efectivo)> parseFloat(total)?'green':'red'} text-white full-width bi-border-all`"-->
+<!--                            :disable="parseFloat(efectivo)> parseFloat(total)?false:true" />-->
+<!--              </div>-->
+              <div class="col-6 col-md-3">
+                <q-select dense outlined v-model="metodoPago" label="Metodo de pago"
+                          :options="$metodoPago" hint="Metodo de pago del gasto" />
+              </div>
+<!--              <div class="col-12">-->
+<!--                <pre>{{cambioDecimal}}</pre>-->
+<!--              </div>-->
+            </div>
+          </q-card-section>
+          <q-separator/>
+          <q-card-section>
+            <div class="row">
+              <div class="col-6">
+                <q-btn type="submit" class="full-width" icon="o_add_circle" label="Realizar venta" :loading="loading" no-caps color="green"  />
+              </div>
+              <div class="col-6">
+                <q-btn class="full-width" icon="undo" v-close-popup label="Atras" no-caps color="red" />
+              </div>
+            </div>
+          </q-card-section>
+        </q-form>
+      </q-card>
+    </q-dialog>
 </q-page>
 </template>
 <script>
@@ -194,6 +273,14 @@ export default {
   name: 'SalePage',
   data () {
     return {
+      saleDialog: false,
+      client: {},
+      aporte: false,
+      qr: false,
+      documents: [],
+      metodoPago: 'Efectivo',
+      // textoCambio: 'Aporte',
+      document: {},
       current_page: 1,
       last_page: 1,
       ruleNumber: [
@@ -201,6 +288,7 @@ export default {
         val => (val >= 0 && val < 10000) || 'Por favor escriba una cantidad real'
       ],
       search: '',
+      efectivo: '',
       loading: false,
       products: [],
       totalProducts: 0,
@@ -237,8 +325,83 @@ export default {
     this.productsGet()
     this.categoriesGet()
     this.agenciasGet()
+    this.$axios.get('documents').then(res => {
+      // console.log(this.documents)
+      res.data.forEach(r => {
+        r.label = r.descripcion
+      })
+      this.documents = res.data
+      this.document = this.documents[0]
+    })
   },
   methods: {
+    saleInsert () {
+      this.loading = true
+      this.client.codigoTipoDocumentoIdentidad = this.document.codigoClasificador
+      this.$store.productosVenta.forEach(p => {
+        p.subTotal = p.cantidadPedida * p.precioVenta
+      })
+      const data = {
+        montoTotal: this.total,
+        client: this.client,
+        aporte: this.cambioDecimal,
+        qr: this.qr,
+        efectivo: this.efectivo,
+        products: this.$store.productosVenta,
+        metodoPago: this.metodoPago
+      }
+      this.$axios.post('sales', data).then(res => {
+        this.loading = false
+        this.$alert.success('Venta realizada con exito')
+        this.saleDialog = false
+        this.$store.productosVenta = []
+        this.client = {}
+        this.aporte = false
+        this.qr = false
+        this.efectivo = ''
+        // this.products = []
+        this.totalProducts = 0
+      }).catch(err => {
+        this.loading = false
+        this.$alert.error(err.response.data.message)
+      })
+    },
+    clientSearch () {
+      this.$axios.post('searchClient', this.client).then(res => {
+        if (res.data.nombreRazonSocial !== undefined) {
+          this.client.nombreRazonSocial = res.data.nombreRazonSocial
+          this.client.email = res.data.email
+          this.client.id = res.data.id
+          const documento = this.documents.find(r => r.codigoClasificador === res.data.codigoTipoDocumentoIdentidad)
+          documento.label = documento.descripcion
+          this.document = documento
+        }
+        // if(this.document.codigoClasificador==5) this.validarnit()
+      })
+    },
+    searchClient () {
+      // console.log(this.client.numeroDocumento)
+      this.document = this.documents[0]
+      this.client.nombreRazonSocial = ''
+      this.client.complemento = ''
+      this.client.email = ''
+      this.client.id = undefined
+      if (this.client.numeroDocumento === '0') {
+        this.clientSearch()
+      } else if (this.client.numeroDocumento.length >= 7) {
+        this.clientSearch()
+      }
+    },
+    clickSale () {
+      this.saleDialog = true
+      this.aporte = false
+      this.efectivo = ''
+      this.qr = false
+      this.client = {
+        complemento: ''
+      }
+      this.metodoPago = 'Efectivo'
+    },
     precioVenta (n) {
       if (n.precioVenta === '') {
         n.precioVenta = 1
@@ -339,6 +502,37 @@ export default {
     }
   },
   computed: {
+    cambio () {
+      if (this.aporte === false) {
+        const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
+        return Math.round(cambio * 100) / 100
+      } else {
+        const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
+        const entero = Math.floor(cambio)
+        const decimal = cambio - entero
+        return cambio - decimal
+      }
+    },
+    textoCambio () {
+      if (this.aporte === false) {
+        return this.cambio < 0 ? 'Aporte' : 'Cambio'
+      } else {
+        const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
+        const entero = Math.floor(cambio)
+        const decimal = cambio - entero
+        return this.cambio < 0 ? 'Aporte' : 'Bs.' + decimal.toFixed(2)
+      }
+    },
+    cambioDecimal () {
+      if (this.aporte === false) {
+        return this.cambio < 0 ? 0 : 0
+      } else {
+        const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
+        const entero = Math.floor(cambio)
+        const decimal = cambio - entero
+        return this.cambio < 0 ? 0 : decimal.toFixed(2)
+      }
+    },
     total () {
       let s = 0
       this.$store.productosVenta.forEach(p => {

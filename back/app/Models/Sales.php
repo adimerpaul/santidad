@@ -28,6 +28,8 @@ class Sales extends Model
         "codigoDocumentoSector",
         "leyenda",
         "venta",
+        "aporte",
+        "qr",
         "user_id",
         "cufd_id",
         "client_id",

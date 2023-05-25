@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Client;
 use App\Models\Detail;
 use App\Models\Sales;
 use App\Http\Requests\StoreSalesRequest;
@@ -17,7 +18,38 @@ class SalesController extends Controller{
             ->with('client')
             ->get();
     }
-    public function store(StoreSalesRequest $request){ return Sales::create($request->all()); }
+    public function store(StoreSalesRequest $request){
+
+        $client=$this->insertUpdateClient($request);
+        $sales = new Sales();
+        $sales->numeroFactura = 0;
+        $sales->fechaEmision = date('Y-m-d H:i:s');
+        $sales->montoTotal = $request->montoTotal;
+        $sales->usuario = $request->user()->name;
+        $sales->venta = 'R';
+        $sales->tipoVenta = 'Ingreso';
+        $sales->metodoPago = $request->metodoPago;
+        $sales->client_id = $client->id;
+        $sales->aporte = $request->aporte;
+        $sales->user_id = $request->user()->id;
+        $sales->save();
+        $concepto = "";
+        foreach ($request->products as $product){
+            $detail = new Detail();
+            $detail->cantidad = $product['cantidadPedida'];
+            $detail->precioUnitario = $product['precioVenta'];
+            $detail->subTotal = $product['subTotal'];
+            $detail->sale_id = $sales->id;
+            $detail->descripcion = $product['nombre'];
+            $detail->user_id = $request->user()->id;
+            $detail->product_id = $product['id'];
+            $detail->save();
+
+            $concepto .= $product['nombre'].',';
+        }
+        $sales->concepto = substr($concepto,0,-1);
+        $sales->save();
+    }
     public function salesGasto(StoreSalesRequest $request){
         if ($request->concepto == ''){
             $numeroGasto = Sales::where('tipoVenta','Egreso')->count();
@@ -48,4 +80,44 @@ class SalesController extends Controller{
     public function show(Sales $sales){ return $sales; }
     public function update(UpdateSalesRequest $request, Sales $sales){ return $sales->update($request->all()); }
     public function destroy(Sales $sales){ return $sales->delete(); }
+
+    /**
+     * @param StoreSalesRequest $request
+     * @return void
+     */
+    public function insertUpdateClient(StoreSalesRequest $request)
+    {
+        if ($request->client['complemento'] == null) {
+            $complemento = "";
+        } else {
+            $complemento = $request->client['complemento'];
+        }
+        if ($complemento != "" && Client::whereComplemento($complemento)->where('numeroDocumento', $request->client['numeroDocumento'])->count() == 1) {
+            $client = Client::find($request->client['id']);
+            $client->nombreRazonSocial = strtoupper($request->client['nombreRazonSocial']);
+            $client->codigoTipoDocumentoIdentidad = $request->client['codigoTipoDocumentoIdentidad'];
+            $client->email = $request->client['email'];
+            $client->save();
+            return $client;
+//            return "actualizado con complento";
+        } else if (Client::where('numeroDocumento', $request->client['numeroDocumento'])->whereComplemento($complemento)->count()) {
+            $client = Client::find($request->client['id']);
+            $client->nombreRazonSocial = strtoupper($request->client['nombreRazonSocial']);
+            $client->codigoTipoDocumentoIdentidad = $request->client['codigoTipoDocumentoIdentidad'];
+            $client->email = $request->client['email'];
+            $client->save();
+            return $client;
+//            return "actualizado";
+        } else {
+            $client = new Client();
+            $client->nombreRazonSocial = strtoupper($request->client['nombreRazonSocial']);
+            $client->codigoTipoDocumentoIdentidad = $request->client['codigoTipoDocumentoIdentidad'];
+            $client->numeroDocumento = $request->client['numeroDocumento'];
+            $client->complemento = strtoupper($request->client['complemento']);
+            $client->email = $request->client['email'];
+            $client->save();
+            return $client;
+//            return "nuevo";
+        }
+    }
 }

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string("email")->nullable();
             $table->string("telefono")->nullable();
             $table->string("clienteProveedor")->nullable()->default("Cliente");
+            $table->softDeletes();
             $table->timestamps();
         });
     }
