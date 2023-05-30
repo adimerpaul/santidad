@@ -34,6 +34,7 @@
                       :options="agencias" map-options emit-value
                       option-value="id" option-label="nombre"
                       @update:model-value="productsGet"
+                      :disable="!($store.user.id=='1')"
             />
           </div>
           <div class="col-12 flex flex-center">
@@ -266,9 +267,12 @@
         </q-form>
       </q-card>
     </q-dialog>
+    <div id="myElement"></div>
 </q-page>
 </template>
 <script>
+import { Imprimir } from 'src/addons/Imprimir'
+
 export default {
   name: 'SalePage',
   data () {
@@ -359,8 +363,13 @@ export default {
         this.aporte = false
         this.qr = false
         this.efectivo = ''
-        // this.products = []
+        this.products.forEach(p => {
+          p.cantidadPedida = 0
+        })
         this.totalProducts = 0
+        Imprimir.factura(res.data).then(r => {
+          // console.log(r)
+        })
       }).catch(err => {
         this.loading = false
         this.$alert.error(err.response.data.message)
@@ -388,7 +397,7 @@ export default {
       this.client.id = undefined
       if (this.client.numeroDocumento === '0') {
         this.clientSearch()
-      } else if (this.client.numeroDocumento.length >= 7) {
+      } else if (this.client.numeroDocumento.length >= 5) {
         this.clientSearch()
       }
     },

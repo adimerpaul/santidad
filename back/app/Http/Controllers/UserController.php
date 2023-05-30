@@ -116,6 +116,16 @@ class UserController extends Controller
     }
     public function me(Request $request){
         $user=User::where('id',$request->user()->id)->with('agencia')->firstOrFail();
-        return $user;
+        return response()->json([
+            'user'=>$user,
+            'env'=>[
+                'nit'=>env('NIT'),
+                'razon'=>env('RAZON'),
+                'direccion'=>env("DIRECCION"),
+                'telefono'=>env("TELEFONO"),
+                'url'=>env("URL_SIAT"),
+                'url2'=>env("URL_SIAT2")
+            ]
+        ],200);
     }
 }

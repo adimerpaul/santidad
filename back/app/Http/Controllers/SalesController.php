@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Detail;
+use App\Models\Product;
 use App\Models\Sales;
 use App\Http\Requests\StoreSalesRequest;
 use App\Http\Requests\UpdateSalesRequest;
@@ -44,11 +45,17 @@ class SalesController extends Controller{
             $detail->user_id = $request->user()->id;
             $detail->product_id = $product['id'];
             $detail->save();
+            $concepto .= $product['cantidadPedida'].$product['nombre'].',';
 
-            $concepto .= $product['nombre'].',';
+            $productSale= Product::find($product['id']);
+            $productSale->cantidad = $productSale->cantidad - $product['cantidadPedida'];
+            $productSale->save();
         }
         $sales->concepto = substr($concepto,0,-1);
         $sales->save();
+
+        return Sales::with(['details','client'])->find($sales->id);
+
     }
     public function salesGasto(StoreSalesRequest $request){
         if ($request->concepto == ''){

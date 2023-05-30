@@ -33,4 +33,5 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::post('/salesGasto',[\App\Http\Controllers\SalesController::class,'salesGasto']);
     Route::post('searchClient', [\App\Http\Controllers\ClientController::class,'searchClient']);
     Route::get('/betweenDates/{fechaInicio}/{fechaFin}',[\App\Http\Controllers\SalesController::class,'betweenDates']);
+    Route::get('/env',[\App\Http\Controllers\SalesController::class,'env']);
 });

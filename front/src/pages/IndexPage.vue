@@ -35,7 +35,7 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-subtitle2 text-grey">Total referencia</q-item-label>
-                <q-item-label class="text-bold text-h6">0</q-item-label>
+                <q-item-label class="text-bold text-h6">{{totalGanancias}} Bs</q-item-label>
               </q-item-section>
             </q-item>
           </q-card-section>
@@ -53,7 +53,7 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-subtitle2 text-grey">Ventas totales</q-item-label>
-                <q-item-label :class="`text-bold text-h6 text-green`">{{costoTotalProducts}} Bs</q-item-label>
+                <q-item-label :class="`text-bold text-h6 text-green`">{{totalIngresos}} Bs</q-item-label>
               </q-item-section>
             </q-item>
           </q-card-section>
@@ -71,7 +71,7 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-subtitle2 text-grey">Gastos totales</q-item-label>
-                <q-item-label :class="`text-bold text-h6 text-red`">{{costoTotalProducts}} Bs</q-item-label>
+                <q-item-label :class="`text-bold text-h6 text-red`">{{totalEgresos}} Bs</q-item-label>
               </q-item-section>
             </q-item>
           </q-card-section>
@@ -198,6 +198,20 @@ export default {
     saleAddGasto () {
       this.sale = { client_id: 0, montoTotal: '', concepto: '', metodoPago: 'Efectivo' }
       this.dialogSale = true
+    }
+  },
+  computed: {
+    totalIngresos () {
+      const monto = this.sales.filter(sale => sale.tipoVenta === 'Ingreso').reduce((a, b) => parseFloat(a) + parseFloat(b.montoTotal), 0)
+      return Math.round(monto * 100) / 100
+    },
+    totalEgresos () {
+      const monto = this.sales.filter(sale => sale.tipoVenta === 'Egreso').reduce((a, b) => parseFloat(a) + parseFloat(b.montoTotal), 0)
+      return Math.round(monto * 100) / 100
+    },
+    totalGanancias () {
+      const monto = this.totalIngresos - this.totalEgresos
+      return Math.round(monto * 100) / 100
     }
   }
 }
