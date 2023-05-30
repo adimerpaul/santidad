@@ -22,10 +22,10 @@ class ProductController extends Controller{
                 ->orderByRaw($ordenar)
                 ->with(['category', 'agencia'])
                 ->paginate($paginate);
-            $costoRow=Product::select(DB::raw('sum(costo*cantidad) as costoTotal'))
+            $costoRow=Product::select(DB::raw('sum(costo*cantidad)'))
                 ->where('nombre', 'like', "%$search%")
                 ->first();
-            $costoTotal=$costoRow->costototal==null?0:$costoRow->costototal;
+            $costoTotal=$costoRow["sum(costo*cantidad)"]==null?0:$costoRow["sum(costo*cantidad)"];
         }else{
             if ($category_id == 0 && $agencia_id != 0){
                 $products = Product::where('nombre', 'like', "%$search%")
@@ -33,22 +33,22 @@ class ProductController extends Controller{
                     ->orderByRaw($ordenar)
                     ->with(['category', 'agencia'])
                     ->paginate($paginate);
-                $costoRow=Product::select(DB::raw('sum(costo*cantidad) as costoTotal'))
+                $costoRow=Product::select(DB::raw('sum(costo*cantidad)'))
                     ->where('nombre', 'like', "%$search%")
                     ->where('agencia_id', $agencia_id)
                     ->first();
-                $costoTotal=$costoRow->costototal==null?0:$costoRow->costototal;
+                $costoTotal=$costoRow["sum(costo*cantidad)"]==null?0:$costoRow["sum(costo*cantidad)"];
             }else if ($category_id != 0 && $agencia_id == 0){
                 $products = Product::where('nombre', 'like', "%$search%")
                     ->where('category_id', $category_id)
                     ->orderByRaw($ordenar)
                     ->with(['category', 'agencia'])
                     ->paginate($paginate);
-                $costoRow=Product::select(DB::raw('sum(costo*cantidad) as costoTotal'))
+                $costoRow=Product::select(DB::raw('sum(costo*cantidad)'))
                     ->where('nombre', 'like', "%$search%")
                     ->where('category_id', $category_id)
                     ->first();
-                $costoTotal=$costoRow->costototal==null?0:$costoRow->costototal;
+                $costoTotal=$costoRow["sum(costo*cantidad)"]==null?0:$costoRow["sum(costo*cantidad)"];
             }else if ($category_id != 0 && $agencia_id != 0){
                 $products = Product::where('nombre', 'like', "%$search%")
                     ->where('category_id', $category_id)
@@ -56,23 +56,23 @@ class ProductController extends Controller{
                     ->orderByRaw($ordenar)
                     ->with(['category', 'agencia'])
                     ->paginate($paginate);
-                $costoRow=Product::select(DB::raw('sum(costo*cantidad) as costoTotal'))
+                $costoRow=Product::select(DB::raw('sum(costo*cantidad)'))
                     ->where('nombre', 'like', "%$search%")
                     ->where('category_id', $category_id)
                     ->where('agencia_id', $agencia_id)
                     ->first();
-                $costoTotal=$costoRow->costototal==null?0:$costoRow->costototal;
+                $costoTotal=$costoRow["sum(costo*cantidad)"]==null?0:$costoRow["sum(costo*cantidad)"];
             }
 //            $products = Product::where('nombre', 'like', "%$search%")
 //                ->where('category_id', $category_id)
 //                ->orderByRaw($ordenar)
 //                ->with('category')
 //                ->paginate($paginate);
-//            $costoRow=Product::select(DB::raw('sum(costo*cantidad) as costoTotal'))
+//            $costoRow=Product::select(DB::raw('sum(costo*cantidad)'))
 //                ->where('nombre', 'like', "%$search%")
 //                ->where('category_id', $category_id)
 //                ->first();
-//            $costoTotal=$costoRow->costototal==null?0:$costoRow->costototal;
+//            $costoTotal=$costoRow["sum(costo*cantidad)"]==null?0:$costoRow["sum(costo*cantidad)"];
         }
         return json_encode(['products' => $products, 'costoTotal' => $costoTotal]);
     }
