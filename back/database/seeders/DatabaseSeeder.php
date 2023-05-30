@@ -27,7 +27,7 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
             DocumentSeeder::class,
         ]);
-        $sql = storage_path('sql/clients_202305242110.sql');
+        $sql = storage_path('sql/clients_202305292324.sql');
         DB::unprepared(file_get_contents($sql));
         Product::factory(20000)->create();
         Client::factory(100)->create();
