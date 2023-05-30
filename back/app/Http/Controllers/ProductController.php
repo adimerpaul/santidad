@@ -18,58 +18,58 @@ class ProductController extends Controller{
 //        if ($category_id== 'null' || $category_id == 'undefined') $category_id = 0;
         $paginate = request()->get('paginate', 30);
         if ($category_id == 0 && $agencia_id == 0){
-            $products = Product::where('nombre', 'ilike', "%$search%")
+            $products = Product::where('nombre', 'like', "%$search%")
                 ->orderByRaw($ordenar)
                 ->with(['category', 'agencia'])
                 ->paginate($paginate);
             $costoRow=Product::select(DB::raw('sum(costo*cantidad) as costoTotal'))
-                ->where('nombre', 'ilike', "%$search%")
+                ->where('nombre', 'like', "%$search%")
                 ->first();
             $costoTotal=$costoRow->costototal==null?0:$costoRow->costototal;
         }else{
             if ($category_id == 0 && $agencia_id != 0){
-                $products = Product::where('nombre', 'ilike', "%$search%")
+                $products = Product::where('nombre', 'like', "%$search%")
                     ->where('agencia_id', $agencia_id)
                     ->orderByRaw($ordenar)
                     ->with(['category', 'agencia'])
                     ->paginate($paginate);
                 $costoRow=Product::select(DB::raw('sum(costo*cantidad) as costoTotal'))
-                    ->where('nombre', 'ilike', "%$search%")
+                    ->where('nombre', 'like', "%$search%")
                     ->where('agencia_id', $agencia_id)
                     ->first();
                 $costoTotal=$costoRow->costototal==null?0:$costoRow->costototal;
             }else if ($category_id != 0 && $agencia_id == 0){
-                $products = Product::where('nombre', 'ilike', "%$search%")
+                $products = Product::where('nombre', 'like', "%$search%")
                     ->where('category_id', $category_id)
                     ->orderByRaw($ordenar)
                     ->with(['category', 'agencia'])
                     ->paginate($paginate);
                 $costoRow=Product::select(DB::raw('sum(costo*cantidad) as costoTotal'))
-                    ->where('nombre', 'ilike', "%$search%")
+                    ->where('nombre', 'like', "%$search%")
                     ->where('category_id', $category_id)
                     ->first();
                 $costoTotal=$costoRow->costototal==null?0:$costoRow->costototal;
             }else if ($category_id != 0 && $agencia_id != 0){
-                $products = Product::where('nombre', 'ilike', "%$search%")
+                $products = Product::where('nombre', 'like', "%$search%")
                     ->where('category_id', $category_id)
                     ->where('agencia_id', $agencia_id)
                     ->orderByRaw($ordenar)
                     ->with(['category', 'agencia'])
                     ->paginate($paginate);
                 $costoRow=Product::select(DB::raw('sum(costo*cantidad) as costoTotal'))
-                    ->where('nombre', 'ilike', "%$search%")
+                    ->where('nombre', 'like', "%$search%")
                     ->where('category_id', $category_id)
                     ->where('agencia_id', $agencia_id)
                     ->first();
                 $costoTotal=$costoRow->costototal==null?0:$costoRow->costototal;
             }
-//            $products = Product::where('nombre', 'ilike', "%$search%")
+//            $products = Product::where('nombre', 'like', "%$search%")
 //                ->where('category_id', $category_id)
 //                ->orderByRaw($ordenar)
 //                ->with('category')
 //                ->paginate($paginate);
 //            $costoRow=Product::select(DB::raw('sum(costo*cantidad) as costoTotal'))
-//                ->where('nombre', 'ilike', "%$search%")
+//                ->where('nombre', 'like', "%$search%")
 //                ->where('category_id', $category_id)
 //                ->first();
 //            $costoTotal=$costoRow->costototal==null?0:$costoRow->costototal;
