@@ -34,8 +34,8 @@
       v-model="leftDrawerOpen"
       show-if-above
       :width="200"
-      :breakpoint="400"
     >
+<!--      :breakpoint="400"-->
       <q-layout>
         <q-header class="bg-white">
           <q-list bordered padding class="text-black">
