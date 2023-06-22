@@ -407,6 +407,9 @@ export default {
       this.efectivo = ''
       this.qr = false
       this.client = {
+        numeroDocumento: '0',
+        nombreRazonSocial: 'SN',
+        email: '',
         complemento: ''
       }
       this.metodoPago = 'Efectivo'

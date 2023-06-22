@@ -100,7 +100,7 @@ class SalesController extends Controller{
             $complemento = $request->client['complemento'];
         }
         if ($complemento != "" && Client::whereComplemento($complemento)->where('numeroDocumento', $request->client['numeroDocumento'])->count() == 1) {
-            $client = Client::find($request->client['id']);
+            $client = Client::whereComplemento($complemento)->where('numeroDocumento', $request->client['numeroDocumento'])->first();
             $client->nombreRazonSocial = strtoupper($request->client['nombreRazonSocial']);
             $client->codigoTipoDocumentoIdentidad = $request->client['codigoTipoDocumentoIdentidad'];
             $client->email = $request->client['email'];
@@ -108,7 +108,7 @@ class SalesController extends Controller{
             return $client;
 //            return "actualizado con complento";
         } else if (Client::where('numeroDocumento', $request->client['numeroDocumento'])->whereComplemento($complemento)->count()) {
-            $client = Client::find($request->client['id']);
+            $client = Client::where('numeroDocumento', $request->client['numeroDocumento'])->whereComplemento($complemento)->first();
             $client->nombreRazonSocial = strtoupper($request->client['nombreRazonSocial']);
             $client->codigoTipoDocumentoIdentidad = $request->client['codigoTipoDocumentoIdentidad'];
             $client->email = $request->client['email'];

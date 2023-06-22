@@ -70,7 +70,7 @@
                 </q-item-label>
               </q-item-section>
             </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productos" v-if="$store.user.id=='1'">
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productos" >
               <q-item-section avatar><q-icon name="o_local_mall" /></q-item-section>
               <q-item-section>
                 <q-item-label>Productos</q-item-label>
@@ -115,12 +115,12 @@
                 </q-tooltip>
               </q-item-section>
             </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosPorCencer">
-              <q-item-section avatar><q-icon name="o_store" /></q-item-section>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosPorVencer">
+              <q-item-section avatar><q-icon name="o_warning" /></q-item-section>
               <q-item-section>
-                <q-item-label>Por cencer</q-item-label>
+                <q-item-label>Productos por vencer</q-item-label>
                 <q-tooltip anchor="top middle" self="bottom middle">
-                  Productos por cencer
+                  Productos por vencer
                 </q-tooltip>
               </q-item-section>
             </q-item>

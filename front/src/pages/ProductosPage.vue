@@ -74,11 +74,11 @@
         />
       </div>
       <div class="col-12 col-md-3 q-pa-xs">
-        <q-select class="bg-white" label="Agencia" dense outlined v-model="agencia"
+        <q-select class="bg-white" label="Agencia" dense outlined v-model="$store.agencia_id"
                   :options="agencias" map-options emit-value
                   option-value="id" option-label="nombre"
                   @update:model-value="productsGet"
-        />
+                  :disable="!($store.user.id=='1')"/>
       </div>
       <div class="col-12 flex flex-center">
         <q-pagination
@@ -128,7 +128,7 @@
       <q-card style="width: 500px; max-width: 80vw;">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-subtitle2 text-bold text-grey">
-            {{ productAction === 'create' ? 'Nuevo producto' : productAction === 'edit' ? 'Editar producto' : 'Detalle de producto' }}
+            {{ productAction === 'create' ? 'Nuevo producto' : productAction === 'ver' ? 'Detalle de producto' : productAction === 'compra' ? 'Comprar producto' : 'Editar producto' }}
           </div>
           <q-space/>
           <q-btn icon="o_highlight_off" flat round dense v-close-popup />
@@ -136,7 +136,7 @@
         <q-card-section>
           <q-form v-if="productAction === 'ver'">
             <div class="flex flex-center">
-              <q-img :src="product.imagen.includes('http')?product.imagen:`${$url}../images/${product.imagen}`" width="200px" height="200px">
+              <q-img :src="product.imagen.includes('http')?product.imagen:`${$url}../images/${product.imagen}`" width="200px">
                 <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;">
                   {{product.nombre}}
                 </div>
@@ -200,6 +200,9 @@
               <div class="col-6">
                 <q-btn :loading="loading" icon="o_edit" label="Editar" outline rounded dense color="grey" @click="productAction = 'edit'" no-caps class="full-width" />
               </div>
+              <div class="col-12">
+                <q-btn :loading="loading" icon="o_shop" label="Agregar a compra" rounded dense color="green" @click="compraClick" no-caps class="full-width q-mt-xs" />
+              </div>
             </div>
           </q-form>
           <q-form @submit="productSave" v-if="productAction === 'create' || productAction === 'edit'">
@@ -233,10 +236,32 @@
             <q-input outlined v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
             <q-select class="bg-white" emit-value map-options label="Categoria" dense outlined v-model="product.category_id" option-value="id" option-label="name" :options="categories" hint="Selecciona una categoria"/>
             <q-input type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>
-            <q-select class="bg-white" emit-value map-options label="Agencia" dense outlined v-model="product.agencia_id" option-value="id" option-label="nombre" :options="agencias" hint="Selecciona una agencia" :rules="[val => !!val || 'Este campo es requerido']"/>
+            <q-select class="bg-white" emit-value map-options label="Agencia" dense outlined
+                      v-model="product.agencia_id" option-value="id" option-label="nombre" :options="agencias"
+                      hint="Selecciona una agencia" :rules="[val => !!val || 'Este campo es requerido']"
+                      :disable="!($store.user.id=='1')"
+            />
             <q-btn class="full-width" rounded
                    :color="!product.nombre || !product.precio ? 'grey' : 'green'"
                    :disable="!product.nombre || !product.precio"
+                   label="Guardar" no-caps type="submit" :loading="loading"/>
+          </q-form>
+          <q-form v-if="productAction === 'compra'" @submit="compraSave">
+            <q-input outlined v-model="compra.lote" label="Lote*" dense hint="Escribe el lote del producto" required />
+            <q-input outlined v-model="compra.price" label="Precio" dense hint="Valor que le pagaste al proveedor por el producto" type="number" required step="0.01" />
+            <q-input outlined v-model="compra.quantity" label="Cantidad" input-class="text-center" dense hint="">
+              <template v-slot:append>
+                <q-icon name="o_add_circle_outline" @click="compraMore" class="cursor-pointer"/>
+              </template>
+              <template v-slot:prepend>
+                <q-icon name="o_remove_circle_outline" @click="compraMinus" class="cursor-pointer"/>
+              </template>
+            </q-input>
+            <q-input outlined v-model="compraTotal" readonly label="Total" dense hint="Valor total de la compra" />
+            <q-input outlined v-model="compra.dateExpiry" label="Fecha de vencimiento" dense hint="Fecha de vencimiento del producto" type="date" />
+            <q-btn class="full-width" rounded
+                   :color="!compra.lote ? 'grey' : 'green'"
+                   :disable="!compra.lote"
                    label="Guardar" no-caps type="submit" :loading="loading"/>
           </q-form>
         </q-card-section>
@@ -273,6 +298,8 @@
 </template>
 
 <script>
+import moment from 'moment'
+
 export default {
   name: 'ProductosPage',
   data () {
@@ -287,6 +314,7 @@ export default {
       products: [],
       totalProducts: 0,
       agencias: [],
+      compra: {},
       agencia: 0,
       product: { cantidad: 0, nombre: '', barra: '', costo: 0, precio: 0, descripcion: '', category_id: 0 },
       category: 0,
@@ -317,6 +345,26 @@ export default {
     this.productsGet()
   },
   methods: {
+    compraSave () {
+      this.loading = true
+      this.$axios.post('buys', this.compra).then(response => {
+        this.loading = false
+        this.$alert.success('Compra guardada')
+        this.productDialog = false
+        this.productsGet()
+      }).catch(error => {
+        this.loading = false
+        this.$alert.error(error.response.data.message)
+      })
+    },
+    compraMore () {
+      this.compra.quantity++
+    },
+    compraMinus () {
+      if (this.compra.quantity > 1) {
+        this.compra.quantity--
+      }
+    },
     agenciasGet () {
       this.agencias = [{ nombre: 'Selecciona una agencia', id: 0 }]
       this.$axios.get('agencias').then(response => {
@@ -324,6 +372,19 @@ export default {
       }).catch(error => {
         this.$alert.error(error.response.data.message)
       })
+    },
+    compraClick () {
+      this.productAction = 'compra'
+      this.compra.product_id = this.product.id
+      this.compra.lote = ''
+      this.compra.price = 1
+      this.compra.quantity = 1
+      this.compra.dateExpiry = this.dateMoreMonth(6)
+    },
+    dateMoreMonth (month) {
+      const date = moment()
+      date.month(date.month() + month)
+      return date.format('YYYY-MM-DD')
     },
     productDelete () {
       this.$q.dialog({
@@ -431,7 +492,7 @@ export default {
     },
     productsGet () {
       this.loading = true
-      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia}`).then(res => {
+      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.$store.agencia_id}`).then(res => {
         this.loading = false
         // console.log(res.data.products)
         this.totalProducts = res.data.products.total
@@ -475,7 +536,16 @@ export default {
     showAddProduct () {
       this.productAction = 'create'
       this.productDialog = true
-      this.product = { cantidad: 0, nombre: '', barra: '', costo: 0, precio: 0, descripcion: '', category_id: 0, agencia_id: 0 }
+      this.product = {
+        cantidad: 0,
+        nombre: '',
+        barra: '',
+        costo: 0,
+        precio: 0,
+        descripcion: '',
+        category_id: 0,
+        agencia_id: this.$store.agencia_id
+      }
     },
     categoriesGet () {
       this.categories = [{ name: 'Ver todas las categorias', id: 0 }]
@@ -508,6 +578,13 @@ export default {
     }
   },
   computed: {
+    compraTotal () {
+      if (this.compra.quantity && this.compra.price) {
+        return this.compra.quantity * this.compra.price
+      } else {
+        return 0
+      }
+    }
   }
 }
 </script>

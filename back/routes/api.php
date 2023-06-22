@@ -30,8 +30,9 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::resource('/documents',\App\Http\Controllers\DocumentController::class);
     Route::get('/providers',[\App\Http\Controllers\ClientController::class,'providers']);
     Route::resource('/sales',\App\Http\Controllers\SalesController::class);
+    Route::resource('/buys',\App\Http\Controllers\BuyController::class);
     Route::post('/salesGasto',[\App\Http\Controllers\SalesController::class,'salesGasto']);
-    Route::post('searchClient', [\App\Http\Controllers\ClientController::class,'searchClient']);
+    Route::post('/searchClient', [\App\Http\Controllers\ClientController::class,'searchClient']);
     Route::get('/betweenDates/{fechaInicio}/{fechaFin}',[\App\Http\Controllers\SalesController::class,'betweenDates']);
     Route::get('/env',[\App\Http\Controllers\SalesController::class,'env']);
 });

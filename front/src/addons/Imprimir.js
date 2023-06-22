@@ -26,9 +26,8 @@ export class Imprimir {
       <div class='titulo'>FACTURA <br>CON DERECHO A CREDITO FISCAL</div>
       <div class='titulo2'>${env.razon} <br>
       Casa Matriz<br>
-      No. Punto de Venta ${factura.codigoPuntoVenta}<br>
-${env.direccion.substring(0, 38)}<br>
-${env.direccion.substring(38)}<br>
+      No. Punto de Venta 0<br>
+${env.direccion}<br>
 Tel. ${env.telefono}<br>
 Oruro</div>
 <hr>
