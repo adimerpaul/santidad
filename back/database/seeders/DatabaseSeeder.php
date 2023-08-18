@@ -26,10 +26,11 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             CategorySeeder::class,
             DocumentSeeder::class,
+            CarouselSeeder::class,
         ]);
         $sql = storage_path('sql/clients_202305292324.sql');
         DB::unprepared(file_get_contents($sql));
-//        Product::factory(20000)->create();
+        Product::factory(20000)->create();
         Client::factory(5)->create();
     }
 }
