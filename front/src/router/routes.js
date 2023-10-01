@@ -4,6 +4,7 @@ import IndexPage from 'pages/IndexPage.vue'
 import ProductosPage from 'pages/ProductosPage.vue'
 import SalePage from 'pages/SalePage.vue'
 import ProductosPorVencerPage from 'pages/ProductosPorVencerPage.vue'
+import UserPage from 'pages/UserPage.vue'
 
 const routes = [
   {
@@ -13,6 +14,7 @@ const routes = [
       { path: '', component: IndexPage, meta: { requiresAuth: true } },
       { path: 'productos', component: ProductosPage, meta: { requiresAuth: true } },
       { path: 'sale', component: SalePage, meta: { requiresAuth: true } },
+      { path: 'users', component: UserPage, meta: { requiresAuth: true } },
       { path: 'productosPorVencer', component: ProductosPorVencerPage, meta: { requiresAuth: true } }
     ]
   },
