@@ -103,42 +103,51 @@
               <q-table dense flat bordered hide-bottom hide-header :rows="$store.productosVenta" :columns="columnsProductosVenta" :rows-per-page-options="[0]">
                 <template v-slot:body="props">
                   <q-tr :props="props">
-                    <q-td key="borrar" :props="props" style="padding: 0px">
-                      <q-btn flat dense @click="deleteProductosVenta(props.row,props.pageIndex)" icon="delete_outline" color="red" size="10px" class="q-pa-none" />
+                    <q-td key="borrar" :props="props" style="padding: 0px;margin: 0px" auto-width>
+                      <q-btn flat dense @click="deleteProductosVenta(props.row,props.pageIndex)" icon="delete" color="red" size="10px" class="q-pa-none q-ma-none" />
                     </q-td>
                     <q-td key="nombre" :props="props">
-                      <div class="row">
-                        <div class="col-3">
-                          <q-img :src="props.row.imagen.includes('http')?props.row.imagen:`${$url}../images/${props.row.imagen}`" width="40px" height="80px" />
-                        </div>
-                        <div class="col-9">
-                          <div>{{props.row.nombre}}</div>
-                          <div class="text-grey">Disponible: {{props.row.cantidad}}</div>
-                          <div>
-                            <div class="row">
-                              <div class="col-8">
-                                <q-input v-model="props.row.precioVenta" type="number" @update:model-value="precioVenta(props.row)" dense style="margin: 0px">
-                                  <template v-slot:prepend>
-                                    <q-icon name="edit" size="xs" />
-                                    <div style="font-size: 10px">Bs.</div>
-                                  </template>
-                                </q-input>
-                              </div>
-                              <div class="col-2 text-bold flex flex-center">
-                                x und
-                              </div>
-                            </div>
+<!--                      <div class="row">-->
+<!--                        <div class="col-3">-->
+<!--                        </div>-->
+<!--                        <div class="col-9">-->
+                      <div>
+                        <q-img :src="props.row.imagen.includes('http')?props.row.imagen:`${$url}../images/${props.row.imagen}`"
+                               width="40px" height="40px"
+                               style="padding: 0px; margin: 0px; border-radius: 0px;position: absolute;crop: auto;object-fit: cover;"
+                        />
+                        <div style="padding-left: 42px">
+                          <div class="text-caption" style="max-width: 170px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">
+                            {{props.row.nombre}}
                           </div>
+                          <div class="text-grey">Disponible: {{props.row.cantidad}}</div>
+                          <q-input v-model="props.row.precioVenta" style="width: 170px" class="super-small" step="0.1" type="number" @update:model-value="precioVenta(props.row)" dense outlined>
+                            <template v-slot:prepend>
+                              <q-icon name="edit" size="xs" />
+                              <div style="font-size: 10px">Bs.</div>
+                            </template>
+                          </q-input>
                         </div>
                       </div>
+<!--                          <div>-->
+<!--                            <div class="row">-->
+<!--                              <div class="col-8">-->
+<!--                              </div>-->
+<!--                              <div class="col-2 text-bold flex flex-center">-->
+<!--                                x und-->
+<!--                              </div>-->
+<!--                            </div>-->
+<!--                          </div>-->
+<!--                        </div>-->
+<!--                      </div>-->
                     </q-td>
                     <q-td key="cantidadVenta" :props="props">
-                      <q-input dense outlined bottom-slots min="1" v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>
+                      <q-input dense outlined bottom-slots min="1" class="super-small" v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>
                         <template v-slot:prepend>
-                          <q-icon style="cursor: pointer" name="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>
+                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>
                         </template>
                         <template v-slot:append>
-                          <q-icon style="cursor: pointer" name="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>
+                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>
                         </template>
                       </q-input>
                       <div class="text-grey">= Bs {{redondeo(props.row.cantidadVenta*props.row.precioVenta)}}</div>
@@ -555,3 +564,24 @@ export default {
   }
 }
 </script>
+<style lang="scss">
+.super-small.q-field--dense {
+  .q-field__control-container,
+  .q-field__native {
+    //padding-top: 10px !important;
+  }
+
+  .q-field__control {
+    height: 25px !important;
+    min-height: 25px !important;
+  }
+
+  .q-field__marginal {
+    height: 25px !important;
+  }
+
+  .q-field__label {
+    top: 6px !important;
+  }
+}
+</style>
