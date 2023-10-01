@@ -89,10 +89,12 @@
           <template v-slot:body="props">
             <q-tr :props="props">
               <q-td key="opcion" :props="props" auto-width>
-                <q-btn dense label="Anular" color="red-4" size="10px" v-if="props.row.estado=='ACTIVO'"
-                       no-caps no-wrap icon="o_highlight_off" @click="saleDelete(props.row.id)">
-                  <q-tooltip>Anular venta</q-tooltip>
-                </q-btn>
+                <q-btn-group v-if="props.row.estado=='ACTIVO'">
+                  <q-btn dense label="Anular" color="red-4" size="10px"
+                         no-caps no-wrap icon="o_highlight_off" @click="saleDelete(props.row.id)">
+                    <q-tooltip>Anular venta</q-tooltip>
+                  </q-btn>
+                </q-btn-group>
                 <div v-else>
                   <q-btn dense label="Anulado" color="grey-4" size="10px" no-caps no-wrap icon="o_highlight_off" />
                 </div>
@@ -101,9 +103,8 @@
                 <div>
                   <q-btn icon="o_local_atm" size="15px" :color="`${props.row.tipoVenta=='Ingreso'?'green':'red'}-7`"
                          :class="`bg-${props.row.tipoVenta=='Ingreso'?'green':'red'}-2`" dense flat
-                         style="padding: 0px; margin: 0px; border-radius: 0px;position: absolute;crop: auto;object-fit: cover;"
-                  />
-                  <div style="padding-left: 42px">
+                         style="padding: 0px; margin: 0px; border-radius: 0px;position: absolute;top: 5px;left: 0px;"/>
+                  <div style="padding-left: 15px">
                     <div class="text-grey q-ml-xs" style="width: 400px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.concepto }}</div>
                   </div>
                 </div>

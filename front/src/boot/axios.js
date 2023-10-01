@@ -4,6 +4,7 @@ import { useCounterStore } from 'stores/example-store'
 import { Alert } from 'src/addons/Alert'
 import { Excel } from 'src/addons/Excel'
 import moment from 'moment'
+import { Imprimir } from 'src/addons/Imprimir'
 // Be careful when using SSR for cross-request state pollution
 // due to creating a Singleton instance here;
 // If any client changes this (global) instance, it might be a
@@ -17,6 +18,7 @@ export default boot(({ app, router }) => {
   app.config.globalProperties.$axios = axios.create({ baseURL: import.meta.env.VITE_API_BACK })
   app.config.globalProperties.$url = import.meta.env.VITE_API_BACK
   app.config.globalProperties.$alert = Alert
+  app.config.globalProperties.$imprimir = Imprimir
   app.config.globalProperties.$excel = Excel
   app.config.globalProperties.$metodoPago = ['Efectivo', 'Tarjeta', 'Transferencia', 'Otro']
   app.config.globalProperties.$filters = {

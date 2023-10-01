@@ -3,7 +3,7 @@
   <div class="col-12">
     <div class="text-white bg-red-7 text-center text-h3 text-bold q-pa-xs">Productos por Vencer</div>
   </div>
-  <q-table dense flat :rows-per-page-options="[0]" :rows="compras" :columns="compraColumns"
+  <q-table dense flat :rows-per-page-options="[0]" :rows="compras" :columns="compraColumns" wrap-cells
            :filter="search" title="Productos por Vencer" :loading="loading">
     <template v-slot:top-right>
       <q-btn icon="refresh" @click="buyGet" flat round dense color="grey">
@@ -23,7 +23,17 @@
                 :label="`${props.row.timeCalculate} dias`"/>
       </q-td>
     </template>
+    <template v-slot:body-cell-opciones="props">
+      <q-td :props="props">
+        <q-btn-group>
+          <q-btn icon="print" @click="print(props.row)" flat round dense color="grey">
+            <q-tooltip>Reimprimir</q-tooltip>
+          </q-btn>
+        </q-btn-group>
+      </q-td>
+    </template>
   </q-table>
+  <div id="myElement" class="hidden"></div>
 </q-page>
 </template>
 <script>
@@ -37,7 +47,8 @@ export default {
       search: '',
       loading: false,
       compraColumns: [
-        { name: 'id', label: 'ID', field: 'id', align: 'left', sortable: true },
+        { name: 'opciones', label: 'Opciones', field: 'opciones', align: 'left' },
+        { name: 'id', label: 'ID', field: 'id', align: 'left' },
         { name: 'producto', label: 'Producto', field: row => row.product.nombre, align: 'left', sortable: true },
         { name: 'day', label: 'Dias para Vencer', field: 'timeCalculate', align: 'left', sortable: true },
         { name: 'quantity', label: 'Cantidad', field: 'quantity', align: 'left', sortable: true },
@@ -56,6 +67,9 @@ export default {
     this.buyGet()
   },
   methods: {
+    print (row) {
+      this.$imprimir.reciboCompra(row)
+    },
     dateCalculate (date) {
       const date1 = moment(date)
       const date2 = moment()

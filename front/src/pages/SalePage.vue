@@ -276,7 +276,7 @@
         </q-form>
       </q-card>
     </q-dialog>
-    <div id="myElement"></div>
+    <div id="myElement" class="hidden"></div>
 </q-page>
 </template>
 <script>

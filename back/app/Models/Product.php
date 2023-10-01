@@ -33,4 +33,7 @@ class Product extends Model
     public function agencia(){
         return $this->belongsTo(Agencia::class);
     }
+    public function buys(){
+        return $this->hasMany(Buy::class);
+    }
 }

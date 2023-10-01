@@ -332,6 +332,7 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+    <div id="myElement" class="hidden"></div>
   </q-page>
 </template>
 
@@ -391,6 +392,7 @@ export default {
         this.$alert.success('Compra guardada')
         this.productDialog = false
         this.productsGet()
+        this.$imprimir.reciboCompra(response.data)
       }).catch(error => {
         this.loading = false
         this.$alert.error(error.response.data.message)
