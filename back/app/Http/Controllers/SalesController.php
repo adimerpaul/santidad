@@ -10,6 +10,12 @@ use App\Http\Requests\StoreSalesRequest;
 use App\Http\Requests\UpdateSalesRequest;
 
 class SalesController extends Controller{
+    public function salesAnular($id){
+        $sales = Sales::find($id);
+        $sales->estado = 'ANULADO';
+        $sales->save();
+        return $sales;
+    }
     public function index(){ return Sales::all(); }
     public function betweenDates($fechaInicio, $fechaFin){
         $fechaInicio.=' 00:00:00';

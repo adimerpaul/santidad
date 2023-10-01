@@ -33,6 +33,7 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::get('/providers',[\App\Http\Controllers\ClientController::class,'providers']);
     Route::put('/updatePassword/{user}',[\App\Http\Controllers\UserController::class,'updatePassword']);
     Route::resource('/sales',\App\Http\Controllers\SalesController::class);
+    Route::get('/salesAnular/{id}',[\App\Http\Controllers\SalesController::class,'salesAnular']);
     Route::resource('/buys',\App\Http\Controllers\BuyController::class);
     Route::post('/salesGasto',[\App\Http\Controllers\SalesController::class,'salesGasto']);
     Route::post('/searchClient', [\App\Http\Controllers\ClientController::class,'searchClient']);

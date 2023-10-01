@@ -78,7 +78,7 @@
         </q-card>
       </div>
       <div class="col-12">
-        <q-table :columns="columns" :rows="sales" dense :rows-per-page-options="[0]" :filter="filter" :loading="loading">
+        <q-table :columns="columns" :rows="sales" dense :rows-per-page-options="[0]" :filter="filter" :loading="loading" wrap-cells>s
           <template v-slot:top-right>
             <q-input outlined v-model="filter" debounce="300" placeholder="Buscar" dense>
               <template v-slot:append>
@@ -88,6 +88,15 @@
           </template>
           <template v-slot:body="props">
             <q-tr :props="props">
+              <q-td key="opcion" :props="props" auto-width>
+                <q-btn dense label="Anular" color="red-4" size="10px" v-if="props.row.estado=='ACTIVO'"
+                       no-caps no-wrap icon="o_highlight_off" @click="saleDelete(props.row.id)">
+                  <q-tooltip>Anular venta</q-tooltip>
+                </q-btn>
+                <div v-else>
+                  <q-btn dense label="Anulado" color="grey-4" size="10px" no-caps no-wrap icon="o_highlight_off" />
+                </div>
+              </q-td>
               <q-td key="concepto" :props="props" class="">
                 <div>
                   <q-btn icon="o_local_atm" size="15px" :color="`${props.row.tipoVenta=='Ingreso'?'green':'red'}-7`"
@@ -95,7 +104,7 @@
                          style="padding: 0px; margin: 0px; border-radius: 0px;position: absolute;crop: auto;object-fit: cover;"
                   />
                   <div style="padding-left: 42px">
-                    <div class="text-grey q-ml-xs" style="width: 170px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.concepto }}</div>
+                    <div class="text-grey q-ml-xs" style="width: 400px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.concepto }}</div>
                   </div>
                 </div>
               </q-td>
@@ -193,6 +202,7 @@ export default {
       sales: [],
       dialogProveedor: false,
       columns: [
+        { name: 'opcion', label: 'Opcion', align: 'left', field: 'opcion' },
         { name: 'concepto', label: 'Concepto', align: 'left', field: 'concepto', sortable: true },
         { name: 'montoTotal', label: 'Monto total', align: 'left', field: 'montoTotal', sortable: true },
         { name: 'metodoPago', label: 'Metodo de pago', align: 'left', field: 'metodoPago', sortable: true },
@@ -210,6 +220,26 @@ export default {
     this.salesGet()
   },
   methods: {
+    saleDelete (id) {
+      this.$q.dialog({
+        title: 'Anular venta',
+        message: '¿Estas seguro de anular esta venta?',
+        cancel: true,
+        persistent: true
+      }).onOk(() => {
+        this.loading = true
+        this.$axios.get(`salesAnular/${id}`).then(res => {
+          this.loading = false
+          this.salesGet()
+          this.$alert.success('Venta anulada correctamente')
+        }).catch(err => {
+          this.loading = false
+          this.$alert.error(err.response.data.message)
+        })
+      }).onCancel(() => {
+      }).onDismiss(() => {
+      })
+    },
     proveedorGet () {
       this.$axios.get('providers').then(res => {
         this.proveedores = [...this.proveedores, ...res.data]
@@ -261,11 +291,11 @@ export default {
   },
   computed: {
     totalIngresos () {
-      const monto = this.sales.filter(sale => sale.tipoVenta === 'Ingreso').reduce((a, b) => parseFloat(a) + parseFloat(b.montoTotal), 0)
+      const monto = this.sales.filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO').reduce((a, b) => parseFloat(a) + parseFloat(b.montoTotal), 0)
       return Math.round(monto * 100) / 100
     },
     totalEgresos () {
-      const monto = this.sales.filter(sale => sale.tipoVenta === 'Egreso').reduce((a, b) => parseFloat(a) + parseFloat(b.montoTotal), 0)
+      const monto = this.sales.filter(sale => sale.tipoVenta === 'Egreso' && sale.estado === 'ACTIVO').reduce((a, b) => parseFloat(a) + parseFloat(b.montoTotal), 0)
       return Math.round(monto * 100) / 100
     },
     totalGanancias () {
