@@ -154,7 +154,7 @@
         <q-card-section>
           <q-form @submit="addSale">
             <div class="text-grey">Los campos marcados con asterisco (<span class="text-red">*</span>) son obligatorios</div>
-            <q-input dense outlined v-model="sale.montoTotal" label="Monto total*" type="number"
+            <q-input dense outlined v-model="sale.montoTotal" label="Monto total*" type="number" step="0.01"
                      :rules="[val => !!val || 'El monto total es requerido']" required hint="Monto total del gasto" />
             <q-input dense outlined v-model="sale.concepto" label="Concepto" hint="Concepto del gasto" />
             <q-select dense outlined v-model="sale.metodoPago" label="Metodo de pago"
@@ -267,6 +267,7 @@ export default {
       })
     },
     proveedorGet () {
+      this.proveedores = [{ id: 0, nombreRazonSocial: 'Busca o selecciona un proveedor' }]
       this.$axios.get('providers').then(res => {
         this.proveedores = [...this.proveedores, ...res.data]
       })
