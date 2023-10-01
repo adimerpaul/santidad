@@ -184,6 +184,7 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+    <div id="myElement" class="hidden"></div>
   </q-page>
 </template>
 
@@ -280,10 +281,12 @@ export default {
         this.dialogSale = false
         this.salesGet()
         this.$alert.success('Gasto agregado correctamente')
-      }).catch(err => {
-        this.loading = false
-        this.$alert.error(err.response.data.message)
+        this.$imprimir.nota(res.data)
       })
+      //     .catch(err => {
+      //   this.loading = false
+      //   this.$alert.error(err.response.data.message)
+      // })
     },
     saleAddGasto () {
       this.sale = { client_id: 0, montoTotal: '', concepto: '', metodoPago: 'Efectivo' }

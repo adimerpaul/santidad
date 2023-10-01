@@ -501,7 +501,7 @@ export default {
     productsGet () {
       this.loading = true
       this.products = []
-      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.$store.agencia_id}`).then(res => {
+      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.$store.agencia_id}`).then(res => {
         this.loading = false
         // console.log(res.data.products)
         this.totalProducts = res.data.products.total

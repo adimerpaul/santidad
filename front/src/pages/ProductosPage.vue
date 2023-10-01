@@ -209,28 +209,44 @@
                   <div class="col-6 q-pa-xs">
                     <q-card flat bordered class="bg-grey-3">
                       <q-card-section class="q-pa-xs text-bold">
-                        Sucursal 1 ( <span class="text-blue">{{product.cantidadSurcusal1}}</span> )
+                        Sucursal 1 ( <span class="text-blue">{{product.cantidadSucursal1}}</span> )
+                        <div class="text-center">
+                          <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(1)" no-caps/>
+                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal" no-caps/>
+                        </div>
                       </q-card-section>
                     </q-card>
                   </div>
                   <div class="col-6 q-pa-xs">
                     <q-card flat bordered class="bg-grey-3">
                       <q-card-section class="q-pa-xs text-bold">
-                        Sucursal 2 ( <span class="text-blue">{{product.cantidadSurcusal2}}</span> )
+                        Sucursal 2 ( <span class="text-blue">{{product.cantidadSucursal2}}</span> )
+                        <div class="text-center">
+                          <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(2)" no-caps/>
+                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal" no-caps/>
+                        </div>
                       </q-card-section>
                     </q-card>
                   </div>
                   <div class="col-6 q-pa-xs">
                     <q-card flat bordered class="bg-grey-3">
                       <q-card-section class="q-pa-xs text-bold">
-                        Sucursal 3 ( <span class="text-blue">{{product.cantidadSurcusal3}}</span> )
+                        Sucursal 3 ( <span class="text-blue">{{product.cantidadSucursal3}}</span> )
+                        <div class="text-center">
+                          <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(3)" no-caps/>
+                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal" no-caps/>
+                        </div>
                       </q-card-section>
                     </q-card>
                   </div>
                   <div class="col-6 q-pa-xs">
                     <q-card flat bordered class="bg-grey-3">
                       <q-card-section class="q-pa-xs text-bold">
-                        Sucursal 4 ( <span class="text-blue">{{product.cantidadSurcusal4}}</span> )
+                        Sucursal 4 ( <span class="text-blue">{{product.cantidadSucursal4}}</span> )
+                        <div class="text-center">
+                          <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(4)" no-caps/>
+                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal" no-caps/>
+                        </div>
                       </q-card-section>
                     </q-card>
                   </div>
@@ -385,6 +401,36 @@ export default {
     this.productsGet()
   },
   methods: {
+    agregarSucursal (sucursal) {
+      console.log(this.product.cantidadAlmacen)
+      if (this.product.cantidadAlmacen <= 0) {
+        this.$alert.error('No puedes agregar un producto en sucursal si no tienes en almacen')
+        return
+      }
+      this.$q.dialog({
+        title: 'Selecciona la cantidad',
+        message: 'Ingresa la cantidad que deseas agregar',
+        prompt: {
+          model: 1,
+          type: 'number'
+        }
+      }).onOk((data) => {
+        this.loading = true
+        this.$axios.post('agregarSucursal', {
+          sucursal,
+          id: this.product.id,
+          cantidad: data
+        }).then(res => {
+          this.loading = false
+          this.$alert.success('Producto agregado correctamente')
+          this.productsGet()
+          this.product = res.data
+        }).catch(err => {
+          this.loading = false
+          this.$alert.error(err.response.data.message)
+        })
+      })
+    },
     compraSave () {
       this.loading = true
       this.$axios.post('buys', this.compra).then(response => {

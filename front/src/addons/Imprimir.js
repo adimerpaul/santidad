@@ -104,7 +104,7 @@ Oruro</div>
         let cadena = `${this.head()}
   <div style='padding-left: 0.5cm;padding-right: 0.5cm'>
   <img src="logo.png" alt="logo" style="width: 100px; height: 100px; display: block; margin-left: auto; margin-right: auto;">
-      <div class='titulo'>NOTA DE VENTA</div>
+      <div class='titulo'>${factura.tipoVenta === 'Egreso' ? 'NOTA DE EGRESO' : 'NOTA DE VENTA'}</div>
       <div class='titulo2'>${env.razon} <br>
       Casa Matriz<br>
       No. Punto de Venta 0<br>
@@ -113,8 +113,8 @@ Tel. ${env.telefono}<br>
 Oruro</div>
 <hr>
 <table>
-<tr><td class='titder'>NOMBRE/RAZÓN SOCIAL:</td><td class='contenido'>${factura.client.nombreRazonSocial}</td>
-</tr><tr><td class='titder'>NIT/CI/CEX:</td><td class='contenido'>${factura.client.numeroDocumento}</td></tr>
+<tr><td class='titder'>NOMBRE/RAZÓN SOCIAL:</td><td class='contenido'>${factura.client ? factura.client.nombreRazonSocial : ''}</td>
+</tr><tr><td class='titder'>NIT/CI/CEX:</td><td class='contenido'>${factura.client ? factura.client.numeroDocumento : ''}</td></tr>
 <tr><td class='titder'>FECHA DE EMISIÓN:</td><td class='contenido'>${factura.fechaEmision}</td></tr>
 </table><hr><div class='titulo'>DETALLE</div>`
         factura.details.forEach(r => {
