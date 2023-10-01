@@ -144,6 +144,69 @@ Oruro</div>
     })
   }
 
+  static reportTotal (sales, title) {
+    const montoIngreso = sales.filter(r => r.tipoVenta === 'Ingreso').reduce((a, b) => a + b.montoTotal, 0)
+    const montoEgreso = sales.filter(r => r.tipoVenta === 'Egreso').reduce((a, b) => a + b.montoTotal, 0)
+    const montoTotal = montoIngreso - montoEgreso
+    console.log('montoTotal', montoTotal)
+    return new Promise((resolve, reject) => {
+      const ClaseConversor = conversor.conversorNumerosALetras
+      const miConversor = new ClaseConversor()
+      const montoAbsoluto = Math.abs(montoTotal)
+      const a = miConversor.convertToText(parseInt(montoAbsoluto))
+      const opts = {
+        errorCorrectionLevel: 'M',
+        type: 'png',
+        quality: 0.95,
+        width: 100,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#FFF'
+        }
+      }
+      const env = useCounterStore().env
+      QRCode.toDataURL(` Monto: ${parseFloat(montoTotal).toFixed(2)}`, opts).then(url => {
+        let cadena = `${this.head()}
+  <div style='padding-left: 0.5cm;padding-right: 0.5cm'>
+  <img src="logo.png" alt="logo" style="width: 100px; height: 100px; display: block; margin-left: auto; margin-right: auto;">
+      <div class='titulo'>title</div>
+      <div class='titulo2'>${env.razon} <br>
+      Casa Matriz<br>
+      No. Punto de Venta 0<br>
+${env.direccion}<br>
+Tel. ${env.telefono}<br>
+Oruro</div>
+<hr>
+<table>
+</table><hr><div class='titulo'>DETALLE</div>`
+        sales.forEach(r => {
+          cadena += `<div style='font-size: 12px'><b> ${r.user.name} </b></div>`
+          cadena += `<div> ${parseFloat(r.montoTotal).toFixed(2)} ${r.tipoVenta}
+          <span style='float:right'> ${r.tipoVenta === 'Egreso' ? '-' : ''} ${parseFloat(r.montoTotal).toFixed(2)}</span></div>`
+        })
+        cadena += `<hr>
+      <table style='font-size: 8px;'>
+      <tr><td class='titder' style='width: 60%'>SUBTOTAL Bs</td><td class='conte2'>${parseFloat(montoTotal).toFixed(2)}</td></tr>
+      </table>
+      <br>
+      <div>Son ${a} ${((parseFloat(montoTotal) - Math.floor(parseFloat(montoTotal))) * 100).toFixed(2)} /100 Bolivianos</div><hr>
+      <div style='display: flex;justify-content: center;'>
+        <img  src="${url}" style="width: 75px; height: 75px; display: block; margin-left: auto; margin-right: auto;">
+      </div></div>
+      </div>
+</body>
+</html>`
+        document.getElementById('myElement').innerHTML = cadena
+        const d = new Printd()
+        d.print(document.getElementById('myElement'))
+        resolve(url)
+      }).catch(err => {
+        reject(err)
+      })
+    })
+  }
+
   static reciboCompra (buy) {
     return new Promise((resolve, reject) => {
       const ClaseConversor = conversor.conversorNumerosALetras

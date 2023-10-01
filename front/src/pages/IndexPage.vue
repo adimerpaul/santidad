@@ -8,8 +8,21 @@
         <q-input dense outlined v-model="dateFin" label="Fecha final" type="date" required />
       </div>
       <div class="col-12 col-md-3 text-center">
-        <q-btn color="black" no-caps flat icon="o_file_download" @click="downloadReport">
+        <q-btn color="black" no-caps flat icon="o_file_download">
           <div class="q-page-xs subrayado"> Descargar reporte</div>
+          <q-menu>
+            <q-list>
+              <q-item clickable v-close-popup @click="reportTotal('')">
+                <q-item-section>Reporte de ventas</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="reportTotal('Ingreso')">
+                <q-item-section>Reporte de ingresos</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="reportTotal('Egreso')">
+                <q-item-section>Reporte de egresos</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
         </q-btn>
       </div>
       <div class="col-12 col-md-3 text-right">
@@ -196,8 +209,8 @@ export default {
   data () {
     return {
       filter: '',
-      dateIni: moment().startOf('isoweek').format('YYYY-MM-DD'),
-      dateFin: moment().endOf('isoweek').format('YYYY-MM-DD'),
+      dateIni: moment().format('YYYY-MM-DD'),
+      dateFin: moment().format('YYYY-MM-DD'),
       loading: false,
       dialogSale: false,
       sale: {},
@@ -222,6 +235,17 @@ export default {
     this.salesGet()
   },
   methods: {
+    reportTotal (title) {
+      this.loading = true
+      this.$axios.get(`reportTotal${title}/${this.dateIni}/${this.dateFin}`).then(res => {
+        this.loading = false
+        this.$alert.success('Reporte descargado correctamente')
+        this.$imprimir.reportTotal(res.data, title)
+      }).catch(err => {
+        this.loading = false
+        this.$alert.error(err.response.data.message)
+      })
+    },
     saleDelete (id) {
       this.$q.dialog({
         title: 'Anular venta',

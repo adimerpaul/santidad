@@ -32,6 +32,9 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::post('/agregarSucursal',[\App\Http\Controllers\ProductController::class,'agregarSucursal']);
     Route::resource('/clients',\App\Http\Controllers\ClientController::class);
     Route::get('/clientsProvider',[\App\Http\Controllers\ClientController::class,'indexProvider']);
+    Route::get('/reportTotal/{fechaInicio}/{fechaFin}',[\App\Http\Controllers\SalesController::class,'reportTotal']);
+    Route::get('/reportTotalIngreso/{fechaInicio}/{fechaFin}',[\App\Http\Controllers\SalesController::class,'reportTotalIngreso']);
+    Route::get('/reportTotalEgreso/{fechaInicio}/{fechaFin}',[\App\Http\Controllers\SalesController::class,'reportTotalEgreso']);
     Route::resource('/documents',\App\Http\Controllers\DocumentController::class);
     Route::get('/providers',[\App\Http\Controllers\ClientController::class,'providers']);
     Route::put('/updatePassword/{user}',[\App\Http\Controllers\UserController::class,'updatePassword']);

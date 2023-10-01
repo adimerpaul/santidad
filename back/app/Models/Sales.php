@@ -36,4 +36,5 @@ class Sales extends Model
     ];
     public function details(){ return $this->hasMany(Detail::class, 'sale_id'); }
     public function client(){ return $this->belongsTo(Client::class); }
+    public function user(){ return $this->belongsTo(User::class); }
 }

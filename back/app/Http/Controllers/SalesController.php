@@ -163,4 +163,33 @@ class SalesController extends Controller{
 //            return "nuevo";
         }
     }
+    public function reportTotal($fechaInicio, $fechaFin){
+        $fechaInicio.=' 00:00:00';
+        $fechaFin.=' 23:59:59';
+        $sales = Sales::whereBetween('fechaEmision', [$fechaInicio, $fechaFin])
+            ->where('estado','!=','ANULADO')
+            ->with('user')
+            ->get();
+        return $sales;
+    }
+    public function reportTotalIngreso($fechaInicio, $fechaFin){
+        $fechaInicio.=' 00:00:00';
+        $fechaFin.=' 23:59:59';
+        $sales = Sales::whereBetween('fechaEmision', [$fechaInicio, $fechaFin])
+            ->where('estado','!=','ANULADO')
+            ->where('tipoVenta','Ingreso')
+            ->with('user')
+            ->get();
+        return $sales;
+    }
+    public function reportTotalEgreso($fechaInicio, $fechaFin){
+        $fechaInicio.=' 00:00:00';
+        $fechaFin.=' 23:59:59';
+        $sales = Sales::whereBetween('fechaEmision', [$fechaInicio, $fechaFin])
+            ->where('estado','!=','ANULADO')
+            ->where('tipoVenta','Egreso')
+            ->with('user')
+            ->get();
+        return $sales;
+    }
 }
