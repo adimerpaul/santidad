@@ -88,9 +88,16 @@
           </template>
           <template v-slot:body="props">
             <q-tr :props="props">
-              <q-td key="concepto" :props="props" style="max-width: 220px;overflow: auto">
-                <q-btn icon="o_local_atm" size="15px" :color="`${props.row.tipoVenta=='Ingreso'?'green':'red'}-7`" :class="`bg-${props.row.tipoVenta=='Ingreso'?'green':'red'}-2`" dense flat />
-                <span class="text-grey q-ml-xs">{{ props.row.concepto }}</span>
+              <q-td key="concepto" :props="props" class="">
+                <div>
+                  <q-btn icon="o_local_atm" size="15px" :color="`${props.row.tipoVenta=='Ingreso'?'green':'red'}-7`"
+                         :class="`bg-${props.row.tipoVenta=='Ingreso'?'green':'red'}-2`" dense flat
+                         style="padding: 0px; margin: 0px; border-radius: 0px;position: absolute;crop: auto;object-fit: cover;"
+                  />
+                  <div style="padding-left: 42px">
+                    <div class="text-grey q-ml-xs" style="width: 170px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.concepto }}</div>
+                  </div>
+                </div>
               </q-td>
               <q-td key="montoTotal" :props="props">
                 <span class="text-grey">{{ props.row.montoTotal }} Bs</span>

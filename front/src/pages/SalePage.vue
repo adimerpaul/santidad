@@ -10,8 +10,8 @@
               </template>
             </q-input>
           </div>
-          <div class="col-12 col-md-6">
-            <q-btn :loading="loading" icon="refresh" dense color="grey-7" flat @click="productsGet">
+          <div class="col-12 col-md-6 flex">
+            <q-btn :loading="loading" icon="refresh" dense label="Actualizar" color="indigo" no-caps class="text-bold" @click="productsGet">
               <q-tooltip>Actualizar</q-tooltip>
             </q-btn>
           </div>
@@ -376,7 +376,7 @@ export default {
           p.cantidadPedida = 0
         })
         this.totalProducts = 0
-        Imprimir.factura(res.data).then(r => {
+        Imprimir.nota(res.data).then(r => {
           // console.log(r)
         })
       }).catch(err => {
