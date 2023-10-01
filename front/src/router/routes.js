@@ -6,6 +6,7 @@ import SalePage from 'pages/SalePage.vue'
 import ProductosPorVencerPage from 'pages/ProductosPorVencerPage.vue'
 import UserPage from 'pages/UserPage.vue'
 import ClientesPage from 'pages/ClientesPage.vue'
+import ProvedoresPage from 'pages/ProvedoresPage.vue'
 
 const routes = [
   {
@@ -17,6 +18,7 @@ const routes = [
       { path: 'sale', component: SalePage, meta: { requiresAuth: true } },
       { path: 'users', component: UserPage, meta: { requiresAuth: true } },
       { path: 'clientes', component: ClientesPage, meta: { requiresAuth: true } },
+      { path: 'proveedores', component: ProvedoresPage, meta: { requiresAuth: true } },
       { path: 'productosPorVencer', component: ProductosPorVencerPage, meta: { requiresAuth: true } }
     ]
   },

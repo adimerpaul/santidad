@@ -1,6 +1,8 @@
 <template>
 <q-page>
-  <div class="text-h6 text-bold bg-red-7 text-center text-white">Productos por Vencer</div>
+  <div class="col-12">
+    <div class="text-white bg-red-7 text-center text-h3 text-bold q-pa-xs">Productos por Vencer</div>
+  </div>
   <q-table dense flat :rows-per-page-options="[0]" :rows="compras" :columns="compraColumns"
            :filter="search" title="Productos por Vencer" :loading="loading">
     <template v-slot:top-right>

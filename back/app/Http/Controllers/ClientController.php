@@ -26,6 +26,14 @@ class ClientController extends Controller{
             ->paginate(15);
         return $clients;
     }
+    public function indexProvider(Request $request){
+        $search = $request->get('search')=='undefined'||$request->get('search')=="null"?'':$request->get('search');
+        $clients = Client::where('clienteProveedor', 'Proveedor')
+            ->orderBy('nombreRazonSocial')
+            ->whereRaw("(nombreRazonSocial LIKE '%$search%' OR numeroDocumento LIKE '%$search%' OR telefono LIKE '%$search%' OR email LIKE '%$search%')")
+            ->paginate(15);
+        return $clients;
+    }
     public function providers(){ return Client::where('clienteProveedor', 'Proveedor')->orderBy('nombreRazonSocial')->get(); }
     public function store(StoreClientRequest $request){ return Client::create($request->all()); }
     public function show(Client $client){ return $client; }

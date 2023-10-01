@@ -96,7 +96,7 @@
               <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
                 <q-card @click="clickDetalleProducto(p)">
                   <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="100px">
-                    <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;">
+                    <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">
                       {{p.nombre}}
                     </div>
                   </q-img>
