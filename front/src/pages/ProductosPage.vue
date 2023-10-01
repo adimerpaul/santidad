@@ -102,7 +102,7 @@
                   </q-img>
                   <q-card-section class="q-pa-none q-ma-none">
                     <div class="text-center text-subtitle2">{{ p.precio }} Bs</div>
-                    <div :class="p.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">{{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}</div>
+                    <div :class="`text-center text-bold text-${p.cantidad<=10?'red':p.cantidad<=20?'yellow-9':'black'}`">{{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}</div>
                   </q-card-section>
                 </q-card>
               </div>
@@ -232,8 +232,10 @@
                 <q-icon name="o_remove_circle_outline" @click="cantidadMinus" class="cursor-pointer"/>
               </template>
             </q-input>
-            <q-input outlined v-model="product.costo" label="Costo" dense hint="Valor que pagas al proveedor por el producto"/>
-            <q-input outlined v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
+            <q-input outlined type="number" step="0.01" v-model="product.costo" label="Costo" dense hint="Valor que pagas al proveedor por el producto"/>
+            <q-input outlined type="number" step="0.01" v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
+            <q-input outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>
+            <q-select class="bg-white" label="Unidad" dense outlined v-model="product.unidad" :options="unidades" hint="Selecciona una unidad"/>
             <q-select class="bg-white" emit-value map-options label="Categoria" dense outlined v-model="product.category_id" option-value="id" option-label="name" :options="categories" hint="Selecciona una categoria"/>
             <q-input type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>
             <q-select class="bg-white" emit-value map-options label="Agencia" dense outlined
@@ -241,6 +243,9 @@
                       hint="Selecciona una agencia" :rules="[val => !!val || 'Este campo es requerido']"
                       :disable="!($store.user.id=='1')"
             />
+            <div class="text-center borderRoundGrey">
+              <q-toggle :label="product.activo" color="green" false-value="INACTIVO" true-value="ACTIVO" v-model="product.activo" class="text-grey-9 text-bold" />
+            </div>
             <q-btn class="full-width" rounded
                    :color="!product.nombre || !product.precio ? 'grey' : 'green'"
                    :disable="!product.nombre || !product.precio"
@@ -306,6 +311,7 @@ export default {
     return {
       current_page: 1,
       search: '',
+      unidades: ['UNIDAD', 'PAQUETE', 'SOBRE', 'BOLSA', 'FRASCO', 'SOBRES', 'CAPSULAS', 'PASTILLA', 'TABLETAS', 'OTROS'],
       last_page: 1,
       loading: false,
       productDialog: false,
@@ -540,6 +546,7 @@ export default {
         cantidad: 0,
         nombre: '',
         barra: '',
+        activo: 'ACTIVO',
         costo: 0,
         precio: 0,
         descripcion: '',

@@ -8,9 +8,7 @@
       width="80%"
       navigation
       navigation-icon="radio_button_unchecked"
-      control-type="outline"
-      control-color="white"
-      control-text-color="grey-8"
+      control-text-color="primary"
       autoplay
       infinite
     >

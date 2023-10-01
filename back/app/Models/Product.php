@@ -14,6 +14,8 @@ class Product extends Model
         'cantidad',
         'costo',
         'precio',
+        'precioAntes',
+        'unidad',
         'activo',
         'imagen',
         'descripcion',

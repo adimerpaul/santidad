@@ -17,12 +17,14 @@ return new class extends Migration
             $table->string('barra')->nullable();
             $table->integer('cantidad')->default(0);
             $table->double('costo',10,2)->nullable();
+            $table->double('precioAntes',10,2)->nullable();
             $table->double('precio',10,2)->nullable();
             //$table->double('utilidad',10,2)->nullable();
             $table->string('activo')->default('ACTIVO');
+            $table->string('unidad')->default('UNIDAD');
             $table->string('imagen')->nullable()->default('productDefault.jpg');
 //            $table->string('color')->nullable();
-            $table->string('descripcion')->nullable();
+            $table->text('descripcion')->nullable();
             $table->unsignedBigInteger("category_id")->nullable();
             $table->foreign("category_id")->references("id")->on("categories");
             $table->unsignedBigInteger("agencia_id")->nullable();
