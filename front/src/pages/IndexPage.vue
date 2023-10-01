@@ -131,7 +131,37 @@
                       :options="$metodoPago" hint="Metodo de pago del gasto" />
             <q-select proveedor dense outlined v-model="sale.client_id" label="Proveedor"
                       map-options emit-value option-value="id" option-label="nombreRazonSocial"
-                      :options="proveedores" hint="Proveedor del gasto" />
+                      :options="proveedores" hint="Proveedor del gasto" >
+              <template v-slot:after>
+                <q-btn flat round dense icon="add_circle_outline" @click="proveedorAdd">
+                  <q-tooltip>
+                    Crear nuevo proveedor
+                  </q-tooltip>
+                </q-btn>
+              </template>
+            </q-select>
+            <q-btn :loading="loading" color="green-4" class="full-width" no-caps icon="add_circle_outline" label="Guardar" type="submit" />
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+    <q-dialog v-model="dialogProveedor">
+      <q-card>
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-subtitle2 text-bold text-grey">
+            Nuevo proveedor
+          </div>
+          <q-space/>
+          <q-btn icon="o_highlight_off" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-mt-none">
+          <q-form @submit="addProveedor">
+            <div class="text-grey">Los campos marcados con asterisco (<span class="text-red">*</span>) son obligatorios</div>
+            <q-input dense outlined v-model="proveedor.nombreRazonSocial" label="Nombre o razon social*" type="text"
+                     :rules="[val => !!val || 'El nombre o razon social es requerido']" required hint="Nombre o razon social del proveedor" />
+            <q-input dense outlined v-model="proveedor.numeroDocumento" label="Numero de documento*" type="text"
+                     :rules="[val => !!val || 'El numero de documento es requerido']" required hint="Numero de documento del proveedor" />
+            <q-input dense outlined v-model="proveedor.telefono" label="Telefono" type="text" hint="Telefono del proveedor" />
             <q-btn :loading="loading" color="green-4" class="full-width" no-caps icon="add_circle_outline" label="Guardar" type="submit" />
           </q-form>
         </q-card-section>
@@ -154,6 +184,7 @@ export default {
       dialogSale: false,
       sale: {},
       sales: [],
+      dialogProveedor: false,
       columns: [
         { name: 'concepto', label: 'Concepto', align: 'left', field: 'concepto', sortable: true },
         { name: 'montoTotal', label: 'Monto total', align: 'left', field: 'montoTotal', sortable: true },
@@ -162,17 +193,38 @@ export default {
         { name: 'fechayhora', label: 'Fecha y hora', align: 'left', field: 'fechayhora', sortable: true },
         { name: 'egresoingreso', label: 'Egreso / ingreso', align: 'left', field: 'egreso / ingreso', sortable: true }
       ],
-      proveedores: []
+      proveedores: [],
+      proveedor: { nombreRazonSocial: '', numeroDocumento: '', telefono: '', clienteProveedor: 'Proveedor' }
     }
   },
   created () {
     this.proveedores = [{ id: 0, nombreRazonSocial: 'Busca o selecciona un proveedor' }]
-    this.$axios.get('providers').then(res => {
-      this.proveedores = [...this.proveedores, ...res.data]
-    })
+    this.proveedorGet()
     this.salesGet()
   },
   methods: {
+    proveedorGet () {
+      this.$axios.get('providers').then(res => {
+        this.proveedores = [...this.proveedores, ...res.data]
+      })
+    },
+    addProveedor () {
+      this.loading = true
+      this.$axios.post('clients', this.proveedor).then(res => {
+        this.loading = false
+        this.dialogProveedor = false
+        this.proveedorGet()
+        this.proveedor = { nombreRazonSocial: '', numeroDocumento: '', telefono: '', clienteProveedor: 'Proveedor' }
+        this.$alert.success('Proveedor agregado correctamente')
+      }).catch(err => {
+        this.loading = false
+        this.$alert.error(err.response.data.message)
+      })
+    },
+    proveedorAdd () {
+      this.dialogProveedor = true
+      this.proveedor = { nombreRazonSocial: '', numeroDocumento: '', telefono: '', clienteProveedor: 'Proveedor' }
+    },
     salesGet () {
       this.loading = true
       this.$axios.get(`betweenDates/${this.dateIni}/${this.dateFin}`).then(res => {

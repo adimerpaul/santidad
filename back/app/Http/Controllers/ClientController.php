@@ -34,7 +34,10 @@ class ClientController extends Controller{
             ->paginate(15);
         return $clients;
     }
-    public function providers(){ return Client::where('clienteProveedor', 'Proveedor')->orderBy('nombreRazonSocial')->get(); }
+    public function providers(){
+        return Client::where('clienteProveedor', 'Proveedor')
+            ->orderBy('nombreRazonSocial')->get();
+    }
     public function store(StoreClientRequest $request){ return Client::create($request->all()); }
     public function show(Client $client){ return $client; }
     public function update(UpdateClientRequest $request, $id){

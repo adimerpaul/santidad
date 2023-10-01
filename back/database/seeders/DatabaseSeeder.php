@@ -33,6 +33,6 @@ class DatabaseSeeder extends Seeder
         $sql = storage_path('sql/products.sql');
         DB::unprepared(file_get_contents($sql));
 //        Product::factory(20000)->create();
-        Client::factory(5)->create();
+//        Client::factory(5)->create();
     }
 }
