@@ -8,11 +8,31 @@ use App\Http\Requests\UpdateClientRequest;
 use Illuminate\Http\Request;
 
 class ClientController extends Controller{
-    public function index(){ return Client::where('clienteProveedor', 'Cliente')->orderBy('nombreRazonSocial')->get(); }
+    public function index(Request $request){
+//        "nombreRazonSocial",
+//        "codigoTipoDocumentoIdentidad",
+//        "numeroDocumento",
+//        "complemento",
+//        "email",
+//        "telefono",
+//        "clienteProveedor",
+        $search = $request->get('search')=='undefined'||$request->get('search')=="null"?'':$request->get('search');
+        $clients = Client::where('clienteProveedor', 'Cliente')
+            ->orderBy('nombreRazonSocial')
+            ->where('nombreRazonSocial', 'LIKE', "%$search%")
+            ->orWhere('numeroDocumento', 'LIKE', "%$search%")
+            ->orWhere('telefono', 'LIKE', "%$search%")
+            ->orWhere('email', 'LIKE', "%$search%")
+            ->paginate(15);
+        return $clients;
+    }
     public function providers(){ return Client::where('clienteProveedor', 'Proveedor')->orderBy('nombreRazonSocial')->get(); }
     public function store(StoreClientRequest $request){ return Client::create($request->all()); }
     public function show(Client $client){ return $client; }
-    public function update(UpdateClientRequest $request, Client $client){ return $client->update($request->all()); }
+    public function update(UpdateClientRequest $request, $id){
+        $client = Client::findOrFail($id);
+        return $client->update($request->all());
+    }
     public function destroy(Client $client){ return $client->delete(); }
 
     public function searchClient(Request $request)
