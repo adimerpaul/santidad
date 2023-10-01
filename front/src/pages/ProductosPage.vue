@@ -145,6 +145,7 @@
             <q-card-section class="q-pa-none q-ma-none">
               <div class="text-center text-subtitle2">{{ product.precio }} Bs</div>
               <div :class="product.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">{{ product.cantidad }} Disponible</div>
+              <div :class="product.cantidadAlmacen<=0?'text-center text-bold text-red':' text-center text-bold'">{{ product.cantidadAlmacen }} Almacen</div>
             </q-card-section>
             <q-card flat bordered class="bg-grey-1">
               <q-card-section>
@@ -203,6 +204,38 @@
               <div class="col-12">
                 <q-btn :loading="loading" icon="o_shop" label="Agregar a compra" rounded dense color="green" @click="compraClick" no-caps class="full-width q-mt-xs" />
               </div>
+              <div class="col-12">
+                <div class="row">
+                  <div class="col-6 q-pa-xs">
+                    <q-card flat bordered class="bg-grey-3">
+                      <q-card-section class="q-pa-xs text-bold">
+                        Sucursal 1 ( <span class="text-blue">{{product.cantidadSurcusal1}}</span> )
+                      </q-card-section>
+                    </q-card>
+                  </div>
+                  <div class="col-6 q-pa-xs">
+                    <q-card flat bordered class="bg-grey-3">
+                      <q-card-section class="q-pa-xs text-bold">
+                        Sucursal 2 ( <span class="text-blue">{{product.cantidadSurcusal2}}</span> )
+                      </q-card-section>
+                    </q-card>
+                  </div>
+                  <div class="col-6 q-pa-xs">
+                    <q-card flat bordered class="bg-grey-3">
+                      <q-card-section class="q-pa-xs text-bold">
+                        Sucursal 3 ( <span class="text-blue">{{product.cantidadSurcusal3}}</span> )
+                      </q-card-section>
+                    </q-card>
+                  </div>
+                  <div class="col-6 q-pa-xs">
+                    <q-card flat bordered class="bg-grey-3">
+                      <q-card-section class="q-pa-xs text-bold">
+                        Sucursal 4 ( <span class="text-blue">{{product.cantidadSurcusal4}}</span> )
+                      </q-card-section>
+                    </q-card>
+                  </div>
+                </div>
+              </div>
             </div>
           </q-form>
           <q-form @submit="productSave" v-if="productAction === 'create' || productAction === 'edit'">
@@ -220,7 +253,7 @@
                 :url="`${$url}upload/${product.id}/fileCreate`"
                 stack-label="upload image"/>
             </div>
-            <q-input outlined v-model="product.imagen" label="Imagen" dense hint="Selecciona una imagen" />
+<!--            <q-input outlined v-model="product.imagen" label="Imagen" dense hint="Selecciona una imagen" />-->
             <div class="text-grey text-caption">Te recomendamos que la imagen tenga un tamaño de 500 x 500 px en formato PNG y pese máximo 2MB.</div>
             <q-input outlined v-model="product.nombre" label="Nombre del producto*" dense hint="Recuerda, este debe ser único en tu inventario" :rules="[val => !!val || 'Este campo es requerido']" />
             <q-input outlined v-model="product.barra" label="Código de barras" dense hint="Escríbelo o escanéalo" />
@@ -238,11 +271,11 @@
             <q-select class="bg-white" label="Unidad" dense outlined v-model="product.unidad" :options="unidades" hint="Selecciona una unidad"/>
             <q-select class="bg-white" emit-value map-options label="Categoria" dense outlined v-model="product.category_id" option-value="id" option-label="name" :options="categories" hint="Selecciona una categoria"/>
             <q-input type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>
-            <q-select class="bg-white" emit-value map-options label="Agencia" dense outlined
-                      v-model="product.agencia_id" option-value="id" option-label="nombre" :options="agencias"
-                      hint="Selecciona una agencia" :rules="[val => !!val || 'Este campo es requerido']"
-                      :disable="!($store.user.id=='1')"
-            />
+<!--            <q-select class="bg-white" emit-value map-options label="Agencia" dense outlined-->
+<!--                      v-model="product.agencia_id" option-value="id" option-label="nombre" :options="agencias"-->
+<!--                      hint="Selecciona una agencia" :rules="[val => !!val || 'Este campo es requerido']"-->
+<!--                      :disable="!($store.user.id=='1')"-->
+<!--            />-->
             <div class="text-center borderRoundGrey">
               <q-toggle :label="product.activo" color="green" false-value="INACTIVO" true-value="ACTIVO" v-model="product.activo" class="text-grey-9 text-bold" />
             </div>

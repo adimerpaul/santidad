@@ -30,6 +30,10 @@ class BuyController extends Controller{
         $buy->date= date("Y-m-d");
         $buy->time= date("H:i:s");
         $buy->save();
+
+        $product = $buy->product;
+        $product->cantidad = $product->cantidad + $buy->quantity;
+        $product->cantidadSurcusal1 = $product->cantidadSurcusal1 + $buy->quantity;
         return $buy;
     }
     public function update(UpdateBuyRequest $request, Buy $buy){ return $buy->update($request->all()); }
