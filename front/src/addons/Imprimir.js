@@ -202,6 +202,61 @@ Oruro</div>
     })
   }
 
+  static reciboTranferencia (producto, de, ha, cantidad) {
+    console.log('producto', producto, 'de', de, 'ha', ha, 'cantidad', cantidad)
+    return new Promise((resolve, reject) => {
+      const ClaseConversor = conversor.conversorNumerosALetras
+      const miConversor = new ClaseConversor()
+      const a = miConversor.convertToText(parseInt(cantidad))
+      const opts = {
+        errorCorrectionLevel: 'M',
+        type: 'png',
+        quality: 0.95,
+        width: 100,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#FFF'
+        }
+      }
+      const env = useCounterStore().env
+      QRCode.toDataURL(`de: ${de} A: ${ha}`, opts).then(url => {
+        let cadena = `${this.head()}
+    <div style='padding-left: 0.5cm;padding-right: 0.5cm'>
+    <img src="logo.png" alt="logo" style="width: 100px; height: 100px; display: block; margin-left: auto; margin-right: auto;">
+      <div class='titulo'>RECIBO DE TRANSFERENCIA</div>
+      <div class='titulo2'>${env.razon} <br>
+      Casa Matriz<br>
+      No. Punto de Venta 0<br>
+    ${env.direccion}<br>
+    Tel. ${env.telefono}<br>
+    Oruro</div>
+    <hr>
+    <table>
+    </table><hr><div class='titulo'>DETALLE</div>`
+        cadena += `<div style='font-size: 12px'><b>Producto: ${producto} de Sucursal${de} a ${ha} </b></div>`
+        cadena += `<hr>
+      <table style='font-size: 8px;'>
+      <tr><td class='titder' style='width: 60%'>CANTIDAD </td><td class='conte2'>${cantidad + ''}</td></tr>
+      </table>
+      <br>
+      <div>Son ${a + ''} ${cantidad + ''} unidades</div><hr>
+      <div style='display: flex;justify-content: center;'>
+        <img  src="${url}" style="width: 75px; height: 75px; display: block; margin-left: auto; margin-right: auto;">
+      </div></div>
+      </div>
+    </body>
+    </html>`
+        document.getElementById('myElement').innerHTML = cadena
+        const d = new Printd()
+        d.print(document.getElementById('myElement'))
+        resolve(url)
+      }).catch(err => {
+        reject(err)
+      })
+    })
+  }
+
   static head () {
     return `<html>
 <style>

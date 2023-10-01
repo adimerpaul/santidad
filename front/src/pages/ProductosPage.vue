@@ -223,7 +223,7 @@
                         Sucursal 2 ( <span class="text-blue">{{product.cantidadSucursal2}}</span> )
                         <div class="text-center">
                           <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(2)" no-caps/>
-                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(1)" no-caps/>
+                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(2)" no-caps/>
                         </div>
                       </q-card-section>
                     </q-card>
@@ -234,7 +234,7 @@
                         Sucursal 3 ( <span class="text-blue">{{product.cantidadSucursal3}}</span> )
                         <div class="text-center">
                           <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(3)" no-caps/>
-                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(1)" no-caps/>
+                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(3)" no-caps/>
                         </div>
                       </q-card-section>
                     </q-card>
@@ -245,7 +245,7 @@
                         Sucursal 4 ( <span class="text-blue">{{product.cantidadSucursal4}}</span> )
                         <div class="text-center">
                           <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(4)" no-caps/>
-                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(1)" no-caps/>
+                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(4)" no-caps/>
                         </div>
                       </q-card-section>
                     </q-card>
@@ -447,6 +447,7 @@ export default {
         this.productsGet()
         this.product = res.data
         this.dialogMover = false
+        this.$imprimir.reciboTranferencia(this.product.nombre, this.delSucursal, this.lugar, this.cantidad)
       }).catch(err => {
         this.loading = false
         this.$alert.error(err.response.data.message)
