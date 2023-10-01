@@ -156,6 +156,34 @@ class ProductController extends Controller{
         return Product::create($request->all());
     }
     public function show(Product $product){ return $product; }
+
+    public function moverProducto(Request $request){
+
+        $product = Product::find($request->id);
+        $delSucursal='cantidadSucursal'.$request->delSucursal;
+        if ($request->lugar == 'Almacen'){
+            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
+            $product->cantidadAlmacen = $product->cantidadAlmacen + $request->cantidad;
+            $product->save();
+        }else if ($request->lugar == 'Sucursal 1'){
+            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
+            $product->cantidadSucursal1 = $product->cantidadSucursal1 + $request->cantidad;
+            $product->save();
+        }else if ($request->lugar == 'Sucursal 2'){
+            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
+            $product->cantidadSucursal2 = $product->cantidadSucursal2 + $request->cantidad;
+            $product->save();
+        }else if ($request->lugar == 'Sucursal 3'){
+            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
+            $product->cantidadSucursal3 = $product->cantidadSucursal3 + $request->cantidad;
+            $product->save();
+        }else if ($request->lugar == 'Sucursal 4'){
+            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
+            $product->cantidadSucursal4 = $product->cantidadSucursal4 + $request->cantidad;
+            $product->save();
+        }
+        return $product;
+    }
     public  function agregarSucursal(Request $request){
         $product = Product::find($request->id);
         $sucursal = 'cantidadSucursal'.$request->sucursal;

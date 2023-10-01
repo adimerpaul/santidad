@@ -27,6 +27,7 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::resource('/categories',\App\Http\Controllers\CategoryController::class);
     Route::resource('/agencias',\App\Http\Controllers\AgenciaController::class);
     Route::resource('/products',\App\Http\Controllers\ProductController::class);
+    Route::post('/moverProducto',[\App\Http\Controllers\ProductController::class,'moverProducto']);
     Route::get('/productsSale',[\App\Http\Controllers\ProductController::class,'productsSale']);
     Route::post('/agregarSucursal',[\App\Http\Controllers\ProductController::class,'agregarSucursal']);
     Route::resource('/clients',\App\Http\Controllers\ClientController::class);

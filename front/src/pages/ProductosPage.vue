@@ -212,7 +212,7 @@
                         Sucursal 1 ( <span class="text-blue">{{product.cantidadSucursal1}}</span> )
                         <div class="text-center">
                           <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(1)" no-caps/>
-                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal" no-caps/>
+                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(1)" no-caps/>
                         </div>
                       </q-card-section>
                     </q-card>
@@ -223,7 +223,7 @@
                         Sucursal 2 ( <span class="text-blue">{{product.cantidadSucursal2}}</span> )
                         <div class="text-center">
                           <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(2)" no-caps/>
-                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal" no-caps/>
+                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(1)" no-caps/>
                         </div>
                       </q-card-section>
                     </q-card>
@@ -234,7 +234,7 @@
                         Sucursal 3 ( <span class="text-blue">{{product.cantidadSucursal3}}</span> )
                         <div class="text-center">
                           <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(3)" no-caps/>
-                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal" no-caps/>
+                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(1)" no-caps/>
                         </div>
                       </q-card-section>
                     </q-card>
@@ -245,7 +245,7 @@
                         Sucursal 4 ( <span class="text-blue">{{product.cantidadSucursal4}}</span> )
                         <div class="text-center">
                           <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(4)" no-caps/>
-                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal" no-caps/>
+                          <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(1)" no-caps/>
                         </div>
                       </q-card-section>
                     </q-card>
@@ -348,6 +348,28 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+    <q-dialog v-model="dialogMover">
+      <q-card>
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-subtitle2 text-bold text-grey">
+            Mover producto del sucursal {{delSucursal}} a:
+          </div>
+          <q-space/>
+          <q-btn icon="o_highlight_off" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section>
+          <q-form @submit="moverProducto">
+          <q-select class="bg-white" emit-value map-options label="Sucursal" dense outlined v-model="lugar" :options="lugares" hint="Selecciona una sucursal"/>
+          <q-input outlined type="number" step="0.01" v-model="cantidad" label="Cantidad" dense hint="Cantidad a mover"
+                    :rules="[val => !!val || 'Este campo es requerido']"/>
+          <q-btn class="full-width" rounded
+                 :color="!cantidad ? 'grey' : 'green'"
+                 :disable="!cantidad"
+                 label="Guardar" no-caps type="submit" :loading="loading"/>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
     <div id="myElement" class="hidden"></div>
   </q-page>
 </template>
@@ -359,6 +381,17 @@ export default {
   name: 'ProductosPage',
   data () {
     return {
+      dialogMover: false,
+      lugares: [
+        'Almacen',
+        'Sucursal 1',
+        'Sucursal 2',
+        'Sucursal 3',
+        'Sucursal 4'
+      ],
+      delSucursal: {},
+      cantidad: 0,
+      lugar: 'Almacen',
       current_page: 1,
       search: '',
       unidades: ['UNIDAD', 'PAQUETE', 'SOBRE', 'BOLSA', 'FRASCO', 'SOBRES', 'CAPSULAS', 'PASTILLA', 'TABLETAS', 'OTROS'],
@@ -401,6 +434,30 @@ export default {
     this.productsGet()
   },
   methods: {
+    moverProducto () {
+      this.loading = true
+      this.$axios.post('moverProducto', {
+        id: this.product.id,
+        lugar: this.lugar,
+        cantidad: this.cantidad,
+        delSucursal: this.delSucursal
+      }).then(res => {
+        this.loading = false
+        this.$alert.success('Producto movido correctamente')
+        this.productsGet()
+        this.product = res.data
+        this.dialogMover = false
+      }).catch(err => {
+        this.loading = false
+        this.$alert.error(err.response.data.message)
+      })
+    },
+    moverSucursal (delSucursal) {
+      this.delSucursal = delSucursal
+      this.dialogMover = true
+      this.lugar = 'Almacen'
+      this.cantidad = 0
+    },
     agregarSucursal (sucursal) {
       console.log(this.product.cantidadAlmacen)
       if (this.product.cantidadAlmacen <= 0) {
