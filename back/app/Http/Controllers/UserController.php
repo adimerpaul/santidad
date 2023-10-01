@@ -12,19 +12,19 @@ class UserController extends Controller
 {
     public function index(Request $request){
         $users= User::where('id','!=',1)->where('id','!=',$request->user()->id)->get();
-        $usersMessage=[];
-        foreach ($users as $user){
-            $chat=Chat::whereRaw("(userEnviado_id=".$request->user()->id." AND userRecibido_id=".$user->id.")OR(userEnviado_id=".$user->id." AND userRecibido_id=".$request->user()->id.")")->orderBy('fecha','desc')->first();
-            if($chat){
-                $user->message=$chat->message;
-                $user->fecha=$chat->fecha;
-            }else{
-                $user->message="";
-                $user->fecha="";
-            }
-            $usersMessage[]=$user;
-        }
-        return $usersMessage;
+//        $usersMessage=[];
+//        foreach ($users as $user){
+//            $chat=Chat::whereRaw("(userEnviado_id=".$request->user()->id." AND userRecibido_id=".$user->id.")OR(userEnviado_id=".$user->id." AND userRecibido_id=".$request->user()->id.")")->orderBy('fecha','desc')->first();
+//            if($chat){
+//                $user->message=$chat->message;
+//                $user->fecha=$chat->fecha;
+//            }else{
+//                $user->message="";
+//                $user->fecha="";
+//            }
+//            $usersMessage[]=$user;
+//        }
+        return $users;
     }
     public function show($id,Request $request)
     {
@@ -73,35 +73,35 @@ class UserController extends Controller
         $this->validate($request, [
             'name' => 'required',
             'email' => 'required|unique:users',
-            'password' => 'required|confirmed',
-            'password_confirmation' => 'required|same:password',
-            'tipo' => 'required',
-            'fechaLimite' => 'required',
+            'password' => 'required',
+//            'password_confirmation' => 'required|same:password',
+//            'tipo' => 'required',
+//            'fechaLimite' => 'required',
         ]);
         $user=new User();
         $user->name=$request->name;
         $user->email=$request->email;
-        $user->tipo=$request->tipo;
+//        $user->tipo=$request->tipo;
         $user->password= Hash::make($request->password) ;
-        $user->fechaLimite=$request->fechaLimite;
+//        $user->fechaLimite=$request->fechaLimite;
         $user->save();
     }
     public function update(Request $request,User $user){
         $this->validate($request, [
             'name' => 'required',
             'email' => 'required|unique:users,email,'.$user->id,
-            'tipo' => 'required',
-            'fechaLimite' => 'required',
+//            'tipo' => 'required',
+//            'fechaLimite' => 'required',
         ]);
         $user->update($request->all());
         return $user;
     }
 
     public function updatePassword(Request $request,User $user){
-        $this->validate($request, [
-            'password' => 'required|confirmed',
-            'password_confirmation' => 'required|same:password',
-        ]);
+//        $this->validate($request, [
+//            'password' => 'required|confirmed',
+//            'password_confirmation' => 'required|same:password',
+//        ]);
         $user->update([
             'password'=>Hash::make($request->password)
         ]);

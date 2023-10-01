@@ -30,6 +30,7 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::resource('/clients',\App\Http\Controllers\ClientController::class);
     Route::resource('/documents',\App\Http\Controllers\DocumentController::class);
     Route::get('/providers',[\App\Http\Controllers\ClientController::class,'providers']);
+    Route::put('/updatePassword/{user}',[\App\Http\Controllers\UserController::class,'updatePassword']);
     Route::resource('/sales',\App\Http\Controllers\SalesController::class);
     Route::resource('/buys',\App\Http\Controllers\BuyController::class);
     Route::post('/salesGasto',[\App\Http\Controllers\SalesController::class,'salesGasto']);
