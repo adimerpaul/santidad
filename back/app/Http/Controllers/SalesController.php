@@ -77,13 +77,13 @@ class SalesController extends Controller{
             $productSale->cantidad = $productSale->cantidad - $product['cantidadPedida'];
             $numeroSucursal = $request->user()->agencia_id;
             if ($numeroSucursal == 1){
-                $productSale->cantidadSurcusal1 = $productSale->cantidadSurcusal1 - $product['cantidadPedida'];
+                $productSale->cantidadSucursal1 = $productSale->cantidadSucursal1 - $product['cantidadPedida'];
             }else if ($numeroSucursal == 2){
-                $productSale->cantidadSurcusal2 = $productSale->cantidadSurcusal2 - $product['cantidadPedida'];
+                $productSale->cantidadSucursal2 = $productSale->cantidadSucursal2 - $product['cantidadPedida'];
             }else if ($numeroSucursal == 3){
-                $productSale->cantidadSurcusal3 = $productSale->cantidadSurcusal3 - $product['cantidadPedida'];
+                $productSale->cantidadSucursal3 = $productSale->cantidadSucursal3 - $product['cantidadPedida'];
             }else if ($numeroSucursal == 4){
-                $productSale->cantidadSurcusal4 = $productSale->cantidadSurcusal4 - $product['cantidadPedida'];
+                $productSale->cantidadSucursal4 = $productSale->cantidadSucursal4 - $product['cantidadPedida'];
             }
             $productSale->save();
         }
@@ -118,7 +118,7 @@ class SalesController extends Controller{
         $detail->descripcion = $request->concepto;
         $detail->user_id = $request->user()->id;
         $detail->save();
-
+        return Sales::with(['details','client'])->find($sales->id);
     }
     public function show(Sales $sales){ return $sales; }
     public function update(UpdateSalesRequest $request, Sales $sales){ return $sales->update($request->all()); }
