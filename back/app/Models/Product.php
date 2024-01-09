@@ -25,7 +25,13 @@ class Product extends Model
         'imagen',
         'descripcion',
         "category_id",
-        "agencia_id"
+        "agencia_id",
+        'registroSanitario',
+        'paisOrigen',
+        'nombreComun',
+        'composicion',
+        'marca',
+        'distribuidora',
     ];
     public function category(){
         return $this->belongsTo(Category::class);

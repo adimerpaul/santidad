@@ -135,59 +135,7 @@
         </q-card-section>
         <q-card-section>
           <q-form v-if="productAction === 'ver'">
-            <div class="flex flex-center">
-              <q-img :src="product.imagen.includes('http')?product.imagen:`${$url}../images/${product.imagen}`" width="200px">
-                <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;">
-                  {{product.nombre}}
-                </div>
-              </q-img>
-            </div>
-            <q-card-section class="q-pa-none q-ma-none">
-              <div class="text-center text-subtitle2">{{ product.precio }} Bs</div>
-              <div :class="product.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">{{ product.cantidad }} Disponible</div>
-              <div :class="product.cantidadAlmacen<=0?'text-center text-bold text-red':' text-center text-bold'">{{ product.cantidadAlmacen }} Almacen</div>
-            </q-card-section>
-            <q-card flat bordered class="bg-grey-1">
-              <q-card-section>
-                <div class="row">
-                  <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
-                      <q-icon name="o_qr_code_2" class="text-grey" size="20px" />
-                      Codigo de barras
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <div class="text-grey text-caption text-right">{{ product.barra }}</div>
-                  </div>
-                  <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
-                      <q-icon name="o_paid" class="text-grey" size="20px" />
-                      Precio
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <div class="text-grey text-caption text-right">{{ product.precio }} Bs</div>
-                  </div>
-                  <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
-                      <q-icon name="o_shopping_bag" class="text-grey" size="20px" />
-                      Costo
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <div class="text-grey text-caption text-right">{{ product.costo }} Bs</div>
-                  </div>
-                  <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
-                    <q-icon name="o_local_shipping" class="text-grey" size="20px" />
-                    Agencia
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <div class="text-grey text-caption text-right" v-if="product.agencia">{{ product.agencia.nombre }}</div>
-                  </div>
-                  <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
-                      <q-icon name="o_shopping_cart" class="text-grey" size="20px" />
-                      Categoria
-                  </div>
-                  <div class="col-12 col-md-6">
-                    <div class="text-grey text-caption text-right" v-if="product.category">{{ product.category.name }}</div>
-                  </div>
-                </div>
-              </q-card-section>
-            </q-card>
+            <DetailProducts :product="product" />
             <div class="row">
               <div class="col-12 text-subtitle2 text-bold">
                 Descripción
@@ -285,6 +233,18 @@
             <q-input outlined type="number" step="0.01" v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
             <q-input outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>
             <q-select class="bg-white" label="Unidad" dense outlined v-model="product.unidad" :options="unidades" hint="Selecciona una unidad"/>
+<!--            'registroSanitario',-->
+<!--            'paisOrigen',-->
+<!--            'nombreComun',-->
+<!--            'composicion',-->
+<!--            'marca',-->
+<!--            'distribuidora',-->
+            <q-input outlined v-model="product.registroSanitario" label="Registro sanitario" dense hint="Escribe el registro sanitario"/>
+            <q-input outlined v-model="product.paisOrigen" label="Pais de origen" dense hint="Escribe el pais de origen"/>
+            <q-input outlined v-model="product.nombreComun" label="Nombre comun" dense hint="Escribe el nombre comun"/>
+            <q-input outlined v-model="product.composicion" label="Composicion" dense hint="Escribe la composicion"/>
+            <q-input outlined v-model="product.marca" label="Marca" dense hint="Escribe la marca"/>
+            <q-input outlined v-model="product.distribuidora" label="Distribuidora" dense hint="Escribe la distribuidora"/>
             <q-select class="bg-white" emit-value map-options label="Categoria" dense outlined v-model="product.category_id" option-value="id" option-label="name" :options="categories" hint="Selecciona una categoria"/>
             <q-input type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>
 <!--            <q-select class="bg-white" emit-value map-options label="Agencia" dense outlined-->
@@ -376,9 +336,12 @@
 
 <script>
 import moment from 'moment'
-
+import DetailProducts from 'pages/Productos/DetailProducts.vue'
 export default {
   name: 'ProductosPage',
+  components: {
+    DetailProducts
+  },
   data () {
     return {
       dialogMover: false,

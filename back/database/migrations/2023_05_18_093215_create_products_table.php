@@ -27,6 +27,12 @@ return new class extends Migration
             //$table->double('utilidad',10,2)->nullable();
             $table->string('activo')->default('ACTIVO');
             $table->string('unidad')->default('UNIDAD');
+            $table->string('registroSanitario')->nullable();
+            $table->string('paisOrigen')->nullable();
+            $table->string('nombreComun')->nullable();
+            $table->string('composicion')->nullable();
+            $table->string('marca')->nullable();
+            $table->string('distribuidora')->nullable();
             $table->string('imagen')->nullable()->default('productDefault.jpg');
 //            $table->string('color')->nullable();
             $table->text('descripcion')->nullable();
