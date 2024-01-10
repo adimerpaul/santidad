@@ -2,7 +2,7 @@
   <q-page class="bg-grey-2 q-pa-xs">
     <div class="row">
       <div class="col-12 col-md-6 bg-white">
-        <q-input outlined v-model="search" label="Buscar producto" dense clearable @update:model-value="productsGet" debounce="500">
+        <q-input label-color="black" outlined v-model="search" label="Buscar producto" dense clearable @update:model-value="productsGet" debounce="500">
           <template v-slot:prepend>
             <q-icon name="search" class="cursor-pointer" />
           </template>
@@ -217,11 +217,11 @@
                 :url="`${$url}upload/${product.id}/fileCreate`"
                 stack-label="upload image"/>
             </div>
-<!--            <q-input outlined v-model="product.imagen" label="Imagen" dense hint="Selecciona una imagen" />-->
+<!--            <q-input label-color="black" outlined v-model="product.imagen" label="Imagen" dense hint="Selecciona una imagen" />-->
             <div class="text-grey text-caption">Te recomendamos que la imagen tenga un tamaño de 500 x 500 px en formato PNG y pese máximo 2MB.</div>
-            <q-input outlined v-model="product.nombre" label="Nombre del producto*" dense hint="Recuerda, este debe ser único en tu inventario" :rules="[val => !!val || 'Este campo es requerido']" />
-            <q-input outlined v-model="product.barra" label="Código de barras" dense hint="Escríbelo o escanéalo" />
-            <q-input outlined v-model="product.cantidad" label="Cantidad" input-class="text-center" dense hint="">
+            <q-input label-color="black" outlined v-model="product.nombre" label="Nombre del producto*" dense hint="Recuerda, este debe ser único en tu inventario" :rules="[val => !!val || 'Este campo es requerido']" />
+            <q-input label-color="black" outlined v-model="product.barra" label="Código de barras" dense hint="Escríbelo o escanéalo" />
+            <q-input label-color="black" outlined v-model="product.cantidad" label="Cantidad" input-class="text-center" dense hint="">
               <template v-slot:append>
                 <q-icon name="o_add_circle_outline" @click="cantidadMore" class="cursor-pointer"/>
               </template>
@@ -229,9 +229,9 @@
                 <q-icon name="o_remove_circle_outline" @click="cantidadMinus" class="cursor-pointer"/>
               </template>
             </q-input>
-            <q-input outlined type="number" step="0.01" v-model="product.costo" label="Costo" dense hint="Valor que pagas al proveedor por el producto"/>
-            <q-input outlined type="number" step="0.01" v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
-            <q-input outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>
+            <q-input label-color="black" outlined type="number" step="0.01" v-model="product.costo" label="Costo" dense hint="Valor que pagas al proveedor por el producto"/>
+            <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
+            <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>
             <q-select class="bg-white" label="Unidad" dense outlined v-model="product.unidad" :options="unidades" hint="Selecciona una unidad">
               <template v-slot:after>
                 <q-btn icon="add_circle_outline" flat round dense color="green" @click="addUnit" />
@@ -243,14 +243,14 @@
 <!--            'composicion',-->
 <!--            'marca',-->
 <!--            'distribuidora',-->
-            <q-input outlined v-model="product.registroSanitario" label="Registro sanitario" dense hint="Escribe el registro sanitario"/>
-            <q-input outlined v-model="product.paisOrigen" label="Pais de origen" dense hint="Escribe el pais de origen"/>
-            <q-input outlined v-model="product.nombreComun" label="Nombre comun" dense hint="Escribe el nombre comun"/>
-            <q-input outlined v-model="product.composicion" label="Composicion" dense hint="Escribe la composicion"/>
-            <q-input outlined v-model="product.marca" label="Marca" dense hint="Escribe la marca"/>
-            <q-input outlined v-model="product.distribuidora" label="Distribuidora" dense hint="Escribe la distribuidora"/>
+            <q-input label-color="black" outlined v-model="product.registroSanitario" label="Registro sanitario" dense hint="Escribe el registro sanitario"/>
+            <q-input label-color="black" outlined v-model="product.paisOrigen" label="Pais de origen" dense hint="Escribe el pais de origen"/>
+            <q-input label-color="black" outlined v-model="product.nombreComun" label="Nombre comun" dense hint="Escribe el nombre comun"/>
+            <q-input label-color="black" outlined v-model="product.composicion" label="Composicion" dense hint="Escribe la composicion"/>
+            <q-input label-color="black" outlined v-model="product.marca" label="Marca" dense hint="Escribe la marca"/>
+            <q-input label-color="black" outlined v-model="product.distribuidora" label="Distribuidora" dense hint="Escribe la distribuidora"/>
             <q-select class="bg-white" emit-value map-options label="Categoria" dense outlined v-model="product.category_id" option-value="id" option-label="name" :options="categories" hint="Selecciona una categoria"/>
-            <q-input type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>
+            <q-input label-color="black" type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>
 <!--            <q-select class="bg-white" emit-value map-options label="Agencia" dense outlined-->
 <!--                      v-model="product.agencia_id" option-value="id" option-label="nombre" :options="agencias"-->
 <!--                      hint="Selecciona una agencia" :rules="[val => !!val || 'Este campo es requerido']"-->
@@ -265,9 +265,9 @@
                    label="Guardar" no-caps type="submit" :loading="loading"/>
           </q-form>
           <q-form v-if="productAction === 'compra'" @submit="compraSave">
-            <q-input outlined v-model="compra.lote" label="Lote*" dense hint="Escribe el lote del producto" required />
-            <q-input outlined v-model="compra.price" label="Precio" dense hint="Valor que le pagaste al proveedor por el producto" type="number" required step="0.01" />
-            <q-input outlined v-model="compra.quantity" label="Cantidad" input-class="text-center" dense hint="">
+            <q-input label-color="black" outlined v-model="compra.lote" label="Lote*" dense hint="Escribe el lote del producto" required />
+            <q-input label-color="black" outlined v-model="compra.price" label="Precio" dense hint="Valor que le pagaste al proveedor por el producto" type="number" required step="0.01" />
+            <q-input label-color="black" outlined v-model="compra.quantity" label="Cantidad" input-class="text-center" dense hint="">
               <template v-slot:append>
                 <q-icon name="o_add_circle_outline" @click="compraMore" class="cursor-pointer"/>
               </template>
@@ -275,8 +275,8 @@
                 <q-icon name="o_remove_circle_outline" @click="compraMinus" class="cursor-pointer"/>
               </template>
             </q-input>
-            <q-input outlined v-model="compraTotal" readonly label="Total" dense hint="Valor total de la compra" />
-            <q-input outlined v-model="compra.dateExpiry" label="Fecha de vencimiento" dense hint="Fecha de vencimiento del producto" type="date" />
+            <q-input label-color="black" outlined v-model="compraTotal" readonly label="Total" dense hint="Valor total de la compra" />
+            <q-input label-color="black" outlined v-model="compra.dateExpiry" label="Fecha de vencimiento" dense hint="Fecha de vencimiento del producto" type="date" />
             <q-btn class="full-width" rounded
                    :color="!compra.lote ? 'grey' : 'green'"
                    :disable="!compra.lote"
@@ -324,7 +324,7 @@
         <q-card-section>
           <q-form @submit="moverProducto">
           <q-select class="bg-white" emit-value map-options label="Sucursal" dense outlined v-model="lugar" :options="lugares" hint="Selecciona una sucursal"/>
-          <q-input outlined type="number" step="0.01" v-model="cantidad" label="Cantidad" dense hint="Cantidad a mover"
+          <q-input label-color="black" outlined type="number" step="0.01" v-model="cantidad" label="Cantidad" dense hint="Cantidad a mover"
                     :rules="[val => !!val || 'Este campo es requerido']"/>
           <q-btn class="full-width" rounded
                  :color="!cantidad ? 'grey' : 'green'"
