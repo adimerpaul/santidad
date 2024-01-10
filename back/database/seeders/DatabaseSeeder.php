@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
             DocumentSeeder::class,
             CarouselSeeder::class,
+            UnidSeeder::class,
         ]);
         $sql = storage_path('sql/clients_202305292324.sql');
         DB::unprepared(file_get_contents($sql));

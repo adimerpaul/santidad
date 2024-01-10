@@ -9,7 +9,7 @@
         </q-input>
       </div>
       <div class="col-5 col-md-3">
-        <q-btn color="black" no-caps flat icon="o_file_download" @click="downloadReport">
+        <q-btn color="black" no-caps flat icon="o_file_download" @click="downloadReport" :loading="loading">
           <div class="q-page-xs subrayado"> Descargar reporte</div>
         </q-btn>
       </div>
@@ -232,7 +232,11 @@
             <q-input outlined type="number" step="0.01" v-model="product.costo" label="Costo" dense hint="Valor que pagas al proveedor por el producto"/>
             <q-input outlined type="number" step="0.01" v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
             <q-input outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>
-            <q-select class="bg-white" label="Unidad" dense outlined v-model="product.unidad" :options="unidades" hint="Selecciona una unidad"/>
+            <q-select class="bg-white" label="Unidad" dense outlined v-model="product.unidad" :options="unidades" hint="Selecciona una unidad">
+              <template v-slot:after>
+                <q-btn icon="add_circle_outline" flat round dense color="green" @click="addUnit" />
+              </template>
+            </q-select>
 <!--            'registroSanitario',-->
 <!--            'paisOrigen',-->
 <!--            'nombreComun',-->
@@ -395,8 +399,36 @@ export default {
     this.categoriesGet()
     this.agenciasGet()
     this.productsGet()
+    this.unitsGet()
   },
   methods: {
+    addUnit () {
+      this.$q.dialog({
+        title: 'Crear unidad',
+        message: 'Ingresa el nombre de la unidad',
+        prompt: {
+          model: '',
+          type: 'text'
+        },
+        cancel: true,
+        persistent: true
+      }).onOk(data => {
+        this.$axios.post('unids', { nombre: data }).then(res => {
+          this.unitsGet()
+          this.$alert.success('Unidad creada correctamente')
+        }).catch(err => {
+          console.log(err)
+          this.$alert.error('No se pudo crear la unidad')
+        })
+      })
+    },
+    unitsGet () {
+      this.$axios.get('unids').then(res => {
+        this.unidades = res.data
+      }).catch(err => {
+        console.log(err)
+      })
+    },
     moverProducto () {
       this.loading = true
       this.$axios.post('moverProducto', {
@@ -516,26 +548,33 @@ export default {
       })
     },
     downloadReport () {
-      const data = [
-        {
-          columns: [
-            { value: 'id', label: 'ID' },
-            { value: 'nombre', label: 'Nombre' },
-            { value: 'barra', label: 'Código de barras' },
-            { value: 'cantidad', label: 'Cantidad' },
-            { value: 'costo', label: 'Costo' },
-            { value: 'precio', label: 'Precio' },
-            { value: 'activo', label: 'Activo' },
-            { value: 'imagen', label: 'Imagen' },
-            { value: 'descripcion', label: 'Descripción' },
-            // { label: 'User', value: 'user' }, // Top level data
-            // { label: 'Age', value: (row) => row.age + 'years' }, // Custom format
-            { label: 'Categoria', value: (row) => (row.category ? row.category.name || '' : '') } // Run functions
-          ],
-          content: this.products
-        }
-      ]
-      this.$excel.export(data)
+      this.loading = true
+      this.$axios.get('productsAll').then(res => {
+        const data = [
+          {
+            columns: [
+              { value: 'id', label: 'ID' },
+              { value: 'nombre', label: 'Nombre' },
+              { value: 'barra', label: 'Código de barras' },
+              { value: 'cantidad', label: 'Cantidad' },
+              { value: 'costo', label: 'Costo' },
+              { value: 'precio', label: 'Precio' },
+              { value: 'activo', label: 'Activo' },
+              { value: 'imagen', label: 'Imagen' },
+              { value: 'descripcion', label: 'Descripción' },
+              // { label: 'User', value: 'user' }, // Top level data
+              // { label: 'Age', value: (row) => row.age + 'years' }, // Custom format
+              { label: 'Categoria', value: (row) => (row.category ? row.category.name || '' : '') } // Run functions
+            ],
+            content: res.data
+          }
+        ]
+        this.$excel.export(data)
+      }).catch(err => {
+        console.log(err)
+      }).finally(() => {
+        this.loading = false
+      })
     },
     categoryDelete (category) {
       this.$q.dialog({

@@ -9,6 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller{
+    public function productsAll(Request $request){
+        return Product::all();
+    }
     public function index(){
         $search = request()->get('search', '');
         $search = $search == 'null' ? '' : $search;

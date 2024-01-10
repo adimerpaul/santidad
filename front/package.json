@@ -14,7 +14,6 @@
   "dependencies": {
     "@quasar/extras": "^1.0.0",
     "axios": "^1.2.1",
-    "caniuse-lite": "^1.0.30001576",
     "conversor-numero-a-letras-es-ar": "^1.0.3",
     "json-as-xlsx": "^2.5.3",
     "moment": "^2.29.4",
