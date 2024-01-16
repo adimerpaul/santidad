@@ -256,7 +256,15 @@
             <q-btn class="full-width" rounded
                    :color="!product.nombre || !product.precio ? 'grey' : 'green'"
                    :disable="!product.nombre || !product.precio"
-                   label="Guardar" no-caps type="submit" :loading="loading"/>
+                   :label="productAction === 'create' ? 'Guardar' : 'Editar'"
+                   no-caps
+                   type="submit"
+                   :loading="loading"/>
+            <q-btn v-if="productAction === 'edit'" class="full-width q-mt-xs" rounded
+                   outline
+                   :color="!product.nombre || !product.precio ? 'grey' : 'green'"
+                   :disable="!product.nombre || !product.precio"
+                   label="Duplicar" no-caps  :loading="loading" @click="duplicateProduct"/>
           </q-form>
           <q-form v-if="productAction === 'compra'" @submit="compraSave">
             <q-input label-color="black" outlined v-model="compra.lote" label="Lote*" dense hint="Escribe el lote del producto" required />
@@ -472,6 +480,25 @@ export default {
           this.$alert.success('Producto agregado correctamente')
           this.productsGet()
           this.product = res.data
+        }).catch(err => {
+          this.loading = false
+          this.$alert.error(err.response.data.message)
+        })
+      })
+    },
+    duplicateProduct () {
+      this.$q.dialog({
+        title: 'Duplicar producto',
+        message: 'Seguro que deseas duplicar el producto?',
+        cancel: true
+      }).onOk(data => {
+        this.loading = true
+        this.$axios.post('duplicateProduct', this.product).then(res => {
+          this.loading = false
+          this.$alert.success('Producto duplicado correctamente')
+          this.productsGet()
+          this.product = res.data
+          this.productDialog = false
         }).catch(err => {
           this.loading = false
           this.$alert.error(err.response.data.message)

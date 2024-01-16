@@ -12,6 +12,12 @@ class ProductController extends Controller{
     public function productsAll(Request $request){
         return Product::all();
     }
+    public function duplicateProduct(Request $request){
+        if ($request->category_id == 0) $request->merge(['category_id' => null]);
+        if ($request->agencia_id == 0) $request->merge(['agencia_id' => null]);
+        $request->merge(['cantidadAlmacen' => $request->cantidad]);
+        return Product::create($request->all());
+    }
     public function index(){
         $search = request()->get('search', '');
         $search = $search == 'null' ? '' : $search;

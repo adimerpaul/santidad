@@ -32,6 +32,8 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
 //    unidAll
     Route::get('/unidAll',[\App\Http\Controllers\UnidController::class,'unidAll']);
     Route::get('/productsAll',[\App\Http\Controllers\ProductController::class,'productsAll']);
+//    duplicateProduct
+    Route::post('/duplicateProduct',[\App\Http\Controllers\ProductController::class,'duplicateProduct']);
     Route::post('/moverProducto',[\App\Http\Controllers\ProductController::class,'moverProducto']);
     Route::get('/productsSale',[\App\Http\Controllers\ProductController::class,'productsSale']);
     Route::post('/agregarSucursal',[\App\Http\Controllers\ProductController::class,'agregarSucursal']);
