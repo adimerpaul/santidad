@@ -237,16 +237,10 @@
                 <q-btn icon="add_circle_outline" flat round dense color="green" @click="addUnit" />
               </template>
             </q-select>
-<!--            'registroSanitario',-->
-<!--            'paisOrigen',-->
-<!--            'nombreComun',-->
-<!--            'composicion',-->
-<!--            'marca',-->
-<!--            'distribuidora',-->
             <q-input label-color="black" outlined v-model="product.registroSanitario" label="Registro sanitario" dense hint="Escribe el registro sanitario"/>
             <q-input label-color="black" outlined v-model="product.paisOrigen" label="Pais de origen" dense hint="Escribe el pais de origen"/>
-            <q-input label-color="black" outlined v-model="product.nombreComun" label="Nombre comun" dense hint="Escribe el nombre comun"/>
-            <q-input label-color="black" outlined v-model="product.composicion" label="Composicion" dense hint="Escribe la composicion"/>
+<!--            <q-input label-color="black" outlined v-model="product.nombreComun" label="Nombre comun" dense hint="Escribe el nombre comun"/>-->
+            <q-input label-color="black" outlined v-model="product.composicion" label="Principio activo" dense hint="Escribe el principio activo"/>
             <q-input label-color="black" outlined v-model="product.marca" label="Marca" dense hint="Escribe la marca"/>
             <q-input label-color="black" outlined v-model="product.distribuidora" label="Distribuidora" dense hint="Escribe la distribuidora"/>
             <q-select class="bg-white" emit-value map-options label="Categoria" dense outlined v-model="product.category_id" option-value="id" option-label="name" :options="categories" hint="Selecciona una categoria"/>
