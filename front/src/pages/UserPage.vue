@@ -79,8 +79,7 @@
         </q-td>
       </template>
       <template v-slot:body-cell-opcion="props">
-
-        <q-td key="opcion" :props="props">
+        <q-td key="opcion" :props="props" auto-width>
           <q-btn
               dense
               round
@@ -212,11 +211,11 @@ export default {
       modelpermiso: false,
       uni: {},
       columns: [
+        { name: 'opcion', label: 'OPCIÓN', field: 'action', sortable: false },
         { name: 'name', align: 'left', label: 'NOMBRE ', field: 'name', sortable: true },
         { name: 'email', align: 'left', label: 'E-MAIL', field: 'email', sortable: true },
-        { name: 'state', align: 'left', label: 'ESTADO', field: 'state', sortable: true },
+        { name: 'state', align: 'left', label: 'ESTADO', field: 'state', sortable: true }
         // { name: 'permisos', align: 'left', label: 'PERMISOS', field: 'permisos', sortable: true },
-        { name: 'opcion', label: 'OPCIÓN', field: 'action', sortable: false }
       ],
       data: []
     }

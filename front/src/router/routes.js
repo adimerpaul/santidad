@@ -8,6 +8,7 @@ import UserPage from 'pages/UserPage.vue'
 import ClientesPage from 'pages/ClientesPage.vue'
 import ProvedoresPage from 'pages/ProvedoresPage.vue'
 import ReportPage from 'pages/ReportPage.vue'
+import Unidades from 'pages/Unidades.vue'
 
 const routes = [
   {
@@ -21,6 +22,7 @@ const routes = [
       { path: 'reportes', component: ReportPage, meta: { requiresAuth: true } },
       { path: 'clientes', component: ClientesPage, meta: { requiresAuth: true } },
       { path: 'proveedores', component: ProvedoresPage, meta: { requiresAuth: true } },
+      { path: 'unidades', component: Unidades, meta: { requiresAuth: true } },
       { path: 'productosPorVencer', component: ProductosPorVencerPage, meta: { requiresAuth: true } }
     ]
   },
