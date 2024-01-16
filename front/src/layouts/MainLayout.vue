@@ -115,6 +115,15 @@
                 </q-tooltip>
               </q-item-section>
             </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/unidades" v-if="$store.user.id=='1'">
+              <q-item-section avatar><q-icon name="o_vaccines" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Unidades</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Administrar unidades
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
             <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosPorVencer">
               <q-item-section avatar><q-icon name="o_warning" /></q-item-section>
               <q-item-section>
