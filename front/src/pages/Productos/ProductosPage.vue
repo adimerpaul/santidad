@@ -74,7 +74,7 @@
         />
       </div>
       <div class="col-12 col-md-3 q-pa-xs">
-        <q-select class="bg-white" label="Agencia" dense outlined v-model="$store.agencia_id"
+        <q-select class="bg-white" label="Agencia" dense outlined v-model="agencia"
                   :options="agencias" map-options emit-value
                   option-value="id" option-label="nombre"
                   @update:model-value="productsGet"
@@ -663,7 +663,7 @@ export default {
     },
     productsGet () {
       this.loading = true
-      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.$store.agencia_id}`).then(res => {
+      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia}`).then(res => {
         this.loading = false
         // console.log(res.data.products)
         this.totalProducts = res.data.products.total
@@ -716,7 +716,7 @@ export default {
         precio: 0,
         descripcion: '',
         category_id: 0,
-        agencia_id: this.$store.agencia_id
+        agencia_id: 0
       }
     },
     categoriesGet () {
