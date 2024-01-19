@@ -34,7 +34,7 @@ class ProductController extends Controller{
         }
 
         if ($agencia_id != 0) {
-            $query->where('agencia_id', $agencia_id);
+            $query->where("cantidadSucursal$agencia_id", '>', 0);
         }
 
         $products = $query->orderByRaw($ordenar)
@@ -91,7 +91,7 @@ class ProductController extends Controller{
         $request->merge(['nombre' => strtoupper($request->nombre)]);
         $request->merge(['paisOrigen' => strtoupper($request->paisOrigen)]);
         $request->merge(['marca' => strtoupper($request->marca)]);
-        $request->merge(['agencia_id' => 0]);
+        $request->merge(['agencia_id' => null]);
 
         return Product::create($request->all());
     }

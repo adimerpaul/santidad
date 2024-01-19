@@ -8,8 +8,7 @@ use App\Http\Requests\UpdateUnidRequest;
 
 class UnidController extends Controller{
     public function index(){
-        $unids= Unid::all();
-        ///return array name unids
+        $unids= Unid::orderBy('nombre')->get();
         return $unids->pluck('nombre');
     }
     public function unidAll(){

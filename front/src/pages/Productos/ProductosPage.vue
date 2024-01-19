@@ -235,9 +235,17 @@
             <q-input label-color="black" outlined type="number" step="0.01" v-model="product.costo" label="Costo" dense hint="Valor que pagas al proveedor por el producto"/>
             <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
             <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>
-            <q-select class="bg-white" label="Unidad" dense outlined v-model="product.unidad" :options="unidades" hint="Selecciona una unidad">
+            <q-select class="bg-white" label="Unidad" dense outlined v-model="product.unidad" :options="unidades"
+                      hint="Selecciona una unidad" use-input input-debounce="0" @filter="filterUnid">
               <template v-slot:after>
                 <q-btn icon="add_circle_outline" flat round dense color="green" @click="addUnit" />
+              </template>
+              <template v-slot:no-option>
+                <q-item>
+                  <q-item-section class="text-grey">
+                    No results
+                  </q-item-section>
+                </q-item>
               </template>
             </q-select>
             <q-input label-color="black" outlined v-model="product.registroSanitario" label="Registro sanitario" dense hint="Escribe el registro sanitario"/>
@@ -366,7 +374,8 @@ export default {
       lugar: 'Almacen',
       current_page: 1,
       search: '',
-      unidades: ['UNIDAD', 'PAQUETE', 'SOBRE', 'BOLSA', 'FRASCO', 'SOBRES', 'CAPSULAS', 'PASTILLA', 'TABLETAS', 'OTROS'],
+      unidades: [],
+      unidadesAll: [],
       last_page: 1,
       loading: false,
       productDialog: false,
@@ -407,6 +416,18 @@ export default {
     this.unitsGet()
   },
   methods: {
+    filterUnid (val, update) {
+      if (val === '') {
+        update(() => {
+          this.unidades = this.unidadesAll
+        })
+        return
+      }
+      update(() => {
+        const needle = val.toLowerCase()
+        this.unidades = this.unidadesAll.filter(v => v.toLowerCase().indexOf(needle) > -1)
+      })
+    },
     addUnit () {
       this.$q.dialog({
         title: 'Crear unidad',
@@ -427,12 +448,10 @@ export default {
         })
       })
     },
-    unitsGet () {
-      this.$axios.get('unids').then(res => {
-        this.unidades = res.data
-      }).catch(err => {
-        console.log(err)
-      })
+    async unitsGet () {
+      this.res = await this.$axios.get('unids')
+      this.unidadesAll = this.res.data
+      this.unidades = this.res.data
     },
     moverProducto () {
       this.loading = true
