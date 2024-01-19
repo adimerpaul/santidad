@@ -219,7 +219,10 @@
             </div>
 <!--            <q-input label-color="black" outlined v-model="product.imagen" label="Imagen" dense hint="Selecciona una imagen" />-->
             <div class="text-grey text-caption">Te recomendamos que la imagen tenga un tamaño de 500 x 500 px en formato PNG y pese máximo 2MB.</div>
-            <q-input label-color="black" outlined v-model="product.nombre" label="Nombre del producto*" dense hint="Recuerda, este debe ser único en tu inventario" :rules="[val => !!val || 'Este campo es requerido']" />
+            <q-input label-color="black" outlined v-model="product.nombre" label="Nombre del producto*" dense
+                     hint="Recuerda, este debe ser único en tu inventario" :rules="[val => !!val || 'Este campo es requerido']"
+                     class="uppercase"
+            />
             <q-input label-color="black" outlined v-model="product.barra" label="Código de barras" dense hint="Escríbelo o escanéalo" />
             <q-input label-color="black" outlined v-model="product.cantidad" label="Cantidad" input-class="text-center" dense hint="">
               <template v-slot:append>
@@ -238,10 +241,10 @@
               </template>
             </q-select>
             <q-input label-color="black" outlined v-model="product.registroSanitario" label="Registro sanitario" dense hint="Escribe el registro sanitario"/>
-            <q-input label-color="black" outlined v-model="product.paisOrigen" label="Pais de origen" dense hint="Escribe el pais de origen"/>
+            <q-input label-color="black" outlined v-model="product.paisOrigen" label="Pais de origen" dense hint="Escribe el pais de origen" class="uppercase"/>
 <!--            <q-input label-color="black" outlined v-model="product.nombreComun" label="Nombre comun" dense hint="Escribe el nombre comun"/>-->
             <q-input label-color="black" outlined v-model="product.composicion" label="Principio activo" dense hint="Escribe el principio activo"/>
-            <q-input label-color="black" outlined v-model="product.marca" label="Marca" dense hint="Escribe la marca"/>
+            <q-input label-color="black" outlined v-model="product.marca" label="Marca" dense hint="Escribe la marca" class="uppercase"/>
             <q-input label-color="black" outlined v-model="product.distribuidora" label="Distribuidora" dense hint="Escribe la distribuidora"/>
             <q-select class="bg-white" emit-value map-options label="Categoria" dense outlined v-model="product.category_id" option-value="id" option-label="name" :options="categories" hint="Selecciona una categoria"/>
             <q-input label-color="black" type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>

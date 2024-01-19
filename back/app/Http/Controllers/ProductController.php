@@ -162,6 +162,11 @@ class ProductController extends Controller{
         if ($request->category_id == 0) $request->merge(['category_id' => null]);
         if ($request->agencia_id == 0) $request->merge(['agencia_id' => null]);
         $request->merge(['cantidadAlmacen' => $request->cantidad]);
+        $request->merge(['cantidadAlmacen' => $request->cantidad]);
+        $request->merge(['nombre' => strtoupper($request->nombre)]);
+        $request->merge(['paisOrigen' => strtoupper($request->paisOrigen)]);
+        $request->merge(['marca' => strtoupper($request->marca)]);
+
         return Product::create($request->all());
     }
     public function show(Product $product){ return $product; }
