@@ -23,7 +23,13 @@ class BuyController extends Controller{
             $formatted_dt2=Carbon::parse(date("Y-m-d"));
             $buy->diasPorvencer = $formatted_dt1->diffInDays($formatted_dt2);
         });
-        return $buys;
+        $buysReturn = [];
+        foreach ($buys as $buy) {
+            if ($buy->diasPorvencer > 0) {
+                array_push($buysReturn, $buy);
+            }
+        }
+        return $buysReturn;
     }
     public function show(Buy $buy){ return $buy; }
     public function store(StoreBuyRequest $request){

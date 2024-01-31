@@ -6,7 +6,7 @@
   <q-table dense flat :rows-per-page-options="[0]" :rows="compras" :columns="compraColumns" wrap-cells
            :filter="search" title="Productos por Vencer" :loading="loading">
     <template v-slot:top-right>
-      <q-btn icon="refresh" @click="buyGet" flat round dense color="grey">
+      <q-btn icon="refresh" @click="buyGet" dense color="grey" label="Actualizar" no-caps size="10px">
         <q-tooltip>Actualizar</q-tooltip>
       </q-btn>
       <q-input outlined dense v-model="search" label="Buscar" class="q-mt-sm">
