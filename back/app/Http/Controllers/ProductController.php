@@ -91,6 +91,7 @@ class ProductController extends Controller{
         $request->merge(['nombre' => strtoupper($request->nombre)]);
         $request->merge(['paisOrigen' => strtoupper($request->paisOrigen)]);
         $request->merge(['marca' => strtoupper($request->marca)]);
+        $request->merge(['distribuidora' => strtoupper($request->distribuidora)]);
         $request->merge(['agencia_id' => null]);
 
         return Product::create($request->all());
@@ -133,6 +134,10 @@ class ProductController extends Controller{
         return $product;
     }
     public function update(UpdateProductRequest $request, Product $product){
+        $request->merge(['nombre' => strtoupper($request->nombre)]);
+        $request->merge(['paisOrigen' => strtoupper($request->paisOrigen)]);
+        $request->merge(['marca' => strtoupper($request->marca)]);
+        $request->merge(['distribuidora' => strtoupper($request->distribuidora)]);
         $request->merge(['cantidadAlmacen' => $request->cantidad]);
         return $product->update($request->all());
     }
