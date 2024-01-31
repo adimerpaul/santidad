@@ -46,6 +46,14 @@ class ProductController extends Controller{
             ->first();
 
         $costoTotal = $costoTotal ? $costoTotal->{"sum(costo*cantidad)"} : 0;
+        $products->each(function ($product) {
+            //verificamos si exite la imgen
+            if (file_exists(public_path() . '/images/' . $product->imagen)) {
+                $product->imagen = asset('images/' . $product->imagen);
+            } else {
+                $product->imagen = asset('images/productDefault.jpg');
+            }
+        });
 
         return response()->json(['products' => $products, 'costoTotal' => $costoTotal]);
     }
