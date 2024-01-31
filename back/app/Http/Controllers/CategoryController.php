@@ -11,7 +11,11 @@ class CategoryController extends Controller{
     public function store(StoreCategoryRequest $request){
         return Category::create($request->all());
     }
-public function show(Category $category){ return $category; }
-public function update(UpdateCategoryRequest $request, Category $category){ return $category->update($request->all()); }
-public function destroy(Category $category){ return $category->delete(); }
+    public function show(Category $category){ return $category; }
+    public function update(UpdateCategoryRequest $request, Category $category){ return $category->update($request->all()); }
+    public function destroy($id){
+        $category = Category::findOrFail($id);
+        $category->delete();
+        return 204;
+    }
 }

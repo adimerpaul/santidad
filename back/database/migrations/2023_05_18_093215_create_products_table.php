@@ -40,6 +40,8 @@ return new class extends Migration
             $table->foreign("category_id")->references("id")->on("categories");
             $table->unsignedBigInteger("agencia_id")->nullable();
             $table->foreign("agencia_id")->references("id")->on("agencias");
+            $table->unsignedBigInteger("subcategory_id")->nullable();
+            $table->foreign("subcategory_id")->references("id")->on("subcategories");
             $table->timestamps();
         });
     }

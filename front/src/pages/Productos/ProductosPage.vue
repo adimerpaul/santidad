@@ -620,22 +620,6 @@ export default {
         this.loading = false
       })
     },
-    categoryDelete (category) {
-      this.$q.dialog({
-        title: 'Eliminar categoria',
-        message: '¿Estás seguro de eliminar esta categoria?',
-        cancel: true,
-        persistent: true
-      }).onOk(() => {
-        this.$axios.delete(`categories/${category.id}`).then(res => {
-          this.categoriesGet()
-          this.$alert.success('Categoria eliminada correctamente')
-        }).catch(err => {
-          this.$alert.error('No se puede eliminar la categoria porque tiene productos asociados')
-          console.log(err)
-        })
-      })
-    },
     productsGet () {
       this.loading = true
       this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia}`).then(res => {
@@ -718,6 +702,7 @@ export default {
         }
         this.$axios.post('categories', { name: data }).then(response => {
           this.categoriesGet()
+          this.$alert.success('Categoria creada correctamente')
         }).catch(error => {
           console.log(error)
         })

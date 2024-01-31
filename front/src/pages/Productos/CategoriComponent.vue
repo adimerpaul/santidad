@@ -50,6 +50,22 @@ export default {
     }
   },
   methods: {
+    categoryDelete (category) {
+      this.$q.dialog({
+        title: 'Eliminar categoria',
+        message: '¿Estás seguro de eliminar esta categoria?',
+        cancel: true,
+        persistent: true
+      }).onOk(() => {
+        this.$axios.delete(`categories/${category.id}`).then(res => {
+          this.$alert.success('Categoria eliminada correctamente')
+          this.$emit('categoriesGet')
+        }).catch(err => {
+          this.$alert.error('No se puede eliminar la categoria porque tiene productos asociados')
+          console.log(err)
+        })
+      })
+    },
     categoryEdit (category) {
       this.categorySelected = category
       this.categoryDialog = false
