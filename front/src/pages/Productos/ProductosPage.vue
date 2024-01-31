@@ -52,7 +52,7 @@
         </q-card>
       </div>
       <div class="col-12 col-md-3 q-pa-xs flex flex-center">
-        <q-btn outline no-caps icon="o_edit" class="full-width" label="Editar categoria" @click="categoryDialog=true" />
+        <q-btn outline no-caps icon="o_edit" class="full-width" label="Categoria y sub categoria" @click="categoryDialog=true" />
       </div>
       <div class="col-12 col-md-3 q-pa-xs">
         <q-select class="bg-white" emit-value map-options dense outlined
@@ -299,31 +299,7 @@
       </q-card>
     </q-dialog>
     <q-dialog v-model="categoryDialog" position="right" maximized>
-      <q-card style="width: 500px; max-width: 80vw;">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-subtitle2 text-bold text-grey">
-            Editar categoria
-          </div>
-          <q-space/>
-          <q-btn icon="o_highlight_off" flat round dense v-close-popup />
-        </q-card-section>
-        <q-card-section>
-          <q-table flat bordered :rows="categoriesTable" hide-header
-                   :columns="categoriesTableColumns" :rows-per-page-options="[0]" >
-            <template v-slot:body="props">
-              <q-tr :props="props">
-                <q-td :props="props" key="name">
-                  {{props.row.name}}
-                </q-td>
-                <q-td :props="props" key="actions">
-                  <q-btn flat dense round color="grey" icon="o_edit" class="cursor-pointer" @click="categoryEdit(props.row)"/>
-                  <q-btn flat dense round color="red" icon="o_delete" class="cursor-pointer" @click="categoryDelete(props.row)"/>
-                </q-td>
-              </q-tr>
-            </template>
-          </q-table>
-        </q-card-section>
-      </q-card>
+      <CategoriComponent :categories="categoriesTable" v-if="categoryDialog" @categoriesGet="categoriesGet"/>
     </q-dialog>
     <q-dialog v-model="dialogMover">
       <q-card>
@@ -354,10 +330,12 @@
 <script>
 import moment from 'moment'
 import DetailProducts from 'pages/Productos/DetailProducts.vue'
+import CategoriComponent from 'pages/Productos/CategoriComponent.vue'
 export default {
   name: 'ProductosPage',
   components: {
-    DetailProducts
+    DetailProducts,
+    CategoriComponent
   },
   data () {
     return {
@@ -416,6 +394,29 @@ export default {
     this.unitsGet()
   },
   methods: {
+    productSave () {
+      this.loading = true
+      if (this.productAction === 'create') {
+        this.$axios.post('products', this.product).then(res => {
+          this.loading = false
+          this.productDialog = false
+          this.productsGet()
+        }).catch(err => {
+          this.loading = false
+          console.log(err)
+          this.$alert.error(err.response.data.message)
+        })
+      } else {
+        this.$axios.put(`products/${this.product.id}`, this.product).then(res => {
+          this.loading = false
+          this.productDialog = false
+          this.productsGet()
+        }).catch(err => {
+          this.loading = false
+          console.log(err)
+        })
+      }
+    },
     filterUnid (val, update) {
       if (val === '') {
         update(() => {
@@ -634,51 +635,6 @@ export default {
           console.log(err)
         })
       })
-    },
-    categoryEdit (category) {
-      this.categorySelected = category
-      this.categoryDialog = false
-      this.$q.dialog({
-        title: 'Editar categoria',
-        message: 'Ingresa el nuevo nombre de la categoria',
-        prompt: {
-          model: category.name,
-          type: 'text'
-        },
-        cancel: true,
-        persistent: true
-      }).onOk(data => {
-        this.$axios.put(`categories/${category.id}`, { name: data }).then(res => {
-          this.categoriesGet()
-          this.$alert.success('Categoria editada correctamente')
-        }).catch(err => {
-          console.log(err)
-          this.$alert.error('No se pudo editar la categoria')
-        })
-      })
-    },
-    productSave () {
-      this.loading = true
-      if (this.productAction === 'create') {
-        this.$axios.post('products', this.product).then(res => {
-          this.loading = false
-          this.productDialog = false
-          this.productsGet()
-        }).catch(err => {
-          this.loading = false
-          console.log(err)
-          this.$alert.error(err.response.data.message)
-        })
-      } else {
-        this.$axios.put(`products/${this.product.id}`, this.product).then(res => {
-          this.loading = false
-          this.productDialog = false
-          this.productsGet()
-        }).catch(err => {
-          this.loading = false
-          console.log(err)
-        })
-      }
     },
     productsGet () {
       this.loading = true
