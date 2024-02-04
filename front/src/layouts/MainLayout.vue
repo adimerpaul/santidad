@@ -70,6 +70,17 @@
                 </q-item-label>
               </q-item-section>
             </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/compras">
+              <q-item-section avatar><q-icon name="o_storefront" /></q-item-section>
+              <q-item-section>
+                <q-item-label>
+                  Compras
+                  <q-tooltip anchor="top middle" self="bottom middle">
+                    Compra de productos
+                  </q-tooltip>
+                </q-item-label>
+              </q-item-section>
+            </q-item>
             <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productos" >
               <q-item-section avatar><q-icon name="o_local_mall" /></q-item-section>
               <q-item-section>

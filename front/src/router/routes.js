@@ -9,6 +9,7 @@ import ClientesPage from 'pages/ClientesPage.vue'
 import ProvedoresPage from 'pages/ProvedoresPage.vue'
 import ReportPage from 'pages/ReportPage.vue'
 import Unidades from 'pages/Unidades.vue'
+import ComprasPage from 'pages/Compras/ComprasPage.vue'
 
 const routes = [
   {
@@ -18,6 +19,7 @@ const routes = [
       { path: '', component: IndexPage, meta: { requiresAuth: true } },
       { path: 'productos', component: ProductosPage, meta: { requiresAuth: true } },
       { path: 'sale', component: SalePage, meta: { requiresAuth: true } },
+      { path: 'compras', component: ComprasPage, meta: { requiresAuth: true } },
       { path: 'users', component: UserPage, meta: { requiresAuth: true } },
       { path: 'reportes', component: ReportPage, meta: { requiresAuth: true } },
       { path: 'clientes', component: ClientesPage, meta: { requiresAuth: true } },
