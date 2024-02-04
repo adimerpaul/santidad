@@ -21,11 +21,14 @@ class BuyController extends Controller{
             $buy->diasPorvencer = $formatted_dt1->diffInDays($formatted_dt2);
         });
 
-        $buysReturn = $buys->filter(function ($buy) {
+        $buys = $buys->filter(function ($buy) {
             return $buy->diasPorvencer > 0;
         });
 
-        return $buysReturn->values(); // Restablecer las claves de índice
+        // Ordenar por días de vencimiento
+        $buys = $buys->sortBy('diasPorvencer');
+
+        return $buys->values(); // Restablecer las claves de índice
     }
     public function show(Buy $buy){ return $buy; }
     public function store(StoreBuyRequest $request){

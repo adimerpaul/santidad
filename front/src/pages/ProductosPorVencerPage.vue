@@ -1,7 +1,12 @@
 <template>
 <q-page>
-  <div class="col-12">
+<!--  <div class="col-12">-->
     <div class="text-white bg-red-7 text-center text-h3 text-bold q-pa-xs">Productos por Vencer</div>
+<!--  </div>-->
+  <div class="row">
+    <div class="col-2">
+      <q-select v-model="ordenar" :options="ordenarPor" label="Ordenar por" outlined dense display-value="label"/>
+    </div>
   </div>
   <q-table dense flat :rows-per-page-options="[0]" :rows="compras" :columns="compraColumns" wrap-cells
            :filter="search" title="Productos por Vencer" :loading="loading">
@@ -46,6 +51,12 @@ export default {
       compras: [],
       search: '',
       loading: false,
+      ordenarPor: [
+        'Dias para Vencer',
+        'Fecha de Vencimiento',
+        'Fecha de Compra'
+      ],
+      ordenar: 'Dias para Vencer',
       compraColumns: [
         { name: 'opciones', label: 'Opciones', field: 'opciones', align: 'left' },
         { name: 'id', label: 'ID', field: 'id', align: 'left' },
