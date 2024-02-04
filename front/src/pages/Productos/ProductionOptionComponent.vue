@@ -3,6 +3,7 @@
     <q-card-section class="row items-center q-pb-none">
       <div class="text-subtitle2 text-bold text-grey">
         {{ productAction === 'create' ? 'Nuevo producto' : productAction === 'ver' ? 'Detalle de producto' : productAction === 'compra' ? 'Comprar producto' : 'Editar producto' }}
+<!--        <pre>{{product}}</pre>-->
       </div>
       <q-space/>
       <q-btn icon="o_highlight_off" flat round dense v-close-popup />

@@ -87,20 +87,20 @@
         <q-card>
           <q-card-section class="q-pa-none q-ma-none ">
             <div class="row">
-              <div class="col-6 text-h6 q-pt-xs q-pl-lg">Canasta</div>
+              <div class="col-6 text-h6 q-pt-xs q-pl-lg bg-orange">Canasta Compras</div>
               <div class="col-6 text-right"><q-btn class="text-subtitle1 text-blue-10 text-bold" style="text-decoration: underline;" label="Vaciar canasta" @click="vaciarCanasta" no-caps flat outline/></div>
             </div>
           </q-card-section>
           <q-separator></q-separator>
           <q-card-section class="q-pa-none q-ma-none" >
-            <div v-if="$store.productosVenta.length==0" class="flex flex-center q-pa-lg">
+            <div v-if="$store.productosCompra.length==0" class="flex flex-center q-pa-lg">
               <q-icon name="o_shopping_basket" color="grey" size="100px"/>
               <div class="q-pa-lg text-grey text-center noSelect">
                 Aún no tienes productos en tu canasta. Haz clic sobre un producto para agregarlo.
               </div>
             </div>
             <q-scroll-area v-else style="height: 400px;">
-              <q-table dense flat bordered hide-bottom hide-header :rows="$store.productosVenta" :columns="columnsProductosVenta" :rows-per-page-options="[0]">
+              <q-table dense flat bordered hide-bottom hide-header :rows="$store.productosCompra" :columns="columnsProductosVenta" :rows-per-page-options="[0]">
                 <template v-slot:body="props">
                   <q-tr :props="props">
                     <q-td key="borrar" :props="props" style="padding: 0px;margin: 0px" auto-width>
@@ -120,13 +120,13 @@
                           <div class="text-caption" style="max-width: 170px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">
                             {{props.row.nombre}}
                           </div>
-                          <div class="text-grey">Disponible: {{props.row.cantidad}}</div>
-                          <q-input v-model="props.row.precioVenta" style="width: 170px" class="super-small" step="0.1" type="number" @update:model-value="precioVenta(props.row)" dense outlined>
-                            <template v-slot:prepend>
-                              <q-icon name="edit" size="xs" />
-                              <div style="font-size: 10px">Bs.</div>
-                            </template>
-                          </q-input>
+<!--                          <div class="text-grey">Disponible: {{props.row.cantidad}}</div>-->
+<!--                          <q-input v-model="props.row.precioVenta" style="width: 170px" class="super-small" step="0.1" type="number" @update:model-value="precioVenta(props.row)" dense outlined>-->
+<!--                            <template v-slot:prepend>-->
+<!--                              <q-icon name="edit" size="xs" />-->
+<!--                              <div style="font-size: 10px">Bs.</div>-->
+<!--                            </template>-->
+<!--                          </q-input>-->
                         </div>
                       </div>
 <!--                          <div>-->
@@ -142,19 +142,30 @@
 <!--                      </div>-->
                     </q-td>
                     <q-td key="cantidadVenta" :props="props">
-                      <q-input dense outlined bottom-slots min="1" class="super-small" v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>
-                        <template v-slot:prepend>
-                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>
-                        </template>
-                        <template v-slot:append>
-                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>
-                        </template>
-                      </q-input>
-                      <div class="text-grey">= Bs {{redondeo(props.row.cantidadVenta*props.row.precioVenta)}}</div>
+<!--                      <q-input dense outlined bottom-slots min="1" class="super-small" v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>-->
+<!--                        <template v-slot:prepend>-->
+<!--                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>-->
+<!--                        </template>-->
+<!--                        <template v-slot:append>-->
+<!--                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>-->
+<!--                        </template>-->
+<!--                      </q-input>-->
+                      <q-input dense outlined class="super-small" v-model="props.row.lote" placeholder="Lote" style="width: 170px;" hide-hint />
+                      <q-input dense outlined class="super-small" type="date" v-model="props.row.fechaVencimiento" placeholder="Vencimiento" style="width: 170px;" hide-hint />
+                      <q-input dense outlined class="super-small" v-model="props.row.cantidadCompra" type="number" placeholder="Cantidad" style="width: 170px;" hide-hint />
+<!--                        <template v-slot:prepend>-->
+<!--                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>-->
+<!--                        </template>-->
+<!--                        <template v-slot:append>-->
+<!--                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>-->
+<!--                        </template>-->
+<!--                      </q-input>-->
+<!--                      <div class="text-grey">= Bs {{redondeo(props.row.cantidadVenta*props.row.precioVenta)}}</div>-->
                     </q-td>
                   </q-tr>
                 </template>
               </q-table>
+<!--              <pre>{{$store.productosCompra}}</pre>-->
             </q-scroll-area>
           </q-card-section>
           <q-card-section >
@@ -177,7 +188,7 @@
                   <q-card-section>
                     <div class="row">
                       <div class="col-7 text-grey">Cantidades de referencia</div>
-                      <div class="col-5 text-right">{{$store.productosVenta.length}}</div>
+                      <div class="col-5 text-right">{{$store.productosCompra.length}}</div>
                       <div class="col-7 text-grey">
                         Ganancia
                         <q-icon name="o_info">
@@ -192,95 +203,17 @@
                 </q-card>
               </q-expansion-item>
             </q-list>
-            <q-btn @click="clickSale" class="full-width" no-caps label="Confirmar venta" :color="$store.productosVenta.length==0?'grey':'warning'" :disable="$store.productosVenta.length==0?true:false"/>
+            <q-btn @click="compraInsert" class="full-width" no-caps label="Confirmar compra" :color="$store.productosCompra.length==0?'grey':'warning'" :disable="$store.productosCompra.length==0?true:false"/>
           </q-card-section>
         </q-card>
       </div>
     </div>
-    <q-dialog v-model="saleDialog">
-      <q-card style="width: 750px; max-width: 90vw;">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Realizar venta</div>
-          <q-space />
-          <q-btn flat round dense icon="close" v-close-popup />
-        </q-card-section>
-        <q-form @submit.prevent="saleInsert">
-          <q-card-section>
-            <div class="row">
-              <div class="col-6 col-md-3">
-                <q-input outlined dense label="NIT/CARNET" @keyup="searchClient" required v-model="client.numeroDocumento"   />
-<!--                <pre>{{client}}</pre>-->
-<!--                <pre>{{document}}</pre>-->
-              </div>
-              <div class="col-6 col-md-3">
-                <q-input outlined dense label="Complemento"  @keyup="searchClient" v-model="client.complemento" style="text-transform: uppercase"/>
-              </div>
-              <div class="col-12 col-md-6">
-                <q-input outlined dense label="Nombre Razon Social" required v-model="client.nombreRazonSocial" style="text-transform: uppercase" />
-              </div>
-              <div class="col-12 col-md-6">
-<!--                @update:model-value="validarnit"-->
-                <q-select v-model="document" outlined dense :options="documents" />
-              </div>
-              <div class="col-12 col-md-6">
-                <q-input outlined dense label="Email"  v-model="client.email" type="email" />
-              </div>
-            </div>
-          </q-card-section>
-          <q-separator/>
-          <q-card-section>
-            <div class="row">
-              <div class="col-6 col-md-2">
-                <q-input outlined dense label="TOTAL A PAGAR:" readonly v-model="total" />
-              </div>
-              <div class="col-6 col-md-3">
-                <q-input outlined dense label="EFECTIVO BS."  v-model="efectivo" />
-              </div>
-              <div class="col-6 col-md-2">
-                <q-input outlined dense label="CAMBIO:" readonly v-model="cambio" />
-              </div>
-              <div class="col-6 col-md-2">
-                <q-checkbox v-model="aporte" :label="textoCambio"
-                            :class="`bg-${parseFloat(efectivo)> parseFloat(total)?'green':'red'} text-white full-width bi-border-all`"
-                            :disable="parseFloat(efectivo)> parseFloat(total)?false:true">
-                  <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">
-                    Si el cliente paga con un monto mayor al total, se registrará el cambio como un aporte.
-                  </q-tooltip>
-                </q-checkbox>
-              </div>
-<!--              <div class="col-6 col-md-2 q-pl-xs">-->
-<!--                <q-checkbox v-model="qr" label="QR"-->
-<!--                            :class="`bg-${parseFloat(efectivo)> parseFloat(total)?'green':'red'} text-white full-width bi-border-all`"-->
-<!--                            :disable="parseFloat(efectivo)> parseFloat(total)?false:true" />-->
-<!--              </div>-->
-              <div class="col-6 col-md-3">
-                <q-select dense outlined v-model="metodoPago" label="Metodo de pago"
-                          :options="$metodoPago" hint="Metodo de pago del gasto" />
-              </div>
-<!--              <div class="col-12">-->
-<!--                <pre>{{cambioDecimal}}</pre>-->
-<!--              </div>-->
-            </div>
-          </q-card-section>
-          <q-separator/>
-          <q-card-section>
-            <div class="row">
-              <div class="col-6">
-                <q-btn type="submit" class="full-width" icon="o_add_circle" label="Realizar venta" :loading="loading" no-caps color="green"  />
-              </div>
-              <div class="col-6">
-                <q-btn class="full-width" icon="undo" v-close-popup label="Atras" no-caps color="red" />
-              </div>
-            </div>
-          </q-card-section>
-        </q-form>
-      </q-card>
-    </q-dialog>
     <div id="myElement" class="hidden"></div>
 </q-page>
 </template>
 <script>
-import { Imprimir } from 'src/addons/Imprimir'
+// import { Imprimir } from 'src/addons/Imprimir'
+import { date } from 'quasar'
 
 export default {
   name: 'SalePage',
@@ -299,6 +232,9 @@ export default {
       ruleNumber: [
         val => (val !== null && val !== '') || 'Por favor escriba su cantidad',
         val => (val >= 0 && val < 10000) || 'Por favor escriba una cantidad real'
+      ],
+      ruleString: [
+        val => (val !== null && val !== '') || 'Por favor escriba su cantidad'
       ],
       search: '',
       efectivo: '',
@@ -334,6 +270,9 @@ export default {
       ]
     }
   },
+  created () {
+    this.$store.agencia_id = 0
+  },
   mounted () {
     this.productsGet()
     this.categoriesGet()
@@ -348,138 +287,63 @@ export default {
     })
   },
   methods: {
-    saleInsert () {
-      this.loading = true
-      this.client.codigoTipoDocumentoIdentidad = this.document.codigoClasificador
-      this.$store.productosVenta.forEach(p => {
-        p.subTotal = p.cantidadPedida * p.precioVenta
-      })
-      const data = {
-        montoTotal: this.total,
-        client: this.client,
-        aporte: this.cambioDecimal,
-        qr: this.qr,
-        efectivo: this.efectivo,
-        products: this.$store.productosVenta,
-        metodoPago: this.metodoPago
-      }
-      this.$axios.post('sales', data).then(res => {
-        this.loading = false
-        this.$alert.success('Venta realizada con exito')
-        this.saleDialog = false
-        this.$store.productosVenta = []
-        this.client = {}
-        this.aporte = false
-        this.qr = false
-        this.efectivo = ''
-        this.products.forEach(p => {
-          p.cantidadPedida = 0
-        })
-        this.totalProducts = 0
-        Imprimir.nota(res.data).then(r => {
-          // console.log(r)
-        })
-      }).catch(err => {
-        this.loading = false
-        this.$alert.error(err.response.data.message)
-      })
-    },
-    clientSearch () {
-      this.$axios.post('searchClient', this.client).then(res => {
-        if (res.data.nombreRazonSocial !== undefined) {
-          this.client.nombreRazonSocial = res.data.nombreRazonSocial
-          this.client.email = res.data.email
-          this.client.id = res.data.id
-          const documento = this.documents.find(r => r.codigoClasificador === res.data.codigoTipoDocumentoIdentidad)
-          documento.label = documento.descripcion
-          this.document = documento
+    async compraInsert () {
+      // Verificar que todos tengan lote, fecha de vencimiento y cantidad
+      for (const p of this.$store.productosCompra) {
+        if (p.lote === '' || p.fechaVencimiento === '' || p.cantidadCompra === '') {
+          this.$alert.error('Debes ingresar el lote, la fecha de vencimiento y la cantidad de compra para todos los productos.')
+          return false
         }
-        // if(this.document.codigoClasificador==5) this.validarnit()
+      }
+
+      // Mostrar diálogo de confirmación
+      await this.$q.dialog({
+        title: 'Confirmar compra',
+        message: '¿Estás seguro de confirmar la compra?',
+        cancel: true,
+        persistent: true
+      }).onOk(async () => {
+        try {
+          // Realizar la compra
+          this.loading = true
+          await this.$axios.post('compraInsert', {
+            buys: this.$store.productosCompra
+          })
+          this.$alert.success('Compra realizada con éxito')
+          this.$store.productosCompra = []
+          this.loading = false
+          this.productsGet()
+        } catch (err) {
+          this.$alert.error(err.response.data.message)
+        }
       })
-    },
-    searchClient () {
-      // console.log(this.client.numeroDocumento)
-      this.document = this.documents[0]
-      this.client.nombreRazonSocial = ''
-      this.client.complemento = ''
-      this.client.email = ''
-      this.client.id = undefined
-      if (this.client.numeroDocumento === '0') {
-        this.clientSearch()
-      } else if (this.client.numeroDocumento.length >= 5) {
-        this.clientSearch()
-      }
-    },
-    clickSale () {
-      this.saleDialog = true
-      this.aporte = false
-      this.efectivo = ''
-      this.qr = false
-      this.client = {
-        numeroDocumento: '0',
-        nombreRazonSocial: 'SN',
-        email: '',
-        complemento: ''
-      }
-      this.metodoPago = 'Efectivo'
-    },
-    precioVenta (n) {
-      if (n.precioVenta === '') {
-        n.precioVenta = 1
-      }
-    },
-    redondeo (n) {
-      return Math.round(n * 100) / 100
-    },
-    addCantidad (n, i) {
-      n.cantidad--
-      n.cantidadPedida++
-      n.cantidadVenta = parseInt(n.cantidadVenta) + 1
-    },
-    cambioNumero (n, i) {
-      if (n.cantidadVenta !== '') {
-        n.cantidad = parseInt(n.cantidadReal) - parseInt(n.cantidadVenta)
-        n.cantidadPedida = parseInt(n.cantidadVenta)
-      }
-      if (n.cantidadVenta === 0) {
-        n.cantidad = parseInt(n.cantidadReal) - 1
-        n.cantidadVenta = 1
-        n.cantidadPedida = 1
-      }
-    },
-    removeCantidad (n, i) {
-      n.cantidad++
-      n.cantidadPedida--
-      if (n.cantidadVenta > 1) {
-        n.cantidadVenta = parseInt(n.cantidadVenta) - 1
-      } else if (n.cantidadVenta === 1) {
-        this.$store.productosVenta.splice(i, 1)
-      }
-    },
-    deleteProductosVenta (p, i) {
-      this.$store.productosVenta.splice(i, 1)
-      p.cantidad = p.cantidadReal
-      p.cantidadVenta = 0
-      p.cantidadPedida = 0
     },
     async vaciarCanasta () {
-      await this.$store.productosVenta.forEach(p => {
+      await this.$store.productosCompra.forEach(p => {
         p.cantidad = p.cantidadReal
         p.cantidadVenta = 0
         p.cantidadPedida = 0
       })
-      this.$store.productosVenta = []
+      this.$store.productosCompra = []
     },
     clickAddSale (product) {
-      product.cantidad--
+      // product.cantidad--
       product.cantidadPedida++
-      const productVenta = this.$store.productosVenta.find(p => p.id === product.id)
-      if (productVenta) {
-        productVenta.cantidadVenta++
-      } else {
-        product.cantidadVenta = 1
-        this.$store.productosVenta.push(product)
-      }
+      // const productVenta = this.$store.productosCompra.find(p => p.id === product.id)
+      // if (productVenta) {
+      //   productVenta.cantidadVenta++
+      // } else {
+      //   product.cantidadVenta = 1
+      // this.$store.productosCompra.push(product)
+      // }
+      this.$store.productosCompra.push({
+        id: product.id,
+        nombre: product.nombre,
+        imagen: product.imagen,
+        lote: '',
+        fechaVencimiento: date.formatDate(new Date(), 'YYYY-MM-DD'),
+        cantidadCompra: ''
+      })
     },
     agenciasGet () {
       this.agencias = [{ nombre: 'Selecciona una agencia', id: 0 }]
@@ -556,7 +420,7 @@ export default {
     },
     total () {
       let s = 0
-      this.$store.productosVenta.forEach(p => {
+      this.$store.productosCompra.forEach(p => {
         s = s + parseFloat(p.precioVenta * p.cantidadVenta)
       })
       return s.toFixed(2)

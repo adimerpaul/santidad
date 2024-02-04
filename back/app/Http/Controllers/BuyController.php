@@ -10,26 +10,22 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class BuyController extends Controller{
-    public function index(Request $request){
-        if ($request->user()->id == 1) {
-            $buys = Buy::with(['product','user'])->get();
-        }else{
-            $buys = Buy::where('agencia_id', $request->user()->agencia_id)
-                ->with(['product','user'])->get();
-        }
-        $buys->each(function ($buy) {
-            $formatted_dt1=Carbon::parse($buy->dateExpiry);
+    public function index(Request $request)
+    {
+        $userId = $request->user()->id;
+        $buys = Buy::userFilter($userId)->with(['product', 'user'])->get();
 
-            $formatted_dt2=Carbon::parse(date("Y-m-d"));
+        $buys->each(function ($buy) {
+            $formatted_dt1 = Carbon::parse($buy->dateExpiry);
+            $formatted_dt2 = Carbon::parse(now());
             $buy->diasPorvencer = $formatted_dt1->diffInDays($formatted_dt2);
         });
-        $buysReturn = [];
-        foreach ($buys as $buy) {
-            if ($buy->diasPorvencer > 0) {
-                array_push($buysReturn, $buy);
-            }
-        }
-        return $buysReturn;
+
+        $buysReturn = $buys->filter(function ($buy) {
+            return $buy->diasPorvencer > 0;
+        });
+
+        return $buysReturn->values(); // Restablecer las claves de índice
     }
     public function show(Buy $buy){ return $buy; }
     public function store(StoreBuyRequest $request){
@@ -51,6 +47,31 @@ class BuyController extends Controller{
         $product->cantidadAlmacen = $product->cantidadAlmacen + $buy->quantity;
         $product->save();
         return Buy::with(['product','user'])->findOrFail($buy->id);
+    }
+    public function compraInsert(Request $request){
+        $insertbuys = [];
+        foreach ($request->buys as $buy) {
+            error_log(json_encode($buy));
+            $buyNew = new Buy();
+            $buyNew->user_id= $request->user()->id;
+            $buyNew->product_id= $buy['id'];
+            $buyNew->lote= $buy['lote'];
+            $buyNew->quantity= $buy['cantidadCompra'];
+            $buyNew->price= 0;
+            $buyNew->total= 0;
+            $buyNew->dateExpiry= $buy['fechaVencimiento'];
+            $buyNew->agencia_id= $request->user()->agencia_id;
+            $buyNew->date= date("Y-m-d");
+            $buyNew->time= date("H:i:s");
+            $buyNew->save();
+
+            $product = Product::find($buy['id']);
+            $product->cantidad = $product->cantidad + $buy['cantidadCompra'];
+            $product->cantidadAlmacen = $product->cantidadAlmacen + $buy['cantidadCompra'];
+            $product->save();
+//            return Buy::with(['product','user'])->findOrFail($buy->id);
+        }
+        Buy::insert($insertbuys);
     }
     public function update(UpdateBuyRequest $request, Buy $buy){ return $buy->update($request->all()); }
     public function destroy(Buy $buy){ return $buy->delete(); }

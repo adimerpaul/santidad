@@ -21,6 +21,9 @@ class ProductController extends Controller{
     public function index()
     {
         $search = request()->input('search', '');
+        $search = strtoupper($search);
+        $search = str_replace(' ', '%', $search);
+        $search = $search==null || $search=='' ? '%' : '%'.$search.'%';
         $ordenar = request()->input('order', 'id');
         $category_id = request()->input('category', 0);
         $agencia_id = request()->input('agencia', 0);
@@ -47,11 +50,8 @@ class ProductController extends Controller{
 
         $costoTotal = $costoTotal ? $costoTotal->{"sum(costo*cantidad)"} : 0;
         $products->each(function ($product) {
-            //verificamos si exite la imgen
-            if (file_exists(public_path() . '/images/' . $product->imagen)) {
-                $product->imagen = asset('images/' . $product->imagen);
-            } else {
-                $product->imagen = asset('images/productDefault.jpg');
+            if (!file_exists(public_path() . '/images/' . $product->imagen)) {
+                $product->imagen = 'productDefault.jpg';
             }
         });
 
@@ -67,7 +67,7 @@ class ProductController extends Controller{
         $numeroAgencia = $request->user()->agencia_id;
         $paginate = $request->input('paginate', 30);
 
-        $query = Product::where('nombre', 'like', "%$search")
+        $query = Product::where('nombre', 'like', "%$search%")
             ->orderByRaw($ordenar)
             ->with(['category', 'agencia']);
 
@@ -88,6 +88,12 @@ class ProductController extends Controller{
             ->first();
 
         $costoTotal = $costoTotal ? $costoTotal->{"sum(costo*cantidad)"} : 0;
+
+        $products->each(function ($product) {
+            if (!file_exists(public_path() . '/images/' . $product->imagen)) {
+                $product->imagen = 'productDefault.jpg';
+            }
+        });
 
         return response()->json(['products' => $products, 'costoTotal' => $costoTotal]);
     }

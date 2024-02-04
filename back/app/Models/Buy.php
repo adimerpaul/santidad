@@ -26,4 +26,11 @@ class Buy extends Model
     public function user(){
         return $this->belongsTo(User::class);
     }
+    // En el modelo Buy.php
+    public function scopeUserFilter($query, $userId)
+    {
+        return $query->when($userId != 1, function ($q) use ($userId) {
+            return $q->where('agencia_id', auth()->user()->agencia_id);
+        });
+    }
 }

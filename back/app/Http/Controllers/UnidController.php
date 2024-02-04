@@ -16,6 +16,11 @@ class UnidController extends Controller{
         return $unids;
     }
     public function store(StoreUnidRequest $request){
+        //verificamos si existe el mismo nombre
+        $unid = Unid::where('nombre', $request->nombre)->first();
+        if($unid){
+            return response()->json(['error' => 'Ya existe una unidad con el mismo nombre'], 409);
+        }
         $unid = Unid::create($request->all());
         return response()->json($unid, 201);
     }
