@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 class UserController extends Controller
 {
     public function index(Request $request){
-        $users= User::where('id','!=',1)->where('id','!=',$request->user()->id)->get();
+        $users= User::where('id','!=',$request->user()->id)->get();
 //        $usersMessage=[];
 //        foreach ($users as $user){
 //            $chat=Chat::whereRaw("(userEnviado_id=".$request->user()->id." AND userRecibido_id=".$user->id.")OR(userEnviado_id=".$user->id." AND userRecibido_id=".$request->user()->id.")")->orderBy('fecha','desc')->first();
