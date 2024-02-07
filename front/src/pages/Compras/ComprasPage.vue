@@ -107,10 +107,6 @@
                       <q-btn flat dense @click="deleteProductosVenta(props.row,props.pageIndex)" icon="delete" color="red" size="10px" class="q-pa-none q-ma-none" />
                     </q-td>
                     <q-td key="nombre" :props="props">
-<!--                      <div class="row">-->
-<!--                        <div class="col-3">-->
-<!--                        </div>-->
-<!--                        <div class="col-9">-->
                       <div>
                         <q-img :src="props.row.imagen.includes('http')?props.row.imagen:`${$url}../images/${props.row.imagen}`"
                                width="40px" height="40px"
@@ -120,88 +116,67 @@
                           <div class="text-caption" style="max-width: 170px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">
                             {{props.row.nombre}}
                           </div>
-<!--                          <div class="text-grey">Disponible: {{props.row.cantidad}}</div>-->
-<!--                          <q-input v-model="props.row.precioVenta" style="width: 170px" class="super-small" step="0.1" type="number" @update:model-value="precioVenta(props.row)" dense outlined>-->
-<!--                            <template v-slot:prepend>-->
-<!--                              <q-icon name="edit" size="xs" />-->
-<!--                              <div style="font-size: 10px">Bs.</div>-->
-<!--                            </template>-->
-<!--                          </q-input>-->
                         </div>
                       </div>
-<!--                          <div>-->
-<!--                            <div class="row">-->
-<!--                              <div class="col-8">-->
-<!--                              </div>-->
-<!--                              <div class="col-2 text-bold flex flex-center">-->
-<!--                                x und-->
-<!--                              </div>-->
-<!--                            </div>-->
-<!--                          </div>-->
-<!--                        </div>-->
-<!--                      </div>-->
                     </q-td>
                     <q-td key="cantidadVenta" :props="props">
-<!--                      <q-input dense outlined bottom-slots min="1" class="super-small" v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>-->
-<!--                        <template v-slot:prepend>-->
-<!--                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>-->
-<!--                        </template>-->
-<!--                        <template v-slot:append>-->
-<!--                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>-->
-<!--                        </template>-->
-<!--                      </q-input>-->
                       <q-input dense outlined class="super-small" v-model="props.row.lote" placeholder="Lote" style="width: 170px;" hide-hint />
                       <q-input dense outlined class="super-small" type="date" v-model="props.row.fechaVencimiento" placeholder="Vencimiento" style="width: 170px;" hide-hint />
                       <q-input dense outlined class="super-small" v-model="props.row.cantidadCompra" type="number" placeholder="Cantidad" style="width: 170px;" hide-hint />
-<!--                        <template v-slot:prepend>-->
-<!--                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>-->
-<!--                        </template>-->
-<!--                        <template v-slot:append>-->
-<!--                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>-->
-<!--                        </template>-->
-<!--                      </q-input>-->
-<!--                      <div class="text-grey">= Bs {{redondeo(props.row.cantidadVenta*props.row.precioVenta)}}</div>-->
+                      <q-input dense outlined class="super-small" v-model="props.row.price" type="number" step="0.01" placeholder="Precio" style="width: 170px;" hide-hint />
+                      <div><b>Subtotal:</b> {{(props.row.price*props.row.cantidadCompra).toFixed(2)}} Bs</div>
                     </q-td>
                   </q-tr>
                 </template>
               </q-table>
-<!--              <pre>{{$store.productosCompra}}</pre>-->
             </q-scroll-area>
           </q-card-section>
           <q-card-section >
             <q-list padding bordered dense class="rounded-borders full-width q-pa-none q-ma-none">
-              <q-expansion-item
-                dense
-                dense-toggle
-                expand-separator
-                label="Total"
-              >
-                <template v-slot:header>
+<!--              <q-expansion-item-->
+<!--                dense-->
+<!--                dense-toggle-->
+<!--                expand-separator-->
+<!--                label="Total"-->
+<!--              >-->
+<!--                <template v-slot:header>-->
                   <q-item-section>
-                    Total
-                  </q-item-section>
-                  <q-item-section side>
-                    <div class="text-right text-grey-8 text-bold"> <u> Bs {{total}}</u></div>
-                  </q-item-section>
-                </template>
-                <q-card>
-                  <q-card-section>
                     <div class="row">
-                      <div class="col-7 text-grey">Cantidades de referencia</div>
-                      <div class="col-5 text-right">{{$store.productosCompra.length}}</div>
-                      <div class="col-7 text-grey">
-                        Ganancia
-                        <q-icon name="o_info">
-                          <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">
-                            Para calcular la ganancia correctamente, deberás cargar el costo unitario de todos los productos desde tu Inventario.
-                          </q-tooltip>
-                        </q-icon>
+                      <div class="col-6 text-grey flex flex-center">Numero Factura</div>
+                      <div class="col-6 text-right"><q-input dense outlined type="number" v-model="factura" placeholder="Numero Factura" style="width: 170px;" hide-hint /></div>
+                      <div class="col-6 text-grey flex flex-center">Agencia</div>
+                      <div class="col-6 text-right">
+                        <q-select class="bg-white" dense outlined v-model="agencia_id"
+                                  :options="agencias" map-options emit-value
+                                  option-value="id" option-label="nombre"
+                        />
                       </div>
-                      <div class="col-5 text-right text-green">{{totalganancia}} Bs</div>
                     </div>
-                  </q-card-section>
-                </q-card>
-              </q-expansion-item>
+                  </q-item-section>
+<!--                  <q-item-section side>-->
+<!--                    <q-item-section side>-->
+<!--                      -->
+<!--                    </q-item-section>-->
+<!--                  </q-item-section>-->
+<!--                </template>-->
+<!--                <q-card>-->
+<!--                  <q-card-section>-->
+<!--                    <div class="row">-->
+<!--                      <div class="col-7 text-grey">Cantidades de referencia</div>-->
+<!--                      <div class="col-5 text-right">{{$store.productosCompra.length}}</div>-->
+<!--                      <div class="col-7 text-grey">-->
+<!--                        Ganancia-->
+<!--                        <q-icon name="o_info">-->
+<!--                          <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">-->
+<!--                            Para calcular la ganancia correctamente, deberás cargar el costo unitario de todos los productos desde tu Inventario.-->
+<!--                          </q-tooltip>-->
+<!--                        </q-icon>-->
+<!--                      </div>-->
+<!--                      <div class="col-5 text-right text-green">{{totalganancia}} Bs</div>-->
+<!--                    </div>-->
+<!--                  </q-card-section>-->
+<!--                </q-card>-->
+<!--              </q-expansion-item>-->
             </q-list>
             <q-btn @click="compraInsert" class="full-width" no-caps label="Confirmar compra" :color="$store.productosCompra.length==0?'grey':'warning'" :disable="$store.productosCompra.length==0?true:false"/>
           </q-card-section>
@@ -227,6 +202,8 @@ export default {
       metodoPago: 'Efectivo',
       // textoCambio: 'Aporte',
       document: {},
+      factura: '',
+      agencia_id: 0,
       current_page: 1,
       last_page: 1,
       ruleNumber: [
@@ -287,10 +264,13 @@ export default {
     })
   },
   methods: {
+    deleteProductosVenta (row, index) {
+      this.$store.productosCompra.splice(index, 1)
+    },
     async compraInsert () {
       // Verificar que todos tengan lote, fecha de vencimiento y cantidad
       for (const p of this.$store.productosCompra) {
-        if (p.lote === '' || p.fechaVencimiento === '' || p.cantidadCompra === '') {
+        if (p.lote === '' || p.fechaVencimiento === '' || p.cantidadCompra === '' || p.price === '') {
           this.$alert.error('Debes ingresar el lote, la fecha de vencimiento y la cantidad de compra para todos los productos.')
           return false
         }
@@ -299,7 +279,8 @@ export default {
       // Mostrar diálogo de confirmación
       await this.$q.dialog({
         title: 'Confirmar compra',
-        message: '¿Estás seguro de confirmar la compra?',
+        message: `¿Estás seguro de confirmar la compra a <span style="color: red;font-size: 24px"> <b>Agencia ${this.agencia_id}</b></span>?`,
+        html: true,
         cancel: true,
         persistent: true
       }).onOk(async () => {
@@ -307,12 +288,16 @@ export default {
           // Realizar la compra
           this.loading = true
           await this.$axios.post('compraInsert', {
-            buys: this.$store.productosCompra
+            buys: this.$store.productosCompra,
+            factura: this.factura,
+            agencia_id: this.agencia_id
           })
           this.$alert.success('Compra realizada con éxito')
           this.$store.productosCompra = []
           this.loading = false
           this.productsGet()
+          this.factura = ''
+          this.agencia_id = 0
         } catch (err) {
           this.$alert.error(err.response.data.message)
         }
