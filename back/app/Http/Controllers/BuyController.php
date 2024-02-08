@@ -71,20 +71,20 @@ class BuyController extends Controller{
 
             $product = Product::find($buy['id']);
             $product->cantidad = $product->cantidad + $buy['cantidadCompra'];
-            if ($request->agencia_id = 0) {
+            if ($request->agencia_id == 0) {
                 $product->cantidadAlmacen = $product->cantidadAlmacen + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id = 1) {
+            }elseif ($request->agencia_id == 1) {
                 $product->cantidadSucursal1 = $product->cantidadSucursal1 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id = 2) {
+            }elseif ($request->agencia_id == 2) {
                 $product->cantidadSucursal2 = $product->cantidadSucursal2 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id = 3) {
+            }elseif ($request->agencia_id == 3) {
                 $product->cantidadSucursal3 = $product->cantidadSucursal3 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id = 4) {
+            }elseif ($request->agencia_id == 4) {
                 $product->cantidadSucursal4 = $product->cantidadSucursal4 + $buy['cantidadCompra'];
             }
 
             $product->precio = $buy['price'];
-            $product->costo = $buy['price']-($buy['price']*0.3);
+            $product->costo = $buy['price']/1.3;
             $product->save();
 //            return Buy::with(['product','user'])->findOrFail($buy->id);
         }
