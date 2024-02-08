@@ -84,7 +84,7 @@ class BuyController extends Controller{
             }
 
             $product->precio = $buy['price'];
-            $product->costo = $buy['price']-($buy['price']*0.3);
+            $product->costo = $buy['price']/0.13;
             $product->save();
 //            return Buy::with(['product','user'])->findOrFail($buy->id);
         }

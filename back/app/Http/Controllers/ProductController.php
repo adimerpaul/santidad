@@ -152,7 +152,7 @@ class ProductController extends Controller{
         $request->merge(['paisOrigen' => strtoupper($request->paisOrigen)]);
         $request->merge(['marca' => strtoupper($request->marca)]);
         $request->merge(['distribuidora' => strtoupper($request->distribuidora)]);
-        $request->merge(['cantidadAlmacen' => $request->cantidad]);
+        $request->merge(['cantidad' => $request->cantidad]);
         return $product->update($request->all());
     }
     public function destroy(Product $product){ return $product->delete(); }
