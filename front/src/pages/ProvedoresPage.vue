@@ -6,7 +6,7 @@
           <div class="col-12">
             <div class="text-white bg-orange text-center text-h3 text-bold q-pa-xs">Control de provedores</div>
           </div>
-          <div class="col-12 q-pa-xs">
+          <div class="col-6 q-pa-xs">
             <q-input v-model="search" label="Buscar cliente por nombre o razón social"
                      dense outlined debounce="300" @update:modelValue="userGet"
                      :loading="loading" clearable counter
@@ -15,6 +15,18 @@
                 <q-icon name="search" />
               </template>
             </q-input>
+          </div>
+          <div class="col-6 q-pa-xs">
+            <q-btn
+                color="green"
+                label="Nuevo"
+                @click="clickNew"
+                :loading="loading"
+                no-caps
+                icon="add_circle_outline"
+                text-color="white"
+                class="q-ma-xs"
+            />
           </div>
           <div class="col-12 flex flex-center">
             <q-pagination
@@ -102,6 +114,7 @@ export default {
       clients: [],
       client: {},
       clientDialog: false,
+      optionClient: '',
       search: '',
       page: 1,
       max: 5
@@ -114,21 +127,43 @@ export default {
     clientEdit (client) {
       this.clientDialog = true
       this.client = client
+      this.optionClient = 'edit'
+    },
+    clickNew () {
+      this.clientDialog = true
+      this.client = {}
+      this.optionClient = 'new'
     },
     clientSave () {
       this.loading = true
-      this.$axios.put(`clients/${this.client.id}`, this.client)
-        .then(response => {
-          this.$alert.success('Cliente guardado correctamente')
-          this.clientDialog = false
-          this.userGet()
-        })
-        .catch(error => {
-          console.log(error)
-          this.$alert.error(error.response.data.message)
-        }).finally(() => {
-          this.loading = false
-        })
+      if (this.optionClient === 'new') {
+        this.client.clienteProveedor = 'Proveedor'
+        this.$axios.post('clients', this.client)
+          .then(response => {
+            this.$alert.success('Cliente guardado correctamente')
+            this.clientDialog = false
+            this.userGet()
+          })
+          .catch(error => {
+            console.log(error)
+            this.$alert.error(error.response.data.message)
+          }).finally(() => {
+            this.loading = false
+          })
+      } else {
+        this.$axios.put(`clients/${this.client.id}`, this.client)
+          .then(response => {
+            this.$alert.success('Cliente guardado correctamente')
+            this.clientDialog = false
+            this.userGet()
+          })
+          .catch(error => {
+            console.log(error)
+            this.$alert.error(error.response.data.message)
+          }).finally(() => {
+            this.loading = false
+          })
+      }
     },
     userGet () {
       this.loading = true
