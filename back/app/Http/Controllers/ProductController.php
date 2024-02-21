@@ -49,7 +49,10 @@ class ProductController extends Controller{
             ->first();
 
         $costoTotal = $costoTotal ? $costoTotal->{"sum(costo*cantidad)"} : 0;
-        $products->each(function ($product) {
+        $products->each(function ($product) use ($agencia_id) {
+            if ($agencia_id != 0) {
+                $product->cantidad = $product->{"cantidadSucursal$agencia_id"};
+            }
             if (!file_exists(public_path() . '/images/' . $product->imagen)) {
                 $product->imagen = 'productDefault.jpg';
             }

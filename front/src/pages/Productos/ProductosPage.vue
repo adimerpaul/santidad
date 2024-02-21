@@ -203,7 +203,6 @@ export default {
       this.agencias = [{ nombre: 'Selecciona una agencia', id: 0 }]
       this.$axios.get('agencias').then(response => {
         this.agencias = this.agencias.concat(response.data)
-        this.agencias = this.agencias.concat(response.data)
       }).catch(error => {
         this.$alert.error(error.response.data.message)
       })
