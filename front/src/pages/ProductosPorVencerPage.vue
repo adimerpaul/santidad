@@ -5,16 +5,26 @@
 <!--  </div>-->
   <div class="row">
     <div class="col-2">
-      <q-select v-model="ordenar" :options="ordenarPor" label="Ordenar por" outlined dense display-value="label"/>
+      <q-select v-model="ordenar" :options="ordenarPor" label="Ordenar por" outlined dense @update:model-value="buyGet"/>
     </div>
   </div>
+  <div class="flex flex-center">
+    <q-pagination
+      v-model="currentPage"
+      color="primary"
+      :max="totalPages"
+      :max-pages="6"
+      boundary-numbers
+      @update:model-value="buyGet"
+    />
+  </div>
   <q-table dense flat :rows-per-page-options="[0]" :rows="compras" :columns="compraColumns" wrap-cells
-           :filter="search" title="Productos por Vencer" :loading="loading">
+           title="Productos por Vencer" :loading="loading">
     <template v-slot:top-right>
-      <q-btn icon="refresh" @click="buyGet" dense color="grey" label="Actualizar" no-caps size="10px">
+      <q-btn icon="refresh" @click="buyGet" dense color="grey" label="Actualizar" no-caps size="10px" class="q-mr-sm">
         <q-tooltip>Actualizar</q-tooltip>
       </q-btn>
-      <q-input outlined dense v-model="search" label="Buscar" class="q-mt-sm">
+      <q-input outlined dense v-model="search" label="Buscar" class="q-mt-sm" @update:model-value="buyGet" debounce="300">
         <template v-slot:append>
           <q-icon name="search" class="cursor-pointer">
             <q-tooltip>Search</q-tooltip>
@@ -22,10 +32,10 @@
         </template>
       </q-input>
     </template>
-    <template v-slot:body-cell-day="props">
+    <template v-slot:body-cell-diasPorVencer="props">
       <q-td :props="props">
-        <q-chip :color="props.row.timeCalculate <= 14 ? 'red' : 'green'" class="text-white"
-                :label="`${props.row.timeCalculate} dias`"/>
+        <q-chip :color="props.row.diasPorVencer <= 14 ? 'red' : 'green'" class="text-white"
+                :label="`${props.row.diasPorVencer} dias`"/>
       </q-td>
     </template>
     <template v-slot:body-cell-opciones="props">
@@ -38,6 +48,7 @@
       </q-td>
     </template>
   </q-table>
+<!--  <pre>{{compras}}</pre>-->
   <div id="myElement" class="hidden"></div>
 </q-page>
 </template>
@@ -57,11 +68,14 @@ export default {
         'Fecha de Compra'
       ],
       ordenar: 'Dias para Vencer',
+      currentPage: 1,
+      totalPages: 1,
       compraColumns: [
         { name: 'opciones', label: 'Opciones', field: 'opciones', align: 'left' },
         { name: 'id', label: 'ID', field: 'id', align: 'left' },
+        { name: 'lote', label: 'Lote', field: 'lote', align: 'left', sortable: true },
         { name: 'producto', label: 'Producto', field: row => row.product.nombre, align: 'left', sortable: true },
-        { name: 'day', label: 'Dias para Vencer', field: 'timeCalculate', align: 'left', sortable: true },
+        { name: 'diasPorVencer', label: 'Dias para Vencer', field: 'diasPorVencer', align: 'left', sortable: true },
         { name: 'quantity', label: 'Cantidad', field: 'quantity', align: 'left', sortable: true },
         { name: 'price', label: 'Precio', field: 'price', align: 'left', sortable: true },
         { name: 'total', label: 'Total', field: 'total', align: 'left', sortable: true },
@@ -87,19 +101,28 @@ export default {
       const diff = date1.diff(date2, 'days')
       return diff
     },
-    buyGet () {
-      this.compras = []
+    buyGet: function () {
       this.loading = true
-      this.$axios.get('buys').then(res => {
-        res.data.forEach(buy => {
-          buy.timeCalculate = this.dateCalculate(buy.dateExpiry)
-          this.compras.push(buy)
+      this.compras = []
+      this.$axios
+        .get('buys', {
+          params: {
+            search: this.search,
+            order: this.ordenar,
+            page: this.currentPage // Agrega la página actual como parámetro
+          }
         })
-      }).catch(e => {
-        console.log(e)
-      }).finally(() => {
-        this.loading = false
-      })
+        .then(res => {
+          // console.log(res.data.data)
+          this.compras = res.data.data // Actualiza las compras con los datos de la página actual
+          this.totalPages = res.data.last_page // Actualiza el número total de páginas
+        })
+        .catch(e => {
+          console.log(e)
+        })
+        .finally(() => {
+          this.loading = false
+        })
     }
   }
 }

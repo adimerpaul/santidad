@@ -8,27 +8,29 @@ use App\Http\Requests\UpdateBuyRequest;
 use App\Models\Product;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class BuyController extends Controller{
     public function index(Request $request)
     {
-        $userId = $request->user()->id;
-        $buys = Buy::userFilter($userId)->with(['product', 'user'])->get();
+//        $userId = $request->user()->id;
+        $search = $request->search;//         'Dias para Vencer','Fecha de Vencimiento', 'Fecha de Compra'
+        $order = $request->order ?? null;
 
-        $buys->each(function ($buy) {
-            $formatted_dt1 = Carbon::parse($buy->dateExpiry);
-            $formatted_dt2 = Carbon::parse(now());
-            $buy->diasPorvencer = $formatted_dt1->diffInDays($formatted_dt2);
-        });
+        $buys = Buy::with(['product' => function($query) {
+            $query->select('id', 'nombre');
+        }, 'user' => function($query) {
+            $query->select('id', 'name');
+        }])->where('lote', 'LIKE', "%$search%");
+        if ($order=='Dias para Vencer') {
+            $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '>', Carbon::now());
+        }elseif ($order=='Fecha de Vencimiento') {
+            $buys = $buys->orderBy('dateExpiry', 'asc');
+        }elseif ($order=='Fecha de Compra') {
+            $buys = $buys->orderBy('date', 'asc');
+        }
 
-        $buys = $buys->filter(function ($buy) {
-            return $buy->diasPorvencer > 0;
-        });
-
-        // Ordenar por días de vencimiento
-        $buys = $buys->sortBy('diasPorvencer');
-
-        return $buys->values(); // Restablecer las claves de índice
+        return response()->json($buys->paginate(100));
     }
     public function show(Buy $buy){ return $buy; }
     public function store(StoreBuyRequest $request){

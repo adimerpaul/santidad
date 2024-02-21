@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class Buy extends Model
 {
@@ -20,11 +21,19 @@ class Buy extends Model
         'date',
         'time',
     ];
+    protected $appends = ['diasPorVencer'];
     public function product(){
         return $this->belongsTo(Product::class);
     }
     public function user(){
         return $this->belongsTo(User::class);
+    }
+
+    public function getDiasPorVencerAttribute()
+    {
+        $formatted_dt1 = Carbon::parse($this->dateExpiry);
+        $formatted_dt2 = Carbon::now();
+        return $formatted_dt1->diffInDays($formatted_dt2);
     }
     // En el modelo Buy.php
     public function scopeUserFilter($query, $userId)
