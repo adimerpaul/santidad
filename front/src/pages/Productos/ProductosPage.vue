@@ -127,6 +127,7 @@
     <q-dialog v-model="productDialog" position="right" maximized>
       <ProductionOptionComponent :agencias="agencias" :productData="product" :unidadesData="unidades" :productActionData="productAction" v-if="productDialog"
                                  :categories="categories"
+                                 :subcategories="subcategories"
                                  @productsGet="productsGet"
                                  @close="productDialog=false"
       />
@@ -184,16 +185,25 @@ export default {
         { label: 'Mayor cantidad', value: 'cantidad desc' },
         { label: 'Orden alfabetico', value: 'nombre asc' }
       ],
-      costoTotalProducts: 0
+      costoTotalProducts: 0,
+      subcategories: []
     }
   },
   created () {
     this.categoriesGet()
+    this.subcategoriesGet()
     this.agenciasGet()
     this.productsGet()
     this.unitsGet()
   },
   methods: {
+    subcategoriesGet () {
+      this.$axios.get('subcategories').then(response => {
+        this.subcategories = response.data
+      }).catch(error => {
+        console.log(error)
+      })
+    },
     async unitsGet () {
       this.res = await this.$axios.get('unids')
       this.unidadesAll = this.res.data

@@ -130,6 +130,7 @@
         <q-input label-color="black" outlined v-model="product.marca" label="Laboratorio" dense hint="Escribe la marca" class="uppercase"/>
         <q-input label-color="black" outlined v-model="product.distribuidora" label="Distribuidora" dense hint="Escribe la distribuidora"/>
         <q-select class="bg-white" emit-value map-options label="Categoria" dense outlined v-model="product.category_id" option-value="id" option-label="name" :options="categories" hint="Selecciona una categoria"/>
+        <q-select class="bg-white" emit-value map-options label="Subcategoria" dense outlined v-model="product.subcategory_id" option-value="id" option-label="nameComplete" :options="subcategories" hint="Selecciona una categoria"/>
         <q-input label-color="black" type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>
         <!--            <q-select class="bg-white" emit-value map-options label="Agencia" dense outlined-->
         <!--                      v-model="product.agencia_id" option-value="id" option-label="nombre" :options="agencias"-->
@@ -204,6 +205,10 @@ export default {
     DetailProducts
   },
   props: {
+    subcategories: {
+      type: Array,
+      required: true
+    },
     productData: {
       type: Object,
       required: true

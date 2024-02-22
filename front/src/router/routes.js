@@ -27,7 +27,8 @@ const routes = [
       { path: 'proveedores', component: ProvedoresPage, meta: { requiresAuth: true } },
       { path: 'unidades', component: Unidades, meta: { requiresAuth: true } },
       { path: 'productosPorVencer', component: ProductosPorVencerPage, meta: { requiresAuth: true } },
-      { path: 'agencias', component: AgenciaPage, meta: { requiresAuth: true } }
+      { path: 'agencias', component: AgenciaPage, meta: { requiresAuth: true } },
+      { path: 'subcategorias', component: () => import('pages/SubcategoryPage.vue'), meta: { requiresAuth: true } }
     ]
   },
   {

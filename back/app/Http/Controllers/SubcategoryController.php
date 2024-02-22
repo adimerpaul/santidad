@@ -7,7 +7,14 @@ use Illuminate\Http\Request;
 
 class SubcategoryController extends Controller{
     public function index(){
-        return Subcategory::with('category')->get();
+//        ordenar por categoria
+        $subcategories= Subcategory::with('category')
+            ->orderBy('category_id')
+            ->get();
+        $subcategories->each(function ($subcategory){
+            $subcategory->nameComplete = $subcategory->category->name.' '.$subcategory->name;
+        });
+        return $subcategories;
     }
 
     public function store(Request $request)
