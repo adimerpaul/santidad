@@ -29,7 +29,7 @@
         <q-btn :loading="loading" color="green-4" dense rounded no-caps icon="add_circle_outline" label="Nuevo venta" to="/sale">
           <q-tooltip>Crear nueva venta</q-tooltip>
         </q-btn>
-        <q-btn :loading="loading" color="red-4" dense rounded no-caps icon="remove_circle_outline" label="Nuevo gasto" @click="saleAddGasto">
+        <q-btn :loading="loading" color="red-4" dense rounded no-caps icon="remove_circle_outline" label="Nuevo gasto" @click="saleAddGasto" v-if="this.$store.user.id==1">
           <q-tooltip>Crear nuevo gasto</q-tooltip>
         </q-btn>
         <q-btn icon="refresh" flat dense rounded no-caps @click="salesGet">

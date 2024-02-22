@@ -127,7 +127,7 @@
         <q-input label-color="black" outlined v-model="product.paisOrigen" label="Pais de origen" dense hint="Escribe el pais de origen" class="uppercase"/>
         <!--            <q-input label-color="black" outlined v-model="product.nombreComun" label="Nombre comun" dense hint="Escribe el nombre comun"/>-->
         <q-input label-color="black" outlined v-model="product.composicion" label="Principio activo" dense hint="Escribe el principio activo"/>
-        <q-input label-color="black" outlined v-model="product.marca" label="Marca" dense hint="Escribe la marca" class="uppercase"/>
+        <q-input label-color="black" outlined v-model="product.marca" label="Laboratorio" dense hint="Escribe la marca" class="uppercase"/>
         <q-input label-color="black" outlined v-model="product.distribuidora" label="Distribuidora" dense hint="Escribe la distribuidora"/>
         <q-select class="bg-white" emit-value map-options label="Categoria" dense outlined v-model="product.category_id" option-value="id" option-label="name" :options="categories" hint="Selecciona una categoria"/>
         <q-input label-color="black" type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>
