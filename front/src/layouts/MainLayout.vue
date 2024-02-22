@@ -135,6 +135,24 @@
                 </q-tooltip>
               </q-item-section>
             </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/agencias" v-if="$store.user.id=='1'">
+              <q-item-section avatar><q-icon name="o_apartment" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Agencias</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Administrar agencias
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/subcategorias" v-if="$store.user.id=='1'">
+              <q-item-section avatar><q-icon name="o_category" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Subcategorias</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Administrar subcategorias
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
             <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosPorVencer">
               <q-item-section avatar><q-icon name="o_warning" /></q-item-section>
               <q-item-section>

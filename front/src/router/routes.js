@@ -10,6 +10,7 @@ import ProvedoresPage from 'pages/ProvedoresPage.vue'
 import ReportPage from 'pages/ReportPage.vue'
 import Unidades from 'pages/Unidades.vue'
 import ComprasPage from 'pages/Compras/ComprasPage.vue'
+import AgenciaPage from 'pages/AgenciaPage.vue'
 
 const routes = [
   {
@@ -25,7 +26,8 @@ const routes = [
       { path: 'clientes', component: ClientesPage, meta: { requiresAuth: true } },
       { path: 'proveedores', component: ProvedoresPage, meta: { requiresAuth: true } },
       { path: 'unidades', component: Unidades, meta: { requiresAuth: true } },
-      { path: 'productosPorVencer', component: ProductosPorVencerPage, meta: { requiresAuth: true } }
+      { path: 'productosPorVencer', component: ProductosPorVencerPage, meta: { requiresAuth: true } },
+      { path: 'agencias', component: AgenciaPage, meta: { requiresAuth: true } }
     ]
   },
   {
