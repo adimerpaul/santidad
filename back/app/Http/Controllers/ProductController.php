@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Agencia;
 use App\Models\Product;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
@@ -119,27 +120,41 @@ class ProductController extends Controller{
 
         $product = Product::find($request->id);
         $delSucursal='cantidadSucursal'.$request->delSucursal;
+        $agencias = Agencia::all();
+        $cantidad = $request->cantidad;
+        $lugar = $request->lugar;
         if ($request->lugar == 'Almacen'){
-            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
-            $product->cantidadAlmacen = $product->cantidadAlmacen + $request->cantidad;
+            $product->$delSucursal = $product->$delSucursal - $cantidad;
+            $product->cantidadAlmacen = $product->cantidadAlmacen + $cantidad;
             $product->save();
-        }else if ($request->lugar == 'Sucursal 1'){
-            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
-            $product->cantidadSucursal1 = $product->cantidadSucursal1 + $request->cantidad;
+        }else{
+            $product->$delSucursal = $product->$delSucursal - $cantidad;
             $product->save();
-        }else if ($request->lugar == 'Sucursal 2'){
-            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
-            $product->cantidadSucursal2 = $product->cantidadSucursal2 + $request->cantidad;
-            $product->save();
-        }else if ($request->lugar == 'Sucursal 3'){
-            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
-            $product->cantidadSucursal3 = $product->cantidadSucursal3 + $request->cantidad;
-            $product->save();
-        }else if ($request->lugar == 'Sucursal 4'){
-            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
-            $product->cantidadSucursal4 = $product->cantidadSucursal4 + $request->cantidad;
-            $product->save();
+            foreach ($agencias as $agencia){
+                if ($agencia['nombre'] == $lugar){
+                    $product->{"cantidadSucursal".$agencia['id']} = $product->{"cantidadSucursal".$agencia['id']} + $cantidad;
+                    $product->save();
+                    return $product;
+                }
+            }
         }
+//        else if ($request->lugar == 'Sucursal 1'){
+//            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
+//            $product->cantidadSucursal1 = $product->cantidadSucursal1 + $request->cantidad;
+//            $product->save();
+//        }else if ($request->lugar == 'Sucursal 2'){
+//            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
+//            $product->cantidadSucursal2 = $product->cantidadSucursal2 + $request->cantidad;
+//            $product->save();
+//        }else if ($request->lugar == 'Sucursal 3'){
+//            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
+//            $product->cantidadSucursal3 = $product->cantidadSucursal3 + $request->cantidad;
+//            $product->save();
+//        }else if ($request->lugar == 'Sucursal 4'){
+//            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
+//            $product->cantidadSucursal4 = $product->cantidadSucursal4 + $request->cantidad;
+//            $product->save();
+//        }
         return $product;
     }
     public  function agregarSucursal(Request $request){

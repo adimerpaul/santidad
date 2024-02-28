@@ -29,50 +29,62 @@
           </div>
           <div class="col-12">
             <div class="row">
-              <div class="col-6 q-pa-xs">
+              <div class="col-6 q-pa-xs" v-for="(s,i) in sucursales" :key="i">
                 <q-card flat bordered class="bg-grey-3">
                   <q-card-section class="q-pa-xs text-bold">
-                    Sucursal 1 ( <span class="text-blue">{{product.cantidadSucursal1}}</span> )
+                    (<span class="text-blue">{{product['cantidadSucursal'+(i+1)]}}</span> )
+                    <div class="text-lowercase">{{ s.nombre }}</div>
                     <div class="text-center">
-                      <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(1)" no-caps/>
-                      <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(1)" no-caps/>
+                      <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(s)" no-caps/>
+                      <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(s)" no-caps/>
                     </div>
                   </q-card-section>
                 </q-card>
               </div>
-              <div class="col-6 q-pa-xs">
-                <q-card flat bordered class="bg-grey-3">
-                  <q-card-section class="q-pa-xs text-bold">
-                    Sucursal 2 ( <span class="text-blue">{{product.cantidadSucursal2}}</span> )
-                    <div class="text-center">
-                      <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(2)" no-caps/>
-                      <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(2)" no-caps/>
-                    </div>
-                  </q-card-section>
-                </q-card>
-              </div>
-              <div class="col-6 q-pa-xs">
-                <q-card flat bordered class="bg-grey-3">
-                  <q-card-section class="q-pa-xs text-bold">
-                    Sucursal 3 ( <span class="text-blue">{{product.cantidadSucursal3}}</span> )
-                    <div class="text-center">
-                      <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(3)" no-caps/>
-                      <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(3)" no-caps/>
-                    </div>
-                  </q-card-section>
-                </q-card>
-              </div>
-              <div class="col-6 q-pa-xs">
-                <q-card flat bordered class="bg-grey-3">
-                  <q-card-section class="q-pa-xs text-bold">
-                    Sucursal 4 ( <span class="text-blue">{{product.cantidadSucursal4}}</span> )
-                    <div class="text-center">
-                      <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(4)" no-caps/>
-                      <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(4)" no-caps/>
-                    </div>
-                  </q-card-section>
-                </q-card>
-              </div>
+<!--              <div class="col-6 q-pa-xs">-->
+<!--                <q-card flat bordered class="bg-grey-3">-->
+<!--                  <q-card-section class="q-pa-xs text-bold">-->
+<!--                    Sucursal 1 ( <span class="text-blue">{{product.cantidadSucursal1}}</span> )-->
+<!--                    <div class="text-center">-->
+<!--                      <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(1)" no-caps/>-->
+<!--                      <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(1)" no-caps/>-->
+<!--                    </div>-->
+<!--                  </q-card-section>-->
+<!--                </q-card>-->
+<!--              </div>-->
+<!--              <div class="col-6 q-pa-xs">-->
+<!--                <q-card flat bordered class="bg-grey-3">-->
+<!--                  <q-card-section class="q-pa-xs text-bold">-->
+<!--                    Sucursal 2 ( <span class="text-blue">{{product.cantidadSucursal2}}</span> )-->
+<!--                    <div class="text-center">-->
+<!--                      <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(2)" no-caps/>-->
+<!--                      <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(2)" no-caps/>-->
+<!--                    </div>-->
+<!--                  </q-card-section>-->
+<!--                </q-card>-->
+<!--              </div>-->
+<!--              <div class="col-6 q-pa-xs">-->
+<!--                <q-card flat bordered class="bg-grey-3">-->
+<!--                  <q-card-section class="q-pa-xs text-bold">-->
+<!--                    Sucursal 3 ( <span class="text-blue">{{product.cantidadSucursal3}}</span> )-->
+<!--                    <div class="text-center">-->
+<!--                      <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(3)" no-caps/>-->
+<!--                      <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(3)" no-caps/>-->
+<!--                    </div>-->
+<!--                  </q-card-section>-->
+<!--                </q-card>-->
+<!--              </div>-->
+<!--              <div class="col-6 q-pa-xs">-->
+<!--                <q-card flat bordered class="bg-grey-3">-->
+<!--                  <q-card-section class="q-pa-xs text-bold">-->
+<!--                    Sucursal 4 ( <span class="text-blue">{{product.cantidadSucursal4}}</span> )-->
+<!--                    <div class="text-center">-->
+<!--                      <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(4)" no-caps/>-->
+<!--                      <q-btn :loading="loading" size="12px" icon="auto_awesome_motion" label="Mover" dense color="orange" @click="moverSucursal(4)" no-caps/>-->
+<!--                    </div>-->
+<!--                  </q-card-section>-->
+<!--                </q-card>-->
+<!--              </div>-->
             </div>
           </div>
         </div>
@@ -174,16 +186,17 @@
     </q-card-section>
     <q-dialog v-model="dialogMover">
       <q-card>
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-subtitle2 text-bold text-grey">
-            Mover producto del sucursal {{delSucursal}} a:
+        <q-card-section class="q-pb-none">
+          <div class="text-right">
+            <q-btn icon="o_highlight_off" flat round dense v-close-popup />
           </div>
-          <q-space/>
-          <q-btn icon="o_highlight_off" flat round dense v-close-popup />
+          <div class="text-subtitle2 text-bold">
+            Mover producto del sucursal {{delSucursal.nombre}} a:
+          </div>
         </q-card-section>
         <q-card-section>
           <q-form @submit="moverProducto">
-            <q-select class="bg-white" emit-value map-options label="Sucursal" dense outlined v-model="lugar" :options="lugares" hint="Selecciona una sucursal"/>
+            <q-select class="bg-white" emit-value map-options label="Sucursal" dense outlined v-model="lugar" :options="sucursalesName" hint="Selecciona una sucursal"/>
             <q-input label-color="black" outlined type="number" step="0.01" v-model="cantidad" label="Cantidad" dense hint="Cantidad a mover"
                      :rules="[val => !!val || 'Este campo es requerido']"/>
             <q-btn class="full-width" rounded
@@ -239,6 +252,8 @@ export default {
         'Sucursal 3',
         'Sucursal 4'
       ],
+      sucursales: [],
+      sucursalesName: [],
       delSucursal: {},
       cantidad: 0,
       lugar: 'Almacen',
@@ -258,6 +273,7 @@ export default {
     }
   },
   mounted () {
+    this.getSucursales()
     this.product = this.productData
     this.productAction = this.productActionData
     this.unidades = this.unidadesData
@@ -271,6 +287,17 @@ export default {
     this.compraTotal = 0
   },
   methods: {
+    getSucursales () {
+      this.sucursalesName = []
+      this.sucursalesName.push('Almacen')
+      this.$axios.get('agencias').then(res => {
+        this.sucursales = res.data
+        this.sucursales.forEach(sucursal => {
+          this.sucursalesName.push(sucursal.nombre)
+        })
+        console.log(this.sucursalesName)
+      })
+    },
     cantidadMinus () {
       if (this.product.cantidad > 0) {
         this.product.cantidad--
@@ -294,20 +321,27 @@ export default {
       this.$alert.error('Error al subir la imagen, intente nuevamente el nombre no debe contener espacios o ñ')
     },
     moverProducto () {
-      this.loading = true
-      this.$axios.post('moverProducto', {
+      // si es la misma sucursal
+      if (this.lugar === this.delSucursal.nombre) {
+        this.$alert.error('No puedes mover el producto a la misma sucursal')
+        return false
+      }
+      const data = {
         id: this.product.id,
         lugar: this.lugar,
         cantidad: this.cantidad,
-        delSucursal: this.delSucursal
-      }).then(res => {
+        delSucursal: this.delSucursal.id
+      }
+      console.log('data', data)
+      this.loading = true
+      this.$axios.post('moverProducto', data).then(res => {
         this.loading = false
         this.$alert.success('Producto movido correctamente')
         // this.productsGet()
         this.$emit('productsGet')
         this.product = res.data
         this.dialogMover = false
-        this.$imprimir.reciboTranferencia(this.product.nombre, this.delSucursal, this.lugar, this.cantidad)
+        this.$imprimir.reciboTranferencia(this.product.nombre, this.delSucursal.nombre, this.lugar, this.cantidad)
       }).catch(err => {
         this.loading = false
         this.$alert.error(err.response.data.message)
@@ -320,22 +354,24 @@ export default {
       this.cantidad = 0
     },
     agregarSucursal (sucursal) {
-      console.log(this.product.cantidadAlmacen)
+      console.log(sucursal)
+      // console.log(this.product.cantidadAlmacen)
       if (this.product.cantidadAlmacen <= 0) {
         this.$alert.error('No puedes agregar un producto en sucursal si no tienes en almacen')
         return
       }
       this.$q.dialog({
-        title: 'Selecciona la cantidad',
+        title: 'Agregar a ' + sucursal.nombre,
         message: 'Ingresa la cantidad que deseas agregar',
         prompt: {
           model: 1,
           type: 'number'
-        }
+        },
+        cancel: true
       }).onOk((data) => {
         this.loading = true
         this.$axios.post('agregarSucursal', {
-          sucursal,
+          sucursal: sucursal.id,
           id: this.product.id,
           cantidad: data
         }).then(res => {
