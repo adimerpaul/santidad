@@ -33,8 +33,10 @@ class Sales extends Model
         "user_id",
         "cufd_id",
         "client_id",
+        "agencia_id",
     ];
     public function details(){ return $this->hasMany(Detail::class, 'sale_id'); }
     public function client(){ return $this->belongsTo(Client::class); }
     public function user(){ return $this->belongsTo(User::class); }
+    public function agencia(){ return $this->belongsTo(Agencia::class); }
 }

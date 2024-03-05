@@ -36,6 +36,7 @@
                       @update:model-value="productsGet"
                       :disable="!($store.user.id=='1')"
             />
+<!--            <pre>{{$store.agencia_id}}</pre>-->
           </div>
           <div class="col-12 flex flex-center">
             <q-pagination
@@ -197,7 +198,7 @@
         </q-card>
       </div>
     </div>
-    <q-dialog v-model="saleDialog">
+    <q-dialog v-model="saleDialog" persistent>
       <q-card style="width: 750px; max-width: 90vw;">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">Realizar venta</div>
@@ -269,7 +270,7 @@
                 <q-btn type="submit" class="full-width" icon="o_add_circle" label="Realizar venta" :loading="loading" no-caps color="green"  />
               </div>
               <div class="col-6">
-                <q-btn class="full-width" icon="undo" v-close-popup label="Atras" no-caps color="red" />
+                <q-btn class="full-width" icon="undo" v-close-popup label="Atras" no-caps color="red" :loading="loading" />
               </div>
             </div>
           </q-card-section>
@@ -361,7 +362,8 @@ export default {
         qr: this.qr,
         efectivo: this.efectivo,
         products: this.$store.productosVenta,
-        metodoPago: this.metodoPago
+        metodoPago: this.metodoPago,
+        agencia_id: this.$store.agencia_id
       }
       this.$axios.post('sales', data).then(res => {
         this.loading = false

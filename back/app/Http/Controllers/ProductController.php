@@ -64,36 +64,39 @@ class ProductController extends Controller{
 
     public function productsSale(Request $request)
     {
-        $search = $request->input('search', '');
-        $ordenar = $request->input('order', 'id');
-        $category_id = $request->input('category', 0);
-        $agencia_id = $request->input('agencia', 0);
-        $numeroAgencia = $request->user()->agencia_id;
-        $paginate = $request->input('paginate', 30);
+        $search = request()->input('search', '');
+        $search = strtoupper($search);
+        $search = str_replace(' ', '%', $search);
+        $search = $search==null || $search=='' ? '%' : '%'.$search.'%';
+        $ordenar = request()->input('order', 'id');
+        $category_id = request()->input('category', 0);
+        $agencia_id = request()->input('agencia', 0);
+        $paginate = request()->input('paginate', 30);
 
-        $query = Product::where('nombre', 'like', "%$search%")
-            ->orderByRaw($ordenar)
-            ->with(['category', 'agencia']);
+        $query = Product::query();
+        $query->where('nombre', 'like', "%$search%");
 
         if ($category_id != 0) {
             $query->where('category_id', $category_id);
         }
 
         if ($agencia_id != 0) {
-//            $query->where('agencia_id', $agencia_id);
-            // Assuming 'cantidadSucursal' is a dynamic field based on $numeroAgencia
-            $query->where("cantidadSucursal$numeroAgencia", '>', 0);
+            $query->where("cantidadSucursal$agencia_id", '>', 0);
         }
 
-        $products = $query->paginate($paginate);
+        $products = $query->orderByRaw($ordenar)
+            ->with(['category', 'agencia'])
+            ->paginate($paginate);
 
         $costoTotal = $query->select(DB::raw('sum(costo*cantidad)'))
-            ->groupBy('agencia_id') // Add this line to fix the issue
+            ->groupBy('agencia_id')
             ->first();
 
         $costoTotal = $costoTotal ? $costoTotal->{"sum(costo*cantidad)"} : 0;
-
-        $products->each(function ($product) {
+        $products->each(function ($product) use ($agencia_id) {
+            if ($agencia_id != 0) {
+                $product->cantidad = $product->{"cantidadSucursal$agencia_id"};
+            }
             if (!file_exists(public_path() . '/images/' . $product->imagen)) {
                 $product->imagen = 'productDefault.jpg';
             }

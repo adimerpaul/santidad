@@ -125,8 +125,8 @@
               <q-td key="montoTotal" :props="props">
                 <span class="text-grey">{{ props.row.montoTotal }} Bs</span>
               </q-td>
-              <q-td key="metodoPago" :props="props" class="text-grey">
-                {{ props.row.metodoPago }}
+              <q-td key="agencia" :props="props" class="text-grey">
+                <div class="text-caption" style="width: 100px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.agencia.nombre }}</div>
               </q-td>
               <q-td key="proveedorcliente" :props="props">
                 <div class="text-grey" v-if="props.row.client">{{ props.row.client.nombreRazonSocial }}</div>
@@ -220,7 +220,8 @@ export default {
         { name: 'opcion', label: 'Opcion', align: 'left', field: 'opcion' },
         { name: 'concepto', label: 'Concepto', align: 'left', field: 'concepto', sortable: true },
         { name: 'montoTotal', label: 'Monto total', align: 'left', field: 'montoTotal', sortable: true },
-        { name: 'metodoPago', label: 'Metodo de pago', align: 'left', field: 'metodoPago', sortable: true },
+        { name: 'agencia', label: 'Agencia', align: 'left', field: 'agencia', sortable: true },
+        // { name: 'metodoPago', label: 'Metodo de pago', align: 'left', field: 'metodoPago', sortable: true },
         { name: 'proveedorcliente', label: 'Proveedor / cliente', align: 'left', field: 'proveedor / cliente', sortable: true },
         { name: 'fechayhora', label: 'Fecha y hora', align: 'left', field: 'fechayhora', sortable: true },
         { name: 'egresoingreso', label: 'Egreso / ingreso', align: 'left', field: 'egreso / ingreso', sortable: true }

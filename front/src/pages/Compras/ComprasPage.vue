@@ -143,7 +143,7 @@
                   <q-item-section>
                     <div class="row">
                       <div class="col-6 text-grey flex flex-center">Numero Factura</div>
-                      <div class="col-6 text-right"><q-input dense outlined type="number" v-model="factura" placeholder="Numero Factura" style="width: 170px;" hide-hint /></div>
+                      <div class="col-6 text-right"><q-input dense outlined v-model="factura" placeholder="Numero Factura" style="width: 170px;" hide-hint /></div>
                       <div class="col-6 text-grey flex flex-center">Agencia</div>
                       <div class="col-6 text-right">
                         <q-select class="bg-white" dense outlined v-model="agencia_id"
@@ -248,7 +248,7 @@ export default {
     }
   },
   created () {
-    this.$store.agencia_id = 0
+    // this.$store.agencia_id = 0
   },
   mounted () {
     this.productsGet()

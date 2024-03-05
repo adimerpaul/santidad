@@ -36,6 +36,7 @@ return new class extends Migration
             $table->string("estado")->nullable()->default('ACTIVO')->comment('ACTIVO, ANULADO');
             $table->string("qr")->nullable()->default('No');
             $table->unsignedBigInteger("user_id")->nullable();
+            $table->unsignedBigInteger("agencia_id")->nullable();
 //            $table->foreign("user_id")->references("id")->on("users");
             $table->unsignedBigInteger("cufd_id")->nullable();
 //            $table->foreign("cufd_id")->references("id")->on("cufds");

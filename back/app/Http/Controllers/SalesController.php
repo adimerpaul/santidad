@@ -21,17 +21,17 @@ class SalesController extends Controller{
             foreach ($details as $detail){
                 $product = Product::find($detail->product_id);
                 $product->cantidad = $product->cantidad + $detail->cantidad;
-                $product->save();
-                $numeroSucursal = $request->user()->agencia_id;
+                $numeroSucursal = $sale->agencia_id;
                 if ($numeroSucursal == 1){
-                    $product->cantidadSucursal1 = $product->cantidadSucursal1 - $product['cantidadPedida'];
+                    $product->cantidadSucursal1 = $product->cantidadSucursal1 + $detail->cantidad;
                 }else if ($numeroSucursal == 2){
-                    $product->cantidadSucursal2 = $product->cantidadSucursal2 - $product['cantidadPedida'];
+                    $product->cantidadSucursal2 = $product->cantidadSucursal2 + $detail->cantidad;
                 }else if ($numeroSucursal == 3){
-                    $product->cantidadSucursal3 = $product->cantidadSucursal3 - $product['cantidadPedida'];
+                    $product->cantidadSucursal3 = $product->cantidadSucursal3 + $detail->cantidad;
                 }else if ($numeroSucursal == 4){
-                    $product->cantidadSucursal4 = $product->cantidadSucursal4 - $product['cantidadPedida'];
+                    $product->cantidadSucursal4 = $product->cantidadSucursal4 + $detail->cantidad;
                 }
+                $product->save();
             }
         }
 //        return $sales;
@@ -43,10 +43,13 @@ class SalesController extends Controller{
         return Sales::whereBetween('fechaEmision', [$fechaInicio, $fechaFin])
             ->with('details')->orderBy('fechaEmision','desc')
             ->with('client')
+            ->with('user')
+            ->with('agencia')
             ->get();
     }
     public function store(StoreSalesRequest $request){
         DB::beginTransaction();
+        $agencia_id = $request->agencia_id;
         $client=$this->insertUpdateClient($request);
         $sales = new Sales();
         $sales->numeroFactura = 0;
@@ -59,6 +62,7 @@ class SalesController extends Controller{
         $sales->client_id = $client->id;
         $sales->aporte = $request->aporte;
         $sales->user_id = $request->user()->id;
+        $sales->agencia_id = $agencia_id;
         $sales->save();
         $concepto = "";
         foreach ($request->products as $product){
@@ -75,7 +79,7 @@ class SalesController extends Controller{
 
             $productSale= Product::find($product['id']);
             $productSale->cantidad = $productSale->cantidad - $product['cantidadPedida'];
-            $numeroSucursal = $request->user()->agencia_id;
+            $numeroSucursal = $agencia_id;
             if ($numeroSucursal == 1){
                 $productSale->cantidadSucursal1 = $productSale->cantidadSucursal1 - $product['cantidadPedida'];
             }else if ($numeroSucursal == 2){

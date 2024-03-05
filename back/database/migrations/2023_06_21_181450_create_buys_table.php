@@ -21,7 +21,7 @@ return new class extends Migration
             $table->decimal('total', 10, 2);
             $table->decimal('price', 10, 2);
             $table->date('dateExpiry');
-            $table->integer('factura');
+            $table->string('factura');
             $table->date('date');
             $table->time('time');
             $table->timestamps();
