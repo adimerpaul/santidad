@@ -19,6 +19,8 @@ return new class extends Migration
             $table->string('password');
             $table->unsignedBigInteger("agencia_id")->nullable();
             $table->foreign('agencia_id')->references('id')->on('agencias');
+            $table->string('profile_photo_path')->nullable();
+            $table->boolean('state')->default(1);
             $table->rememberToken();
             $table->timestamps();
         });

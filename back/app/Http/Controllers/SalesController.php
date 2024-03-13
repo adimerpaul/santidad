@@ -30,6 +30,18 @@ class SalesController extends Controller{
                     $product->cantidadSucursal3 = $product->cantidadSucursal3 + $detail->cantidad;
                 }else if ($numeroSucursal == 4){
                     $product->cantidadSucursal4 = $product->cantidadSucursal4 + $detail->cantidad;
+                }else if ($numeroSucursal == 5){
+                    $product->cantidadSucursal5 = $product->cantidadSucursal5 + $detail->cantidad;
+                }else if ($numeroSucursal == 6){
+                    $product->cantidadSucursal6 = $product->cantidadSucursal6 + $detail->cantidad;
+                }else if ($numeroSucursal == 7){
+                    $product->cantidadSucursal7 = $product->cantidadSucursal7 + $detail->cantidad;
+                }else if ($numeroSucursal == 8){
+                    $product->cantidadSucursal8 = $product->cantidadSucursal8 + $detail->cantidad;
+                }else if ($numeroSucursal == 9){
+                    $product->cantidadSucursal9 = $product->cantidadSucursal9 + $detail->cantidad;
+                }else if ($numeroSucursal == 10){
+                    $product->cantidadSucursal10 = $product->cantidadSucursal10 + $detail->cantidad;
                 }
                 $product->save();
             }
@@ -88,6 +100,18 @@ class SalesController extends Controller{
                 $productSale->cantidadSucursal3 = $productSale->cantidadSucursal3 - $product['cantidadPedida'];
             }else if ($numeroSucursal == 4){
                 $productSale->cantidadSucursal4 = $productSale->cantidadSucursal4 - $product['cantidadPedida'];
+            }else if ($numeroSucursal == 5){
+                $productSale->cantidadSucursal5 = $productSale->cantidadSucursal5 - $product['cantidadPedida'];
+            }else if ($numeroSucursal == 6){
+                $productSale->cantidadSucursal6 = $productSale->cantidadSucursal6 - $product['cantidadPedida'];
+            }else if ($numeroSucursal == 7){
+                $productSale->cantidadSucursal7 = $productSale->cantidadSucursal7 - $product['cantidadPedida'];
+            }else if ($numeroSucursal == 8){
+                $productSale->cantidadSucursal8 = $productSale->cantidadSucursal8 - $product['cantidadPedida'];
+            }else if ($numeroSucursal == 9){
+                $productSale->cantidadSucursal9 = $productSale->cantidadSucursal9 - $product['cantidadPedida'];
+            }else if ($numeroSucursal == 10){
+                $productSale->cantidadSucursal10 = $productSale->cantidadSucursal10 - $product['cantidadPedida'];
             }
             $productSale->save();
         }

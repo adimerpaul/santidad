@@ -1,13 +1,5 @@
 <template>
   <div class="q-pa-md">
-    <q-btn
-        label="Nuevo usuario"
-        color="positive"
-        @click="regDialog"
-        icon="add_circle"
-        class="q-mb-xs"
-    />
-
     <q-dialog v-model="alert">
       <q-card style="width: 300px;max-width: 90vh;">
         <q-card-section class="bg-green-14 text-white">
@@ -25,6 +17,7 @@
                     hint="Ingresar Nombre"
                     lazy-rules
                     :rules="[(val) => val.length > 0 || 'Por favor ingresa datos']"
+                    ref="nameInput"
                 />
 
                 <q-input
@@ -35,6 +28,7 @@
                     hint="Correo electronico"
                     lazy-rules
                     :rules="[(val) => val.length > 0 || 'Por favor ingresa datos']"
+                    ref="emailInput"
                 />
 
                 <q-input
@@ -45,13 +39,26 @@
                     hint="Contraseña"
                     lazy-rules
                     :rules="[(val) => val.length > 0 || 'Por favor ingresa datos']"
+                    ref="passwordInput"
                 />
 
               </div>
-<!--              <div class="col-6">-->
-<!--                <div class="text-5">Permisos</div>-->
-<!--                <q-checkbox style="width: 100%"  v-for="(permiso,index) in permisos" :key="index" :label="permiso.nombre" v-model="permiso.estado" />-->
-<!--              </div>-->
+              <div class="col-12">
+                <q-select
+                  filled
+                  v-model="dato.agencia_id"
+                  :options="agencias"
+                  label="Agencia"
+                  hint="Seleccionar Agencia"
+                  lazy-rules
+                  :rules="[(val) => val !== null && val !== undefined || 'Por favor selecciona una agencia']"
+                  map-options
+                  emit-value
+                  option-value="id"
+                  option-label="nombre"
+                />
+<!--                <pre>{{dato.agencia_id}}</pre>-->
+              </div>
             </div>
 
             <div>
@@ -62,9 +69,16 @@
         </q-card-section>
       </q-card>
     </q-dialog>
-
-    <q-table dense :filter="filter" title="REGISTRO DE USUARIOS" :rows="data" :columns="columns" row-key="name" :rows-per-page-options="[50,100]">
+    <q-table dense :filter="filter" title="Gestion de usuarios" :rows="data" :columns="columns" row-key="name" :rows-per-page-options="[50,100]">
       <template v-slot:top-right>
+        <q-btn
+          label="Nuevo usuario"
+          color="positive"
+          @click="regDialog"
+          icon="add_circle"
+          class="q-mb-xs"
+          no-caps
+        />
         <q-input outlined dense debounce="300" v-model="filter" placeholder="Search">
           <template v-slot:append>
             <q-icon name="search" />
@@ -84,18 +98,24 @@
               dense
               round
               flat
-              color="yellow"
+              size="sm"
+              color="primary"
               @click="editRow(props)"
               icon="edit"
-          />
+          >
+            <q-tooltip>Editar</q-tooltip>
+          </q-btn>
           <q-btn
               dense
               round
               flat
-              color="positive"
               @click="cambiopass(props)"
+              size="sm"
+              color="primary"
               icon="vpn_key"
-          />
+          >
+            <q-tooltip>Cambiar contraseña</q-tooltip>
+          </q-btn>
 <!--          <q-btn-->
 <!--              dense-->
 <!--              round-->
@@ -108,14 +128,18 @@
               dense
               round
               flat
-              color="red"
+              color="primary"
               @click="deleteRow(props)"
+              size="sm"
               icon="delete"
-          ></q-btn>
+          >
+            <q-tooltip>Eliminar</q-tooltip>
+          </q-btn>
         </q-td>
 
       </template>
     </q-table>
+<!--    <pre>{{data}}</pre>-->
 
     <q-dialog v-model="dialog_mod">
       <q-card style="max-width: 80%; width: 50%">
@@ -174,7 +198,7 @@
         </q-card-section>
         <q-card-section>
           <q-form @submit.prevent="updatepermisos">
-            <!--          v-on:click.native="updatepermiso(permiso)"-->
+            <!--          v-on:click.native="updatepermiso(perfmiso)"-->
             <q-checkbox style="width: 100%"  v-for="(permiso,index) in permisos2" :key="index" :label="permiso.nombre" v-model="permiso.estado" />
             <!--          <q-form>-->
             <!--&lt;!&ndash;            <q-checkbox v-model="permisos" />&ndash;&gt;-->
@@ -189,7 +213,7 @@
 
 <script>
 import { date } from 'quasar'
-import moment from 'moment'
+// import moment from 'moment'
 
 export default {
   name: 'UserPage',
@@ -214,17 +238,18 @@ export default {
         { name: 'opcion', label: 'OPCIÓN', field: 'action', sortable: false },
         { name: 'name', align: 'left', label: 'NOMBRE ', field: 'name', sortable: true },
         { name: 'email', align: 'left', label: 'E-MAIL', field: 'email', sortable: true },
-        { name: 'state', align: 'left', label: 'ESTADO', field: 'state', sortable: true }
+        { name: 'agencia', align: 'left', label: 'AGENCIA', field: (row) => row.agencia.nombre, sortable: true }
         // { name: 'permisos', align: 'left', label: 'PERMISOS', field: 'permisos', sortable: true },
       ],
-      data: []
+      data: [],
+      agencias: []
     }
   },
   created () {
     /* if (!this.$store.state.login.boolusuario){
        this.$router.replace({ path: '/' })
     } */
-
+    this.agenciaGet()
     this.misdatos()
     // this.$axios.get('permiso').then(res => {
     //   res.data.forEach(r => {
@@ -234,8 +259,17 @@ export default {
     // })
   },
   methods: {
+    agenciaGet () {
+      this.$axios.get('agencias').then(res => {
+        this.agencias = res.data
+      })
+    },
     regDialog () {
-      this.dato = { }
+      this.dato = {
+        name: '',
+        email: '',
+        password: ''
+      }
       this.alert = true
     },
     updatepermisos () {
@@ -286,11 +320,12 @@ export default {
         password: this.dato.password,
         state: 'active',
         email: this.dato.email,
-        permisos: this.permisos
+        permisos: this.permisos,
+        agencia_id: this.dato.agencia_id
       }).then(() => {
         // console.log(res.data)
         this.$alert.success('Registrado correctamente')
-        this.dato = { fechaLimite: (moment(this.fecha).add(36, 'months').format('YYYY-MM-DD')) }
+        // this.dato = { fechaLimite: (moment(this.fecha).add(36, 'months').format('YYYY-MM-DD')) }
         this.alert = false
         this.misdatos()
       }).catch(err => {

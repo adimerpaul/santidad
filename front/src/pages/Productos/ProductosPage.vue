@@ -78,7 +78,8 @@
                   :options="agencias" map-options emit-value
                   option-value="id" option-label="nombre"
                   @update:model-value="productsGet"
-                  :disable="!($store.user.id=='1')"/>
+                  />
+<!--        :disable="!($store.user.id=='1')"-->
       </div>
       <div class="col-12 flex flex-center">
         <q-pagination
