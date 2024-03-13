@@ -1,15 +1,30 @@
 <template>
   <q-page class="bg-grey-2 q-pa-xs">
     <div class="row">
-      <div class="col-6 col-md-3 bg-white">
+      <div class="col-6 col-md-2 bg-white">
         <q-input dense outlined v-model="dateIni" label="Fecha inicial" type="date" required />
       </div>
-      <div class="col-6 col-md-3 bg-white">
+      <div class="col-6 col-md-2 bg-white">
         <q-input dense outlined v-model="dateFin" label="Fecha final" type="date" required />
       </div>
-      <div class="col-12 col-md-3 text-center">
-        <q-btn color="black" no-caps flat icon="o_file_download">
-          <div class="q-page-xs subrayado"> Descargar reporte</div>
+      <div class="col-12 col-md-2 bg-white">
+        <q-select dense outlined v-model="agencia" label="Agencia" :options="agencias" hint="Agencia de la venta"
+                  emit-value map-options option-value="id" option-label="nombre" />
+        <!--        <pre>{{agencias}}</pre>-->
+      </div>
+      <div class="col-12 col-md-2 bg-white">
+        <q-select dense outlined v-model="user" label="Usuario" :options="users" hint="Usuario de la venta"
+                  emit-value map-options option-value="id" option-label="name" />
+        <!--        <pre>{{users}}</pre>-->
+      </div>
+      <div class="col-6 col-md-1 text-center">
+        <q-btn icon="refresh" dense size="sm" no-caps @click="salesGet" label="Actualizar" color="primary">
+          <q-tooltip>Actualizar</q-tooltip>
+        </q-btn>
+      </div>
+      <div class="col-12 col-md-1 text-center">
+        <q-btn color="black" no-caps flat icon="o_file_download" size="sm">
+          <div class="q-page-xs subrayado">  Reportes</div>
           <q-menu>
             <q-list>
               <q-item clickable v-close-popup @click="reportTotal('')">
@@ -25,15 +40,12 @@
           </q-menu>
         </q-btn>
       </div>
-      <div class="col-12 col-md-3 text-right">
-        <q-btn :loading="loading" color="green-4" dense rounded no-caps icon="add_circle_outline" label="Nuevo venta" to="/sale">
+      <div class="col-12 col-md-2 text-right">
+        <q-btn :loading="loading" color="green-4" size="sm" dense rounded no-caps icon="add_circle_outline" label="Nuevo venta" to="/sale">
           <q-tooltip>Crear nueva venta</q-tooltip>
         </q-btn>
-        <q-btn :loading="loading" color="red-4" dense rounded no-caps icon="remove_circle_outline" label="Nuevo gasto" @click="saleAddGasto" v-if="this.$store.user.id==1">
+        <q-btn :loading="loading" color="red-4" size="sm" dense rounded no-caps icon="remove_circle_outline" label="Nuevo gasto" @click="saleAddGasto" v-if="this.$store.user.id==1">
           <q-tooltip>Crear nuevo gasto</q-tooltip>
-        </q-btn>
-        <q-btn icon="refresh" flat dense rounded no-caps @click="salesGet">
-          <q-tooltip>Actualizar</q-tooltip>
         </q-btn>
       </div>
       <div class="col-12 col-md-4 q-pa-xs">
@@ -91,7 +103,9 @@
         </q-card>
       </div>
       <div class="col-12">
-        <q-table :columns="columns" :rows="sales" dense :rows-per-page-options="[0]" :filter="filter" :loading="loading" wrap-cells>s
+        <q-table :columns="columns" :rows="sales" dense :rows-per-page-options="[0]" :filter="filter" :loading="loading" wrap-cells
+                 no-data-label="No hay ventas" no-results-label="No hay ventas"
+        >
           <template v-slot:top-right>
             <q-input outlined v-model="filter" debounce="300" placeholder="Buscar" dense>
               <template v-slot:append>
@@ -126,7 +140,7 @@
                 <span class="text-grey">{{ props.row.montoTotal }} Bs</span>
               </q-td>
               <q-td key="agencia" :props="props" class="text-grey">
-                <div class="text-caption" style="width: 100px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.agencia.nombre }}</div>
+                <div class="text-caption" style="width: 100px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.agencia?.nombre }}</div>
               </q-td>
               <q-td key="proveedorcliente" :props="props">
                 <div class="text-grey" v-if="props.row.client">{{ props.row.client.nombreRazonSocial }}</div>
@@ -136,6 +150,9 @@
               </q-td>
               <q-td key="egresoingreso" :props="props">
                 <q-chip :color="`${props.row.tipoVenta=='Ingreso'?'green':'red'}-5`" text-color="white" dense flat :label="props.row.tipoVenta"/>
+              </q-td>
+              <q-td key="user" :props="props">
+                <p>{{ props.row.user?.name }}</p>
               </q-td>
             </q-tr>
           </template>
@@ -224,18 +241,35 @@ export default {
         // { name: 'metodoPago', label: 'Metodo de pago', align: 'left', field: 'metodoPago', sortable: true },
         { name: 'proveedorcliente', label: 'Proveedor / cliente', align: 'left', field: 'proveedor / cliente', sortable: true },
         { name: 'fechayhora', label: 'Fecha y hora', align: 'left', field: 'fechayhora', sortable: true },
-        { name: 'egresoingreso', label: 'Egreso / ingreso', align: 'left', field: 'egreso / ingreso', sortable: true }
+        { name: 'egresoingreso', label: 'Egreso / ingreso', align: 'left', field: 'egreso / ingreso', sortable: true },
+        { name: 'user', label: 'Usuario', align: 'left', field: (row) => row.user.name, sortable: true }
       ],
       proveedores: [],
-      proveedor: { nombreRazonSocial: '', numeroDocumento: '', telefono: '', clienteProveedor: 'Proveedor' }
+      proveedor: { nombreRazonSocial: '', numeroDocumento: '', telefono: '', clienteProveedor: 'Proveedor' },
+      agencias: [],
+      users: [],
+      agencia: '',
+      user: ''
     }
   },
   created () {
     this.proveedores = [{ id: 0, nombreRazonSocial: 'Busca o selecciona un proveedor' }]
     this.proveedorGet()
     this.salesGet()
+    this.agenciasGet()
+    this.usersGet()
   },
   methods: {
+    usersGet () {
+      this.$axios.get('user').then(res => {
+        this.users = res.data
+      })
+    },
+    agenciasGet () {
+      this.$axios.get('agencias').then(res => {
+        this.agencias = res.data
+      })
+    },
     reportTotal (title) {
       this.loading = true
       this.$axios.get(`reportTotal${title}/${this.dateIni}/${this.dateFin}`).then(res => {
@@ -292,12 +326,14 @@ export default {
     },
     salesGet () {
       this.loading = true
-      this.$axios.get(`betweenDates/${this.dateIni}/${this.dateFin}`).then(res => {
+      this.$axios.get(`betweenDates/${this.dateIni}/${this.dateFin}`, {
+        params: {
+          agencia: this.agencia,
+          user: this.user
+        }
+      }).then(res => {
         this.loading = false
         this.sales = res.data
-      }).catch(err => {
-        this.loading = false
-        this.$alert.error(err.response.data.message)
       })
     },
     addSale () {
@@ -322,6 +358,7 @@ export default {
   computed: {
     totalIngresos () {
       const monto = this.sales.filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO').reduce((a, b) => parseFloat(a) + parseFloat(b.montoTotal), 0)
+      console.log('monto', monto)
       return Math.round(monto * 100) / 100
     },
     totalEgresos () {
@@ -335,3 +372,24 @@ export default {
   }
 }
 </script>
+<style lang="scss">
+.super-small.q-field--dense {
+  .q-field__control-container,
+  .q-field__native {
+    padding-top: 10px !important;
+  }
+
+  .q-field__control {
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+
+  .q-field__marginal {
+    height: 32px !important;
+  }
+
+  .q-field__label {
+    top: 6px !important;
+  }
+}
+</style>

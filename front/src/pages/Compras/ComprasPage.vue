@@ -142,14 +142,22 @@
 <!--                <template v-slot:header>-->
                   <q-item-section>
                     <div class="row">
-                      <div class="col-6 text-grey flex flex-center">Numero Factura</div>
-                      <div class="col-6 text-right"><q-input dense outlined v-model="factura" placeholder="Numero Factura" style="width: 170px;" hide-hint /></div>
-                      <div class="col-6 text-grey flex flex-center">Agencia</div>
-                      <div class="col-6 text-right">
+                      <div class="col-4 text-grey flex flex-center">Numero Factura</div>
+                      <div class="col-8 text-right"><q-input dense outlined v-model="factura" placeholder="Numero Factura" style="width: 170px;" hide-hint /></div>
+                      <div class="col-4 text-grey flex flex-center">Agencia</div>
+                      <div class="col-8 text-right">
                         <q-select class="bg-white" dense outlined v-model="agencia_id"
                                   :options="agencias" map-options emit-value
                                   option-value="id" option-label="nombre"
                         />
+                      </div>
+                      <div class="col-4 text-grey flex flex-center">Proveedor</div>
+                      <div class="col-8 text-right">
+                        <q-select class="bg-white" dense outlined v-model="proveedor_id"
+                                  :options="proveedores" map-options emit-value
+                                  option-value="id" option-label="nombreRazonSocial"
+                        />
+<!--                        <pre>{{proveedores}}</pre>-->
                       </div>
                     </div>
                   </q-item-section>
@@ -244,13 +252,16 @@ export default {
         { label: 'Menor cantidad', value: 'cantidad asc' },
         { label: 'Mayor cantidad', value: 'cantidad desc' },
         { label: 'Orden alfabetico', value: 'nombre asc' }
-      ]
+      ],
+      proveedores: [],
+      proveedor_id: 0
     }
   },
   created () {
     // this.$store.agencia_id = 0
   },
   mounted () {
+    this.proveedoresGet()
     this.productsGet()
     this.categoriesGet()
     this.agenciasGet()
@@ -264,6 +275,11 @@ export default {
     })
   },
   methods: {
+    proveedoresGet () {
+      this.$axios.get('providers').then(res => {
+        this.proveedores = res.data
+      })
+    },
     deleteProductosVenta (row, index) {
       this.$store.productosCompra.splice(index, 1)
     },
@@ -290,7 +306,8 @@ export default {
           await this.$axios.post('compraInsert', {
             buys: this.$store.productosCompra,
             factura: this.factura,
-            agencia_id: this.agencia_id
+            agencia_id: this.agencia_id,
+            proveedor_id: this.proveedor_id
           })
           this.$alert.success('Compra realizada con éxito')
           this.$store.productosCompra = []

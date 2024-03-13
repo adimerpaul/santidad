@@ -24,7 +24,7 @@
       <q-btn icon="refresh" @click="buyGet" dense color="grey" label="Actualizar" no-caps size="10px" class="q-mr-sm">
         <q-tooltip>Actualizar</q-tooltip>
       </q-btn>
-      <q-input outlined dense v-model="search" label="Buscar" class="q-mt-sm" @update:model-value="buyGet" debounce="300">
+      <q-input outlined dense v-model="search" label="Buscar" class="q-mt-sm" @update:model-value="buyGet" debounce="500">
         <template v-slot:append>
           <q-icon name="search" class="cursor-pointer">
             <q-tooltip>Search</q-tooltip>
@@ -34,8 +34,8 @@
     </template>
     <template v-slot:body-cell-diasPorVencer="props">
       <q-td :props="props">
-        <q-chip :color="props.row.diasPorVencer <= 14 ? 'red' : 'green'" class="text-white"
-                :label="`${props.row.diasPorVencer} dias`"/>
+        <q-chip :color="props.row.diasPorVencer <= 30 ? 'red' : props.row.diasPorVencer <= 90 ? 'orange' : 'green'"
+                text-color="white" dense :label="`${props.row.diasPorVencer} dias`"/>
       </q-td>
     </template>
     <template v-slot:body-cell-opciones="props">
@@ -72,18 +72,19 @@ export default {
       totalPages: 1,
       compraColumns: [
         { name: 'opciones', label: 'Opciones', field: 'opciones', align: 'left' },
-        { name: 'id', label: 'ID', field: 'id', align: 'left' },
+        // { name: 'id', label: 'ID', field: 'id', align: 'left' },
         { name: 'lote', label: 'Lote', field: 'lote', align: 'left', sortable: true },
+        { name: 'factura', label: 'Factura', field: 'factura', align: 'left', sortable: true },
         { name: 'producto', label: 'Producto', field: row => row.product.nombre, align: 'left', sortable: true },
         { name: 'diasPorVencer', label: 'Dias para Vencer', field: 'diasPorVencer', align: 'left', sortable: true },
         { name: 'quantity', label: 'Cantidad', field: 'quantity', align: 'left', sortable: true },
         { name: 'price', label: 'Precio', field: 'price', align: 'left', sortable: true },
         { name: 'total', label: 'Total', field: 'total', align: 'left', sortable: true },
         { name: 'dateExpiry', label: 'Fecha de Vencimiento', field: 'dateExpiry', align: 'left', sortable: true },
-        { name: 'date', label: 'Fecha de Compra', field: 'date', align: 'left', sortable: true },
-        { name: 'time', label: 'Hora de Compra', field: 'time', align: 'left', sortable: true },
-        { name: 'user', label: 'Usuario', field: row => row.user.name, align: 'left', sortable: true }
-        // { name: 'provider', label: 'Proveedor', field: row => row.provider.name, align: 'left', sortable: true },
+        { name: 'date', label: 'Fecha de Compra', field: (row) => row.date + ' ' + row.time, align: 'left', sortable: true },
+        // { name: 'time', label: 'Hora de Compra', field: 'time', align: 'left', sortable: true },
+        { name: 'user', label: 'Usuario', field: row => row.user.name, align: 'left', sortable: true },
+        { name: 'provider', label: 'Proveedor', field: row => row.proveedor?.nombreRazonSocial, align: 'left', sortable: true }
         // { name: 'actions', label: 'Acciones', field: 'actions', align: 'left' }
       ]
     }

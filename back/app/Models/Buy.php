@@ -20,6 +20,7 @@ class Buy extends Model
         'dateExpiry',
         'date',
         'time',
+        'proveedor_id',
     ];
     protected $appends = ['diasPorVencer'];
     public function product(){
@@ -27,6 +28,9 @@ class Buy extends Model
     }
     public function user(){
         return $this->belongsTo(User::class);
+    }
+    public function proveedor(){
+        return $this->belongsTo(Client::class);
     }
 
     public function getDiasPorVencerAttribute()

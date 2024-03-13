@@ -49,15 +49,24 @@ class SalesController extends Controller{
 //        return $sales;
     }
     public function index(){ return Sales::all(); }
-    public function betweenDates($fechaInicio, $fechaFin){
+    public function betweenDates($fechaInicio, $fechaFin,Request $request){
+        $agencia_id = $request->agencia;
+        $user_id = $request->user;
         $fechaInicio.=' 00:00:00';
         $fechaFin.=' 23:59:59';
-        return Sales::whereBetween('fechaEmision', [$fechaInicio, $fechaFin])
+        $sales= Sales::whereBetween('fechaEmision', [$fechaInicio, $fechaFin])
             ->with('details')->orderBy('fechaEmision','desc')
             ->with('client')
             ->with('user')
-            ->with('agencia')
-            ->get();
+            ->with('agencia');
+
+        if ($agencia_id != 0){
+            $sales = $sales->where('agencia_id',$agencia_id);
+        }
+        if ($user_id != 0){
+            $sales = $sales->where('user_id',$user_id);
+        }
+        return $sales->get();
     }
     public function store(StoreSalesRequest $request){
         DB::beginTransaction();

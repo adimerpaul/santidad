@@ -18,16 +18,24 @@ class BuyController extends Controller{
         $order = $request->order ?? null;
 
         $buys = Buy::with(['product' => function($query) {
-            $query->select('id', 'nombre');
-        }, 'user' => function($query) {
-            $query->select('id', 'name');
-        }])->where('lote', 'LIKE', "%$search%");
-        if ($order=='Dias para Vencer') {
-            $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '>', Carbon::now());
-        }elseif ($order=='Fecha de Vencimiento') {
-            $buys = $buys->orderBy('dateExpiry', 'asc');
-        }elseif ($order=='Fecha de Compra') {
-            $buys = $buys->orderBy('date', 'asc');
+                    $query->select('id', 'nombre');
+                }, 'user' => function($query) {
+                    $query->select('id', 'name');
+                }])
+            ->with('proveedor');
+//                ->where('lote', 'LIKE', "%$search%")
+//                ->where('factura', 'LIKE', "%$search%");
+        if ($search) {
+            $buys = $buys->where('factura',$search);
+//                ->orWhere('lote', 'LIKE', "%$search%");
+        }else{
+            if ($order=='Dias para Vencer') {
+                $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '>', Carbon::now());
+            }elseif ($order=='Fecha de Vencimiento') {
+                $buys = $buys->orderBy('dateExpiry', 'asc');
+            }elseif ($order=='Fecha de Compra') {
+                $buys = $buys->orderBy('date', 'asc');
+            }
         }
 
         return response()->json($buys->paginate(100));
@@ -69,6 +77,7 @@ class BuyController extends Controller{
             $buyNew->factura= isset($request->factura) ? $request->factura : 0;
             $buyNew->date= date("Y-m-d");
             $buyNew->time= date("H:i:s");
+            $buyNew->proveedor_id= $request->proveedor_id;
             $buyNew->save();
 
             $product = Product::find($buy['id']);
@@ -83,6 +92,18 @@ class BuyController extends Controller{
                 $product->cantidadSucursal3 = $product->cantidadSucursal3 + $buy['cantidadCompra'];
             }elseif ($request->agencia_id == 4) {
                 $product->cantidadSucursal4 = $product->cantidadSucursal4 + $buy['cantidadCompra'];
+            }elseif ($request->agencia_id == 5) {
+                $product->cantidadSucursal5 = $product->cantidadSucursal5 + $buy['cantidadCompra'];
+            }elseif ($request->agencia_id == 6) {
+                $product->cantidadSucursal6 = $product->cantidadSucursal6 + $buy['cantidadCompra'];
+            }elseif ($request->agencia_id == 7) {
+                $product->cantidadSucursal7 = $product->cantidadSucursal7 + $buy['cantidadCompra'];
+            }elseif ($request->agencia_id == 8) {
+                $product->cantidadSucursal8 = $product->cantidadSucursal8 + $buy['cantidadCompra'];
+            }elseif ($request->agencia_id == 9) {
+                $product->cantidadSucursal9 = $product->cantidadSucursal9 + $buy['cantidadCompra'];
+            }elseif ($request->agencia_id == 10) {
+                $product->cantidadSucursal10 = $product->cantidadSucursal10 + $buy['cantidadCompra'];
             }
 
             $product->precio = $buy['price'];
