@@ -167,7 +167,20 @@
                 lazy-rules
                 :rules="[(val) => val.length > 0 || 'Por favor ingresa datos']"
             />
-
+            <q-select
+              filled
+              v-model="dato2.agencia_id"
+              :options="agencias"
+              label="Agencia"
+              hint="Seleccionar Agencia"
+              lazy-rules
+              :rules="[(val) => val !== null && val !== undefined || 'Por favor selecciona una agencia']"
+              map-options
+              emit-value
+              option-value="id"
+              option-label="nombre"
+            />
+<!--            <pre>{{dato2}}</pre>-->
             <div>
               <q-btn label="Modificar" type="submit" color="positive" icon="add_circle" />
               <q-btn label="Cancelar" icon="delete" color="negative" v-close-popup />
@@ -337,7 +350,8 @@ export default {
       this.$q.loading.show()
       this.$axios.put('user/' + this.dato2.id, {
         name: this.dato2.name,
-        email: this.dato2.email
+        email: this.dato2.email,
+        agencia_id: this.dato2.agencia_id
       }).then(() => {
         this.$alert.success('Modificado correctamente')
         this.dialog_mod = false
