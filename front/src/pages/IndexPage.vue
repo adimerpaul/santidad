@@ -9,7 +9,7 @@
       </div>
       <div class="col-12 col-md-2 bg-white">
         <q-select dense outlined v-model="agencia" label="Agencia" :options="agencias" hint="Agencia de la venta"
-                  emit-value map-options option-value="id" option-label="nombre" />
+                  emit-value map-options option-value="id" option-label="nombre" :disable="this.$store.user.id!=1" />
         <!--        <pre>{{agencias}}</pre>-->
       </div>
       <div class="col-12 col-md-2 bg-white">
@@ -325,6 +325,8 @@ export default {
   },
   created () {
     this.proveedores = [{ id: 0, nombreRazonSocial: 'Busca o selecciona un proveedor' }]
+    const agencia = localStorage.getItem('agencia_id')
+    this.agencia = parseInt(agencia)
     this.proveedorGet()
     this.salesGet()
     this.agenciasGet()
@@ -349,8 +351,10 @@ export default {
       })
     },
     agenciasGet () {
+      this.agencias = [{ id: '', nombre: 'TODO' }]
       this.$axios.get('agencias').then(res => {
-        this.agencias = res.data
+        // this.agencias = res.data
+        this.agencias = [...this.agencias, ...res.data]
       })
     },
     reportTotal (title) {
