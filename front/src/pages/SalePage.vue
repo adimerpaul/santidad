@@ -122,7 +122,7 @@
                             {{props.row.nombre}}
                           </div>
                           <div class="text-grey">Disponible: {{props.row.cantidad}}</div>
-                          <q-input v-model="props.row.precioVenta" style="width: 170px" class="super-small" step="0.1" type="number" @update:model-value="precioVenta(props.row)" dense outlined>
+                          <q-input v-model="props.row.precioVenta" style="width: 170px"  step="0.1" type="number" @update:model-value="precioVenta(props.row)" dense outlined>
                             <template v-slot:prepend>
                               <q-icon name="edit" size="xs" />
                               <div style="font-size: 10px">Bs.</div>
@@ -143,7 +143,7 @@
 <!--                      </div>-->
                     </q-td>
                     <q-td key="cantidadVenta" :props="props">
-                      <q-input dense outlined bottom-slots min="1" class="super-small" v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>
+                      <q-input dense outlined bottom-slots min="1"  v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>
                         <template v-slot:prepend>
                           <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>
                         </template>
@@ -567,23 +567,23 @@ export default {
 }
 </script>
 <style lang="scss">
-.super-small.q-field--dense {
-  .q-field__control-container,
-  .q-field__native {
-    //padding-top: 10px !important;
-  }
-
-  .q-field__control {
-    height: 25px !important;
-    min-height: 25px !important;
-  }
-
-  .q-field__marginal {
-    height: 25px !important;
-  }
-
-  .q-field__label {
-    top: 6px !important;
-  }
-}
+//.super-small.q-field--dense {
+//  .q-field__control-container,
+//  .q-field__native {
+//    //padding-top: 10px !important;
+//  }
+//
+//  .q-field__control {
+//    height: 25px !important;
+//    min-height: 25px !important;
+//  }
+//
+//  .q-field__marginal {
+//    height: 25px !important;
+//  }
+//
+//  .q-field__label {
+//    top: 6px !important;
+//  }
+//}
 </style>

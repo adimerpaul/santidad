@@ -158,7 +158,89 @@ class SalesController extends Controller{
         return Sales::with(['details','client'])->find($sales->id);
     }
     public function show(Sales $sales){ return $sales; }
-    public function update(UpdateSalesRequest $request, Sales $sales){ return $sales->update($request->all()); }
+    public function update(UpdateSalesRequest $request, Sales $sale){
+        try {
+         DB::beginTransaction();
+            $numeroSucursal = $sale->agencia_id;
+            //restaurar stock
+            foreach ($sale->details as $detail){
+                $product = Product::find($detail->product_id);
+                $product->cantidad = $product->cantidad + $detail->cantidad;
+                if ($numeroSucursal == 1){
+                    $product->cantidadSucursal1 = $product->cantidadSucursal1 + $detail->cantidad;
+                }else if ($numeroSucursal == 2){
+                    $product->cantidadSucursal2 = $product->cantidadSucursal2 + $detail->cantidad;
+                }else if ($numeroSucursal == 3){
+                    $product->cantidadSucursal3 = $product->cantidadSucursal3 + $detail->cantidad;
+                }else if ($numeroSucursal == 4){
+                    $product->cantidadSucursal4 = $product->cantidadSucursal4 + $detail->cantidad;
+                }else if ($numeroSucursal == 5){
+                    $product->cantidadSucursal5 = $product->cantidadSucursal5 + $detail->cantidad;
+                }else if ($numeroSucursal == 6){
+                    $product->cantidadSucursal6 = $product->cantidadSucursal6 + $detail->cantidad;
+                }else if ($numeroSucursal == 7){
+                    $product->cantidadSucursal7 = $product->cantidadSucursal7 + $detail->cantidad;
+                }else if ($numeroSucursal == 8){
+                    $product->cantidadSucursal8 = $product->cantidadSucursal8 + $detail->cantidad;
+                }else if ($numeroSucursal == 9){
+                    $product->cantidadSucursal9 = $product->cantidadSucursal9 + $detail->cantidad;
+                }else if ($numeroSucursal == 10){
+                    $product->cantidadSucursal10 = $product->cantidadSucursal10 + $detail->cantidad;
+                }
+                $product->save();
+            }
+            //eliminamos detalles
+            Detail::whereSaleId($sale->id)->delete();
+            //actualizamos venta
+            $montoTotal= 0;
+            $concepto = "";
+            foreach ($request->details as $product) {
+                $concepto .= $product['cantidad'].$product['descripcion'].',';
+                $montoTotal += $product['subTotal'];
+                $detail = new Detail();
+                $detail->cantidad = $product['cantidad'];
+                $detail->precioUnitario = $product['precioUnitario'];
+                $detail->subTotal = $product['subTotal'];
+                $detail->sale_id = $sale->id;
+                $detail->descripcion = $product['descripcion'];
+                $detail->user_id = $request->user()->id;
+                $detail->product_id = $product['product_id'];
+                $detail->save();
+                $productSale = Product::find($product['product_id']);
+                $productSale->cantidad = $productSale->cantidad - $product['cantidad'];
+                if ($numeroSucursal == 1) {
+                    $productSale->cantidadSucursal1 = $productSale->cantidadSucursal1 - $product['cantidad'];
+                } else if ($numeroSucursal == 2) {
+                    $productSale->cantidadSucursal2 = $productSale->cantidadSucursal2 - $product['cantidad'];
+                } else if ($numeroSucursal == 3) {
+                    $productSale->cantidadSucursal3 = $productSale->cantidadSucursal3 - $product['cantidad'];
+                } else if ($numeroSucursal == 4) {
+                    $productSale->cantidadSucursal4 = $productSale->cantidadSucursal4 - $product['cantidad'];
+                } else if ($numeroSucursal == 5) {
+                    $productSale->cantidadSucursal5 = $productSale->cantidadSucursal5 - $product['cantidad'];
+                } else if ($numeroSucursal == 6) {
+                    $productSale->cantidadSucursal6 = $productSale->cantidadSucursal6 - $product['cantidad'];
+                } else if ($numeroSucursal == 7) {
+                    $productSale->cantidadSucursal7 = $productSale->cantidadSucursal7 - $product['cantidad'];
+                } else if ($numeroSucursal == 8) {
+                    $productSale->cantidadSucursal8 = $productSale->cantidadSucursal8 - $product['cantidad'];
+                } else if ($numeroSucursal == 9) {
+                    $productSale->cantidadSucursal9 = $productSale->cantidadSucursal9 - $product['cantidad'];
+                } else if ($numeroSucursal == 10) {
+                    $productSale->cantidadSucursal10 = $productSale->cantidadSucursal10 - $product['cantidad'];
+                }
+                $productSale->save();
+            }
+            $sale->montoTotal = $montoTotal;
+            $sale->concepto = substr($concepto,0,-1);
+            $sale->modificado = 'SI';
+            $sale->save();
+            DB::commit();
+        }catch (\Exception $e){
+            DB::rollBack();
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
+    }
     public function destroy(Sales $sales){ return $sales->delete(); }
 
     /**

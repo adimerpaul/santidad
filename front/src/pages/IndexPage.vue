@@ -115,13 +115,30 @@
           </template>
           <template v-slot:body="props">
             <q-tr :props="props">
-              <q-td key="opcion" :props="props" auto-width>
-                <q-btn-group v-if="props.row.estado=='ACTIVO'">
-                  <q-btn dense label="Anular" color="red-4" size="10px"
-                         no-caps no-wrap icon="o_highlight_off" @click="saleDelete(props.row.id)">
-                    <q-tooltip>Anular venta</q-tooltip>
-                  </q-btn>
-                </q-btn-group>
+              <q-td key="opcion" :props="props" auto-width >
+<!--                <pre>{{props.row.modificado}}</pre>-->
+                <q-chip v-if="props.row.modificado=='SI'" color="red" size="8px" text-color="white" dense flat label="S"/>
+                <q-btn-dropdown dense icon="more_vert" align="right" label="Opciones" no-caps color="pink-9" size="10px" v-if="props.row.estado=='ACTIVO'">
+                  <q-item clickable v-close-popup class="text-center">
+                    <q-btn dense label="Anular" color="red-4" size="10px" class="full-width"
+                           no-caps no-wrap icon="o_highlight_off" @click="saleDelete(props.row.id)">
+                      <q-tooltip>Anular venta</q-tooltip>
+                    </q-btn>
+                  </q-item>
+                  <q-item clickable v-close-popup class="text-center">
+                    <q-btn dense label="Imprimir" color="green-4" size="10px" class="full-width"
+                           no-caps no-wrap icon="print" @click="reimprimirNota(props.row)">
+                      <q-tooltip>Imprimir nota</q-tooltip>
+                    </q-btn>
+                  </q-item>
+                  <q-item clickable v-close-popup class="text-center">
+                    <q-btn dense label="Modificar" color="orange-4" size="10px" class="full-width"
+                           no-caps no-wrap icon="o_edit" @click="modificarNota(props.row)">
+                      <q-tooltip>Modificar nota</q-tooltip>
+                    </q-btn>
+                  </q-item>
+                </q-btn-dropdown>
+
                 <div v-else>
                   <q-btn dense label="Anulado" color="grey-4" size="10px" no-caps no-wrap icon="o_highlight_off" />
                 </div>
@@ -214,6 +231,57 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+    <q-dialog v-model="saleDialogUpdate">
+      <q-card>
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-subtitle2 text-bold text-grey">
+            Modificar venta
+          </div>
+          <q-space/>
+          <q-btn icon="o_highlight_off" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section>
+          <q-form @submit="saleModificar">
+            <q-markup-table>
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Cantidad</th>
+                  <th>Precio unitario</th>
+                  <th>Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+<!--              <pre>{{saleUpate.details}}</pre>-->
+                <tr v-for="detail in saleUpate.details" :key="detail.id">
+                  <td>
+                    <div style="width: 200px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">
+                      {{detail.descripcion}}
+                    </div>
+                  </td>
+                  <td>
+                    <q-input v-model="detail.cantidad" dense outlined type="number" style="width: 70px;"/>
+                  </td>
+                  <td>{{detail.precioUnitario}}</td>
+                  <td>
+                    {{detail.cantidad*detail.precioUnitario}}
+                  </td>
+                </tr>
+              <tr>
+                <td colspan="3" class="text-right">Total</td>
+                <td>{{montoTotalUpdate}}</td>
+              </tr>
+              </tbody>
+            </q-markup-table>
+            <div class="row">
+              <div class="col-12">
+                <q-btn color="green-4" class="full-width" no-caps icon="add_circle_outline" label="Guardar" type="submit" dense :loading="loading" />
+              </div>
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
     <div id="myElement" class="hidden"></div>
   </q-page>
 </template>
@@ -221,11 +289,14 @@
 <script>
 // import { date } from 'quasar'
 import moment from 'moment'
+import { Imprimir } from 'src/addons/Imprimir'
 
 export default {
   data () {
     return {
       filter: '',
+      saleDialogUpdate: false,
+      saleUpate: {},
       dateIni: moment().format('YYYY-MM-DD'),
       dateFin: moment().format('YYYY-MM-DD'),
       loading: false,
@@ -260,6 +331,18 @@ export default {
     this.usersGet()
   },
   methods: {
+    saleModificar () {
+      this.loading = true
+      this.$axios.put('sales/' + this.saleUpate.id, this.saleUpate).then(res => {
+        this.loading = false
+        this.saleDialogUpdate = false
+        this.salesGet()
+        this.$alert.success('Venta modificada correctamente')
+      }).catch(err => {
+        this.loading = false
+        this.$alert.error(err.response.data.message)
+      })
+    },
     usersGet () {
       this.$axios.get('user').then(res => {
         this.users = res.data
@@ -280,6 +363,15 @@ export default {
         this.loading = false
         this.$alert.error(err.response.data.message)
       })
+    },
+    reimprimirNota (sale) {
+      Imprimir.nota(sale).then(r => {
+        // console.log(r)
+      })
+    },
+    modificarNota (sale) {
+      this.saleDialogUpdate = true
+      this.saleUpate = sale
     },
     saleDelete (id) {
       this.$q.dialog({
@@ -356,6 +448,13 @@ export default {
     }
   },
   computed: {
+    montoTotalUpdate () {
+      var total = 0
+      this.saleUpate.details.forEach(detail => {
+        total += detail.cantidad * detail.precioUnitario
+      })
+      return total
+    },
     totalIngresos () {
       const monto = this.sales.filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO').reduce((a, b) => parseFloat(a) + parseFloat(b.montoTotal), 0)
       console.log('monto', monto)
