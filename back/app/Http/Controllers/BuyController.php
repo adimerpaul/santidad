@@ -11,9 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class BuyController extends Controller{
+    //productos por vencer
     public function index(Request $request)
     {
-//        $userId = $request->user()->id;
         $search = $request->search;//         'Dias para Vencer','Fecha de Vencimiento', 'Fecha de Compra'
         $order = $request->order ?? null;
 
@@ -23,11 +23,8 @@ class BuyController extends Controller{
                     $query->select('id', 'name');
                 }])
             ->with('proveedor');
-//                ->where('lote', 'LIKE', "%$search%")
-//                ->where('factura', 'LIKE', "%$search%");
         if ($search) {
             $buys = $buys->where('factura',$search);
-//                ->orWhere('lote', 'LIKE', "%$search%");
         }else{
             if ($order=='Dias para Vencer') {
                 $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '>', Carbon::now());
@@ -37,7 +34,31 @@ class BuyController extends Controller{
                 $buys = $buys->orderBy('date', 'asc');
             }
         }
+        return response()->json($buys->paginate(100));
+    }
+    //productos vencidos
+    public function indexVencidos(Request $request)
+    {
+        $search = $request->search;//         'Dias para Vencer','Fecha de Vencimiento', 'Fecha de Compra'
+        $order = $request->order ?? null;
 
+        $buys = Buy::with(['product' => function($query) {
+                    $query->select('id', 'nombre');
+                }, 'user' => function($query) {
+                    $query->select('id', 'name');
+                }])
+            ->with('proveedor');
+        if ($search) {
+            $buys = $buys->where('factura',$search);
+        }else{
+            if ($order=='Dias para Vencer') {
+                $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '<', Carbon::now());
+            }elseif ($order=='Fecha de Vencimiento') {
+                $buys = $buys->orderBy('dateExpiry', 'asc');
+            }elseif ($order=='Fecha de Compra') {
+                $buys = $buys->orderBy('date', 'asc');
+            }
+        }
         return response()->json($buys->paginate(100));
     }
     public function show(Buy $buy){ return $buy; }

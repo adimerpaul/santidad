@@ -38,7 +38,7 @@
 <!--      :breakpoint="400"-->
       <q-layout>
         <q-header class="bg-white">
-          <q-list bordered padding class="text-black">
+          <q-list bordered padding class="text-black" dense>
             <q-item-label header class="text-bold">
               Menu principal
             </q-item-label>
@@ -159,6 +159,15 @@
                 <q-item-label>Productos por vencer</q-item-label>
                 <q-tooltip anchor="top middle" self="bottom middle">
                   Productos por vencer
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosVencidos">
+              <q-item-section avatar><q-icon name="priority_high" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Productos vencidos</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Productos vencidos
                 </q-tooltip>
               </q-item-section>
             </q-item>

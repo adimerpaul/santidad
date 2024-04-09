@@ -1,56 +1,56 @@
 <template>
-<q-page>
-<!--  <div class="col-12">-->
-    <div class="text-white bg-red-7 text-center text-h6 text-bold ">Productos por Vencer</div>
-<!--  </div>-->
-  <div class="row">
-    <div class="col-2">
-      <q-select v-model="ordenar" :options="ordenarPor" label="Ordenar por" outlined dense @update:model-value="buyGet"/>
+  <q-page>
+    <!--  <div class="col-12">-->
+    <div class="text-white bg-purple-8 text-center text-h6 text-bold ">Productos vencidos</div>
+    <!--  </div>-->
+    <div class="row">
+      <div class="col-2">
+        <q-select v-model="ordenar" :options="ordenarPor" label="Ordenar por" outlined dense @update:model-value="buyGet"/>
+      </div>
     </div>
-  </div>
-  <div class="flex flex-center">
-    <q-pagination
-      v-model="currentPage"
-      color="primary"
-      :max="totalPages"
-      :max-pages="6"
-      boundary-numbers
-      @update:model-value="buyGet"
-    />
-  </div>
-  <q-table dense flat :rows-per-page-options="[0]" :rows="compras" :columns="compraColumns" wrap-cells
-           title="Productos por Vencer" :loading="loading">
-    <template v-slot:top-right>
-      <q-btn icon="refresh" @click="buyGet" dense color="grey" label="Actualizar" no-caps size="10px" class="q-mr-sm">
-        <q-tooltip>Actualizar</q-tooltip>
-      </q-btn>
-      <q-input outlined dense v-model="search" label="Buscar" class="q-mt-sm" @update:model-value="buyGet" debounce="500">
-        <template v-slot:append>
-          <q-icon name="search" class="cursor-pointer">
-            <q-tooltip>Search</q-tooltip>
-          </q-icon>
-        </template>
-      </q-input>
-    </template>
-    <template v-slot:body-cell-diasPorVencer="props">
-      <q-td :props="props">
-        <q-chip :color="props.row.diasPorVencer <= 30 ? 'red' : props.row.diasPorVencer <= 90 ? 'orange' : 'green'"
-                text-color="white" dense :label="`${props.row.diasPorVencer} dias`"/>
-      </q-td>
-    </template>
-    <template v-slot:body-cell-opciones="props">
-      <q-td :props="props">
-        <q-btn-group>
-          <q-btn icon="print" @click="print(props.row)" flat round dense color="grey">
-            <q-tooltip>Reimprimir</q-tooltip>
-          </q-btn>
-        </q-btn-group>
-      </q-td>
-    </template>
-  </q-table>
-<!--  <pre>{{compras}}</pre>-->
-  <div id="myElement" class="hidden"></div>
-</q-page>
+    <div class="flex flex-center">
+      <q-pagination
+        v-model="currentPage"
+        color="primary"
+        :max="totalPages"
+        :max-pages="6"
+        boundary-numbers
+        @update:model-value="buyGet"
+      />
+    </div>
+    <q-table dense flat :rows-per-page-options="[0]" :rows="compras" :columns="compraColumns" wrap-cells
+             title="Productos por Vencer" :loading="loading">
+      <template v-slot:top-right>
+        <q-btn icon="refresh" @click="buyGet" dense color="grey" label="Actualizar" no-caps size="10px" class="q-mr-sm">
+          <q-tooltip>Actualizar</q-tooltip>
+        </q-btn>
+        <q-input outlined dense v-model="search" label="Buscar" class="q-mt-sm" @update:model-value="buyGet" debounce="500">
+          <template v-slot:append>
+            <q-icon name="search" class="cursor-pointer">
+              <q-tooltip>Search</q-tooltip>
+            </q-icon>
+          </template>
+        </q-input>
+      </template>
+      <template v-slot:body-cell-diasPorVencer="props">
+        <q-td :props="props">
+          <q-chip :color="props.row.diasPorVencer <= 30 ? 'red' : props.row.diasPorVencer <= 90 ? 'orange' : 'green'"
+                  text-color="white" dense :label="`${props.row.diasPorVencer} dias`"/>
+        </q-td>
+      </template>
+      <template v-slot:body-cell-opciones="props">
+        <q-td :props="props">
+          <q-btn-group>
+            <q-btn icon="print" @click="print(props.row)" flat round dense color="grey">
+              <q-tooltip>Reimprimir</q-tooltip>
+            </q-btn>
+          </q-btn-group>
+        </q-td>
+      </template>
+    </q-table>
+    <!--  <pre>{{compras}}</pre>-->
+    <div id="myElement" class="hidden"></div>
+  </q-page>
 </template>
 <script>
 import moment from 'moment'
@@ -106,7 +106,7 @@ export default {
       this.loading = true
       this.compras = []
       this.$axios
-        .get('buys', {
+        .get('indexVencidos', {
           params: {
             search: this.search,
             order: this.ordenar,

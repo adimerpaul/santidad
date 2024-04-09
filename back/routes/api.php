@@ -49,6 +49,7 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::resource('/sales',\App\Http\Controllers\SalesController::class);
     Route::get('/salesAnular/{id}',[\App\Http\Controllers\SalesController::class,'salesAnular']);
     Route::resource('/buys',\App\Http\Controllers\BuyController::class);
+    Route::get('/indexVencidos',[\App\Http\Controllers\BuyController::class,'indexVencidos']);
     Route::post('/compraInsert',[\App\Http\Controllers\BuyController::class,'compraInsert']);
     Route::post('/salesGasto',[\App\Http\Controllers\SalesController::class,'salesGasto']);
     Route::post('/searchClient', [\App\Http\Controllers\ClientController::class,'searchClient']);
