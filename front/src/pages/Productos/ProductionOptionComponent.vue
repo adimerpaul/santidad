@@ -111,14 +111,14 @@
                  class="uppercase"
         />
         <q-input label-color="black" outlined v-model="product.barra" label="Código de barras" dense hint="Escríbelo o escanéalo" />
-        <q-input label-color="black" outlined v-model="product.cantidad" label="Cantidad" input-class="text-center" dense hint="">
-          <template v-slot:append>
-            <q-icon name="o_add_circle_outline" @click="cantidadMore" class="cursor-pointer"/>
-          </template>
-          <template v-slot:prepend>
-            <q-icon name="o_remove_circle_outline" @click="cantidadMinus" class="cursor-pointer"/>
-          </template>
-        </q-input>
+<!--        <q-input label-color="black" outlined v-model="product.cantidad" label="Cantidad" input-class="text-center" dense hint="">-->
+<!--          <template v-slot:append>-->
+<!--            <q-icon name="o_add_circle_outline" @click="cantidadMore" class="cursor-pointer"/>-->
+<!--          </template>-->
+<!--          <template v-slot:prepend>-->
+<!--            <q-icon name="o_remove_circle_outline" @click="cantidadMinus" class="cursor-pointer"/>-->
+<!--          </template>-->
+<!--        </q-input>-->
         <q-input label-color="black" outlined type="number" step="0.01" v-model="product.costo" label="Costo" dense hint="Valor que pagas al proveedor por el producto"/>
         <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
         <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>
