@@ -196,11 +196,11 @@ class SalesController extends Controller{
             $concepto = "";
             foreach ($request->details as $product) {
                 $concepto .= $product['cantidad'].$product['descripcion'].',';
-                $montoTotal += $product['subTotal'];
+                $montoTotal += ($product['cantidad'] * $product['precioUnitario']);
                 $detail = new Detail();
                 $detail->cantidad = $product['cantidad'];
                 $detail->precioUnitario = $product['precioUnitario'];
-                $detail->subTotal = $product['subTotal'];
+                $detail->subTotal = round($product['cantidad'] * $product['precioUnitario'], 2);
                 $detail->sale_id = $sale->id;
                 $detail->descripcion = $product['descripcion'];
                 $detail->user_id = $request->user()->id;

@@ -34,7 +34,6 @@
                       :options="agencias" map-options emit-value
                       option-value="id" option-label="nombre"
                       @update:model-value="productsGet"
-                      :disable="!($store.user.id=='1')"
             />
           </div>
           <div class="col-12 flex flex-center">
@@ -155,6 +154,7 @@
                       <div class="col-8 text-right">
                         <q-select class="bg-white" dense outlined v-model="proveedor_id"
                                   :options="proveedores" map-options emit-value
+                                  use-input @filter="filterFn"
                                   option-value="id" option-label="nombreRazonSocial"
                         />
 <!--                        <pre>{{proveedores}}</pre>-->
@@ -254,6 +254,7 @@ export default {
         { label: 'Orden alfabetico', value: 'nombre asc' }
       ],
       proveedores: [],
+      proveedoresAll: [],
       proveedor_id: 0
     }
   },
@@ -275,9 +276,24 @@ export default {
     })
   },
   methods: {
+    filterFn (val, update, abort) {
+      // console.log(val)
+      // console.log(this.proveedoresAll)
+      if (val === '') {
+        update(() => {
+          this.proveedores = this.proveedoresAll
+        })
+        return
+      }
+      const needle = val.toLowerCase()
+      update(() => {
+        this.proveedores = this.proveedoresAll.filter(v => v.nombreRazonSocial.toLowerCase().indexOf(needle) > -1)
+      })
+    },
     proveedoresGet () {
       this.$axios.get('providers').then(res => {
         this.proveedores = res.data
+        this.proveedoresAll = res.data
       })
     },
     deleteProductosVenta (row, index) {
