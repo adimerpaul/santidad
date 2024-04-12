@@ -259,6 +259,7 @@ export default {
     }
   },
   created () {
+    this.agencia_id = this.$store.agencia_id
     // this.$store.agencia_id = 0
   },
   mounted () {
