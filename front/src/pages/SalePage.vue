@@ -30,13 +30,13 @@
             />
           </div>
           <div class="col-12 col-md-4 q-pa-xs">
-            <q-select class="bg-white" label="Agencia" dense outlined v-model="$store.agencia_id"
+            <q-select class="bg-white" label="Agencia" dense outlined v-model="agencia_id"
                       :options="agencias" map-options emit-value
                       option-value="id" option-label="nombre"
                       @update:model-value="productsGet"
                       :disable="!($store.user.id=='1')"
             />
-<!--            <pre>{{$store.agencia_id}}</pre>-->
+<!--            <pre>{{agencia_id}}</pre>-->
           </div>
           <div class="col-12 flex flex-center">
             <q-pagination
@@ -287,6 +287,7 @@ export default {
   name: 'SalePage',
   data () {
     return {
+      agencia_id: parseInt(localStorage.getItem('agencia_id')),
       saleDialog: false,
       client: {},
       aporte: false,
@@ -363,7 +364,7 @@ export default {
         efectivo: this.efectivo,
         products: this.$store.productosVenta,
         metodoPago: this.metodoPago,
-        agencia_id: this.$store.agencia_id
+        agencia_id: this.agencia_id
       }
       this.$axios.post('sales', data).then(res => {
         this.loading = false
@@ -503,7 +504,7 @@ export default {
     productsGet () {
       this.loading = true
       this.products = []
-      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.$store.agencia_id}`).then(res => {
+      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}`).then(res => {
         this.loading = false
         // console.log(res.data.products)
         this.totalProducts = res.data.products.total
