@@ -186,7 +186,7 @@
 <!--                </q-card>-->
 <!--              </q-expansion-item>-->
             </q-list>
-            <q-btn @click="compraInsert" class="full-width" no-caps label="Confirmar compra" :color="$store.productosCompra.length==0?'grey':'warning'" :disable="$store.productosCompra.length==0?true:false"/>
+            <q-btn @click="compraInsert" class="full-width" no-caps label="Confirmar compra" :color="$store.productosCompra.length==0?'grey':'warning'" :disable="$store.productosCompra.length==0?true:false" :loading="loading"/>
           </q-card-section>
         </q-card>
       </div>
@@ -303,7 +303,10 @@ export default {
     async compraInsert () {
       // Verificar que todos tengan lote, fecha de vencimiento y cantidad
       for (const p of this.$store.productosCompra) {
-        if (p.lote === '' || p.fechaVencimiento === '' || p.cantidadCompra === '' || p.price === '') {
+        if (
+          p.lote === '' || p.fechaVencimiento === '' || p.cantidadCompra === '' || p.price === '' ||
+          p.lote === null || p.fechaVencimiento === null || p.cantidadCompra === null || p.price === null
+        ) {
           this.$alert.error('Debes ingresar el lote, la fecha de vencimiento y la cantidad de compra para todos los productos.')
           return false
         }
@@ -334,6 +337,7 @@ export default {
           this.agencia_id = 0
         } catch (err) {
           this.$alert.error(err.response.data.message)
+          this.loading = false
         }
       })
     },
