@@ -83,6 +83,14 @@ class BuyController extends Controller{
         return Buy::with(['product','user'])->findOrFail($buy->id);
     }
     public function compraInsert(Request $request){
+        foreach ($request->buys as $buy) {
+            if (
+                isset($buy['lote']) === false || isset($buy['fechaVencimiento']) === false || isset($buy['cantidadCompra']) === false || isset($buy['price']) === false ||
+                $buy['lote'] === '' || $buy['fechaVencimiento'] === '' || $buy['cantidadCompra'] === '' || $buy['price'] === ''
+            ) {
+                return response()->json(['message' => 'Falta un campo fechaVencimiento, cantidadCompra, price, lote'], 400);
+            }
+        }
         $insertbuys = [];
         foreach ($request->buys as $buy) {
 //            error_log(json_encode($buy));
