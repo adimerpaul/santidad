@@ -65,6 +65,28 @@ class BuyController extends Controller{
         }
         return response()->json($buys->paginate(100));
     }
+
+    public function indexVencidosBaja(Request $request)
+    {
+        $search = $request->search;//         'Dias para Vencer','Fecha de Vencimiento', 'Fecha de Compra'
+        $order = $request->order ?? null;
+
+        $buys = Buy::with('proveedor','agencia','userBaja','product','user')
+            ->where('user_baja_id','!=',0)
+            ->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")');
+        if ($search) {
+            $buys = $buys->where('factura',$search);
+        }else{
+            if ($order=='Dias para Vencer') {
+                $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '<', Carbon::now());
+            }elseif ($order=='Fecha de Vencimiento') {
+                $buys = $buys->orderBy('dateExpiry', 'asc');
+            }elseif ($order=='Fecha de Compra') {
+                $buys = $buys->orderBy('date', 'asc');
+            }
+        }
+        return response()->json($buys->paginate(100));
+    }
     public function darBaja(Request $request)
     {
 //        DB::beginTransaction();
