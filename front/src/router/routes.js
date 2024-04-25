@@ -12,6 +12,7 @@ import Unidades from 'pages/Unidades.vue'
 import ComprasPage from 'pages/Compras/ComprasPage.vue'
 import AgenciaPage from 'pages/AgenciaPage.vue'
 import ProductosVencidosPage from 'pages/ProductosVencidosPage.vue'
+import ProductosRetiradosPage from 'pages/ProductosRetiradosPage.vue'
 
 const routes = [
   {
@@ -30,6 +31,7 @@ const routes = [
       { path: 'productosPorVencer', component: ProductosPorVencerPage, meta: { requiresAuth: true } },
       { path: 'productosVencidos', component: ProductosVencidosPage, meta: { requiresAuth: true } },
       { path: 'agencias', component: AgenciaPage, meta: { requiresAuth: true } },
+      { path: 'productosRetirados', component: ProductosRetiradosPage, meta: { requiresAuth: true } },
       { path: 'subcategorias', component: () => import('pages/SubcategoryPage.vue'), meta: { requiresAuth: true } }
     ]
   },
