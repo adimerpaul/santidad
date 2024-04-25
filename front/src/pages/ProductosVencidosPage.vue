@@ -41,6 +41,9 @@
       <template v-slot:body-cell-opciones="props">
         <q-td :props="props">
           <q-btn-group>
+            <q-btn icon="delete_sweep" @click="productBaja(props.row)" flat round dense color="red">
+              <q-tooltip>Dar de baja</q-tooltip>
+            </q-btn>
             <q-btn icon="print" @click="print(props.row)" flat round dense color="grey">
               <q-tooltip>Reimprimir</q-tooltip>
             </q-btn>
@@ -50,6 +53,48 @@
     </q-table>
     <!--  <pre>{{compras}}</pre>-->
     <div id="myElement" class="hidden"></div>
+    <q-dialog v-model="productoDialogBaja">
+      <q-card>
+        <q-card-section>
+          <div class="text-h6">Dar de baja</div>
+          <div class="text-caption">¿Estás seguro de dar de baja el producto?</div>
+        </q-card-section>
+        <q-card-section>
+
+          <q-form>
+            <div class="row">
+              <div class="col-6">
+                <q-input outlined v-model="productoBaja.lote" label="Lote" dense readonly/>
+              </div>
+              <div class="col-6">
+                <q-input outlined v-model="productoBaja.factura" label="Factura" dense readonly/>
+              </div>
+              <div class="col-12">
+                <q-input outlined v-model="productoBaja.product.nombre" label="Producto a dar de baja" dense readonly/>
+              </div>
+              <div class="col-12">
+                <q-input outlined :model-value="productoBaja.proveedor?.nombreRazonSocial" label="Proveedor" dense readonly/>
+              </div>
+              <div class="col-12">
+                <q-input outlined v-model="productoBaja.dateExpiry" label="Fecha de Vencimiento" dense readonly/>
+              </div>
+              <div class="col-4">
+                <q-input outlined v-model="productoBaja.quantity" label="Cantidad A dar de baja" type="number" dense bg-color="orange"/>
+              </div>
+              <div class="col-8">
+                <q-select v-model="productoBaja.agencia_id" :options="agencias" label="Agencia" outlined
+                          map-options option-value="id" option-label="nombre" dense emit-value/>
+              </div>
+            </div>
+            <q-card-actions align="right">
+              <q-btn label="Cancelar" color="red" @click="productoDialogBaja = false" :loading="loading"/>
+              <q-btn label="Aceptar" color="green" @click="darBaja" :loading="loading"/>
+            </q-card-actions>
+<!--            <pre>{{productoBaja}}</pre>-->
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 <script>
@@ -75,6 +120,8 @@ export default {
         // { name: 'id', label: 'ID', field: 'id', align: 'left' },
         { name: 'lote', label: 'Lote', field: 'lote', align: 'left', sortable: true },
         { name: 'factura', label: 'Factura', field: 'factura', align: 'left', sortable: true },
+        { name: 'user_baja_id', label: 'Usuario de Baja', field: (row) => row.user_baja?.name, align: 'left', sortable: true },
+        { name: 'agencia', label: 'Agencia', field: (row) => row.agencia?.nombre, align: 'left', sortable: true },
         { name: 'producto', label: 'Producto', field: row => row.product.nombre, align: 'left', sortable: true },
         { name: 'diasPorVencer', label: 'Dias para Vencer', field: 'diasPorVencer', align: 'left', sortable: true },
         { name: 'quantity', label: 'Cantidad', field: 'quantity', align: 'left', sortable: true },
@@ -86,13 +133,76 @@ export default {
         { name: 'user', label: 'Usuario', field: row => row.user.name, align: 'left', sortable: true },
         { name: 'provider', label: 'Proveedor', field: row => row.proveedor?.nombreRazonSocial, align: 'left', sortable: true }
         // { name: 'actions', label: 'Acciones', field: 'actions', align: 'left' }
-      ]
+      ],
+      productoBaja: {},
+      productoDialogBaja: false,
+      agencias: []
     }
   },
   created () {
+    this.agenciasGet()
     this.buyGet()
   },
   methods: {
+    darBaja () {
+      this.$q.dialog({
+        title: 'Dar de baja',
+        html: true,
+        message: '¿Estás seguro de dar de baja el producto?, <b>' + this.productoBaja.product.nombre + '</b> la cantidad de <b style="color: red">' + this.productoBaja.quantity + ' unidades</b>' +
+          ' da la  agencia <b>' + this.agencias.find(a => a.id === this.productoBaja.agencia_id).nombre + '</b>',
+        ok: {
+          push: true,
+          color: 'red',
+          label: 'Aceptar'
+        },
+        cancel: {
+          push: true,
+          color: 'grey',
+          label: 'Cancelar'
+        }
+      }).onOk(() => {
+        this.darBajaProducto()
+      })
+    },
+    darBajaProducto () {
+      this.loading = true
+      this.$axios
+        .post('darBaja', {
+          id: this.productoBaja.id,
+          cantidadBaja: this.productoBaja.quantity,
+          sucursal_id_baja: this.productoBaja.agencia_id
+        })
+        .then(res => {
+          this.$q.notify({
+            color: 'green-4',
+            textColor: 'white',
+            icon: 'cloud_done',
+            message: 'Producto dado de baja'
+          })
+          this.productoDialogBaja = false
+          this.buyGet()
+        })
+        .catch(e => {
+          console.log(e)
+        })
+        .finally(() => {
+          this.loading = false
+        })
+    },
+    agenciasGet () {
+      this.$axios
+        .get('agencias')
+        .then(res => {
+          this.agencias = res.data
+        })
+        .catch(e => {
+          console.log(e)
+        })
+    },
+    productBaja (row) {
+      this.productoBaja = row
+      this.productoDialogBaja = true
+    },
     print (row) {
       this.$imprimir.reciboCompra(row)
     },

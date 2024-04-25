@@ -453,7 +453,7 @@ export default {
   },
   computed: {
     montoTotalUpdate () {
-      var total = 0
+      let total = 0
       this.saleUpate.details.forEach(detail => {
         total += detail.cantidad * detail.precioUnitario
       })

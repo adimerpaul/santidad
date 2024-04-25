@@ -171,6 +171,15 @@
                 </q-tooltip>
               </q-item-section>
             </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosRetirados" v-if="$store.user.id=='1'">
+              <q-item-section avatar><q-icon name="o_delete_sweep" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Productos retirados</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Productos retirados
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
           </q-list>
         </q-header>
         <q-footer class="bg-white">

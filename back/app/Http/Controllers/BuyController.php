@@ -9,6 +9,7 @@ use App\Models\Product;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class BuyController extends Controller{
     //productos por vencer
@@ -47,7 +48,10 @@ class BuyController extends Controller{
                 }, 'user' => function($query) {
                     $query->select('id', 'name');
                 }])
-            ->with('proveedor');
+            ->with('proveedor','agencia','userBaja')
+            ->where('lote', 'like', '%'.$search.'%')
+            ->orWhere('dateExpiry', 'like', '%'.$search.'%')
+            ->orWhere('factura', 'like', '%'.$search.'%');
         if ($search) {
             $buys = $buys->where('factura',$search);
         }else{
@@ -60,6 +64,49 @@ class BuyController extends Controller{
             }
         }
         return response()->json($buys->paginate(100));
+    }
+    public function darBaja(Request $request)
+    {
+//        DB::beginTransaction();
+//        try {
+            $buy = Buy::find($request->id);
+            $product = Product::find($buy->product_id);
+            $product->cantidad = $product->cantidad - $buy->cantidadBaja;
+            if ($request->sucursal_id_baja == 0) {
+                $product->cantidadAlmacen = $product->cantidadAlmacen - $buy->cantidadBaja;
+            } elseif ($request->sucursal_id_baja == 1) {
+                $product->cantidadSucursal1 = $product->cantidadSucursal1 - $buy->cantidadBaja;
+            } elseif ($request->sucursal_id_baja == 2) {
+                $product->cantidadSucursal2 = $product->cantidadSucursal2 - $buy->cantidadBaja;
+            } elseif ($request->sucursal_id_baja == 3) {
+                $product->cantidadSucursal3 = $product->cantidadSucursal3 - $buy->cantidadBaja;
+            } elseif ($request->sucursal_id_baja == 4) {
+                $product->cantidadSucursal4 = $product->cantidadSucursal4 - $buy->cantidadBaja;
+            } elseif ($request->sucursal_id_baja == 5) {
+                $product->cantidadSucursal5 = $product->cantidadSucursal5 - $buy->cantidadBaja;
+            } elseif ($request->sucursal_id_baja == 6) {
+                $product->cantidadSucursal6 = $product->cantidadSucursal6 - $buy->cantidadBaja;
+            } elseif ($request->sucursal_id_baja == 7) {
+                $product->cantidadSucursal7 = $product->cantidadSucursal7 - $buy->cantidadBaja;
+            } elseif ($request->sucursal_id_baja == 8) {
+                $product->cantidadSucursal8 = $product->cantidadSucursal8 - $buy->cantidadBaja;
+            } elseif ($request->sucursal_id_baja == 9) {
+                $product->cantidadSucursal9 = $product->cantidadSucursal9 - $buy->cantidadBaja;
+            } elseif ($request->sucursal_id_baja == 10) {
+                $product->cantidadSucursal10 = $product->cantidadSucursal10 - $buy->cantidadBaja;
+            }
+            $product->save();
+
+            $buy->user_baja_id = $request->user()->id;
+            $buy->cantidadBaja = $request->cantidadBaja;
+            $buy->sucursal_id_baja = $request->sucursal_id_baja;
+            $buy->save();
+//            DB::commit();
+//            return response()->json($buy);
+//        } catch (\Exception $e) {
+//            DB::rollBack();
+//            return response()->json(['message' => 'Error al dar de baja'], 400);
+//        }
     }
     public function show(Buy $buy){ return $buy; }
     public function store(StoreBuyRequest $request){

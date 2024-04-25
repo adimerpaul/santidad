@@ -315,7 +315,7 @@ export default {
       // Mostrar diálogo de confirmación
       await this.$q.dialog({
         title: 'Confirmar compra',
-        message: `¿Estás seguro de confirmar la compra a <span style="color: red;font-size: 24px"> <b>Agencia ${this.agencia_id}</b></span>?`,
+        message: `¿Estás seguro de confirmar la compra a <span style="color: red"> <b> ${this.agencias.find(a => a.id === this.agencia_id).nombre}</b></span> con <span style="color: red"> <b>${this.$store.productosCompra.length}</b></span> productos?`,
         html: true,
         cancel: true,
         persistent: true

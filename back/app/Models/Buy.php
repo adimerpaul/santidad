@@ -21,10 +21,21 @@ class Buy extends Model
         'date',
         'time',
         'proveedor_id',
+        'factura',
+        'user_baja_id',
+        'cantidadBaja',
+        'sucursal_id_baja',
     ];
     protected $appends = ['diasPorVencer'];
+
+    public function userBaja(){
+        return $this->belongsTo(User::class,'user_baja_id');
+    }
     public function product(){
         return $this->belongsTo(Product::class);
+    }
+    public function agencia(){
+        return $this->belongsTo(Agencia::class);
     }
     public function user(){
         return $this->belongsTo(User::class);
