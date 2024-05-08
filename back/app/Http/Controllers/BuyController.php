@@ -24,8 +24,11 @@ class BuyController extends Controller{
                     $query->select('id', 'name');
                 }])
             ->with('proveedor');
-        if ($search) {
-            $buys = $buys->where('factura',$search);
+        if ($search != null && $search != '') {
+            $buys = $buys->whereRaw('(lote = "'.$search.'" or factura = "'.$search.'")')
+                ->orWhereHas('product', function($query) use ($search) {
+                    $query->where('nombre', 'like', '%'.$search.'%');
+                });
         }else{
             if ($order=='Dias para Vencer') {
                 $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '>', Carbon::now());
