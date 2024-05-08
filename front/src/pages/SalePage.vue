@@ -414,6 +414,27 @@ export default {
       }
     },
     clickSale () {
+      // Variable para controlar si se encontró un problema
+      let hayProblema = false
+
+      // Verificamos que tengamos todos los productos
+      this.$store.productosVenta.forEach(p => {
+        const product = this.products.find(pr => pr.id === p.id)
+        if (product) {
+          if (product.cantidad < p.cantidadVenta) {
+            this.$alert.error(`No hay suficiente stock de ${product.nombre}`)
+            hayProblema = true
+            return false
+          }
+        }
+      })
+
+      // Verificamos si hubo algún problema durante la iteración
+      if (hayProblema) {
+        // Si hubo un problema, no continuamos con la venta
+        return false
+      }
+
       this.saleDialog = true
       this.aporte = false
       this.efectivo = ''
