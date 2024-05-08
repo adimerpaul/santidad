@@ -21,6 +21,9 @@
     <q-table dense flat :rows-per-page-options="[0]" :rows="compras" :columns="compraColumns" wrap-cells
              title="Productos por Vencer" :loading="loading">
       <template v-slot:top-right>
+        <q-btn icon="get_app" @click="exportExcel" dense color="green" label="Exportar" no-caps size="10px" class="q-mr-sm">
+          <q-tooltip>Exportar</q-tooltip>
+        </q-btn>
         <q-btn icon="refresh" @click="buyGet" dense color="grey" label="Actualizar" no-caps size="10px" class="q-mr-sm">
           <q-tooltip>Actualizar</q-tooltip>
         </q-btn>
@@ -102,6 +105,7 @@
 </template>
 <script>
 import moment from 'moment'
+import { Excel } from 'src/addons/Excel'
 
 export default {
   name: 'ProductosPorVencerPage',
@@ -214,6 +218,42 @@ export default {
       const date2 = moment()
       const diff = date1.diff(date2, 'days')
       return diff
+    },
+    exportExcel () {
+      const data = [
+        {
+          sheet: 'Productos Vencidos',
+          columns: [
+            { label: 'Lote', value: 'lote' },
+            { label: 'Factura', value: 'factura' },
+            { label: 'Usuario de Baja', value: 'user_baja_id' },
+            { label: 'Agencia', value: 'agencia.nombre' },
+            { label: 'Producto', value: 'product.nombre' },
+            { label: 'Dias Vencidos', value: 'diasPorVencer' },
+            { label: 'Cantidad', value: 'quantity' },
+            { label: 'Precio', value: 'price' },
+            { label: 'Total', value: 'total' },
+            { label: 'Fecha de Vencimiento', value: 'dateExpiry' },
+            { label: 'Fecha de Compra', value: 'date' },
+            { label: 'Usuario', value: 'user.name' },
+            { label: 'Proveedor', value: (row) => row.proveedor?.nombreRazonSocial }
+            // { title: 'Factura', key: 'factura' },
+            // { title: 'Usuario de Baja', key: 'user_baja_id' },
+            // { title: 'Agencia', key: 'agencia.nombre' },
+            // { title: 'Producto', key: 'product.nombre' },
+            // { title: 'Dias Vencidos', key: 'diasPorVencer' },
+            // { title: 'Cantidad', key: 'quantity' },
+            // { title: 'Precio', key: 'price' },
+            // { title: 'Total', key: 'total' },
+            // { title: 'Fecha de Vencimiento', key: 'dateExpiry' },
+            // { title: 'Fecha de Compra', key: 'date' },
+            // { title: 'Usuario', key: 'user.name' },
+            // { title: 'Proveedor', key: 'proveedor.nombreRazonSocial' }
+          ],
+          content: this.compras
+        }
+      ]
+      Excel.export(data)
     },
     buyGet: function () {
       this.loading = true
