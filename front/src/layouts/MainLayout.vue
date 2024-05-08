@@ -162,7 +162,7 @@
                 </q-tooltip>
               </q-item-section>
             </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosVencidos">
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosVencidos" v-if="$store.user.id=='1'">
               <q-item-section avatar><q-icon name="priority_high" /></q-item-section>
               <q-item-section>
                 <q-item-label>Productos vencidos</q-item-label>

@@ -199,6 +199,31 @@
             <q-select class="bg-white" emit-value map-options label="Sucursal" dense outlined v-model="lugar" :options="sucursalesName" hint="Selecciona una sucursal"/>
             <q-input label-color="black" outlined type="number" step="0.01" v-model="cantidad" label="Cantidad" dense hint="Cantidad a mover"
                      :rules="[val => !!val || 'Este campo es requerido']"/>
+            <q-input v-model="fecha_entrega_vencimiento" label="Fecha vencimiento" dense outlined type="date" class="bg-white"/>
+            <q-btn class="full-width" rounded
+                   :color="!cantidad ? 'grey' : 'green'"
+                   :disable="!cantidad"
+                   label="Guardar" no-caps type="submit" :loading="loading"/>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+    <q-dialog v-model="dialogAlmacenAgencia">
+      <q-card>
+        <q-card-section class="q-pb-none">
+          <div class="text-right">
+            <q-btn icon="o_highlight_off" flat round dense v-close-popup />
+          </div>
+          <div class="text-subtitle2 text-bold">
+            Mover producto del almacen a:
+          </div>
+        </q-card-section>
+        <q-card-section>
+          <q-form @submit="moverProductoAlmacen">
+<!--            <q-select class="bg-white" emit-value map-options label="Sucursal" dense outlined v-model="lugar" :options="sucursalesName" hint="Selecciona una sucursal"/>-->
+            <q-input label-color="black" outlined type="number" step="0.01" v-model="cantidad" label="Cantidad" dense hint="Cantidad a mover"
+                     :rules="[val => !!val || 'Este campo es requerido']"/>
+            <q-input v-model="fecha_entrega_vencimiento" label="Fecha vencimiento" dense outlined type="date" class="bg-white"/>
             <q-btn class="full-width" rounded
                    :color="!cantidad ? 'grey' : 'green'"
                    :disable="!cantidad"
@@ -255,6 +280,8 @@ export default {
       sucursales: [],
       sucursalesName: [],
       delSucursal: {},
+      dialogAlmacenAgencia: false,
+      sucursalEnvio: {},
       cantidad: 0,
       lugar: 'Almacen',
       product: {},
@@ -269,7 +296,8 @@ export default {
         dateExpiry: ''
       },
       compraTotal: 0,
-      loading: false
+      loading: false,
+      fecha_entrega_vencimiento: ''
     }
   },
   mounted () {
@@ -330,7 +358,8 @@ export default {
         id: this.product.id,
         lugar: this.lugar,
         cantidad: this.cantidad,
-        delSucursal: this.delSucursal.id
+        delSucursal: this.delSucursal.id,
+        fecha_entrega_vencimiento: this.fecha_entrega_vencimiento
       }
       console.log('data', data)
       this.loading = true
@@ -349,42 +378,78 @@ export default {
     },
     moverSucursal (delSucursal) {
       this.delSucursal = delSucursal
+      this.fecha_entrega_vencimiento = ''
       this.dialogMover = true
       this.lugar = 'Almacen'
       this.cantidad = 0
     },
+    moverProductoAlmacen () {
+      // agregarSucursal
+      // if (this.lugar === 'Almacen') {
+      //   this.$alert.error('No puedes mover el producto al almacen')
+      //   return false
+      // }
+      const data = {
+        sucursal: this.sucursalEnvio.id,
+        id: this.product.id,
+        cantidad: this.cantidad,
+        fecha_entrega_vencimiento: this.fecha_entrega_vencimiento
+      }
+      console.log('data', data)
+      this.loading = true
+      this.$axios.post('agregarSucursal', data).then(res => {
+        this.loading = false
+        this.$alert.success('Producto movido correctamente')
+        // this.productsGet()
+        this.$emit('productsGet')
+        this.product = res.data
+        this.dialogAlmacenAgencia = false
+        this.$imprimir.reciboTranferencia(this.product.nombre, this.delSucursal.nombre, this.lugar, this.cantidad)
+      }).catch(err => {
+        this.loading = false
+        this.$alert.error(err.response.data.message)
+      })
+    },
     agregarSucursal (sucursal) {
-      console.log(sucursal)
+      // console.log(sucursal)
       // console.log(this.product.cantidadAlmacen)
       if (this.product.cantidadAlmacen <= 0) {
         this.$alert.error('No puedes agregar un producto en sucursal si no tienes en almacen')
-        return
+        return true
       }
-      this.$q.dialog({
-        title: 'Agregar a ' + sucursal.nombre,
-        message: 'Ingresa la cantidad que deseas agregar',
-        prompt: {
-          model: 1,
-          type: 'number'
-        },
-        cancel: true
-      }).onOk((data) => {
-        this.loading = true
-        this.$axios.post('agregarSucursal', {
-          sucursal: sucursal.id,
-          id: this.product.id,
-          cantidad: data
-        }).then(res => {
-          this.loading = false
-          this.$alert.success('Producto agregado correctamente')
-          // this.productsGet()
-          this.$emit('productsGet')
-          this.product = res.data
-        }).catch(err => {
-          this.loading = false
-          this.$alert.error(err.response.data.message)
-        })
-      })
+      this.fecha_entrega_vencimiento = ''
+      this.sucursalEnvio = sucursal
+      this.dialogAlmacenAgencia = true
+      // this.$q.dialog({
+      //   title: 'Agregar a ' + sucursal.nombre,
+      //   message: 'Ingresa la cantidad que deseas agregar',
+      //   prompt: {
+      //     model: 1,
+      //     type: 'number'
+      //   },
+      //   cancel: true
+      // }).onOk((data) => {
+      //   if (this.product.cantidadAlmacen < data) {
+      //     this.$alert.error('No puedes agregar más de lo que tienes en almacen')
+      //     return
+      //   }
+      //
+      //   this.loading = true
+      //   this.$axios.post('agregarSucursal', {
+      //     sucursal: sucursal.id,
+      //     id: this.product.id,
+      //     cantidad: data
+      //   }).then(res => {
+      //     this.loading = false
+      //     this.$alert.success('Producto agregado correctamente')
+      //     // this.productsGet()
+      //     this.$emit('productsGet')
+      //     this.product = res.data
+      //   }).catch(err => {
+      //     this.loading = false
+      //     this.$alert.error(err.response.data.message)
+      //   })
+      // })
     },
     addUnit () {
       this.$q.dialog({

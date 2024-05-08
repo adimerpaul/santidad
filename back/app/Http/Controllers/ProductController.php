@@ -6,6 +6,7 @@ use App\Models\Agencia;
 use App\Models\Product;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
+use App\Models\TransferHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -130,6 +131,7 @@ class ProductController extends Controller{
             $product->$delSucursal = $product->$delSucursal - $cantidad;
             $product->cantidadAlmacen = $product->cantidadAlmacen + $cantidad;
             $product->save();
+            $this->transferHistoryCreate($request->delSucursal, null, $request->id, $cantidad,$request->fecha_entrega_vencimiento, $request);
         }else{
             $product->$delSucursal = $product->$delSucursal - $cantidad;
             $product->save();
@@ -137,10 +139,16 @@ class ProductController extends Controller{
                 if ($agencia['nombre'] == $lugar){
                     $product->{"cantidadSucursal".$agencia['id']} = $product->{"cantidadSucursal".$agencia['id']} + $cantidad;
                     $product->save();
+
+
+                    $this->transferHistoryCreate($request->delSucursal, $agencia['id'], $request->id, $cantidad,$request->fecha_entrega_vencimiento, $request);
+
                     return $product;
                 }
             }
         }
+
+
 //        else if ($request->lugar == 'Sucursal 1'){
 //            $product->$delSucursal = $product->$delSucursal - $request->cantidad;
 //            $product->cantidadSucursal1 = $product->cantidadSucursal1 + $request->cantidad;
@@ -166,6 +174,7 @@ class ProductController extends Controller{
         $product->$sucursal = $product->$sucursal + $request->cantidad;
         $product->cantidadAlmacen = $product->cantidadAlmacen - $request->cantidad;
         $product->save();
+        $this->transferHistoryCreate(null, $request->sucursal, $request->id, $request->cantidad,$request->fecha_entrega_vencimiento, $request);
         return $product;
     }
     public function update(UpdateProductRequest $request, Product $product){
@@ -177,4 +186,24 @@ class ProductController extends Controller{
         return $product->update($request->all());
     }
     public function destroy(Product $product){ return $product->delete(); }
+
+    /**
+     * @param Request $request
+     * @param $id
+     * @return void
+     */
+    public function transferHistoryCreate($agencia_id_origen, $agencia_id_destino, $product_id, $cantidad,$fecha_entrega_vencimiento, Request $request)
+    {
+        $fecha_entrega_vencimiento = $fecha_entrega_vencimiento=='' || $fecha_entrega_vencimiento=='null' ? null : $fecha_entrega_vencimiento;
+        $transferHistory = new TransferHistory();
+        $transferHistory->user_id = $request->user()->id;
+        $transferHistory->agencia_id_origen = $agencia_id_origen;
+        $transferHistory->agencia_id_destino = $agencia_id_destino;
+        $transferHistory->fecha_entrega_vencimiento = $fecha_entrega_vencimiento;
+        $transferHistory->producto_id = $product_id;
+        $transferHistory->cantidad = $cantidad;
+        $transferHistory->fecha = date('Y-m-d');
+        $transferHistory->hora = date('H:i:s');
+        $transferHistory->save();
+    }
 }
