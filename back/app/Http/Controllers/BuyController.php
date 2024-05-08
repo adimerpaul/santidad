@@ -52,11 +52,13 @@ class BuyController extends Controller{
                     $query->select('id', 'name');
                 }])
             ->with('proveedor','agencia','userBaja')
-            ->where('lote', 'like', '%'.$search.'%')
-            ->orWhere('dateExpiry', 'like', '%'.$search.'%')
-            ->orWhere('factura', 'like', '%'.$search.'%');
-        if ($search) {
-            $buys = $buys->where('factura',$search);
+            ->where('dateExpiry', '<', Carbon::now());
+//            ->where('lote', 'like', '%'.$search.'%')
+//            ->orWhere('dateExpiry', 'like', '%'.$search.'%')
+//            ->orWhere('factura', 'like', '%'.$search.'%');
+        if ($search != null && $search != '') {
+            $buys = $buys->where('factura',$search)
+            ->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")');
         }else{
             if ($order=='Dias para Vencer') {
                 $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '<', Carbon::now());
@@ -76,9 +78,13 @@ class BuyController extends Controller{
 
         $buys = Buy::with('proveedor','agencia','userBaja','product','user')
             ->where('user_baja_id','!=',0)
-            ->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")');
-        if ($search) {
-            $buys = $buys->where('factura',$search);
+            ->where('dateExpiry', '<=', Carbon::now());
+
+        if ($search != null && $search != '') {
+            error_log('entra aca??');
+//            $buys = $buys->where('factura',$search);
+//                ->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")');
+            $buys = $buys->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")');
         }else{
             if ($order=='Dias para Vencer') {
                 $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '<', Carbon::now());

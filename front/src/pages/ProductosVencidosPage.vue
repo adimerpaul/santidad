@@ -51,7 +51,7 @@
         </q-td>
       </template>
     </q-table>
-    <!--  <pre>{{compras}}</pre>-->
+<!--      <pre>{{compras}}</pre>-->
     <div id="myElement" class="hidden"></div>
     <q-dialog v-model="productoDialogBaja">
       <q-card>
@@ -126,7 +126,7 @@ export default {
         { name: 'user_baja_id', label: 'Usuario de Baja', field: (row) => row.user_baja?.name, align: 'left', sortable: true },
         { name: 'agencia', label: 'Agencia', field: (row) => row.agencia?.nombre, align: 'left', sortable: true },
         { name: 'producto', label: 'Producto', field: row => row.product.nombre, align: 'left', sortable: true },
-        { name: 'diasPorVencer', label: 'Dias para Vencer', field: 'diasPorVencer', align: 'left', sortable: true },
+        { name: 'diasPorVencer', label: 'Dias Vencidos', field: 'diasPorVencer', align: 'left', sortable: true },
         { name: 'quantity', label: 'Cantidad', field: 'quantity', align: 'left', sortable: true },
         { name: 'price', label: 'Precio', field: 'price', align: 'left', sortable: true },
         { name: 'total', label: 'Total', field: 'total', align: 'left', sortable: true },
