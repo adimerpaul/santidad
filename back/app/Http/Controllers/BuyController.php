@@ -19,7 +19,7 @@ class BuyController extends Controller{
         $order = $request->order ?? null;
 
         $buys = Buy::with(['product' => function($query) {
-                    $query->select('id', 'nombre');
+                    $query->select('id', 'nombre','cantidad');
                 }, 'user' => function($query) {
                     $query->select('id', 'name');
                 }])
@@ -35,6 +35,9 @@ class BuyController extends Controller{
                 $buys = $buys->orderBy('date', 'asc');
             }
         }
+//        $buys->each(function($buy){
+//            $buy->productQuantity = $buy->product->cantidad;
+//        });
         return response()->json($buys->paginate(100));
     }
     //productos vencidos
@@ -44,7 +47,7 @@ class BuyController extends Controller{
         $order = $request->order ?? null;
 
         $buys = Buy::with(['product' => function($query) {
-                    $query->select('id', 'nombre');
+                    $query->select('id', 'nombre','cantidad');
                 }, 'user' => function($query) {
                     $query->select('id', 'name');
                 }])

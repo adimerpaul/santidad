@@ -78,6 +78,7 @@ export default {
         { name: 'producto', label: 'Producto', field: row => row.product.nombre, align: 'left', sortable: true },
         { name: 'diasPorVencer', label: 'Dias para Vencer', field: 'diasPorVencer', align: 'left', sortable: true },
         { name: 'quantity', label: 'Cantidad', field: 'quantity', align: 'left', sortable: true },
+        { name: 'productQuantity', label: 'Cantidad de Producto', field: (row) => row.product?.cantidad, align: 'left', sortable: true },
         { name: 'price', label: 'Precio', field: 'price', align: 'left', sortable: true },
         { name: 'total', label: 'Total', field: 'total', align: 'left', sortable: true },
         { name: 'dateExpiry', label: 'Fecha de Vencimiento', field: 'dateExpiry', align: 'left', sortable: true },

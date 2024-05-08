@@ -66,8 +66,11 @@
               <div class="col-6">
                 <q-input outlined v-model="productoBaja.lote" label="Lote" dense readonly/>
               </div>
-              <div class="col-6">
+              <div class="col-3">
                 <q-input outlined v-model="productoBaja.factura" label="Factura" dense readonly/>
+              </div>
+              <div class="col-3">
+                <q-input outlined :model-value="productoBaja.product?.cantidad" label="Cantidad" dense readonly/>
               </div>
               <div class="col-12">
                 <q-input outlined v-model="productoBaja.product.nombre" label="Producto a dar de baja" dense readonly/>
