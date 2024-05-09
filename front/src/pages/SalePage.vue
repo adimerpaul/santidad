@@ -421,7 +421,7 @@ export default {
       this.$store.productosVenta.forEach(p => {
         const product = this.products.find(pr => pr.id === p.id)
         if (product) {
-          if ((p.cantidadVenta + 1) > product.cantidad) {
+          if ((p.cantidadVenta - 1) > product.cantidad) {
             this.$alert.error(`No hay suficiente stock de ${product.nombre}`)
             hayProblema = true
             return false
