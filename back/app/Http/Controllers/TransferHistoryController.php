@@ -9,8 +9,9 @@ class TransferHistoryController extends Controller{
     public function historySucursal(Request $request){
         $product_id = $request->id;
         $agencia_id = $request->sucursal;
-        $history = TransferHistory::where('producto_id', $product_id)
-            ->whereRaw("agencia_id_origen = $agencia_id or agencia_id_destino = $agencia_id")
+        $history = TransferHistory::
+//        where('producto_id', $product_id)->
+            whereRaw("(agencia_id_origen = $agencia_id or agencia_id_destino = $agencia_id) and producto_id = $product_id")
             ->with(['user', 'agenciaOrigen', 'agenciaDestino', 'producto'])
             ->orderBy('id', 'desc')
             ->get();

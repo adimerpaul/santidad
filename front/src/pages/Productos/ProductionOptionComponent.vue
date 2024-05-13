@@ -28,7 +28,8 @@
             <q-btn :loading="loading" icon="o_shop" label="Agregar a compra" rounded dense color="green" @click="compraClick" no-caps class="full-width q-mt-xs" />
           </div>
           <div class="col-6">
-            <q-btn :loading="loading" icon="history_edu" label="Historial" rounded dense color="blue" @click="historySucursalProduct(product)" no-caps class="full-width q-mt-xs" />
+            <q-btn :loading="loading" icon="history_edu" label="Historial" rounded dense color="blue"
+                   @click="historySucursalProduct(product)" no-caps class="full-width q-mt-xs" v-if="$store.user.id=='1'"/>
           </div>
           <div class="col-12">
             <div class="row">
@@ -36,7 +37,9 @@
                 <q-card flat bordered class="bg-grey-3">
                   <q-card-section class="q-pa-xs text-bold">
                     (<span class="text-blue">{{product['cantidadSucursal'+(i+1)]}}</span> )
-                    <q-btn flat rounded size="12px" dense color="indigo" icon="history_edu" @click="historySucursal(s)" no-caps label="Historial" :loading="loading"/>
+                    <q-btn flat rounded size="12px" dense color="indigo" icon="history_edu" @click="historySucursal(s)" no-caps label="Historial"
+                           v-if="$store.user.id=='1'"
+                           :loading="loading"/>
                     <div class="text-lowercase">{{ s.nombre }}</div>
                     <div class="text-center">
                       <q-btn :loading="loading" size="12px" icon="shopping_cart" label="Agregar" dense color="green" @click="agregarSucursal(s)" no-caps/>
@@ -242,92 +245,30 @@
           <div class="text-right">
             <q-btn icon="o_highlight_off" flat round dense v-close-popup />
             </div>
-          <div class="text-subtitle2 text-bold">
-            Historial de movimientos
+          <div class="text-subtitle2">
+            Historial de movimientos <span class="text-bold">{{product.nombre}}</span> de <span class="text-bold text-red">{{sucursalShow.nombre}}</span>
           </div>
         </q-card-section>
         <q-card-section>
-<!--          {-->
-<!--          "id": 9,-->
-<!--          "user_id": 1,-->
-<!--          "agencia_id_origen": null,-->
-<!--          "agencia_id_destino": 1,-->
-<!--          "producto_id": 36,-->
-<!--          "cantidad": 1,-->
-<!--          "fecha": "2024-05-08",-->
-<!--          "fecha_entrega_vencimiento": "2024-05-11",-->
-<!--          "hora": "03:43:35",-->
-<!--          "user": {-->
-<!--          "id": 1,-->
-<!--          "name": "Administrador",-->
-<!--          "email": "admin@test.com",-->
-<!--          "email_verified_at": null,-->
-<!--          "agencia_id": 1,-->
-<!--          "created_at": null,-->
-<!--          "updated_at": "2024-04-14T22:29:04.000000Z"-->
-<!--          },-->
-<!--          "agencia_origen": null,-->
-<!--          "agencia_destino": {-->
-<!--          "id": 1,-->
-<!--          "nombre": "CASA MATRIZ - VELASCO",-->
-<!--          "created_at": null,-->
-<!--          "updated_at": "2024-02-23T09:37:45.000000Z"-->
-<!--          },-->
-<!--          "producto": {-->
-<!--          "id": 36,-->
-<!--          "nombre": "ABRAMAX 500 MG X COMPRIMIDO",-->
-<!--          "barra": null,-->
-<!--          "cantidad": 127,-->
-<!--          "cantidadAlmacen": 3,-->
-<!--          "cantidadSucursal1": 12,-->
-<!--          "cantidadSucursal2": 28,-->
-<!--          "cantidadSucursal3": 8,-->
-<!--          "cantidadSucursal4": 38,-->
-<!--          "costo": 19.23,-->
-<!--          "precioAntes": 25,-->
-<!--          "precio": 25,-->
-<!--          "activo": "ACTIVO",-->
-<!--          "unidad": "COMPRIMIDOS RECUBIERTOS",-->
-<!--          "registroSanitario": "II-37866/2019",-->
-<!--          "paisOrigen": "BOLIVIA",-->
-<!--          "nombreComun": "Claritromicina",-->
-<!--          "composicion": "Claritromicina 500 mg",-->
-<!--          "marca": "LABORATORIOS BAGÓ BOLIVIA S.A.",-->
-<!--          "distribuidora": "LABORATORIOS BAGÓ BOLIVIA S.A.",-->
-<!--          "imagen": "1704830921abramax.png",-->
-<!--          "descripcion": "Antibiótico macrólido de amplio espectro",-->
-<!--          "category_id": 3,-->
-<!--          "agencia_id": 1,-->
-<!--          "created_at": "2024-01-09T16:22:33.000000Z",-->
-<!--          "updated_at": "2024-05-08T07:44:42.000000Z",-->
-<!--          "subcategory_id": null,-->
-<!--          "cantidadSucursal5": 2,-->
-<!--          "cantidadSucursal6": 19,-->
-<!--          "cantidadSucursal7": 17,-->
-<!--          "cantidadSucursal8": 0,-->
-<!--          "cantidadSucursal9": 0,-->
-<!--          "cantidadSucursal10": 0-->
-<!--          }-->
-<!--          },-->
-          <q-markup-table dense wrap-cells>
-            <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Usuario</th>
-              <th>Origen</th>
-              <th>Destino</th>
-              <th>Cantidad</th>
-              <th>Fecha entrega</th>
+          <q-markup-table dense wrap-cells class="pa-ma-none">
+            <thead class="pa-ma-none">
+            <tr class="pa-ma-none">
+              <th class="pa-ma-none">Fecha</th>
+              <th class="pa-ma-none">Usuario</th>
+              <th class="pa-ma-none">Origen</th>
+              <th class="pa-ma-none">Destino</th>
+              <th class="pa-ma-none">Cantidad</th>
+              <th class="pa-ma-none">Fecha entrega</th>
             </tr>
             </thead>
-            <tbody>
-            <tr v-for="(h,i) in histories" :key="i">
-              <td>{{h.fecha}}</td>
-              <td>{{h.user.name}}</td>
-              <td>{{h.agencia_origen ? h.agencia_origen.nombre : 'Almacen'}}</td>
-              <td>{{h.agencia_destino ? h.agencia_destino.nombre : 'Almacen'}}</td>
-              <td>{{h.cantidad}}</td>
-              <td>{{h.fecha_entrega_vencimiento}}</td>
+            <tbody class="pa-ma-none">
+            <tr v-for="(h,i) in histories" :key="i" class="pa-ma-none">
+              <td class="pa-ma-none text-caption">{{$filters.dateDmYHis(h.fecha+' '+h.hora)}}</td>
+              <td class="pa-ma-none text-caption">{{h.user.name}}</td>
+              <td class="pa-ma-none text-caption">{{h.agencia_origen ? h.agencia_origen.nombre : 'Almacen'}}</td>
+              <td class="pa-ma-none text-caption">{{h.agencia_destino ? h.agencia_destino.nombre : 'Almacen'}}</td>
+              <td class="pa-ma-none text-caption">{{h.cantidad}}</td>
+              <td class="pa-ma-none text-caption">{{h.fecha_entrega_vencimiento}}</td>
             </tr>
             </tbody>
           </q-markup-table>
@@ -402,7 +343,8 @@ export default {
       loading: false,
       fecha_entrega_vencimiento: '',
       historyDialog: false,
-      histories: []
+      histories: [],
+      sucursalShow: {}
     }
   },
   mounted () {
@@ -422,6 +364,7 @@ export default {
   methods: {
     historySucursalProduct (product) {
       this.loading = true
+      this.sucursalShow = { nombre: 'Todo' }
       this.$axios.get('historySucursalProduct', {
         params: {
           id: product.id
@@ -435,6 +378,7 @@ export default {
     },
     historySucursal (sucursal) {
       this.loading = true
+      this.sucursalShow = sucursal
       this.$axios.get('historySucursal', {
         params: {
           id: this.product.id,
@@ -730,3 +674,9 @@ export default {
   }
 }
 </script>
+<style>
+.pa-ma-none {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+</style>
