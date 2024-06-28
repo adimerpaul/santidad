@@ -32,7 +32,12 @@ class ProductController extends Controller{
         $paginate = request()->input('paginate', 30);
 
         $query = Product::query();
-        $query->where('nombre', 'like', "%$search%");
+        //filtrar por nombre o comocicion
+//        $query->where('nombre', 'like', "%$search%");
+        $query->where(function ($query) use ($search) {
+            $query->where('nombre', 'like', "%$search%")
+                ->orWhere('composicion', 'like', "%$search%");
+        });
 
         if ($category_id != 0) {
             $query->where('category_id', $category_id);
