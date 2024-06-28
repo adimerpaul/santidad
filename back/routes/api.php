@@ -58,6 +58,8 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::get('/betweenDates/{fechaInicio}/{fechaFin}',[\App\Http\Controllers\SalesController::class,'betweenDates']);
     Route::get('/env',[\App\Http\Controllers\SalesController::class,'env']);
 
+
+
     Route::get('/historySucursal',[\App\Http\Controllers\TransferHistoryController::class,'historySucursal']);
     Route::get('/historySucursalProduct',[\App\Http\Controllers\TransferHistoryController::class,'historySucursalProduct']);
 });
