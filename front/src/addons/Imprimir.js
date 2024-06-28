@@ -119,7 +119,8 @@ Oruro</div>
 </table><hr><div class='titulo'>DETALLE</div>`
         factura.details.forEach(r => {
           cadena += `<div style='font-size: 12px'><b>${r.product_id} ${r.descripcion} </b></div>`
-          cadena += `<div>${r.cantidad} ${parseFloat(r.precioUnitario).toFixed(2)} 0.00
+          cadena += `<div>${r.cantidad} ${parseFloat(r.precioUnitario).toFixed(2)}
+                    <span style="color: grey;font-size: 7px">${parseFloat(r?.product?.precio).toFixed(2)}</span>
                     <span style='float:right'>${parseFloat(r.subTotal).toFixed(2)}</span></div>`
         })
         cadena += `<hr>

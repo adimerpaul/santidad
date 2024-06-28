@@ -19,4 +19,8 @@ class Detail extends Model
         'product_id',
         'user_id'
     ];
+    public function sale(){ return $this->belongsTo(Sales::class); }
+    public function product(){ return $this->belongsTo(Product::class); }
+    public function user(){ return $this->belongsTo(User::class); }
+
 }

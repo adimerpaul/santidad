@@ -127,7 +127,7 @@ class SalesController extends Controller{
         $sales->concepto = substr($concepto,0,-1);
         $sales->save();
         DB::commit();
-        return Sales::with(['details','client'])->find($sales->id);
+        return Sales::with(['details.product','client'])->find($sales->id);
 
     }
     public function salesGasto(StoreSalesRequest $request){
