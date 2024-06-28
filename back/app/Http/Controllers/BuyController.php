@@ -134,6 +134,7 @@ class BuyController extends Controller{
             $buy->user_baja_id = $request->user()->id;
             $buy->cantidadBaja = $request->cantidadBaja;
             $buy->sucursal_id_baja = $request->sucursal_id_baja;
+            $buy->description_baja = $request->description_baja;
             $buy->save();
 //            DB::commit();
 //            return response()->json($buy);

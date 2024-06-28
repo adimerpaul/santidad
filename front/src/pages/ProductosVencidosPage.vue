@@ -91,6 +91,9 @@
                 <q-select v-model="productoBaja.agencia_id" :options="agencias" label="Agencia" outlined
                           map-options option-value="id" option-label="nombre" dense emit-value/>
               </div>
+              <div class="col-12">
+                <q-input outlined v-model="productoBaja.description_baja" label="Descripción de la baja" dense/>
+              </div>
             </div>
             <q-card-actions align="right">
               <q-btn label="Cancelar" color="red" @click="productoDialogBaja = false" :loading="loading"/>
@@ -177,7 +180,8 @@ export default {
         .post('darBaja', {
           id: this.productoBaja.id,
           cantidadBaja: this.productoBaja.quantity,
-          sucursal_id_baja: this.productoBaja.agencia_id
+          sucursal_id_baja: this.productoBaja.agencia_id,
+          description_baja: this.productoBaja.description_baja
         })
         .then(res => {
           this.$q.notify({

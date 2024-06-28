@@ -25,6 +25,7 @@ class Buy extends Model
         'user_baja_id',
         'cantidadBaja',
         'sucursal_id_baja',
+        'description_baja',
     ];
     protected $appends = ['diasPorVencer'];
 
