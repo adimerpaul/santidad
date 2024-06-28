@@ -184,7 +184,8 @@ export default {
         { label: 'Mayor precio', value: 'precio desc' },
         { label: 'Menor cantidad', value: 'cantidad asc' },
         { label: 'Mayor cantidad', value: 'cantidad desc' },
-        { label: 'Orden alfabetico', value: 'nombre asc' }
+        { label: 'Orden alfabetico', value: 'nombre asc' },
+        { label: 'Cantidad cero', value: 'cantidad asc' }
       ],
       costoTotalProducts: 0,
       subcategories: []
