@@ -76,6 +76,7 @@ class ProductController extends Controller{
         $search = $search==null || $search=='' ? '%' : '%'.$search.'%';
         $ordenar = request()->input('order', 'id');
         $category_id = request()->input('category', 0);
+        $sub_category_id = request()->input('sub_category', 0);
         $agencia_id = request()->input('agencia', 0);
         $paginate = request()->input('paginate', 30);
 
@@ -84,6 +85,9 @@ class ProductController extends Controller{
 
         if ($category_id != 0) {
             $query->where('category_id', $category_id);
+        }
+        if ($sub_category_id != 0) {
+            $query->where('subcategory_id', $sub_category_id);
         }
 
         if ($agencia_id != 0) {

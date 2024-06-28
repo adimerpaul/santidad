@@ -15,21 +15,28 @@
               <q-tooltip>Actualizar</q-tooltip>
             </q-btn>
           </div>
-          <div class="col-12 col-md-4 q-pa-xs">
+          <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" emit-value map-options dense outlined
                       v-model="category" option-value="id" option-label="name" :options="categories"
                       @update:model-value="productsGet"
             >
             </q-select>
           </div>
-          <div class="col-12 col-md-4 q-pa-xs">
+          <div class="col-12 col-md-3 q-pa-xs">
+            <q-select class="bg-white" label="Subcategoria" dense outlined v-model="subcategory"
+                      :options="subcategories" map-options emit-value
+                      option-value="id" option-label="name"
+                      @update:model-value="productsGet"
+            />
+          </div>
+          <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" label="Ordenar" dense outlined v-model="order"
                       :options="orders" map-options emit-value
                       option-value="value" option-label="label"
                       @update:model-value="productsGet"
             />
           </div>
-          <div class="col-12 col-md-4 q-pa-xs">
+          <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" label="Agencia" dense outlined v-model="$store.agencia_id"
                       :options="agencias" map-options emit-value
                       option-value="id" option-label="nombre"
@@ -232,8 +239,12 @@ export default {
       // agencia: 0,
       product: { cantidad: 0, nombre: '', barra: '', costo: 0, precio: 0, descripcion: '', category_id: 0 },
       category: 0,
+      subcategory: 0,
       categories: [
         { name: 'Ver todas las categorias', id: 0 }
+      ],
+      subcategories: [
+        { name: 'Ver todas las sub categorias', id: 0 }
       ],
       categoriesTable: [],
       categorySelected: {},
@@ -268,6 +279,7 @@ export default {
     this.proveedoresGet()
     this.productsGet()
     this.categoriesGet()
+    this.subcategoriesGet()
     this.agenciasGet()
     this.$axios.get('documents').then(res => {
       // console.log(this.documents)
@@ -279,6 +291,14 @@ export default {
     })
   },
   methods: {
+    subcategoriesGet () {
+      this.subcategories = [{ name: 'Ver todas las sub categorias', id: 0 }]
+      this.$axios.get('subcategories').then(response => {
+        this.subcategories = this.subcategories.concat(response.data)
+      }).catch(error => {
+        console.log(error)
+      })
+    },
     filterFn (val, update, abort) {
       // console.log(val)
       // console.log(this.proveedoresAll)
@@ -390,7 +410,17 @@ export default {
     productsGet () {
       this.loading = true
       this.products = []
-      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.$store.agencia_id}`).then(res => {
+      // this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.$store.agencia_id}`).then(res => {
+      this.$axios.get('productsSale', {
+        params: {
+          page: this.current_page,
+          search: this.search,
+          order: this.order,
+          category: this.category,
+          subcategory: this.subcategory,
+          agencia: this.$store.agencia_id
+        }
+      }).then(res => {
         this.loading = false
         // console.log(res.data.products)
         this.totalProducts = res.data.products.total
