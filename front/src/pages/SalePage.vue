@@ -121,7 +121,7 @@
                           <div class="text-caption" style="max-width: 170px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">
                             {{props.row.nombre}}
                           </div>
-                          <div class="text-grey">Disponible: {{props.row.cantidad}}</div>
+                          <div class="text-grey">Disponible: {{props.row.cantidad}} <span style="font-size: 9px">{{props.row.precio}}Bs</span></div>
                           <q-input v-model="props.row.precioVenta" style="width: 170px"  step="0.1" type="number" @update:model-value="precioVenta(props.row)" dense outlined>
                             <template v-slot:prepend>
                               <q-icon name="edit" size="xs" />
