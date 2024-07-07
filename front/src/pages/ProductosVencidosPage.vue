@@ -3,7 +3,7 @@
     <!--  <div class="col-12">-->
     <div class="text-white bg-purple-8 text-center text-h6 text-bold ">Productos vencidos</div>
     <!--  </div>-->
-    <div class="row">
+    <div class="row q-pa-xs">
       <div class="col-2">
         <q-select v-model="ordenar" :options="ordenarPor" label="Ordenar por" outlined dense @update:model-value="buyGet"/>
       </div>
@@ -99,11 +99,11 @@
               <q-btn label="Cancelar" color="red" @click="productoDialogBaja = false" :loading="loading"/>
               <q-btn label="Aceptar" color="green" @click="darBaja" :loading="loading"/>
             </q-card-actions>
-<!--            <pre>{{productoBaja}}</pre>-->
           </q-form>
         </q-card-section>
       </q-card>
     </q-dialog>
+    <pre>{{compras}}</pre>
   </q-page>
 </template>
 <script>

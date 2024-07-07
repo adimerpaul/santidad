@@ -67,7 +67,7 @@ class BuyController extends Controller{
 //            ->orWhere('dateExpiry', 'like', '%'.$search.'%')
 //            ->orWhere('factura', 'like', '%'.$search.'%');
         if ($search != null && $search != '') {
-            $buys = $buys->where('factura',$search)
+            $buys = $buys
             ->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")');
         }else{
             if ($order=='Dias para Vencer') {
