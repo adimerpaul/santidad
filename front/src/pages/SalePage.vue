@@ -415,7 +415,7 @@ export default {
       this.descuento = 0
       this.saleDialog = true
       // this.aporte = false
-      this.efectivo = ''
+      this.efectivo = 0
       this.qr = false
       this.client = {
         numeroDocumento: '0',
@@ -536,7 +536,7 @@ export default {
       const efectivo = parseFloat(this.efectivo === '' ? 0 : this.efectivo)
       const aporte = parseFloat(this.aporte === '' ? 0 : this.aporte)
       const descuento = parseFloat(this.descuento === '' ? 0 : this.descuento)
-      const cambio = (efectivo - aporte) - parseFloat(this.total) - descuento
+      const cambio = (efectivo - aporte) - parseFloat(this.total) + descuento
       // if (cambio < 0) {
       //   return 0
       // } else {

@@ -72,7 +72,7 @@ class SalesController extends Controller{
         DB::beginTransaction();
         $agencia_id = $request->agencia_id;
         $client=$this->insertUpdateClient($request);
-        $montoTotal =  $request->montoTotal + $request->aporte;
+        $montoTotal =  $request->montoTotal + $request->aporte - $request->descuento;
         $sales = new Sales();
         $sales->numeroFactura = 0;
         $sales->fechaEmision = date('Y-m-d H:i:s');
