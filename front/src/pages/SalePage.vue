@@ -54,8 +54,11 @@
                   <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
                     <q-card @click="clickAddSale(p)" class="q-pa-xs" flat bordered>
                       <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="100px">
+                        <q-badge color="red" floating style="padding: 10px 10px 5px 5px;margin: 0px" v-if="p.precioAntes>0">
+                          {{((p.precioAntes-p.precio)/p.precioAntes*100).toFixed(0)}}%
+                        </q-badge>
                         <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">
-                          {{p.nombre}}
+                          {{$filters.capitalize(p.nombre)}}
                         </div>
                         <q-badge v-if="p.cantidadPedida>0" color="yellow-9" floating :label="p.cantidadPedida" style="padding: 5px"/>
                       </q-img>
@@ -121,7 +124,12 @@
                           <div class="text-caption" style="max-width: 170px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">
                             {{props.row.nombre}}
                           </div>
-                          <div class="text-grey">Disponible: {{props.row.cantidad}} <span style="font-size: 9px">{{props.row.precio}}Bs</span></div>
+                          <div class="text-grey">Disponible: {{props.row.cantidad}}
+                            (
+                            <span style="font-size: 10px">{{props.row.precio}} Bs </span>
+                            <span style="font-size: 10px" class="text-red text-bold" v-if="props.row.precioAntes">{{props.row.precioAntes}} Bs</span>
+                            )
+                          </div>
                           <q-input v-model="props.row.precioVenta" style="width: 170px"  step="0.1" type="number" @update:model-value="precioVenta(props.row)" dense outlined>
                             <template v-slot:prepend>
                               <q-icon name="edit" size="xs" />
