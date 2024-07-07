@@ -13,6 +13,11 @@
       <div class="col-2">
         <q-input outlined v-model="fecha_fin" label="Fecha Fin" type="date" dense @update:model-value="buyGet"/>
       </div>
+      <div class="col-2 flex flex-center">
+        <q-btn icon="fa-solid fa-file-excel" @click="downloadExcel" dense color="green" label="Descargar Excel" no-caps size="10px" class="q-mr-sm">
+          <q-tooltip>Descargar Excel</q-tooltip>
+        </q-btn>
+      </div>
     </div>
     <div class="flex flex-center">
       <q-pagination
@@ -96,15 +101,16 @@
               <q-btn label="Cancelar" color="red" @click="productoDialogBaja = false" :loading="loading"/>
               <q-btn label="Aceptar" color="green" @click="darBaja" :loading="loading"/>
             </q-card-actions>
-<!--            <pre>{{productoBaja}}</pre>-->
           </q-form>
         </q-card-section>
       </q-card>
     </q-dialog>
+<!--    <pre>{{compras}}</pre>-->
   </q-page>
 </template>
 <script>
 import moment from 'moment'
+import { Excel } from 'src/addons/Excel'
 
 export default {
   name: 'ProductosRetiradosPage',
@@ -153,6 +159,36 @@ export default {
     this.buyGet()
   },
   methods: {
+    downloadExcel () {
+      const data = [
+        {
+          // columns: [
+          //   { label: "User", value: "user" }, // Top level data
+          //   { label: "Age", value: (row) => row.age + " years" }, // Custom format
+          //   { label: "Phone", value: (row) => (row.more ? row.more.phone || "" : "") }, // Run functions
+          // ],
+          columns: [
+            { label: 'Lote', value: 'lote' },
+            { label: 'Factura', value: 'factura' },
+            { label: 'Usuario de Baja', value: (row) => row.user_baja?.name },
+            { label: 'Agencia', value: (row) => row.agencia?.nombre },
+            { label: 'Producto', value: (row) => row.product.nombre },
+            { label: 'Dias para Vencer', value: 'diasPorVencer' },
+            { label: 'Cantidad Baja', value: 'cantidadBaja' },
+            { label: 'Descripcion de Baja', value: 'description_baja' },
+            { label: 'Precio', value: 'price' },
+            { label: 'Total', value: 'total' },
+            { label: 'Fecha de Vencimiento', value: 'dateExpiry' },
+            { label: 'Fecha de Compra', value: (row) => row.date + ' ' + row.time },
+            { label: 'Usuario', value: (row) => row.user.name },
+            { label: 'Proveedor', value: (row) => row.proveedor?.nombreRazonSocial },
+            { label: 'Fecha de Baja', value: 'fecha_baja' }
+          ],
+          content: this.compras
+        }
+      ]
+      Excel.export(data)
+    },
     darBaja () {
       this.$q.dialog({
         title: 'Dar de baja',
