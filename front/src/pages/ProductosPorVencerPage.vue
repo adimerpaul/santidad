@@ -3,9 +3,15 @@
 <!--  <div class="col-12">-->
     <div class="text-white bg-red-7 text-center text-h6 text-bold ">Productos por Vencer</div>
 <!--  </div>-->
-  <div class="row">
+  <div class="row q-pa-xs">
     <div class="col-2">
       <q-select v-model="ordenar" :options="ordenarPor" label="Ordenar por" outlined dense @update:model-value="buyGet"/>
+    </div>
+    <div class="col-2">
+      <q-select v-model="agencia" :options="agencias" label="Agencia" outlined dense
+                @update:model-value="buyGet"
+                emit-value map-options :option-label="agencia => agencia.nombre" :option-value="agencia => agencia.id"
+      />
     </div>
   </div>
   <div class="flex flex-center">
@@ -48,7 +54,7 @@
       </q-td>
     </template>
   </q-table>
-<!--  <pre>{{compras}}</pre>-->
+  <pre>{{compras}}</pre>
   <div id="myElement" class="hidden"></div>
 </q-page>
 </template>
@@ -61,6 +67,8 @@ export default {
     return {
       compras: [],
       search: '',
+      agencias: [],
+      agencia: '',
       loading: false,
       ordenarPor: [
         'Dias para Vencer',
@@ -85,15 +93,24 @@ export default {
         { name: 'date', label: 'Fecha de Compra', field: (row) => row.date + ' ' + row.time, align: 'left', sortable: true },
         // { name: 'time', label: 'Hora de Compra', field: 'time', align: 'left', sortable: true },
         { name: 'user', label: 'Usuario', field: row => row.user.name, align: 'left', sortable: true },
-        { name: 'provider', label: 'Proveedor', field: row => row.proveedor?.nombreRazonSocial, align: 'left', sortable: true }
+        { name: 'provider', label: 'Proveedor', field: row => row.proveedor?.nombreRazonSocial, align: 'left', sortable: true },
+        { name: 'agencia', label: 'Agencia', field: row => row.agencia?.nombre, align: 'left', sortable: true }
         // { name: 'actions', label: 'Acciones', field: 'actions', align: 'left' }
       ]
     }
   },
   created () {
     this.buyGet()
+    this.agenciasGet()
   },
   methods: {
+    agenciasGet: function () {
+      this.$axios.get('agencias').then(res => {
+        this.agencias = res.data
+      }).catch(e => {
+        console.log(e)
+      })
+    },
     print (row) {
       this.$imprimir.reciboCompra(row)
     },
@@ -111,7 +128,8 @@ export default {
           params: {
             search: this.search,
             order: this.ordenar,
-            page: this.currentPage // Agrega la página actual como parámetro
+            page: this.currentPage,
+            agencia_id: this.agencia
           }
         })
         .then(res => {

@@ -15,20 +15,27 @@ class BuyController extends Controller{
     //productos por vencer
     public function index(Request $request)
     {
-        $search = $request->search;//         'Dias para Vencer','Fecha de Vencimiento', 'Fecha de Compra'
+        $search = $request->search;
+        $agencia_id = $request->agencia_id;
         $order = $request->order ?? null;
 
         $buys = Buy::with(['product' => function($query) {
                     $query->select('id', 'nombre','cantidad');
                 }, 'user' => function($query) {
                     $query->select('id', 'name');
-                }])
-            ->with('proveedor');
+                }, 'proveedor' => function($query) {
+                    $query->select('id', 'nombreRazonSocial');
+                }, 'agencia' => function($query) {
+                    $query->select('id', 'nombre');
+                }]);
         if ($search != null && $search != '') {
             $buys = $buys->whereRaw('(lote = "'.$search.'" or factura = "'.$search.'")')
                 ->orWhereHas('product', function($query) use ($search) {
                     $query->where('nombre', 'like', '%'.$search.'%');
                 });
+            if ($agencia_id != null && $agencia_id != '') {
+                $buys = $buys->where('agencia_id', $agencia_id);
+            }
         }else{
             if ($order=='Dias para Vencer') {
                 $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '>', Carbon::now());
@@ -37,10 +44,10 @@ class BuyController extends Controller{
             }elseif ($order=='Fecha de Compra') {
                 $buys = $buys->orderBy('date', 'asc');
             }
+            if ($agencia_id != null && $agencia_id != '') {
+                $buys = $buys->where('agencia_id', $agencia_id);
+            }
         }
-//        $buys->each(function($buy){
-//            $buy->productQuantity = $buy->product->cantidad;
-//        });
         return response()->json($buys->paginate(100));
     }
     //productos vencidos
