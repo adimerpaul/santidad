@@ -85,15 +85,16 @@ class BuyController extends Controller{
     {
         $search = $request->search;//         'Dias para Vencer','Fecha de Vencimiento', 'Fecha de Compra'
         $order = $request->order ?? null;
+        $fecha_inicio = $request->fecha_inicio;
+        $fecha_fin = $request->fecha_fin;
 
         $buys = Buy::with('proveedor','agencia','userBaja','product','user')
             ->where('user_baja_id','!=',0)
-            ->where('dateExpiry', '<=', Carbon::now());
+            ->where('dateExpiry', '<=', Carbon::now())
+            ->where('fecha_baja', '>=', $fecha_inicio)
+            ->where('fecha_baja', '<=', $fecha_fin);
 
         if ($search != null && $search != '') {
-            error_log('entra aca??');
-//            $buys = $buys->where('factura',$search);
-//                ->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")');
             $buys = $buys->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")');
         }else{
             if ($order=='Dias para Vencer') {
@@ -142,6 +143,7 @@ class BuyController extends Controller{
             $buy->cantidadBaja = $request->cantidadBaja;
             $buy->sucursal_id_baja = $request->sucursal_id_baja;
             $buy->description_baja = $request->description_baja;
+            $buy->fecha_baja = date("Y-m-d H:i:s");
             $buy->save();
 //            DB::commit();
 //            return response()->json($buy);

@@ -3,9 +3,15 @@
     <!--  <div class="col-12">-->
     <div class="text-white bg-orange-8 text-center text-h6 text-bold ">Productos retirados</div>
     <!--  </div>-->
-    <div class="row">
+    <div class="row q-pa-xs">
       <div class="col-2">
         <q-select v-model="ordenar" :options="ordenarPor" label="Ordenar por" outlined dense @update:model-value="buyGet"/>
+      </div>
+      <div class="col-2">
+        <q-input outlined v-model="fecha_inicio" label="Fecha Inicio" type="date" dense @update:model-value="buyGet"/>
+      </div>
+      <div class="col-2">
+        <q-input outlined v-model="fecha_fin" label="Fecha Fin" type="date" dense @update:model-value="buyGet"/>
       </div>
     </div>
     <div class="flex flex-center">
@@ -132,12 +138,14 @@ export default {
         { name: 'date', label: 'Fecha de Compra', field: (row) => row.date + ' ' + row.time, align: 'left', sortable: true },
         // { name: 'time', label: 'Hora de Compra', field: 'time', align: 'left', sortable: true },
         { name: 'user', label: 'Usuario', field: row => row.user.name, align: 'left', sortable: true },
-        { name: 'provider', label: 'Proveedor', field: row => row.proveedor?.nombreRazonSocial, align: 'left', sortable: true }
-        // { name: 'actions', label: 'Acciones', field: 'actions', align: 'left' }
+        { name: 'provider', label: 'Proveedor', field: row => row.proveedor?.nombreRazonSocial, align: 'left', sortable: true },
+        { name: 'fecha_baja', label: 'Fecha de Baja', field: 'fecha_baja', align: 'left', sortable: true }
       ],
       productoBaja: {},
       productoDialogBaja: false,
-      agencias: []
+      agencias: [],
+      fecha_inicio: moment().format('YYYY-MM-01'),
+      fecha_fin: moment().format('YYYY-MM-') + moment().daysInMonth()
     }
   },
   created () {
@@ -221,7 +229,9 @@ export default {
           params: {
             search: this.search,
             order: this.ordenar,
-            page: this.currentPage // Agrega la página actual como parámetro
+            page: this.currentPage,
+            fecha_inicio: this.fecha_inicio,
+            fecha_fin: this.fecha_fin
           }
         })
         .then(res => {
