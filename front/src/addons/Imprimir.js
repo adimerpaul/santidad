@@ -84,6 +84,7 @@ Oruro</div>
   }
 
   static nota (factura) {
+    console.log('factura', factura)
     return new Promise((resolve, reject) => {
       const ClaseConversor = conversor.conversorNumerosALetras
       const miConversor = new ClaseConversor()
@@ -120,12 +121,31 @@ Oruro</div>
         factura.details.forEach(r => {
           cadena += `<div style='font-size: 12px'><b>${r.product_id} ${r.descripcion} </b></div>`
           cadena += `<div>${r.cantidad} ${parseFloat(r.precioUnitario).toFixed(2)}
-                    <span style="color: grey;font-size: 7px">${parseFloat(r?.product?.precio).toFixed(2)}</span>
+                    <span style="color: grey;font-size: 7px">
+                          ${r?.product?.precio ? parseFloat(r?.product?.precio).toFixed(2) : ''}
+                    </span>
                     <span style='float:right'>${parseFloat(r.subTotal).toFixed(2)}</span></div>`
         })
         cadena += `<hr>
       <table style='font-size: 8px;'>
-      <tr><td class='titder' style='width: 60%'>SUBTOTAL Bs</td><td class='conte2'>${parseFloat(factura.montoTotal).toFixed(2)}</td></tr>
+      <tr>
+        <td class='titder' style='width: 60%'>MONTO Bs</td>
+        <td class='conte2'>
+            ${parseFloat(factura.montoTotal - factura.aporte).toFixed(2)}
+        </td>
+      </tr>
+      <tr>
+        <td class='titder' style='width: 60%'>APORTE Bs</td>
+        <td class='conte2'>${parseFloat(factura.aporte).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td class='titder' style='width: 60%'>DESCUENTO Bs</td>
+        <td class='conte2'>${parseFloat(factura.descuento).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td class='titder' style='width: 60%'>SUBTOTAL Bs</td>
+        <td class='conte2'>${parseFloat(factura.montoTotal).toFixed(2)}</td>
+      </tr>
       </table>
       <br>
       <div>Son ${a} ${((parseFloat(factura.montoTotal) - Math.floor(parseFloat(factura.montoTotal))) * 100).toFixed(2)} /100 Bolivianos</div><hr>

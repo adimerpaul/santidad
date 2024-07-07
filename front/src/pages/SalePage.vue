@@ -221,16 +221,16 @@
           <q-card-section>
             <div class="row">
               <div class="col-6 col-md-2">
-                <q-input outlined dense label="TOTAL A PAGAR:" readonly v-model="total" />
+                <q-input outlined dense label="TOTAL A PAGAR:" readonly v-model="total" :rules="ruleNumber"/>
               </div>
               <div class="col-6 col-md-2">
-                <q-input outlined dense label="EFECTIVO BS."  v-model="efectivo" />
+                <q-input outlined dense label="EFECTIVO BS."  v-model="efectivo" type="number" step="0.01" :rules="ruleNumber"/>
               </div>
               <div class="col-6 col-md-2">
-                <q-input outlined dense label="Aporte"  v-model="aporte" type="number" step="0.01"/>
+                <q-input outlined dense label="Aporte"  v-model="aporte" type="number" step="0.01" :rules="ruleNumber"/>
               </div>
               <div class="col-6 col-md-2">
-                <q-input outlined dense label="Descuento"  v-model="descuento" type="number" step="0.01"/>
+                <q-input outlined dense label="Descuento"  v-model="descuento" type="number" step="0.01" :rules="ruleNumber"/>
               </div>
 <!--              <div class="col-6 col-md-2">-->
 <!--                <q-checkbox v-model="aporte" :label="textoCambio"-->
@@ -345,6 +345,7 @@ export default {
         montoTotal: this.total,
         client: this.client,
         aporte: this.aporte,
+        descuento: this.descuento,
         qr: this.qr,
         efectivo: this.efectivo,
         products: this.$store.productosVenta,
