@@ -36,7 +36,6 @@
                       @update:model-value="productsGet"
                       :disable="!($store.user.id=='1')"
             />
-<!--            <pre>{{agencia_id}}</pre>-->
           </div>
           <div class="col-12 flex flex-center">
             <q-pagination
@@ -111,10 +110,6 @@
                       <q-btn flat dense @click="deleteProductosVenta(props.row,props.pageIndex)" icon="delete" color="red" size="10px" class="q-pa-none q-ma-none" />
                     </q-td>
                     <q-td key="nombre" :props="props">
-<!--                      <div class="row">-->
-<!--                        <div class="col-3">-->
-<!--                        </div>-->
-<!--                        <div class="col-9">-->
                       <div>
                         <q-img :src="props.row.imagen.includes('http')?props.row.imagen:`${$url}../images/${props.row.imagen}`"
                                width="40px" height="40px"
@@ -138,17 +133,6 @@
                           </q-input>
                         </div>
                       </div>
-<!--                          <div>-->
-<!--                            <div class="row">-->
-<!--                              <div class="col-8">-->
-<!--                              </div>-->
-<!--                              <div class="col-2 text-bold flex flex-center">-->
-<!--                                x und-->
-<!--                              </div>-->
-<!--                            </div>-->
-<!--                          </div>-->
-<!--                        </div>-->
-<!--                      </div>-->
                     </q-td>
                     <q-td key="cantidadVenta" :props="props">
                       <q-input dense outlined bottom-slots min="1"  v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>
@@ -207,7 +191,7 @@
       </div>
     </div>
     <q-dialog v-model="saleDialog" persistent>
-      <q-card style="width: 750px; max-width: 90vw;">
+      <q-card style="width: 850px; max-width: 90vw;">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">Realizar venta</div>
           <q-space />
@@ -218,8 +202,6 @@
             <div class="row">
               <div class="col-6 col-md-3">
                 <q-input outlined dense label="NIT/CARNET" @keyup="searchClient" required v-model="client.numeroDocumento"   />
-<!--                <pre>{{client}}</pre>-->
-<!--                <pre>{{document}}</pre>-->
               </div>
               <div class="col-6 col-md-3">
                 <q-input outlined dense label="Complemento"  @keyup="searchClient" v-model="client.complemento" style="text-transform: uppercase"/>
@@ -228,7 +210,6 @@
                 <q-input outlined dense label="Nombre Razon Social" required v-model="client.nombreRazonSocial" style="text-transform: uppercase" />
               </div>
               <div class="col-12 col-md-6">
-<!--                @update:model-value="validarnit"-->
                 <q-select v-model="document" outlined dense :options="documents" />
               </div>
               <div class="col-12 col-md-6">
@@ -242,33 +223,31 @@
               <div class="col-6 col-md-2">
                 <q-input outlined dense label="TOTAL A PAGAR:" readonly v-model="total" />
               </div>
-              <div class="col-6 col-md-3">
+              <div class="col-6 col-md-2">
                 <q-input outlined dense label="EFECTIVO BS."  v-model="efectivo" />
               </div>
               <div class="col-6 col-md-2">
-                <q-input outlined dense label="CAMBIO:" readonly v-model="cambio" />
+                <q-input outlined dense label="Aporte"  v-model="aporte" type="number" step="0.01"/>
               </div>
               <div class="col-6 col-md-2">
-                <q-checkbox v-model="aporte" :label="textoCambio"
-                            :class="`bg-${parseFloat(efectivo)> parseFloat(total)?'green':'red'} text-white full-width bi-border-all`"
-                            :disable="parseFloat(efectivo)> parseFloat(total)?false:true">
-                  <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">
-                    Si el cliente paga con un monto mayor al total, se registrará el cambio como un aporte.
-                  </q-tooltip>
-                </q-checkbox>
+                <q-input outlined dense label="Descuento"  v-model="descuento" type="number" step="0.01"/>
               </div>
-<!--              <div class="col-6 col-md-2 q-pl-xs">-->
-<!--                <q-checkbox v-model="qr" label="QR"-->
+<!--              <div class="col-6 col-md-2">-->
+<!--                <q-checkbox v-model="aporte" :label="textoCambio"-->
 <!--                            :class="`bg-${parseFloat(efectivo)> parseFloat(total)?'green':'red'} text-white full-width bi-border-all`"-->
-<!--                            :disable="parseFloat(efectivo)> parseFloat(total)?false:true" />-->
+<!--                            :disable="parseFloat(efectivo)> parseFloat(total)?false:true">-->
+<!--                  <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">-->
+<!--                    Si el cliente paga con un monto mayor al total, se registrará el cambio como un aporte.-->
+<!--                  </q-tooltip>-->
+<!--                </q-checkbox>-->
 <!--              </div>-->
-              <div class="col-6 col-md-3">
+              <div class="col-6 col-md-2">
+                <q-input outlined dense label="CAMBIO:" readonly v-model="cambio" bg-color="red" label-color="white"/>
+              </div>
+              <div class="col-6 col-md-2">
                 <q-select dense outlined v-model="metodoPago" label="Metodo de pago"
                           :options="$metodoPago" hint="Metodo de pago del gasto" />
               </div>
-<!--              <div class="col-12">-->
-<!--                <pre>{{cambioDecimal}}</pre>-->
-<!--              </div>-->
             </div>
           </q-card-section>
           <q-separator/>
@@ -298,11 +277,11 @@ export default {
       agencia_id: parseInt(localStorage.getItem('agencia_id')),
       saleDialog: false,
       client: {},
-      aporte: false,
+      aporte: 0,
+      descuento: 0,
       qr: false,
       documents: [],
       metodoPago: 'Efectivo',
-      // textoCambio: 'Aporte',
       document: {},
       current_page: 1,
       last_page: 1,
@@ -316,7 +295,6 @@ export default {
       products: [],
       totalProducts: 0,
       agencias: [],
-      // agencia: 0,
       product: { cantidad: 0, nombre: '', barra: '', costo: 0, precio: 0, descripcion: '', category_id: 0 },
       category: 0,
       categories: [
@@ -349,7 +327,6 @@ export default {
     this.categoriesGet()
     this.agenciasGet()
     this.$axios.get('documents').then(res => {
-      // console.log(this.documents)
       res.data.forEach(r => {
         r.label = r.descripcion
       })
@@ -367,7 +344,7 @@ export default {
       const data = {
         montoTotal: this.total,
         client: this.client,
-        aporte: this.cambioDecimal,
+        aporte: this.aporte,
         qr: this.qr,
         efectivo: this.efectivo,
         products: this.$store.productosVenta,
@@ -388,7 +365,6 @@ export default {
         })
         this.totalProducts = 0
         Imprimir.nota(res.data).then(r => {
-          // console.log(r)
         })
       }).catch(err => {
         this.loading = false
@@ -405,11 +381,9 @@ export default {
           documento.label = documento.descripcion
           this.document = documento
         }
-        // if(this.document.codigoClasificador==5) this.validarnit()
       })
     },
     searchClient () {
-      // console.log(this.client.numeroDocumento)
       this.document = this.documents[0]
       this.client.nombreRazonSocial = ''
       this.client.complemento = ''
@@ -422,10 +396,7 @@ export default {
       }
     },
     clickSale () {
-      // Variable para controlar si se encontró un problema
       let hayProblema = false
-
-      // Verificamos que tengamos todos los productos
       this.$store.productosVenta.forEach(p => {
         const product = this.products.find(pr => pr.id === p.id)
         if (product) {
@@ -436,15 +407,13 @@ export default {
           }
         }
       })
-
-      // Verificamos si hubo algún problema durante la iteración
       if (hayProblema) {
-        // Si hubo un problema, no continuamos con la venta
         return false
       }
-
+      this.aporte = 0
+      this.descuento = 0
       this.saleDialog = true
-      this.aporte = false
+      // this.aporte = false
       this.efectivo = ''
       this.qr = false
       this.client = {
@@ -535,10 +504,7 @@ export default {
       this.products = []
       this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}`).then(res => {
         this.loading = false
-        // console.log(res.data.products)
         this.totalProducts = res.data.products.total
-        // this.products = res.data.products.data
-        // console.log(this.products)
         this.last_page = res.data.products.last_page
         this.current_page = res.data.products.current_page
         this.costoTotalProducts = parseFloat(res.data.costoTotal).toFixed(2)
@@ -556,15 +522,26 @@ export default {
   },
   computed: {
     cambio () {
-      if (this.aporte === false) {
-        const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
-        return Math.round(cambio * 100) / 100
-      } else {
-        const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
-        const entero = Math.floor(cambio)
-        const decimal = cambio - entero
-        return cambio - decimal
-      }
+      // consciderara el aporte
+      // if (this.aporte === false) {
+      //   const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
+      //   return Math.round(cambio * 100) / 100
+      // } else {
+      //   const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
+      //   const entero = Math.floor(cambio)
+      //   const decimal = cambio - entero
+      //   return cambio - decimal
+      // }
+      const efectivo = parseFloat(this.efectivo === '' ? 0 : this.efectivo)
+      const aporte = parseFloat(this.aporte === '' ? 0 : this.aporte)
+      const descuento = parseFloat(this.descuento === '' ? 0 : this.descuento)
+      const cambio = (efectivo - aporte) - parseFloat(this.total) - descuento
+      // if (cambio < 0) {
+      //   return 0
+      // } else {
+      //   return cambio.toFixed(2)
+      // }
+      return Math.round(cambio * 100) / 100
     },
     textoCambio () {
       if (this.aporte === false) {
@@ -596,24 +573,3 @@ export default {
   }
 }
 </script>
-<style lang="scss">
-//.super-small.q-field--dense {
-//  .q-field__control-container,
-//  .q-field__native {
-//    //padding-top: 10px !important;
-//  }
-//
-//  .q-field__control {
-//    height: 25px !important;
-//    min-height: 25px !important;
-//  }
-//
-//  .q-field__marginal {
-//    height: 25px !important;
-//  }
-//
-//  .q-field__label {
-//    top: 6px !important;
-//  }
-//}
-</style>

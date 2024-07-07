@@ -82,6 +82,7 @@ class SalesController extends Controller{
         $sales->metodoPago = $request->metodoPago;
         $sales->client_id = $client->id;
         $sales->aporte = $request->aporte;
+        $sales->descuento = $request->descuento;
         $sales->user_id = $request->user()->id;
         $sales->agencia_id = $agencia_id;
         $sales->save();
