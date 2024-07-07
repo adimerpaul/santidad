@@ -76,7 +76,7 @@ class ProductController extends Controller{
         $search = $search==null || $search=='' ? '%' : '%'.$search.'%';
         $ordenar = request()->input('order', 'id');
         $category_id = request()->input('category', 0);
-        $sub_category_id = request()->input('sub_category', 0);
+        $sub_category_id = request()->input('subcategory', 0);
         $agencia_id = request()->input('agencia', 0);
         $paginate = request()->input('paginate', 30);
 
