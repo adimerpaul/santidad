@@ -41,7 +41,7 @@
             Costo
           </div>
           <div class="col-12 col-md-6">
-            <div class="text-grey text-caption text-right">{{ product.costo }} Bs</div>
+            <div class="text-grey text-caption text-right">{{(product.costo).toFixed(2) }} Bs</div>
           </div>
           <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
             <q-icon name="o_local_offer" class="text-grey" size="20px" />

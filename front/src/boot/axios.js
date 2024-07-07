@@ -31,7 +31,8 @@ export default boot(({ app, router }) => {
     },
     capitalize (value) {
       if (!value) return ''
-      return value.charAt(0).toUpperCase() + value.slice(1)
+      const lower = value.toLowerCase()
+      return value.charAt(0).toUpperCase() + lower.slice(1)
     }
   }
   app.config.globalProperties.$store = useCounterStore()
