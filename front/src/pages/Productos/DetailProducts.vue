@@ -71,6 +71,23 @@
           <div class="col-12 col-md-6">
             <div class="text-grey text-caption text-right" v-if="product.category">{{ product.category.name }}</div>
           </div>
+<!--          distribuidora-->
+          <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
+            <q-icon name="o_shopping_cart" class="text-grey" size="20px" />
+            Distribuidora
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="text-grey text-caption text-right" v-if="product.distribuidora">{{ product.distribuidora }}</div>
+          </div>
+<!--          laboratorio-->
+          <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
+            <q-icon name="o_shopping_cart" class="text-grey" size="20px" />
+            Laboratorio
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="text-grey text-caption text-right" v-if="product.marca">{{ product.marca }}</div>
+          </div>
+<!--          <pre>{{product}}</pre>-->
         </div>
       </q-card-section>
     </q-card>

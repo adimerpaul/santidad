@@ -35,8 +35,13 @@ class ProductController extends Controller{
         //filtrar por nombre o comocicion
 //        $query->where('nombre', 'like', "%$search%");
         $query->where(function ($query) use ($search) {
+//            $query->where('nombre', 'like', "%$search%")
+//                ->orWhere('composicion', 'like', "%$search%");
             $query->where('nombre', 'like', "%$search%")
-                ->orWhere('composicion', 'like', "%$search%");
+                ->orWhere('composicion', 'like', "%$search%")
+                ->orWhere('marca', 'like', "%$search%")
+                ->orWhere('distribuidora', 'like', "%$search%")
+                ->orWhere('paisOrigen', 'like', "%$search%");
         });
 
         if ($category_id != 0) {
