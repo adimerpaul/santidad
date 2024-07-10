@@ -128,7 +128,7 @@
           </div>
           <div class="col-12 col-md-2" style="line-height:1em;">
             <label for="" class="text-red text-caption text-bold">Porcentaje</label><br>
-            <span class="text-bold">{{((product.precioAntes-product.precio)/product.precioAntes*100).toFixed(2)}}%</span>
+            <span class="text-bold">{{porcentaje}}%</span>
           </div>
         </div>
         <q-select class="bg-white" label="Unidad" dense outlined v-model="product.unidad" :options="unidades"
@@ -666,6 +666,21 @@ export default {
           console.log(err)
         })
       }
+    }
+  },
+  computed: {
+    porcentaje () {
+      const precio = this.product.precio == null ? 0 : this.product.precio
+      // console.log('precio', precio)
+      const precioAntes = this.product.precioAntes == null ? 0 : this.product.precioAntes
+      // console.log('precioAntes', precioAntes)
+      const porcentaje = ((precioAntes - precio) / precioAntes * 100).toFixed(2)
+      // console.log('porcentaje', porcentaje)
+      if (porcentaje === '-Infinity') {
+        return 0
+      }
+      return porcentaje
+    //   ((product.precioAntes-product.precio)/product.precioAntes*100).toFixed(2)
     }
   }
 }
