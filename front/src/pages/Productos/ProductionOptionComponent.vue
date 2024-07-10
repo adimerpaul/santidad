@@ -201,7 +201,10 @@
           <q-form @submit="moverProducto">
             <q-select class="bg-white" emit-value map-options label="Sucursal" dense outlined v-model="lugar" :options="sucursalesName" hint="Selecciona una sucursal"/>
             <q-input label-color="black" outlined type="number" step="0.01" v-model="cantidad" label="Cantidad" dense hint="Cantidad a mover"
-                     :rules="[val => !!val || 'Este campo es requerido']"/>
+                     :rules="[
+                       val => !!val || 'Este campo es requerido',
+                        val => val <= product['cantidadSucursal'+delSucursal.id] || 'No puedes mover más de lo que tienes en la sucursal'
+                       ]"/>
             <q-input v-model="fecha_entrega_vencimiento" label="Fecha vencimiento" dense outlined type="date" class="bg-white"/>
             <q-btn class="full-width" rounded
                    :color="!cantidad ? 'grey' : 'green'"
