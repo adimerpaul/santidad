@@ -96,7 +96,7 @@ class ProductController extends Controller{
         }
 
         if ($agencia_id != 0) {
-            $query->where("cantidadSucursal$agencia_id", '>', 0);
+            $query->where("cantidadSucursal$agencia_id", '>=', 0);
         }
 
         $products = $query->orderByRaw($ordenar)
