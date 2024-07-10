@@ -15,21 +15,29 @@
               <q-tooltip>Actualizar</q-tooltip>
             </q-btn>
           </div>
-          <div class="col-12 col-md-4 q-pa-xs">
+          <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" emit-value map-options dense outlined
                       v-model="category" option-value="id" option-label="name" :options="categories"
                       @update:model-value="productsGet"
             >
             </q-select>
           </div>
-          <div class="col-12 col-md-4 q-pa-xs">
+          <div class="col-12 col-md-3 q-pa-xs">
+            <q-select class="bg-white" emit-value map-options dense outlined
+                      v-model="subcategoria" option-value="id" option-label="name" :options="subcategories"
+                      @update:model-value="productsGet"
+                      label="Subcategoria"
+            >
+            </q-select>
+          </div>
+          <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" label="Ordenar" dense outlined v-model="order"
                       :options="orders" map-options emit-value
                       option-value="value" option-label="label"
                       @update:model-value="productsGet"
             />
           </div>
-          <div class="col-12 col-md-4 q-pa-xs">
+          <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" label="Agencia" dense outlined v-model="agencia_id"
                       :options="agencias" map-options emit-value
                       option-value="id" option-label="nombre"
@@ -319,13 +327,16 @@ export default {
         { label: 'Menor cantidad', value: 'cantidad asc' },
         { label: 'Mayor cantidad', value: 'cantidad desc' },
         { label: 'Orden alfabetico', value: 'nombre asc' }
-      ]
+      ],
+      subcategories: [],
+      subcategoria: ''
     }
   },
   mounted () {
     this.productsGet()
     this.categoriesGet()
     this.agenciasGet()
+    this.subcategoriesGet()
     this.$axios.get('documents').then(res => {
       res.data.forEach(r => {
         r.label = r.descripcion
@@ -335,6 +346,13 @@ export default {
     })
   },
   methods: {
+    subcategoriesGet () {
+      this.$axios.get('subcategories').then(response => {
+        this.subcategories = response.data
+      }).catch(error => {
+        console.log(error)
+      })
+    },
     saleInsert () {
       this.loading = true
       this.client.codigoTipoDocumentoIdentidad = this.document.codigoClasificador
@@ -503,7 +521,7 @@ export default {
     productsGet () {
       this.loading = true
       this.products = []
-      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}`).then(res => {
+      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}&subcategory=${this.subcategoria}`).then(res => {
         this.loading = false
         this.totalProducts = res.data.products.total
         this.last_page = res.data.products.last_page
