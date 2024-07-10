@@ -54,7 +54,7 @@
       </q-td>
     </template>
   </q-table>
-  <pre>{{compras}}</pre>
+<!--  <pre>{{compras}}</pre>-->
   <div id="myElement" class="hidden"></div>
 </q-page>
 </template>

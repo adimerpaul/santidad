@@ -7,6 +7,12 @@
       <div class="col-2">
         <q-select v-model="ordenar" :options="ordenarPor" label="Ordenar por" outlined dense @update:model-value="buyGet"/>
       </div>
+      <div class="col-3">
+        <q-select v-model="agencia" :options="agencias" label="Agencia" outlined dense
+                  @update:model-value="buyGet"
+                  emit-value map-options :option-label="agencia => agencia.nombre" :option-value="agencia => agencia.id"
+        />
+      </div>
     </div>
     <div class="flex flex-center">
       <q-pagination
@@ -103,7 +109,7 @@
         </q-card-section>
       </q-card>
     </q-dialog>
-    <pre>{{compras}}</pre>
+<!--    <pre>{{compras}}</pre>-->
   </q-page>
 </template>
 <script>
