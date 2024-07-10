@@ -53,31 +53,43 @@ class BuyController extends Controller{
     //productos vencidos
     public function indexVencidos(Request $request)
     {
-        $search = $request->search;//         'Dias para Vencer','Fecha de Vencimiento', 'Fecha de Compra'
+        $search = $request->search;
+//        error_log($search);
         $order = $request->order ?? null;
 
+        $agencia_id = $request->agencia_id;
+
+
         $buys = Buy::with(['product' => function($query) {
-                    $query->select('id', 'nombre','cantidad');
-                }, 'user' => function($query) {
-                    $query->select('id', 'name');
-                }])
+            $query->select('id', 'nombre','cantidad');
+        }, 'user' => function($query) {
+            $query->select('id', 'name');
+        }])
             ->with('proveedor','agencia','userBaja')
             ->where('dateExpiry', '<', Carbon::now());
-//            ->where('lote', 'like', '%'.$search.'%')
-//            ->orWhere('dateExpiry', 'like', '%'.$search.'%')
-//            ->orWhere('factura', 'like', '%'.$search.'%');
         if ($search != null && $search != '') {
             $buys = $buys
-            ->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")');
-        }else{
-            if ($order=='Dias para Vencer') {
+                ->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")')
+                ->orWhereHas('product', function($query) use ($search) {
+                    $query->where('nombre', 'like', '%'.$search.'%');
+//                    FLUOXETINA LCH 20 MG COMP.
+                });
+            if ($agencia_id != null && $agencia_id != '') {
+                $buys = $buys->where('agencia_id', $agencia_id);
+            }
+        } else {
+            if ($order == 'Dias para Vencer') {
                 $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '<', Carbon::now());
-            }elseif ($order=='Fecha de Vencimiento') {
+            } elseif ($order == 'Fecha de Vencimiento') {
                 $buys = $buys->orderBy('dateExpiry', 'asc');
-            }elseif ($order=='Fecha de Compra') {
+            } elseif ($order == 'Fecha de Compra') {
                 $buys = $buys->orderBy('date', 'asc');
             }
+            if ($agencia_id != null && $agencia_id != '') {
+                $buys = $buys->where('agencia_id', $agencia_id);
+            }
         }
+
         return response()->json($buys->paginate(100));
     }
 

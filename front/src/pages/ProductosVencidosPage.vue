@@ -147,7 +147,8 @@ export default {
         { name: 'date', label: 'Fecha de Compra', field: (row) => row.date + ' ' + row.time, align: 'left', sortable: true },
         // { name: 'time', label: 'Hora de Compra', field: 'time', align: 'left', sortable: true },
         { name: 'user', label: 'Usuario', field: row => row.user.name, align: 'left', sortable: true },
-        { name: 'provider', label: 'Proveedor', field: row => row.proveedor?.nombreRazonSocial, align: 'left', sortable: true }
+        { name: 'provider', label: 'Proveedor', field: row => row.proveedor?.nombreRazonSocial, align: 'left', sortable: true },
+        { name: 'agencia', label: 'Agencia', field: row => row.agencia?.nombre, align: 'left', sortable: true }
         // { name: 'actions', label: 'Acciones', field: 'actions', align: 'left' }
       ],
       productoBaja: {},
@@ -273,7 +274,8 @@ export default {
           params: {
             search: this.search,
             order: this.ordenar,
-            page: this.currentPage // Agrega la página actual como parámetro
+            page: this.currentPage,
+            agencia_id: this.agencia
           }
         })
         .then(res => {
