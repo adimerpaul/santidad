@@ -51,10 +51,10 @@
           </q-card-section>
         </q-card>
       </div>
-      <div class="col-12 col-md-3 q-pa-xs flex flex-center">
+      <div class="col-12 col-md-2 q-pa-xs flex flex-center">
         <q-btn outline no-caps icon="o_edit" class="full-width" label="Categoria y sub categoria" @click="categoryDialog=true" />
       </div>
-      <div class="col-12 col-md-3 q-pa-xs">
+      <div class="col-12 col-md-2 q-pa-xs">
         <q-select class="bg-white" emit-value map-options dense outlined
                   v-model="category" option-value="id" option-label="name" :options="categories"
                   @update:model-value="productsGet"
@@ -64,6 +64,14 @@
               <q-tooltip>Crear categoria</q-tooltip>
             </q-btn>
           </template>
+        </q-select>
+      </div>
+      <div class="col-12 col-md-2 q-pa-xs">
+        <q-select class="bg-white" emit-value map-options dense outlined
+                  v-model="subcategoria" option-value="id" option-label="name" :options="subcategories"
+                  @update:model-value="productsGet"
+                  label="Subcategoria"
+        >
         </q-select>
       </div>
       <div class="col-12 col-md-3 q-pa-xs">
@@ -174,6 +182,7 @@ export default {
       categories: [
         { name: 'Ver todas las categorias', id: 0 }
       ],
+      subcategoria: '',
       categoriesTable: [],
       categorySelected: {},
       categoriesTableColumns: [
@@ -253,7 +262,7 @@ export default {
     },
     productsGet () {
       this.loading = true
-      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia}`).then(res => {
+      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&subcategory=${this.subcategoria}&agencia=${this.agencia}`).then(res => {
         this.loading = false
         // console.log(res.data.products)
         this.totalProducts = res.data.products.total

@@ -30,6 +30,7 @@ class ProductController extends Controller{
         $category_id = request()->input('category', 0);
         $agencia_id = request()->input('agencia', 0);
         $paginate = request()->input('paginate', 30);
+        $sub_category_id = request()->input('subcategory', 0);
 
         $query = Product::query();
         //filtrar por nombre o comocicion
@@ -46,6 +47,9 @@ class ProductController extends Controller{
 
         if ($category_id != 0) {
             $query->where('category_id', $category_id);
+        }
+        if ($sub_category_id != 0) {
+            $query->where('subcategory_id', $sub_category_id);
         }
 
         if ($agencia_id != 0) {
