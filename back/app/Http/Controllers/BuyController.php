@@ -20,7 +20,7 @@ class BuyController extends Controller{
         $order = $request->order ?? null;
 
         $buys = Buy::with(['product' => function($query) {
-                    $query->select('id', 'nombre','cantidad');
+                    $query->select('id', 'nombre','cantidad','cantidadSucursal1','cantidadSucursal2','cantidadSucursal3','cantidadSucursal4','cantidadSucursal5','cantidadSucursal6','cantidadSucursal7','cantidadSucursal8','cantidadSucursal9','cantidadSucursal10');
                 }, 'user' => function($query) {
                     $query->select('id', 'name');
                 }, 'proveedor' => function($query) {
@@ -48,7 +48,35 @@ class BuyController extends Controller{
                 $buys = $buys->where('agencia_id', $agencia_id);
             }
         }
-        return response()->json($buys->paginate(100));
+        $buys = $buys->paginate(100);
+        $buys->getCollection()->transform(function($value) {
+            if ($value->agencia_id == 1) {
+                $value->cantidadAgencia = $value->product->cantidadSucursal1;
+            }elseif ($value->agencia_id == 2) {
+                $value->cantidadAgencia = $value->product->cantidadSucursal2;
+            }elseif ($value->agencia_id == 3) {
+                $value->cantidadAgencia = $value->product->cantidadSucursal3;
+            }elseif ($value->agencia_id == 4) {
+                $value->cantidadAgencia = $value->product->cantidadSucursal4;
+            }elseif ($value->agencia_id == 5) {
+                $value->cantidadAgencia = $value->product->cantidadSucursal5;
+            }elseif ($value->agencia_id == 6) {
+                $value->cantidadAgencia = $value->product->cantidadSucursal6;
+            }elseif ($value->agencia_id == 7) {
+                $value->cantidadAgencia = $value->product->cantidadSucursal7;
+            }elseif ($value->agencia_id == 8) {
+                $value->cantidadAgencia = $value->product->cantidadSucursal8;
+            }elseif ($value->agencia_id == 9) {
+                $value->cantidadAgencia = $value->product->cantidadSucursal9;
+            }elseif ($value->agencia_id == 10) {
+                $value->cantidadAgencia = $value->product->cantidadSucursal10;
+            }else{
+                $value->cantidadAgencia = $value->product->cantidad;
+            }
+            return $value;
+        });
+        return response()->json($buys);
+//        return response()->json($buys->paginate(100));
     }
     //productos vencidos
     public function indexVencidos(Request $request)
