@@ -113,7 +113,7 @@ class BuyController extends Controller{
 //        try {
             $buy = Buy::find($request->id);
             $product = Product::find($buy->product_id);
-            $product->cantidad = $product->cantidad - $buy->cantidadBaja;
+            $product->cantidad = $product->cantidad - $request->cantidadBaja;
             if ($request->sucursal_id_baja == 0) {
                 $product->cantidadAlmacen = $product->cantidadAlmacen - $buy->cantidadBaja;
             } elseif ($request->sucursal_id_baja == 1) {
