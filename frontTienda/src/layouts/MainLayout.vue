@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
+  <q-layout view="lHh Lpr lff">
     <q-header>
       <q-toolbar>
 <!--        <q-btn-->
@@ -100,6 +100,20 @@
     <q-page-container>
       <router-view />
     </q-page-container>
+    <q-footer>
+<!--      iconos faceoob instagram ticktick whtsapp-->
+      <div class="text-center bg-white">
+        <q-btn class="q-ma-xs" dense color="primary" icon="fa-brands fa-facebook" href="https://www.facebook.com/"></q-btn>
+        <q-btn class="q-ma-xs" dense color="red" icon="fa-brands fa-instagram" href="https://www.instagram.com/"></q-btn>
+        <q-btn class="q-ma-xs" dense color="green" icon="fa-brands fa-whatsapp" href="https://wa.me/"></q-btn>
+        <q-btn class="q-ma-xs" dense color="black" icon="fa-brands fa-tiktok" href="https://www.tiktok.com/"></q-btn>
+      </div>
+      <q-toolbar>
+        <div class="text-h5">Farmacia Santidad Divina</div>
+        <q-space />
+        <div class="text-caption">© 2024</div>
+      </q-toolbar>
+    </q-footer>
   </q-layout>
 </template>
 
@@ -113,9 +127,9 @@ export default defineComponent({
       tab: 'Inicio',
       tabs: [
         { name: 'Inicio', label: 'Inicio', to: '/' },
-        { name: 'Oferas', label: 'Ofertas', to: '/ofertas' },
-        { name: 'Sucursales', label: 'Sucursales', to: '/sucursales' },
-        { name: 'Contactos', label: 'Contactos', to: '/contactos' }
+        // { name: 'Oferas', label: 'Ofertas', to: '/ofertas' },
+        { name: 'Sucursales', label: 'Sucursales', to: '/sucursales' }
+        // { name: 'Contactos', label: 'Contactos', to: '/contactos' }
       ],
       leftDrawerOpen: false,
       search: ''
