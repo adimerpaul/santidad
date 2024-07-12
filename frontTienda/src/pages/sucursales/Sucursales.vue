@@ -30,9 +30,11 @@
                       <br>
                       <span class="text-bold text-subtitle2">Horario</span> {{sucursal.horario}}
                       <br>
-                      <q-btn flat dense color="primary" icon="phone" @click="clickLlamar(sucursal.telefono)"></q-btn>
+<!--                      <i class="fa-brands fa-whatsapp"></i>-->
+                      <q-btn flat dense color="success" icon="fa-brands fa-whatsapp" :href="sucursal.whatsapp"></q-btn>
                       <span class="text-bold text-subtitle2">Whatsapp</span> {{sucursal.whatsapp}}
                       <br>
+                      <q-btn flat dense color="primary" icon="fa-brands fa-facebook" :href="sucursal.facebook"></q-btn>
                       <span class="text-bold text-subtitle2">Facebook</span> {{sucursal.facebook}}
                     </div>
                   </q-item-label>
