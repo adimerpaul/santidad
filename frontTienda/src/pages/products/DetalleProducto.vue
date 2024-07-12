@@ -90,6 +90,56 @@
           </tr>
         </table>
       </div>
+      <div class="row">
+        <div class="col-9 flex flex-center">
+          <span class="text-bold">Cantidad:</span>
+          <q-btn
+            @click="cantidad = cantidad - 1"
+            icon="remove"
+            dense
+            round
+            color="primary"
+            :disable="cantidad<=1"
+          />
+          <q-input v-model="cantidad" type="number"  min="1" class="text-center text-bold"  outlined dense style="text-align: center;width: 100px"/>
+          <q-btn
+            @click="cantidad = cantidad + 1"
+            icon="add"
+            dense
+            round
+            color="primary"
+            :disable="cantidad>=product?.cantidad"
+          />
+          <span class="text-bold">{{product?.unidad}}</span>
+        </div>
+        <div class="col-3 bg-grey-4 text-right">
+          <label class="text-bold ">Total</label>
+          <div class="text-bold justify-between">
+            Bs.
+            <span>{{(product?.precio * cantidad).toFixed(2)}}</span>
+          </div>
+        </div>
+        <div class="col-6">
+          <q-btn
+            @click="addCart(product, cantidad)"
+            label="Añadir al carrito"
+            icon="add_shopping_cart"
+            class="full-width"
+            color="green"
+            no-caps
+            dense/>
+        </div>
+        <div class="col-6">
+          <q-btn
+            @click="addCart(product, cantidad, true)"
+            label="Comprar ahora"
+            icon="shopping_cart"
+            class="full-width"
+            color="red"
+            no-caps
+            dense/>
+        </div>
+      </div>
     </div>
     <div class="col-12">
       <label class="text-bold text-h6">Descripción:</label>
@@ -109,7 +159,8 @@ export default {
     return {
       id: this.$route.params.id,
       product: {},
-      loading: true
+      loading: true,
+      cantidad: 1
     }
   },
   mounted () {
@@ -123,6 +174,10 @@ export default {
       this.product = response.data
       this.loading = false
       this.$q.loading.hide()
+    },
+    addCart (product, cantidad, comprar = false) {
+      const text = `Deseo comprar ${cantidad} ${product.nombre} a Bs. ${product.precio} c/u. Total Bs. ${(product.precio * cantidad).toFixed(2)}`
+      window.open(`https://wa.me/59172319869?text=${text}`)
     }
   }
 }
