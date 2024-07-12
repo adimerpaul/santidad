@@ -12,7 +12,7 @@
 <!--        />-->
         <q-toolbar-title class="text-bold">
 <!--          <q-avatar rounded size="50px" color="orange">-->
-            <q-img src="logo.png" width="150px" class="bg-white"  />
+            <q-img src="/logo.png" width="150px" class="bg-white"  />
 <!--          </q-avatar>-->
 <!--          <q-avatar size="50px">-->
 <!--            <q-img src="logo.png"  />-->
@@ -27,10 +27,11 @@
           indicator-color="orange"
           no-caps
         >
-          <q-tab
+          <q-route-tab
             v-for="tab in tabs"
             :key="tab.name"
             v-bind="tab"
+            :to="tab.to"
           />
         </q-tabs>
         <q-space />
