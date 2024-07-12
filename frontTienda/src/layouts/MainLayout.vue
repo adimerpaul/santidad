@@ -10,7 +10,7 @@
 <!--          aria-label="Menu"-->
 <!--          @click="toggleLeftDrawer"-->
 <!--        />-->
-        <q-toolbar-title class="text-bold">
+        <q-toolbar-title class="text-bold cursor-pointer" @click="$router.push('/')">
 <!--          <q-avatar rounded size="50px" color="orange">-->
             <q-img src="/logo.png" width="150px" class="bg-white"  />
 <!--          </q-avatar>-->

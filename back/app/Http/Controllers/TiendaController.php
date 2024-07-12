@@ -18,4 +18,11 @@ class TiendaController extends Controller{
         });
         return $productos->paginate(12);
     }
+    function productosId($id){
+        $producto = Product::where('id',$id)->first();
+        if (!file_exists(public_path() . '/images/' . $producto->image)) {
+            $producto->image = 'productDefault.jpg';
+        }
+        return $producto;
+    }
 }
