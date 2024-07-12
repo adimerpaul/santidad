@@ -79,7 +79,7 @@ export default {
     // }
     // this.programacionGet()
     this.carouselsGet()
-    this.productsGet()
+    // this.productsGet()
   },
   methods: {
     productsGet () {
