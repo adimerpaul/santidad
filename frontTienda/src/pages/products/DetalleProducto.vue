@@ -125,7 +125,7 @@
             label="Añadir al carrito"
             icon="add_shopping_cart"
             class="full-width"
-            color="green"
+            color="blue"
             no-caps
             dense/>
         </div>
