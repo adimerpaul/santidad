@@ -6,6 +6,9 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 
 class TiendaController extends Controller{
+    function sucursales(){
+        return \App\Models\Agencia::where('status','ACTIVO')->get();
+    }
     public function productos(Request $request){
         $search = $request->search;
         $productos = Product::whereActivo('ACTIVO')
