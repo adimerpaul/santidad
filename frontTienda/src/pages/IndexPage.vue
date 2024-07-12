@@ -110,6 +110,9 @@ export default {
     this.buscar()
   },
   methods: {
+    clickDetalleProducto (p) {
+      this.$router.push('/detalle-producto/' + p.id)
+    },
     buscar () {
       this.loading = true
       this.$axios.get('productos', {
