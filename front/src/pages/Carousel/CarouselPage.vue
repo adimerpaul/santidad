@@ -40,7 +40,7 @@
             rounded
             size="10px"
             no-caps
-            @click="carouselUpdate(props.row)"
+            @click="carouselUpdate(props.row,$event)"
             :color="props.row.status === 'active' ? 'positive' : 'negative'"
             :label="props.row.status"
             text-color="white"
@@ -192,8 +192,10 @@ export default {
       this.dialog = true
       this.carousel = carousel
     },
-    carouselUpdate (carousel) {
+    carouselUpdate (carousel, event) {
       // console.log(carousel)
+      // no propagar
+      event.stopPropagation()
       this.loading = true
       carousel.status = carousel.status === 'active' ? 'inactive' : 'active'
       this.$axios.put('carousels/' + carousel.id, carousel)
