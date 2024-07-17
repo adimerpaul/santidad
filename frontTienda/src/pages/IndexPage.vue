@@ -129,7 +129,7 @@ export default {
     },
     carouselsGet () {
       // this.loading = true
-      this.$axios.get('carousels').then(response => {
+      this.$axios.get('carouselsPage').then(response => {
         this.carousels = response.data
       }).finally(() => {
         // this.loading = false

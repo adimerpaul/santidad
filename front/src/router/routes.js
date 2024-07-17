@@ -32,7 +32,8 @@ const routes = [
       { path: 'productosVencidos', component: ProductosVencidosPage, meta: { requiresAuth: true } },
       { path: 'agencias', component: AgenciaPage, meta: { requiresAuth: true } },
       { path: 'productosRetirados', component: ProductosRetiradosPage, meta: { requiresAuth: true } },
-      { path: 'subcategorias', component: () => import('pages/SubcategoryPage.vue'), meta: { requiresAuth: true } }
+      { path: 'subcategorias', component: () => import('pages/SubcategoryPage.vue'), meta: { requiresAuth: true } },
+      { path: 'carousel', component: () => import('pages/Carousel/CarouselPage.vue'), meta: { requiresAuth: true } }
     ]
   },
   {

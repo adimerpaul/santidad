@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Route;
 //});
 Route::post('/login',[\App\Http\Controllers\UserController::class,'login']);
 Route::post('upload/{id}/{option}', [\App\Http\Controllers\UploadController::class, 'upload']);
-Route::resource('/carousels',\App\Http\Controllers\CarouselController::class);
+Route::get('/carouselsPage',[\App\Http\Controllers\CarouselController::class,'carouselsPage']);
 Route::get('/productos',[\App\Http\Controllers\TiendaController::class,'productos']);
 Route::get('/sucursales',[\App\Http\Controllers\TiendaController::class,'sucursales']);
 Route::get('/productos/{id}',[\App\Http\Controllers\TiendaController::class,'productosId']);
@@ -32,10 +32,15 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::resource('/agencias',\App\Http\Controllers\AgenciaController::class);
     Route::resource('/products',\App\Http\Controllers\ProductController::class);
     Route::resource('/unids',\App\Http\Controllers\UnidController::class);
-//    unidAll
+
+    Route::get('/carousels',[\App\Http\Controllers\CarouselController::class,'index']);
+    Route::post('/carousels',[\App\Http\Controllers\CarouselController::class,'store']);
+    Route::put('/carousels/{carousel}',[\App\Http\Controllers\CarouselController::class,'update']);
+    Route::delete('/carousels/{carousel}',[\App\Http\Controllers\CarouselController::class,'destroy']);
+
     Route::get('/unidAll',[\App\Http\Controllers\UnidController::class,'unidAll']);
     Route::get('/productsAll',[\App\Http\Controllers\ProductController::class,'productsAll']);
-//    duplicateProduct
+
     Route::post('/duplicateProduct',[\App\Http\Controllers\ProductController::class,'duplicateProduct']);
     Route::post('/moverProducto',[\App\Http\Controllers\ProductController::class,'moverProducto']);
     Route::get('/productsSale',[\App\Http\Controllers\ProductController::class,'productsSale']);

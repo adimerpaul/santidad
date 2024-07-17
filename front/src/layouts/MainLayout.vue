@@ -180,6 +180,15 @@
                 </q-tooltip>
               </q-item-section>
             </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/carousel" v-if="$store.user.id=='1'">
+              <q-item-section avatar><q-icon name="o_image" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Carousel</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Administrar carousel
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
           </q-list>
         </q-header>
         <q-footer class="bg-white">
