@@ -1,6 +1,10 @@
 <template>
   <q-page class="q-pa-xs bg-grey-3">
-    <q-table dense :filter="filter" title="Gestion carosel" :rows="carousels" :columns="columns"  row-key="name" :rows-per-page-options="[50,100]">
+    <q-table dense :filter="filter"
+             title="Gestion carosel" :rows="carousels" :columns="columns"  row-key="name"
+             :rows-per-page-options="[50,100]"
+             @row-click="carouselEdit"
+    >
       <template v-slot:top-right>
         <q-btn
           label="Nuevo carucel"
@@ -44,7 +48,51 @@
         </q-td>
       </template>
     </q-table>
-    <pre>{{carousels}}</pre>
+<!--    <pre>{{carousels}}</pre>-->
+    <q-dialog v-model="dialog" persistent>
+      <q-card>
+        <q-card-section>
+          <q-card-section class="q-pa-none text-bold row">
+            {{carousel.id ? 'Editar' : 'Nuevo'}} carosel
+            <q-space />
+            <q-btn
+              flat
+              round
+              dense
+              icon="close"
+              @click="dialog = false"/>
+          </q-card-section>
+          <q-card-section>
+            <input
+              placeholder="Imagen"
+              type="file"
+              accept="image/*"
+              @change="fileChange"
+            />
+          </q-card-section>
+          <q-card-section class="text-right">
+            <q-btn
+              :label="carousel.id ? 'Actualizar' : 'Guardar'"
+              :color="carousel.id ? 'orange' : 'positive'"
+              @click="carouselSave"
+              :loading="loading"
+              :icon="carousel.id ? 'edit' : 'save'"
+              class="q-mb-xs"
+              no-caps
+            />
+            <q-btn
+              label="Cancelar"
+              color="negative"
+              @click="dialog = false"
+              icon="cancel"
+              :loading="loading"
+              class="q-mb-xs"
+              no-caps
+            />
+          </q-card-section>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 <script>
@@ -55,6 +103,7 @@ export default {
       carousels: [],
       carousel: {},
       dialog: false,
+      loading: false,
       columns: [
         { name: 'id', label: 'ID', align: 'center', field: row => row.id },
         { name: 'image', label: 'Imagen', align: 'left', field: row => row.image },
@@ -67,6 +116,9 @@ export default {
     this.getCarousels()
   },
   methods: {
+    fileChange (event) {
+      this.carousel.image = event.target.files[0]
+    },
     carouselCreate () {
       this.dialog = true
       this.carousel = {
@@ -84,14 +136,47 @@ export default {
         })
     },
     carouselSave () {
-      this.$axios.post('carousels', this.carousel)
-        .then(response => {
-          this.getCarousels()
-          this.dialog = false
+      if (!this.carousel.image) {
+        this.$alert.error('Debe seleccionar una imagen')
+        return false
+      }
+      if (this.carousel.id) {
+        this.loading = true
+        const formData = new FormData()
+        formData.append('file', this.carousel.image)
+        this.$axios.post('carouselsFile/' + this.carousel.id, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
         })
-        .catch(error => {
-          console.log(error)
+          .then(response => {
+            this.getCarousels()
+            this.dialog = false
+          })
+          .catch(error => {
+            console.log(error)
+          }).finally(() => {
+            this.loading = false
+          })
+      } else {
+        this.loading = true
+        const formData = new FormData()
+        formData.append('file', this.carousel.image)
+        this.$axios.post('carousels', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
         })
+          .then(response => {
+            this.getCarousels()
+            this.dialog = false
+          })
+          .catch(error => {
+            console.log(error)
+          }).finally(() => {
+            this.loading = false
+          })
+      }
     },
     carouselDelete (carousel) {
       this.$axios.delete('carousels/' + carousel.id)
@@ -102,12 +187,14 @@ export default {
           console.log(error)
         })
     },
-    carouselEdit (carousel) {
+    carouselEdit (event, carousel) {
+      // console.log(carousel)
       this.dialog = true
       this.carousel = carousel
     },
     carouselUpdate (carousel) {
       // console.log(carousel)
+      this.loading = true
       carousel.status = carousel.status === 'active' ? 'inactive' : 'active'
       this.$axios.put('carousels/' + carousel.id, carousel)
         .then(response => {
@@ -117,6 +204,8 @@ export default {
         })
         .catch(error => {
           console.log(error)
+        }).finally(() => {
+          this.loading = false
         })
     },
     carouselSubmit () {

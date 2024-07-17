@@ -38,6 +38,7 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::post('/carousels',[\App\Http\Controllers\CarouselController::class,'store']);
     Route::delete('/carousels/{carousel}',[\App\Http\Controllers\CarouselController::class,'destroy']);
     Route::put('/carousels/{id}',[\App\Http\Controllers\CarouselController::class,'update']);
+    Route::post('/carouselsFile/{id}',[\App\Http\Controllers\CarouselController::class,'storeFile']);
 
     Route::get('/unidAll',[\App\Http\Controllers\UnidController::class,'unidAll']);
     Route::get('/productsAll',[\App\Http\Controllers\ProductController::class,'productsAll']);

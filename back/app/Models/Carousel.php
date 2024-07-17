@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class Carousel extends Model
 {
     use HasFactory;
-    protected $fillable = ['title','description','image','status'];
+//$table->string('url');
+//$table->string('image');
+//$table->string('imageResponsive');
+//$table->string('status')->default('active');
+    protected $fillable = ['url','image','imageResponsive','status'];
     protected $hidden = ['created_at','updated_at'];
 }
