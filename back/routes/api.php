@@ -23,6 +23,7 @@ Route::get('/carouselsPage',[\App\Http\Controllers\CarouselController::class,'ca
 Route::get('/productos',[\App\Http\Controllers\TiendaController::class,'productos']);
 Route::get('/sucursales',[\App\Http\Controllers\TiendaController::class,'sucursales']);
 Route::get('/productos/{id}',[\App\Http\Controllers\TiendaController::class,'productosId']);
+
 Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::post('/me', [\App\Http\Controllers\UserController::class,'me']);
     Route::post('/logout', [\App\Http\Controllers\UserController::class,'logout']);
@@ -35,8 +36,8 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
 
     Route::get('/carousels',[\App\Http\Controllers\CarouselController::class,'index']);
     Route::post('/carousels',[\App\Http\Controllers\CarouselController::class,'store']);
-    Route::put('/carousels/{carousel}',[\App\Http\Controllers\CarouselController::class,'update']);
     Route::delete('/carousels/{carousel}',[\App\Http\Controllers\CarouselController::class,'destroy']);
+    Route::put('/carousels/{id}',[\App\Http\Controllers\CarouselController::class,'update']);
 
     Route::get('/unidAll',[\App\Http\Controllers\UnidController::class,'unidAll']);
     Route::get('/productsAll',[\App\Http\Controllers\ProductController::class,'productsAll']);
