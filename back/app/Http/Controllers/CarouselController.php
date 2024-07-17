@@ -38,6 +38,8 @@ class CarouselController extends Controller{
         return Carousel::create($request->all());
     }
     public function update(Request $request, $id){
+        $url = isset($request->url) ? $request->url : '';
+        $request->merge(['url' => $url]);
         $carousel = Carousel::findOrFail($id);
         $carousel->update($request->all());
         return $carousel;
