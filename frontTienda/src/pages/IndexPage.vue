@@ -1,19 +1,26 @@
 <template>
   <q-page>
-    <q-carousel
-      animated
-      v-model="slide"
-      arrows
-      navigation
-      navigation-icon="radio_button_unchecked"
-      control-text-color="primary"
-      autoplay
-      infinite
-    >
-      <q-carousel-slide :name="i++" v-for="(c,i) in carousels" :key="i++" class="cursor-pointer q-pa-xs"
-                        :img-src="$q.screen.lt.md ?`${$url}../images/${c.imageResponsive}`:`${$url}../images/${c.image}`"
-      />
-    </q-carousel>
+    <div class="row bg-grey-3">
+      <div class="col-12 col-md-2"></div>
+      <div class="col-12 col-md-8">
+        <q-carousel
+          animated
+          v-model="slide"
+          arrows
+          navigation
+          navigation-icon="radio_button_unchecked"
+          control-text-color="primary"
+          autoplay
+          infinite
+          :height="$q.screen.lt.md ? '200px' : '400px'"
+        >
+          <q-carousel-slide :name="i++" v-for="(c,i) in carousels" :key="i++" class="cursor-pointer q-pa-xs"
+                            :img-src="$q.screen.lt.md ?`${$url}../images/${c.imageResponsive}`:`${$url}../images/${c.image}`"
+          />
+        </q-carousel>
+      </div>
+      <div class="col-12 col-md-2"></div>
+    </div>
     <div class="row q-pa-xs">
       <div class="col-12">
         <div class="text-h6 text-center text-bold no-select flex flex-center">
@@ -24,6 +31,7 @@
             outlined
             bg-color="grey-4"
             rounded
+            @keyup.enter="buscar"
             placeholder="Buscar producto"
             class="q-ml-sm">
             <template v-slot:prepend>
@@ -61,6 +69,9 @@
 <!--                  <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">-->
 <!--                    {{p.nombre}}-->
 <!--                  </div>-->
+                  <q-badge color="red" floating style="padding: 10px 10px 5px 5px;margin: 0px" v-if="p.porcentaje">
+                    {{p.porcentaje}}%
+                  </q-badge>
                 </q-img>
                 <div class="text-center text-bold" style="line-height: 1;font-size: 14px;height: 40px">
                   {{p.nombre}}
@@ -111,7 +122,10 @@ export default {
   },
   methods: {
     clickDetalleProducto (p) {
-      this.$router.push('/detalle-producto/' + p.id)
+      this.$router.push('/detalle-producto/' + p.id + '/' + this.espacioCambioGuion(p.nombre))
+    },
+    espacioCambioGuion (text) {
+      return text.replace(/ /g, '-')
     },
     buscar () {
       this.loading = true

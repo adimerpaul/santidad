@@ -58,7 +58,12 @@
         <table>
           <tr>
             <td class="text-bold">Precio:</td>
-            <td>Bs. {{product?.precio}}</td>
+            <td>
+              Bs. {{product?.precio}}
+              <q-badge v-if="es_porcentaje" color="red">
+                Descuento {{product?.porcentaje}}%
+              </q-badge>
+            </td>
           </tr>
           <tr>
             <td class="text-bold">Unidad:</td>
@@ -119,7 +124,7 @@
             <span>{{(product?.precio * cantidad).toFixed(2)}}</span>
           </div>
         </div>
-        <div class="col-6">
+        <div class="col-4 q-pa-xs">
           <q-btn
             @click="addCart(product, cantidad)"
             label="Añadir al carrito"
@@ -129,13 +134,23 @@
             no-caps
             dense/>
         </div>
-        <div class="col-6">
+        <div class="col-4 q-pa-xs">
           <q-btn
             @click="addCart(product, cantidad, true)"
             label="Comprar ahora"
             icon="shopping_cart"
             class="full-width"
             color="red"
+            no-caps
+            dense/>
+        </div>
+        <div class="col-4 q-pa-xs">
+          <q-btn
+            @click="share"
+            label="Compartir"
+            icon="share"
+            class="full-width"
+            color="green"
             no-caps
             dense/>
         </div>
@@ -160,7 +175,8 @@ export default {
       id: this.$route.params.id,
       product: {},
       loading: true,
-      cantidad: 1
+      cantidad: 1,
+      es_porcentaje: false
     }
   },
   mounted () {
@@ -172,12 +188,27 @@ export default {
       this.$q.loading.show()
       const response = await this.$axios.get(`productos/${this.id}`)
       this.product = response.data
+      if (this.product.porcentaje > 0) {
+        this.es_porcentaje = true
+        const precio = this.product.precio - (this.product.precio * this.product.porcentaje / 100)
+        this.product.precio = precio.toFixed(2)
+      }
       this.loading = false
       this.$q.loading.hide()
     },
     addCart (product, cantidad, comprar = false) {
       const text = `Deseo comprar ${cantidad} ${product.nombre} a Bs. ${product.precio} c/u. Total Bs. ${(product.precio * cantidad).toFixed(2)}`
       window.open(`https://wa.me/59172319869?text=${text}`)
+    },
+    share () {
+      const shareData = {
+        title: this.product.nombre,
+        text: this.product.descripcion,
+        url: window.location.href
+      }
+      navigator.share(shareData)
+        .then(() => console.log('Successful share'))
+        .catch((error) => console.log('Error sharing', error))
     }
   }
 }
