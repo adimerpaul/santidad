@@ -54,8 +54,8 @@
       <div class="col-12">
 <!--        <q-card>-->
 <!--          <q-card-section class="q-pa-xs">-->
-          <div class="row cursor-pointer" v-if="products.length>0">
-            <div class="col-4 col-md-2 q-px-xs q-py-xs" v-for="p in products" :key="p.id">
+          <div class="row cursor-pointer" v-if="$store.products.length>0">
+            <div class="col-4 col-md-2 q-px-xs q-py-xs" v-for="p in $store.products" :key="p.id">
               <q-card @click="clickDetalleProducto(p)" flat bordered style="border: 2px solid #00BD73">
                 <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="100px">
 <!--                  <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">-->
@@ -98,7 +98,7 @@ export default {
     return {
       slide: 1,
       carousels: [],
-      products: [],
+      // products: [],
       search: '',
       loading: false,
       currentPage: 1,
@@ -121,7 +121,8 @@ export default {
           page: this.currentPage
         }
       }).then(response => {
-        this.products = response.data.data
+        // this.products = response.data.data
+        this.$store.products = response.data.data
         this.totalPages = response.data.last_page
       }).finally(() => {
         this.loading = false

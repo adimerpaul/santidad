@@ -18,6 +18,7 @@ export default boot(({ app, router }) => {
   app.config.globalProperties.$axios = axios.create({ baseURL: import.meta.env.VITE_API_BACK })
   app.config.globalProperties.$url = import.meta.env.VITE_API_BACK
   app.config.globalProperties.$alert = Alert
+  app.config.globalProperties.$store = useCounterStore()
   app.config.globalProperties.$imprimir = Imprimir
   app.config.globalProperties.$excel = Excel
   app.config.globalProperties.$metodoPago = ['Efectivo', 'Tarjeta', 'Transferencia', 'Otro']
@@ -39,7 +40,7 @@ export default boot(({ app, router }) => {
       return precio.toFixed(2)
     }
   }
-  app.config.globalProperties.$store = useCounterStore()
+  // app.config.globalProperties.$store = useCounterStore()
   const token = localStorage.getItem('tokenSantidad')
   if (token) {
     useCounterStore().loading = true
