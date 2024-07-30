@@ -36,6 +36,7 @@ class Sales extends Model
         "agencia_id",
         "modificado",
         "descuento",
+        "descuentoProducto",
     ];
     public function details(){ return $this->hasMany(Detail::class, 'sale_id'); }
     public function client(){ return $this->belongsTo(Client::class); }

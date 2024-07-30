@@ -140,7 +140,11 @@ Oruro</div>
       </tr>
       <tr>
         <td class='titder' style='width: 60%'>DESCUENTO Bs</td>
-        <td class='conte2'>${parseFloat(factura.descuento).toFixed(2)}</td>
+        <td class='conte2'>-${parseFloat(factura.descuento).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td class='titder' style='width: 60%'>DESCU PROD Bs</td>
+        <td class='conte2'>-${parseFloat(factura.descuento_producto).toFixed(2)}</td>
       </tr>
       <tr>
         <td class='titder' style='width: 60%'>SUBTOTAL Bs</td>

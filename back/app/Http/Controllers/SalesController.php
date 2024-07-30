@@ -88,6 +88,7 @@ class SalesController extends Controller{
         $sales->agencia_id = $agencia_id;
         $sales->save();
         $concepto = "";
+        $descuento_producto = 0;
         foreach ($request->products as $product){
             $detail = new Detail();
             $detail->cantidad = $product['cantidadPedida'];
@@ -124,9 +125,14 @@ class SalesController extends Controller{
             }else if ($numeroSucursal == 10){
                 $productSale->cantidadSucursal10 = $productSale->cantidadSucursal10 - $product['cantidadPedida'];
             }
+            if( $productSale->porcentaje > 0){
+                $montoAhorrro = $product['cantidadPedida'] * $productSale->precio * $productSale->porcentaje / 100;
+                $descuento_producto += $montoAhorrro;
+            }
             $productSale->save();
         }
         $sales->concepto = substr($concepto,0,-1);
+        $sales->descuento_producto = $descuento_producto;
         $sales->save();
         DB::commit();
         return Sales::with(['details.product','client'])->find($sales->id);

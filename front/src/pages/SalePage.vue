@@ -136,7 +136,7 @@
                           <div class="text-grey">Disponible: {{props.row.cantidad}}
                             (
                             <span style="font-size: 10px">{{props.row.precio}} Bs </span>
-                            <span style="font-size: 10px" class="text-red text-bold" v-if="props.row.precioAntes">{{props.row.precioAntes}} Bs</span>
+                            <span style="font-size: 10px" class="text-red text-bold" v-if="props.row.porcentaje">{{$filters.precioRebajaVenta(props.row.precio, props.row.porcentaje)}} Bs</span>
                             )
                           </div>
                           <q-input v-model="props.row.precioVenta" style="width: 170px"  step="0.1" type="number" @update:model-value="precioVenta(props.row)" dense outlined>
@@ -499,6 +499,10 @@ export default {
     clickAddSale (product) {
       product.cantidad--
       product.cantidadPedida++
+      // si tiene procentaje colocar el precio mas la rebaja
+      if (product.porcentaje) {
+        product.precioVenta = this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
+      }
       const productVenta = this.$store.productosVenta.find(p => p.id === product.id)
       if (productVenta) {
         productVenta.cantidadVenta++
