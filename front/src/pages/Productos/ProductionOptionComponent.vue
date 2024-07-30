@@ -123,12 +123,15 @@
           <div class="col-12 col-md-5">
             <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
           </div>
-          <div class="col-12 col-md-5">
-            <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>
+          <div class="col-12 col-md-3">
+<!--            <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>-->
+          <label for="" class="text-red text-caption text-bold">Precio venta</label><br>
+          <span class="text-bold">{{precioVenta}}</span>
           </div>
-          <div class="col-12 col-md-2" style="line-height:1em;">
-            <label for="" class="text-red text-caption text-bold">Porcentaje</label><br>
-            <span class="text-bold">{{porcentaje}}%</span>
+          <div class="col-12 col-md-4" style="line-height:1em;">
+            <q-input label-color="black" outlined type="number" step="0.01" v-model="product.porcentaje" label="%" dense hint="Porcentaje de descuento"/>
+            <!--            <label for="" class="text-red text-caption text-bold">Porcentaje</label><br>-->
+<!--            <span class="text-bold">{{porcentaje}}%</span>-->
           </div>
         </div>
         <q-select class="bg-white" label="Unidad" dense outlined v-model="product.unidad" :options="unidades"
@@ -672,6 +675,12 @@ export default {
     }
   },
   computed: {
+    precioVenta () {
+      const precio = this.product.precio == null ? 0 : this.product.precio
+      const porcentaje = this.product.porcentaje == null ? 0 : this.product.porcentaje
+      const precioVenta = (precio - (precio * porcentaje / 100)).toFixed(2)
+      return precioVenta
+    },
     porcentaje () {
       const precio = this.product.precio == null ? 0 : this.product.precio
       // console.log('precio', precio)
