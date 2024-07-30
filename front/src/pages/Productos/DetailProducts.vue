@@ -33,13 +33,13 @@
           <div class="col-12 col-md-6">
             <div class="text-grey text-caption text-right">{{ product.precio }} Bs</div>
           </div>
-          <div class="col-12 col-md-6 text-subtitle2 text-bold text-red">
-            <q-icon name="o_paid" class="text-red" size="20px" />
-            Precio antes
-          </div>
-          <div class="col-12 col-md-6">
-            <div class="text-red text-caption text-right">{{ product.precioAntes }} Bs</div>
-          </div>
+<!--          <div class="col-12 col-md-6 text-subtitle2 text-bold text-red">-->
+<!--            <q-icon name="o_paid" class="text-red" size="20px" />-->
+<!--            Precio antes-->
+<!--          </div>-->
+<!--          <div class="col-12 col-md-6">-->
+<!--            <div class="text-red text-caption text-right">{{ product.precioAntes }} Bs</div>-->
+<!--          </div>-->
           <div class="col-12 col-md-6 text-subtitle2 text-bold text-grey">
             <q-icon name="o_shopping_bag" class="text-grey" size="20px" />
             Costo

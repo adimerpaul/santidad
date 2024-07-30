@@ -113,7 +113,13 @@
                     </div>
                   </q-img>
                   <q-card-section class="q-pa-none q-ma-none">
-                    <div class="text-center text-subtitle2">{{ p.precio }} Bs</div>
+                    <div class="text-center text-subtitle2">
+                      {{ p.precio }}
+                      <span class="text-red" v-if="p.porcentaje">
+                        {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
+                      </span>
+                      Bs
+                    </div>
                     <div :class="`text-center text-bold text-${p.cantidad<=10?'red':p.cantidad<=20?'yellow-9':'black'}`">{{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}</div>
                   </q-card-section>
                 </q-card>

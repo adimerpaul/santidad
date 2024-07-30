@@ -70,7 +70,13 @@
                         <q-badge v-if="p.cantidadPedida>0" color="yellow-9" floating :label="p.cantidadPedida" style="padding: 5px"/>
                       </q-img>
                       <q-card-section class="q-pa-none q-ma-none">
-                        <div class="text-center text-subtitle2">{{ p.precio }} Bs</div>
+                        <div class="text-center text-subtitle2">
+                          {{ p.precio }}
+                          <span class="text-red" v-if="p.porcentaje">
+                        {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
+                      </span>
+                          Bs
+                        </div>
                         <div :class="p.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">{{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}</div>
                       </q-card-section>
                     </q-card>
