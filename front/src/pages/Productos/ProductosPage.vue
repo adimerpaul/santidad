@@ -105,8 +105,8 @@
               <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
                 <q-card @click="clickDetalleProducto(p)">
                   <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="100px">
-                    <q-badge color="red" floating style="padding: 10px 10px 5px 5px;margin: 0px" v-if="p.precioAntes>0">
-                      {{((p.precioAntes-p.precio)/p.precioAntes*100).toFixed(0)}}%
+                    <q-badge color="red" floating style="padding: 10px 10px 5px 5px;margin: 0px" v-if="p.porcentaje">
+                      {{p.porcentaje}}%
                     </q-badge>
                     <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">
                       {{$filters.capitalize(p.nombre)}}

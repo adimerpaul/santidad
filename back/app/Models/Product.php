@@ -33,6 +33,7 @@ class Product extends Model
         'marca',
         'distribuidora',
         'subcategory_id',
+        'porcentaje',
     ];
     public function category(){
         return $this->belongsTo(Category::class);

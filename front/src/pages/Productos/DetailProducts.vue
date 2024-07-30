@@ -9,7 +9,11 @@
     </div>
     <q-card-section class="q-pa-none q-ma-none">
       <div class="text-center text-subtitle2">{{ product.precio }} Bs</div>
-      <div :class="product.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">{{ product.cantidad }} Disponible</div>
+      <div :class="product.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">
+        {{ product.cantidad }}
+        Disponible
+        <span class="text-caption text-grey" >- {{ product.id }}</span>
+      </div>
       <div :class="product.cantidadAlmacen<=0?'text-center text-bold text-red':' text-center text-bold'">{{ product.cantidadAlmacen }} Almacen</div>
     </q-card-section>
     <q-card flat bordered class="bg-grey-1">
