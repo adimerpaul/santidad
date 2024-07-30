@@ -138,11 +138,11 @@ Oruro</div>
         <td class='titder' style='width: 60%'>APORTE Bs</td>
         <td class='conte2'>${parseFloat(factura.aporte).toFixed(2)}</td>
       </tr>
-      <tr>
+      <tr style='display: ${factura.descuento ? 'block' : 'none'}'>
         <td class='titder' style='width: 60%'>DESCUENTO Bs</td>
         <td class='conte2'>-${parseFloat(factura.descuento).toFixed(2)}</td>
       </tr>
-      <tr>
+      <tr style="display: ${factura.descuento_producto ? 'block' : 'none'}">
         <td class='titder' style='width: 60%'>DESCU PROD Bs</td>
         <td class='conte2'>-${parseFloat(factura.descuento_producto).toFixed(2)}</td>
       </tr>
