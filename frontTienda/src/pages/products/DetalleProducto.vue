@@ -62,7 +62,13 @@
               Bs. {{product?.precio}}
               <q-badge v-if="es_porcentaje" color="red">
                 Descuento {{product?.porcentaje}}%
+                - Bs. {{(product?.precio * product?.porcentaje / 100).toFixed(2)}}
               </q-badge>
+              <span>
+                <q-badge color="green" v-if="es_porcentaje">
+                  Bs. {{product?.precioNormal}}
+                </q-badge>
+              </span>
             </td>
           </tr>
           <tr>
@@ -190,6 +196,7 @@ export default {
       this.product = response.data
       if (this.product.porcentaje > 0) {
         this.es_porcentaje = true
+        this.product.precioNormal = this.product.precio
         const precio = this.product.precio - (this.product.precio * this.product.porcentaje / 100)
         this.product.precio = precio.toFixed(2)
       }

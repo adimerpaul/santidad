@@ -1,8 +1,8 @@
 <template>
   <q-page>
     <div class="row bg-grey-3">
-      <div class="col-12 col-md-2"></div>
-      <div class="col-12 col-md-8">
+<!--      <div class="col-12 col-md-2"></div>-->
+      <div class="col-12 col-md-12">
         <q-carousel
           animated
           v-model="slide"
@@ -12,14 +12,14 @@
           control-text-color="primary"
           autoplay
           infinite
-          :height="$q.screen.lt.md ? '200px' : '400px'"
+          :height="$q.screen.lt.sm ? '150px' : $q.screen.lt.md ? '200px' : $q.screen.lt.lg ? '330px' : '390px'"
         >
           <q-carousel-slide :name="i++" v-for="(c,i) in carousels" :key="i++" class="cursor-pointer q-pa-xs"
                             :img-src="$q.screen.lt.md ?`${$url}../images/${c.imageResponsive}`:`${$url}../images/${c.image}`"
           />
         </q-carousel>
       </div>
-      <div class="col-12 col-md-2"></div>
+<!--      <div class="col-12 col-md-2"></div>-->
     </div>
     <div class="row q-pa-xs">
       <div class="col-12">
@@ -135,9 +135,18 @@ export default {
           page: this.currentPage
         }
       }).then(response => {
+        this.$store.products = []
         // this.products = response.data.data
-        this.$store.products = response.data.data
+        // this.$store.products = response.data.data
         this.totalPages = response.data.last_page
+        response.data.data.forEach(p => {
+          const esPorcentaje = p.porcentaje > 0
+          if (esPorcentaje) {
+            const precio = p.precio - (p.precio * p.porcentaje / 100)
+            p.precio = precio.toFixed(2)
+          }
+          this.$store.products.push(p)
+        })
       }).finally(() => {
         this.loading = false
       })
