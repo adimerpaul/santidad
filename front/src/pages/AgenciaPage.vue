@@ -41,7 +41,6 @@
 <!--            icon="delete"-->
 <!--          ></q-btn>-->
         </q-td>
-
       </template>
     </q-table>
 
