@@ -47,7 +47,15 @@ class UserController extends Controller
         }
         return response()->json([
             'token'=>$user->createToken('web')->plainTextToken,
-            'user'=>$user
+            'user'=>$user,
+            'env'=>[
+                'nit'=>env('NIT'),
+                'razon'=>$user->agencia->nombre,
+                'direccion'=>$user->agencia->direccion,
+                'telefono'=>$user->agencia->telefono,
+                'url'=>env("URL_SIAT"),
+                'url2'=>env("URL_SIAT2")
+            ]
         ],200);
     }
     public function register(Request $request){
@@ -117,13 +125,15 @@ class UserController extends Controller
     }
     public function me(Request $request){
         $user=User::where('id',$request->user()->id)->with('agencia')->firstOrFail();
+//        protected $fillable = ['nombre','direccion','telefono','atencion','horario','facebook','whatsapp','gps','latitud','longitud','status'];
+        $agencia = $user->agencia;
         return response()->json([
             'user'=>$user,
             'env'=>[
                 'nit'=>env('NIT'),
-                'razon'=>env('RAZON'),
-                'direccion'=>env("DIRECCION"),
-                'telefono'=>env("TELEFONO"),
+                'razon'=>$agencia->nombre,
+                'direccion'=>$agencia->direccion,
+                'telefono'=>$agencia->telefono,
                 'url'=>env("URL_SIAT"),
                 'url2'=>env("URL_SIAT2")
             ]
