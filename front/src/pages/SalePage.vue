@@ -73,8 +73,9 @@
                         <div class="text-center text-subtitle2">
                           {{ p.precio }}
                           <span class="text-red" v-if="p.porcentaje">
-                        {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
-                      </span>
+                            {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
+                            ({{ (p.precio - $filters.precioRebajaVenta(p.precio, p.porcentaje)).toFixed(2) }} Bs)
+                          </span>
                           Bs
                         </div>
                         <div :class="p.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">{{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}</div>
