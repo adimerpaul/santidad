@@ -155,27 +155,27 @@ class BuyController extends Controller{
             $product = Product::find($buy->product_id);
             $product->cantidad = $product->cantidad - $request->cantidadBaja;
             if ($request->sucursal_id_baja == 0) {
-                $product->cantidadAlmacen = $product->cantidadAlmacen - $buy->cantidadBaja;
+                $product->cantidadAlmacen = $product->cantidadAlmacen - $request->cantidadBaja;
             } elseif ($request->sucursal_id_baja == 1) {
-                $product->cantidadSucursal1 = $product->cantidadSucursal1 - $buy->cantidadBaja;
+                $product->cantidadSucursal1 = $product->cantidadSucursal1 - $request->cantidadBaja;
             } elseif ($request->sucursal_id_baja == 2) {
-                $product->cantidadSucursal2 = $product->cantidadSucursal2 - $buy->cantidadBaja;
+                $product->cantidadSucursal2 = $product->cantidadSucursal2 - $request->cantidadBaja;
             } elseif ($request->sucursal_id_baja == 3) {
-                $product->cantidadSucursal3 = $product->cantidadSucursal3 - $buy->cantidadBaja;
+                $product->cantidadSucursal3 = $product->cantidadSucursal3 - $request->cantidadBaja;
             } elseif ($request->sucursal_id_baja == 4) {
-                $product->cantidadSucursal4 = $product->cantidadSucursal4 - $buy->cantidadBaja;
+                $product->cantidadSucursal4 = $product->cantidadSucursal4 - $request->cantidadBaja;
             } elseif ($request->sucursal_id_baja == 5) {
-                $product->cantidadSucursal5 = $product->cantidadSucursal5 - $buy->cantidadBaja;
+                $product->cantidadSucursal5 = $product->cantidadSucursal5 - $request->cantidadBaja;
             } elseif ($request->sucursal_id_baja == 6) {
-                $product->cantidadSucursal6 = $product->cantidadSucursal6 - $buy->cantidadBaja;
+                $product->cantidadSucursal6 = $product->cantidadSucursal6 - $request->cantidadBaja;
             } elseif ($request->sucursal_id_baja == 7) {
-                $product->cantidadSucursal7 = $product->cantidadSucursal7 - $buy->cantidadBaja;
+                $product->cantidadSucursal7 = $product->cantidadSucursal7 - $request->cantidadBaja;
             } elseif ($request->sucursal_id_baja == 8) {
-                $product->cantidadSucursal8 = $product->cantidadSucursal8 - $buy->cantidadBaja;
+                $product->cantidadSucursal8 = $product->cantidadSucursal8 - $request->cantidadBaja;
             } elseif ($request->sucursal_id_baja == 9) {
-                $product->cantidadSucursal9 = $product->cantidadSucursal9 - $buy->cantidadBaja;
+                $product->cantidadSucursal9 = $product->cantidadSucursal9 - $request->cantidadBaja;
             } elseif ($request->sucursal_id_baja == 10) {
-                $product->cantidadSucursal10 = $product->cantidadSucursal10 - $buy->cantidadBaja;
+                $product->cantidadSucursal10 = $product->cantidadSucursal10 - $request->cantidadBaja;
             }
             $product->save();
 
