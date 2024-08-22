@@ -13,7 +13,7 @@ class CarouselController extends Controller{
     public function show(Carousel $carousel){ return $carousel; }
     function storeFile(Request $request, $id){
         $validated = $request->validate([
-            'file' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'file' => 'required|image|max:2048',
         ]);
         $imageName = time().'.'.$request->file->extension();
         $request->file->move(public_path('images'), $imageName);
@@ -26,7 +26,7 @@ class CarouselController extends Controller{
     }
     public function store(Request $request){
         $validated = $request->validate([
-            'file' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            'file' => 'required|image|max:2048',
         ]);
         $imageName = time().'.'.$request->file->extension();
         $request->file->move(public_path('images'), $imageName);

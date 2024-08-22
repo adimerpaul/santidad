@@ -2,7 +2,7 @@
   <q-page>
     <div class="row bg-grey-3">
 <!--      <div class="col-12 col-md-2"></div>-->
-      <div class="col-12 col-md-12">
+      <div class="col-12" >
         <q-carousel
           animated
           v-model="slide"
@@ -18,6 +18,38 @@
                             :img-src="$q.screen.lt.md ?`${$url}../images/${c.imageResponsive}`:`${$url}../images/${c.image}`"
           />
         </q-carousel>
+<!--        <pre>{{slide}}</pre>-->
+<!--        <div v-for="(c,i) in carousels" :key="i">-->
+<!--&lt;!&ndash;          <pre>{{ i }}</pre>&ndash;&gt;-->
+<!--          <q-img :src="`${$url}../images/${c.image}`" height="10%" :style="`display: ${slide === i ? '' : 'none'}`">-->
+<!--&lt;!&ndash;            colocar 2 botones a la izuiqerda ya ala derecha para&ndash;&gt;-->
+<!--            <div class="absolute-top-left q-ma-xs">-->
+<!--              <q-btn-->
+<!--                flat-->
+<!--                dense-->
+<!--                round-->
+<!--                icon="chevron_left"-->
+<!--                aria-label="Previous"-->
+<!--                color="white"-->
+<!--                @click="slide&#45;&#45;"-->
+<!--                v-if="i>0"-->
+<!--              />-->
+<!--            </div>-->
+<!--            <div class="absolute-top-right q-ma-xs">-->
+<!--              <q-btn-->
+<!--                flat-->
+<!--                dense-->
+<!--                round-->
+<!--                icon="chevron_right"-->
+<!--                aria-label="Next"-->
+<!--                color="white"-->
+<!--                @click="slide++"-->
+<!--                v-if="i<carousels.length-1"-->
+<!--              />-->
+<!--            </div>-->
+<!--          </q-img>-->
+<!--&lt;!&ndash;          <pre>{{c}}</pre>&ndash;&gt;-->
+<!--        </div>-->
       </div>
 <!--      <div class="col-12 col-md-2"></div>-->
     </div>
@@ -107,7 +139,7 @@ export default {
   name: 'IndexPage',
   data () {
     return {
-      slide: 1,
+      slide: 0,
       carousels: [],
       // products: [],
       search: '',

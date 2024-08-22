@@ -12,7 +12,7 @@
 <!--        />-->
         <q-toolbar-title class="text-bold cursor-pointer" @click="$router.push('/')">
 <!--          <q-avatar rounded size="50px" color="orange">-->
-            <q-img src="/logo.png" width="150px" class="bg-white"  />
+            <q-img src="/logo.png" width="150px" class="bg-white"  v-if="!$q.screen.lt.md" />
 <!--          </q-avatar>-->
 <!--          <q-avatar size="50px">-->
 <!--            <q-img src="logo.png"  />-->
