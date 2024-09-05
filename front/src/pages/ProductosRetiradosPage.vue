@@ -61,6 +61,38 @@
           </q-btn-group>
         </q-td>
       </template>
+      <template v-slot:body-cell-cantidadBaja="props">
+        <q-td :props="props">
+          <ul style="padding: 0px;margin: 0px">
+            <li v-for="item in props.row.buy_detail" :key="item.id" style="width: 250px;font-size: 9px;padding: 0px;margin: 0px">
+              {{item.quantity}} {{item.user?.name}} {{$filters.dateDmYHi(item.fecha+' '+item.hora)}}
+            </li>
+          </ul>
+          <div>
+            <b>{{props.row.cantidadBaja}}</b>
+          </div>
+<!--          [-->
+<!--          {-->
+<!--          "id": 1,-->
+<!--          "buy_id": 24382,-->
+<!--          "product_id": 294,-->
+<!--          "user_id": 1,-->
+<!--          "quantity": 1,-->
+<!--          "fecha": "2024-09-05",-->
+<!--          "hora": "03:00:18",-->
+<!--          "user": {-->
+<!--          "id": 1,-->
+<!--          "name": "Administrador",-->
+<!--          "email": "admin@test.com",-->
+<!--          "email_verified_at": null,-->
+<!--          "agencia_id": 1,-->
+<!--          "created_at": null,-->
+<!--          "updated_at": "2024-08-01T08:14:08.000000Z"-->
+<!--          }-->
+<!--          },-->
+<!--          <pre>{{props.row.buy_detail}}</pre>-->
+        </q-td>
+      </template>
     </q-table>
     <!--  <pre>{{compras}}</pre>-->
     <div id="myElement" class="hidden"></div>

@@ -58,4 +58,8 @@ class Buy extends Model
             return $q->where('agencia_id', auth()->user()->agencia_id);
         });
     }
+    public function buyDetail(){
+        return $this->hasMany(BuyDetail::class);
+    }
+    protected $hidden = ['created_at','updated_at'];
 }

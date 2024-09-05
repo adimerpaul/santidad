@@ -30,6 +30,12 @@ export default boot(({ app, router }) => {
       const date = moment(String(value)).format('DD') + ' ' + mes + ' ' + moment(String(value)).format('YYYY') + ' ' + moment(String(value)).format('hh:mm A')
       return date
     },
+    dateDmYHi (value) {
+      if (!value) return ''
+      // d/m/y h:i
+      const date = moment(String(value)).format('DD') + '/' + moment(String(value)).format('MM') + '/' + moment(String(value)).format('YYYY') + ' ' + moment(String(value)).format('hh:mm')
+      return date
+    },
     capitalize (value) {
       if (!value) return ''
       const lower = value.toLowerCase()

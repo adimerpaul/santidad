@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Buy;
 use App\Http\Requests\StoreBuyRequest;
 use App\Http\Requests\UpdateBuyRequest;
+use App\Models\BuyDetail;
 use App\Models\Product;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -128,7 +129,7 @@ class BuyController extends Controller{
         $fecha_inicio = $request->fecha_inicio;
         $fecha_fin = $request->fecha_fin;
 
-        $buys = Buy::with('proveedor','agencia','userBaja','product','user')
+        $buys = Buy::with('proveedor','agencia','userBaja','product','user','buyDetail.user','buyDetail.product')
             ->where('user_baja_id','!=',0)
             ->where('dateExpiry', '<=', Carbon::now())
             ->where('fecha_baja', '>=', $fecha_inicio)
@@ -180,11 +181,23 @@ class BuyController extends Controller{
             $product->save();
 
             $buy->user_baja_id = $request->user()->id;
-            $buy->cantidadBaja = $request->cantidadBaja;
+            $buy->cantidadBaja = $buy->cantidadBaja + $request->cantidadBaja;
             $buy->sucursal_id_baja = $request->sucursal_id_baja;
             $buy->description_baja = $request->description_baja;
             $buy->fecha_baja = date("Y-m-d H:i:s");
             $buy->save();
+
+            $buyDetails = new BuyDetail();
+            $buyDetails->buy_id = $buy->id;
+            $buyDetails->product_id = $buy->product_id;
+            $buyDetails->user_id = $request->user()->id;
+            $buyDetails->quantity = $request->cantidadBaja;
+            $buyDetails->fecha = date("Y-m-d");
+            $buyDetails->hora = date("H:i:s");
+            $buyDetails->save();
+
+            return response()->json($buy);
+
 //            DB::commit();
 //            return response()->json($buy);
 //        } catch (\Exception $e) {
