@@ -551,6 +551,15 @@ export default {
     }
   },
   computed: {
+    totalganancia () {
+      let s = 0
+      this.$store.productosVenta.forEach(p => {
+        // s = s + (this.$filters.precioRebajaVenta(p.precio, p.porcentaje) * p.cantidadVenta) - (p.costo * p.cantidadVenta)
+        // ({{ (p.precio - $filters.precioRebajaVenta(p.precio, p.porcentaje)).toFixed(2) }} Bs)
+        s = s + (p.precio - this.$filters.precioRebajaVenta(p.precio, p.porcentaje)) * p.cantidadVenta
+      })
+      return s.toFixed(2)
+    },
     cambio () {
       // consciderara el aporte
       // if (this.aporte === false) {
