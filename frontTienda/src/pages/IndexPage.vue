@@ -1,56 +1,83 @@
 <template>
-  <q-page>
-    <div class="row bg-grey-3">
-<!--      <div class="col-12 col-md-2"></div>-->
-      <div class="col-12" >
-        <q-carousel
+  <q-page class="q-pa-none">
+    <div class="carousel-container">
+      <q-carousel
           animated
           v-model="slide"
           arrows
           navigation
-          navigation-icon="radio_button_unchecked"
-          control-text-color="primary"
-          autoplay
           infinite
-          :height="$q.screen.lt.sm ? '150px' : $q.screen.lt.md ? '200px' : $q.screen.lt.lg ? '330px' : '390px'"
-        >
-          <q-carousel-slide :name="i++" v-for="(c,i) in carousels" :key="i++" class="cursor-pointer q-pa-xs"
-                            :img-src="$q.screen.lt.md ?`${$url}../images/${c.imageResponsive}`:`${$url}../images/${c.image}`"
-          />
-        </q-carousel>
-<!--        <pre>{{slide}}</pre>-->
-<!--        <div v-for="(c,i) in carousels" :key="i">-->
-<!--&lt;!&ndash;          <pre>{{ i }}</pre>&ndash;&gt;-->
-<!--          <q-img :src="`${$url}../images/${c.image}`" height="10%" :style="`display: ${slide === i ? '' : 'none'}`">-->
-<!--&lt;!&ndash;            colocar 2 botones a la izuiqerda ya ala derecha para&ndash;&gt;-->
-<!--            <div class="absolute-top-left q-ma-xs">-->
-<!--              <q-btn-->
-<!--                flat-->
-<!--                dense-->
-<!--                round-->
-<!--                icon="chevron_left"-->
-<!--                aria-label="Previous"-->
-<!--                color="white"-->
-<!--                @click="slide&#45;&#45;"-->
-<!--                v-if="i>0"-->
-<!--              />-->
-<!--            </div>-->
-<!--            <div class="absolute-top-right q-ma-xs">-->
-<!--              <q-btn-->
-<!--                flat-->
-<!--                dense-->
-<!--                round-->
-<!--                icon="chevron_right"-->
-<!--                aria-label="Next"-->
-<!--                color="white"-->
-<!--                @click="slide++"-->
-<!--                v-if="i<carousels.length-1"-->
-<!--              />-->
-<!--            </div>-->
-<!--          </q-img>-->
-<!--&lt;!&ndash;          <pre>{{c}}</pre>&ndash;&gt;-->
-<!--        </div>-->
-      </div>
+          height="auto"
+          :autoplay="5000"
+      >
+        <q-carousel-slide :name="1">
+          <img src="images/1.png" alt="Imagen 1" />
+        </q-carousel-slide>
+      </q-carousel>
+    </div>
+    <div class="row bg-grey-3">
+<!--      <div class="col-12 col-md-2"></div>-->
+<!--      <div class="col-12" >-->
+<!--        <q-carousel-->
+<!--          animated-->
+<!--          v-model="slide"-->
+<!--          arrows-->
+<!--          navigation-->
+<!--          navigation-icon="radio_button_unchecked"-->
+<!--          control-text-color="primary"-->
+<!--          autoplay-->
+<!--          infinite-->
+<!--          height="auto"-->
+<!--        >-->
+<!--&lt;!&ndash;          <q-carousel-slide :name="i++" v-for="(c,i) in carousels" :key="i++" class="cursor-pointer q-pa-xs"&ndash;&gt;-->
+<!--&lt;!&ndash;                            :img-src="$q.screen.lt.md ?`${$url}../images/${c.imageResponsive}`:`${$url}../images/${c.image}`"&ndash;&gt;-->
+<!--&lt;!&ndash;          />&ndash;&gt;-->
+<!--          <q-carousel-slide :name="1">-->
+<!--            <img src="images/1.png" alt="Imagen 1" />-->
+<!--          </q-carousel-slide>-->
+<!--          <q-carousel-slide :name="2">-->
+<!--            <img src="images/1.png" alt="Imagen 2" />-->
+<!--          </q-carousel-slide>-->
+<!--          <q-carousel-slide :name="3">-->
+<!--            <img src="images/1.png" alt="Imagen 3" />-->
+<!--          </q-carousel-slide>-->
+<!--          <q-carousel-slide :name="4">-->
+<!--            <img src="images/1.png" alt="Imagen 4" />-->
+<!--          </q-carousel-slide>-->
+<!--        </q-carousel>-->
+<!--&lt;!&ndash;        <pre>{{slide}}</pre>&ndash;&gt;-->
+<!--&lt;!&ndash;        <div v-for="(c,i) in carousels" :key="i">&ndash;&gt;-->
+<!--&lt;!&ndash;&lt;!&ndash;          <pre>{{ i }}</pre>&ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;          <q-img :src="`${$url}../images/${c.image}`" height="10%" :style="`display: ${slide === i ? '' : 'none'}`">&ndash;&gt;-->
+<!--&lt;!&ndash;&lt;!&ndash;            colocar 2 botones a la izuiqerda ya ala derecha para&ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;            <div class="absolute-top-left q-ma-xs">&ndash;&gt;-->
+<!--&lt;!&ndash;              <q-btn&ndash;&gt;-->
+<!--&lt;!&ndash;                flat&ndash;&gt;-->
+<!--&lt;!&ndash;                dense&ndash;&gt;-->
+<!--&lt;!&ndash;                round&ndash;&gt;-->
+<!--&lt;!&ndash;                icon="chevron_left"&ndash;&gt;-->
+<!--&lt;!&ndash;                aria-label="Previous"&ndash;&gt;-->
+<!--&lt;!&ndash;                color="white"&ndash;&gt;-->
+<!--&lt;!&ndash;                @click="slide&#45;&#45;"&ndash;&gt;-->
+<!--&lt;!&ndash;                v-if="i>0"&ndash;&gt;-->
+<!--&lt;!&ndash;              />&ndash;&gt;-->
+<!--&lt;!&ndash;            </div>&ndash;&gt;-->
+<!--&lt;!&ndash;            <div class="absolute-top-right q-ma-xs">&ndash;&gt;-->
+<!--&lt;!&ndash;              <q-btn&ndash;&gt;-->
+<!--&lt;!&ndash;                flat&ndash;&gt;-->
+<!--&lt;!&ndash;                dense&ndash;&gt;-->
+<!--&lt;!&ndash;                round&ndash;&gt;-->
+<!--&lt;!&ndash;                icon="chevron_right"&ndash;&gt;-->
+<!--&lt;!&ndash;                aria-label="Next"&ndash;&gt;-->
+<!--&lt;!&ndash;                color="white"&ndash;&gt;-->
+<!--&lt;!&ndash;                @click="slide++"&ndash;&gt;-->
+<!--&lt;!&ndash;                v-if="i<carousels.length-1"&ndash;&gt;-->
+<!--&lt;!&ndash;              />&ndash;&gt;-->
+<!--&lt;!&ndash;            </div>&ndash;&gt;-->
+<!--&lt;!&ndash;          </q-img>&ndash;&gt;-->
+<!--&lt;!&ndash;&lt;!&ndash;          <pre>{{c}}</pre>&ndash;&gt;&ndash;&gt;-->
+<!--&lt;!&ndash;        </div>&ndash;&gt;-->
+<!--      </div>-->
 <!--      <div class="col-12 col-md-2"></div>-->
     </div>
     <div class="row q-pa-xs">
@@ -95,9 +122,9 @@
 <!--        <q-card>-->
 <!--          <q-card-section class="q-pa-xs">-->
           <div class="row cursor-pointer" v-if="$store.products.length>0">
-            <div class="col-4 col-md-2 q-px-xs q-py-xs" v-for="p in $store.products" :key="p.id">
+            <div class="col-6 col-md-3 q-pa-md" v-for="p in $store.products" :key="p.id">
               <q-card @click="clickDetalleProducto(p)" flat bordered style="border: 2px solid #00BD73">
-                <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="100px">
+                <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="130px">
 <!--                  <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">-->
 <!--                    {{p.nombre}}-->
 <!--                  </div>-->
@@ -105,7 +132,7 @@
                     {{p.porcentaje}}%
                   </q-badge>
                 </q-img>
-                <div class="text-center text-bold" style="line-height: 1;font-size: 14px;height: 40px">
+                <div class="text-center text-bold" style="line-height: 1;font-size: 14px;height: 30px">
                   {{p.nombre}}
                 </div>
                 <q-card-section class="q-pa-none q-ma-none">
@@ -194,3 +221,31 @@ export default {
   }
 }
 </script>
+<style scoped>
+.carousel-container {
+  margin: 0;
+  padding: 0;
+  width: 100%; /* Asegura que el contenedor ocupe todo el ancho de la ventana */
+}
+
+img {
+  width: 100%;
+  height: auto;
+  object-fit: cover; /* Asegura que las imágenes llenen el contenedor sin distorsionarse */
+}
+
+.q-carousel-slide {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.q-carousel__slide, .q-carousel .q-carousel--padding  {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+</style>

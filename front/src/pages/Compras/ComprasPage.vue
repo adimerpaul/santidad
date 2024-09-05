@@ -41,8 +41,9 @@
                       :options="agencias" map-options emit-value
                       option-value="id" option-label="nombre"
                       @update:model-value="productsGet"
-                      :disable="!$store.user?.agencia?.id"
+                      :disable="!($store.user?.agencia_id==1)"
             />
+<!--            <pre>{{$store.user?.agencia_id==1}}</pre>-->
 <!--            <pre>{{$store.user}}</pre>-->
           </div>
           <div class="col-12 flex flex-center">
@@ -166,6 +167,7 @@
                         <q-select class="bg-white" dense outlined v-model="agencia_id"
                                   :options="agencias" map-options emit-value
                                   option-value="id" option-label="nombre"
+                                  :disable="!($store.user?.agencia_id==1)"
                         />
                       </div>
                       <div class="col-4 text-grey flex flex-center">Proveedor</div>
