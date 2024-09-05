@@ -132,8 +132,12 @@ class BuyController extends Controller{
         $buys = Buy::with('proveedor','agencia','userBaja','product','user','buyDetail.user','buyDetail.product')
             ->where('user_baja_id','!=',0)
             ->where('dateExpiry', '<=', Carbon::now())
-            ->where('fecha_baja', '>=', $fecha_inicio)
-            ->where('fecha_baja', '<=', $fecha_fin);
+            ->whereHas('buyDetail', function($query) use ($fecha_inicio, $fecha_fin) {
+                $query->where('fecha', '>=', $fecha_inicio)
+                    ->where('fecha', '<=', $fecha_fin);
+            });
+//            ->where('fecha_baja', '>=', $fecha_inicio)
+//            ->where('fecha_baja', '<=', $fecha_fin);
 
         if ($search != null && $search != '') {
             $buys = $buys->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")');
