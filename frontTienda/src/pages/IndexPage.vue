@@ -184,7 +184,7 @@ export default {
       this.$router.push('/detalle-producto/' + p.id + '/' + this.espacioCambioGuion(p.nombre))
     },
     espacioCambioGuion (text) {
-      return text.replace(/ /g, '-')
+      return text.replace(/ |\/+/g, '-')
     },
     buscar () {
       this.loading = true
