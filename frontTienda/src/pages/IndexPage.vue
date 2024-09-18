@@ -1,19 +1,21 @@
 <template>
   <q-page class="q-pa-none">
-    <div class="carousel-container">
+    <div class="">
       <q-carousel
           animated
           v-model="slide"
           arrows
           navigation
-          infinite
           height="auto"
-          :autoplay="5000"
       >
-        <q-carousel-slide :name="1">
-          <img src="images/1.png" alt="Imagen 1" />
+<!--        <q-carousel-slide :name="1">-->
+<!--          <img src="images/1.png" alt="Imagen 1" />-->
+<!--        </q-carousel-slide>-->
+        <q-carousel-slide v-for="(c,i) in carousels" :key="i" :name="i">
+          <q-img :src="`${$url}../images/${c.image}`" />
         </q-carousel-slide>
       </q-carousel>
+<!--      <pre>{{slide}}</pre>-->
     </div>
     <div class="row bg-grey-3">
 <!--      <div class="col-12 col-md-2"></div>-->
