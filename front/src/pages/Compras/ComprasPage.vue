@@ -367,7 +367,7 @@ export default {
           this.loading = false
           this.productsGet()
           this.factura = ''
-          this.agencia_id = 0
+          // this.agencia_id = 0
         } catch (err) {
           this.$alert.error(err.response.data.message)
           this.loading = false
