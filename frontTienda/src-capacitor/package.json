@@ -1,0 +1,13 @@
+{
+  "name": "fronttienda",
+  "version": "0.0.1",
+  "description": "Santidad Divina",
+  "author": "adimerpaul <adimer101@gmail.com>",
+  "private": true,
+  "dependencies": {
+    "@capacitor/android": "^5.7.8",
+    "@capacitor/app": "^5.0.0",
+    "@capacitor/cli": "^5.0.0",
+    "@capacitor/core": "^5.0.0"
+  }
+}
