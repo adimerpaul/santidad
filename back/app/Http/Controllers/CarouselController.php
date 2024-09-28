@@ -12,7 +12,40 @@ class CarouselController extends Controller{
         return Carousel::where('status','active')->where('tipo','Normal')->get();
     }
     function carouselsMini(){
-        return Carousel::where('status','active')->where('tipo','Mini')->get();
+        $caroulestMini= Carousel::where('status','active')->where('tipo','Mini')->get();
+        $carouselRes=[];
+        $i=0;
+        foreach ($caroulestMini as $carousel){
+            if($i<10){
+                $carouselRes[]=$carousel;
+            }
+            $i++;
+        }
+        foreach ($caroulestMini as $carousel){
+            if($i<10){
+                $carouselRes[]=$carousel;
+            }
+            $i++;
+        }
+        foreach ($caroulestMini as $carousel){
+            if($i<10){
+                $carouselRes[]=$carousel;
+            }
+            $i++;
+        }
+        foreach ($caroulestMini as $carousel){
+            if($i<10){
+                $carouselRes[]=$carousel;
+            }
+            $i++;
+        }
+        foreach ($caroulestMini as $carousel){
+            if($i<10){
+                $carouselRes[]=$carousel;
+            }
+            $i++;
+        }
+        return $carouselRes;
     }
     public function index(){ return Carousel::orderBy('id','desc')->get(); }
     public function show(Carousel $carousel){ return $carousel; }

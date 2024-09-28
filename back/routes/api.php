@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login',[\App\Http\Controllers\UserController::class,'login']);
 Route::post('upload/{id}/{option}', [\App\Http\Controllers\UploadController::class, 'upload']);
 Route::get('/carouselsPage',[\App\Http\Controllers\CarouselController::class,'carouselsPage']);
+Route::get('/carouselsMini',[\App\Http\Controllers\CarouselController::class,'carouselsMini']);
 Route::get('/productos',[\App\Http\Controllers\TiendaController::class,'productos']);
 Route::get('/sucursales',[\App\Http\Controllers\TiendaController::class,'sucursales']);
 Route::get('/productos/{id}',[\App\Http\Controllers\TiendaController::class,'productosId']);

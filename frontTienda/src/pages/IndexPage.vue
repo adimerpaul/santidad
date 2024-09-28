@@ -5,27 +5,28 @@
       <div class="carousel-container">
         <div class="image-track">
           <!-- Repetimos las imágenes para garantizar un desplazamiento continuo sin reinicios -->
-          <img src="images/4.png" alt="Imagen 1" />
-          <img src="images/5.png" alt="Imagen 2" />
-          <img src="images/4.png" alt="Imagen 3" />
-          <img src="images/6.png" alt="Imagen 4" />
-          <img src="images/4.png" alt="Imagen 5" />
-          <img src="images/7.jpg" alt="Imagen 6" />
-          <img src="images/4.png" alt="Imagen 7" />
-          <img src="images/4.png" alt="Imagen 8" />
-          <img src="images/4.png" alt="Imagen 9" />
-          <img src="images/4.png" alt="Imagen 10" />
-          <!-- Duplicamos las imágenes -->
-          <img src="images/4.png" alt="Imagen 1" />
-          <img src="images/5.png" alt="Imagen 2" />
-          <img src="images/4.png" alt="Imagen 3" />
-          <img src="images/6.png" alt="Imagen 4" />
-          <img src="images/4.png" alt="Imagen 5" />
-          <img src="images/7.jpg" alt="Imagen 6" />
-          <img src="images/4.png" alt="Imagen 7" />
-          <img src="images/4.png" alt="Imagen 8" />
-          <img src="images/4.png" alt="Imagen 9" />
-          <img src="images/4.png" alt="Imagen 10" />
+<!--          <img src="images/4.png" alt="Imagen 1" />-->
+<!--          <img src="images/5.png" alt="Imagen 2" />-->
+<!--          <img src="images/4.png" alt="Imagen 3" />-->
+<!--          <img src="images/6.png" alt="Imagen 4" />-->
+<!--          <img src="images/4.png" alt="Imagen 5" />-->
+<!--          <img src="images/7.jpg" alt="Imagen 6" />-->
+<!--          <img src="images/4.png" alt="Imagen 7" />-->
+<!--          <img src="images/4.png" alt="Imagen 8" />-->
+<!--          <img src="images/4.png" alt="Imagen 9" />-->
+<!--          <img src="images/4.png" alt="Imagen 10" />-->
+<!--          &lt;!&ndash; Duplicamos las imágenes &ndash;&gt;-->
+<!--          <img src="images/4.png" alt="Imagen 1" />-->
+<!--          <img src="images/5.png" alt="Imagen 2" />-->
+<!--          <img src="images/4.png" alt="Imagen 3" />-->
+<!--          <img src="images/6.png" alt="Imagen 4" />-->
+<!--          <img src="images/4.png" alt="Imagen 5" />-->
+<!--          <img src="images/7.jpg" alt="Imagen 6" />-->
+<!--          <img src="images/4.png" alt="Imagen 7" />-->
+<!--          <img src="images/4.png" alt="Imagen 8" />-->
+<!--          <img src="images/4.png" alt="Imagen 9" />-->
+<!--          <img src="images/4.png" alt="Imagen 10" />-->
+          <img v-for="(c,i) in carouselsMini" :key="i" :src="`${$url}../images/${c.image}`" alt="Imagen 1" />
         </div>
       </div>
 
@@ -229,7 +230,7 @@
             </div>
           </div>
         <div class="text-center" v-else>
-          <q-icon name="sentiment_very_dissatisfied" size="100px" color="grey-5" />
+<!--          <q-icon name="sentiment_very_dissatisfied" size="100px" color="grey-5" />-->
           <div class="text-h6">No hay productos</div>
         </div>
 <!--          </q-card-section>-->
@@ -246,6 +247,7 @@ export default {
     return {
       slide: 1,
       carousels: [],
+      carouselsMini: [],
       // products: [],
       search: '',
       loading: false,
@@ -256,8 +258,15 @@ export default {
   created () {
     this.carouselsGet()
     this.buscar()
+    // carouselsMini
+    this.carouselsMiniGet()
   },
   methods: {
+    carouselsMiniGet () {
+      this.$axios.get('carouselsMini').then(response => {
+        this.carouselsMini = response.data
+      })
+    },
     clickDetalleProducto (p) {
       this.$router.push('/detalle-producto/' + p.id + '/' + this.espacioCambioGuion(p.nombre))
     },

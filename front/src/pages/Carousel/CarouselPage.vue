@@ -69,6 +69,14 @@
               accept="image/*"
               @change="fileChange"
             />
+<!--            input select-->
+            <q-select
+                outlined
+              v-model="carousel.tipo"
+              :options="['Normal','Mini']"
+              label="Estado"
+              dense
+            />
           </q-card-section>
           <q-card-section class="text-right">
             <q-btn
@@ -107,8 +115,9 @@ export default {
       columns: [
         { name: 'id', label: 'ID', align: 'center', field: row => row.id },
         { name: 'image', label: 'Imagen', align: 'left', field: row => row.image },
-        { name: 'status', label: 'Estado', align: 'center', field: row => row.status }
-        // { name: 'opcion', label: 'Opción', align: 'center', field: row => row.opcion }
+        { name: 'status', label: 'Estado', align: 'center', field: row => row.status },
+        { name: 'tipo', label: 'Tipo', align: 'center', field: row => row.tipo }
+        // { name: 'opcion', label: 'Opcion', align: 'center', field: row => row.opcion }
       ]
     }
   },
@@ -144,6 +153,7 @@ export default {
         this.loading = true
         const formData = new FormData()
         formData.append('file', this.carousel.image)
+        formData.append('tipo', this.carousel.tipo)
         this.$axios.post('carouselsFile/' + this.carousel.id, formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
@@ -154,7 +164,7 @@ export default {
             this.dialog = false
           })
           .catch(error => {
-            console.log(error)
+            this.$alert.error(error.response.data.message)
           }).finally(() => {
             this.loading = false
           })
@@ -162,6 +172,7 @@ export default {
         this.loading = true
         const formData = new FormData()
         formData.append('file', this.carousel.image)
+        formData.append('tipo', this.carousel.tipo)
         this.$axios.post('carousels', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
