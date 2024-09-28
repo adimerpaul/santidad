@@ -12,6 +12,6 @@ class Carousel extends Model
 //$table->string('image');
 //$table->string('imageResponsive');
 //$table->string('status')->default('active');
-    protected $fillable = ['url','image','imageResponsive','status'];
+    protected $fillable = ['url','image','imageResponsive','status','tipo'];
     protected $hidden = ['created_at','updated_at'];
 }
