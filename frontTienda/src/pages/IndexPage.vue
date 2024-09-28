@@ -58,17 +58,20 @@
           infinite
           height="auto"
       >
-        <q-carousel-slide :name="1">
-          <img src="images/1.png" alt="Imagen 1" />
-        </q-carousel-slide>
-        <q-carousel-slide :name="2">
-          <img src="images/1.png" alt="Imagen 2" />
-        </q-carousel-slide>
-        <q-carousel-slide :name="3">
-          <img src="images/1.png" alt="Imagen 3" />
-        </q-carousel-slide>
-        <q-carousel-slide :name="4">
-          <img src="images/1.png" alt="Imagen 4" />
+<!--        <q-carousel-slide :name="1">-->
+<!--          <img src="images/1.png" alt="Imagen 1" />-->
+<!--        </q-carousel-slide>-->
+<!--        <q-carousel-slide :name="2">-->
+<!--          <img src="images/1.png" alt="Imagen 2" />-->
+<!--        </q-carousel-slide>-->
+<!--        <q-carousel-slide :name="3">-->
+<!--          <img src="images/1.png" alt="Imagen 3" />-->
+<!--        </q-carousel-slide>-->
+<!--        <q-carousel-slide :name="4">-->
+<!--          <img src="images/1.png" alt="Imagen 4" />-->
+<!--        </q-carousel-slide>-->
+        <q-carousel-slide v-for="(c,i) in carousels" :key="i" :name="i+1">
+          <q-img :src="`${$url}../images/${c.image}`" />
         </q-carousel-slide>
       </q-carousel>
     </div>
@@ -173,6 +176,7 @@
           </q-input>
           <q-btn
             rounded
+            style="width: 90px"
             @click="buscar"
             color="primary"
             label="Buscar"
@@ -195,9 +199,9 @@
       <div class="col-12">
 <!--        <q-card>-->
 <!--          <q-card-section class="q-pa-xs">-->
-          <div class="row cursor-pointer" v-if="$store.products.length>0">
+          <div class="row cursor-pointer q-pa-md" v-if="$store.products.length>0">
             <div class="col-6 col-md-3 q-pa-md" v-for="p in $store.products" :key="p.id">
-              <q-card @click="clickDetalleProducto(p)" flat bordered style="border: 2px solid #00BD73">
+              <q-card @click="clickDetalleProducto(p)" flat bordered class="q-pa-md" style="border: 2px solid #00BD73;padding: 5px; margin: 10px">
                 <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="130px">
 <!--                  <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">-->
 <!--                    {{p.nombre}}-->
