@@ -4,31 +4,9 @@
       <!-- Carrusel continuo arriba de la barra azul -->
       <div class="carousel-container">
         <div class="image-track">
-          <!-- Repetimos las imágenes para garantizar un desplazamiento continuo sin reinicios -->
-          <img src="images/4.png" alt="Imagen 1" />
-          <img src="images/5.png" alt="Imagen 2" />
-          <img src="images/4.png" alt="Imagen 3" />
-          <img src="images/6.png" alt="Imagen 4" />
-          <img src="images/4.png" alt="Imagen 5" />
-          <img src="images/7.jpg" alt="Imagen 6" />
-          <img src="images/4.png" alt="Imagen 7" />
-          <img src="images/4.png" alt="Imagen 8" />
-          <img src="images/4.png" alt="Imagen 9" />
-          <img src="images/4.png" alt="Imagen 10" />
-          <!-- Duplicamos las imágenes -->
-          <img src="images/4.png" alt="Imagen 1" />
-          <img src="images/5.png" alt="Imagen 2" />
-          <img src="images/4.png" alt="Imagen 3" />
-          <img src="images/6.png" alt="Imagen 4" />
-          <img src="images/4.png" alt="Imagen 5" />
-          <img src="images/7.jpg" alt="Imagen 6" />
-          <img src="images/4.png" alt="Imagen 7" />
-          <img src="images/4.png" alt="Imagen 8" />
-          <img src="images/4.png" alt="Imagen 9" />
-          <img src="images/4.png" alt="Imagen 10" />
+          <img v-for="(c,i) in carouselsMini" :key="i" :src="`${$url}../images/${c.image}`" alt="Imagen 1" />
         </div>
       </div>
-
       <!-- Barra azul -->
       <div class="blue-bar">
         <img src="images/logo.png" alt="Logo" class="logo" />
@@ -132,6 +110,7 @@ export default {
   },
   data () {
     return {
+      carouselsMini: [],
       sucursales: [],
       center: [-17.957072, -67.1217629],
       l: L,
@@ -142,8 +121,14 @@ export default {
   },
   created () {
     this.sucursalesGet()
+    this.carouselsMiniGet()
   },
   methods: {
+    carouselsMiniGet () {
+      this.$axios.get('carouselsMini').then(response => {
+        this.carouselsMini = response.data
+      })
+    },
     sucursalesGet () {
       this.$q.loading.show()
       this.$axios.get('sucursales').then(response => {

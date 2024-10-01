@@ -4,28 +4,6 @@
       <!-- Carrusel continuo arriba de la barra azul -->
       <div class="carousel-container">
         <div class="image-track">
-          <!-- Repetimos las imágenes para garantizar un desplazamiento continuo sin reinicios -->
-<!--          <img src="images/4.png" alt="Imagen 1" />-->
-<!--          <img src="images/5.png" alt="Imagen 2" />-->
-<!--          <img src="images/4.png" alt="Imagen 3" />-->
-<!--          <img src="images/6.png" alt="Imagen 4" />-->
-<!--          <img src="images/4.png" alt="Imagen 5" />-->
-<!--          <img src="images/7.jpg" alt="Imagen 6" />-->
-<!--          <img src="images/4.png" alt="Imagen 7" />-->
-<!--          <img src="images/4.png" alt="Imagen 8" />-->
-<!--          <img src="images/4.png" alt="Imagen 9" />-->
-<!--          <img src="images/4.png" alt="Imagen 10" />-->
-<!--          &lt;!&ndash; Duplicamos las imágenes &ndash;&gt;-->
-<!--          <img src="images/4.png" alt="Imagen 1" />-->
-<!--          <img src="images/5.png" alt="Imagen 2" />-->
-<!--          <img src="images/4.png" alt="Imagen 3" />-->
-<!--          <img src="images/6.png" alt="Imagen 4" />-->
-<!--          <img src="images/4.png" alt="Imagen 5" />-->
-<!--          <img src="images/7.jpg" alt="Imagen 6" />-->
-<!--          <img src="images/4.png" alt="Imagen 7" />-->
-<!--          <img src="images/4.png" alt="Imagen 8" />-->
-<!--          <img src="images/4.png" alt="Imagen 9" />-->
-<!--          <img src="images/4.png" alt="Imagen 10" />-->
           <img v-for="(c,i) in carouselsMini" :key="i" :src="`${$url}../images/${c.image}`" alt="Imagen 1" />
         </div>
       </div>
