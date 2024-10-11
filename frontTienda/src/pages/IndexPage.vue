@@ -317,8 +317,8 @@ export default {
 /* Ajustes para pantallas pequeñas (tablets y celulares) */
 @media only screen and (max-width: 768px) {
   .image-track img {
-    width: 20%; /* Aumenta el tamaño de las imágenes en pantallas pequeñas */
-    margin-right: 50px; /* Reduce el espacio entre imágenes */
+    width: 20%;
+    margin-right: 50px;
   }
 }
 
@@ -326,82 +326,51 @@ export default {
   0% { transform: translateX(0); }
   100% { transform: translateX(-75%); }
 }
+
 /* Estilos para la barra azul */
 .blue-bar {
   background-color: #007bff;
-  height: 60px; /* Ajusta esta altura si es necesario */
+  height: 60px;
   padding: 0 20px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-between; /* Mantiene los elementos a los extremos */
+  flex-wrap: nowrap;
   width: 100%;
-  max-width: 100vw; /* Evita que la barra se extienda más allá de la ventana */
+  max-width: 100vw;
   box-sizing: border-box;
-  overflow: hidden; /* Evita cualquier desbordamiento dentro de la barra */
+  overflow: hidden;
 }
 
-/* Mantén los estilos actuales del botón aquí */
-.blue-bar button {
-  padding: 10px 20px; /* Ajuste del espaciado para pantallas más grandes */
-  font-size: 16px;    /* Tamaño de fuente inicial */
-  border: none;
-  color: white;       /* Color de texto */
-  background-color: #0056b3; /* Color de fondo */
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.3s ease;
-}
-
-/* Efectos de hover del botón (mantén tus efectos actuales) */
-.blue-bar button:hover {
-  background-color: #003f7f; /* Color al hacer hover */
-  transform: scale(1.05);    /* Efecto de aumento al pasar el mouse */
-}
-
-/* Responsividad para pantallas medianas */
-@media (max-width: 768px) {
-  .blue-bar button {
-    padding: 6px 11px;    /* Reducimos el padding */
-    font-size: 9px;      /* Reducimos el tamaño de fuente */
-  }
-}
-/* Responsividad para pantallas pequeñas (teléfonos móviles) */
-@media (max-width: 480px) {
-  .blue-bar button {
-    padding: 6px 11px;    /* Reducimos más el padding */
-    font-size: 9px;      /* Reducimos más el tamaño de fuente */
-  }
-
-  /* Ajustar la barra para pantallas pequeñas si es necesario */
-  .blue-bar {
-    flex-direction: column;   /* Opcional: Disposición en columna */
-    align-items: flex-start;  /* Alinear los elementos a la izquierda en pantallas pequeñas */
-    height: auto;             /* Ajustar la altura */
-  }
-}
-
+/* Estilo básico para el logo */
 .blue-bar .logo {
   width: 100px;
   height: auto;
   margin-right: 20px;
+  flex-shrink: 0; /* Evita que el logo se reduzca */
 }
 
+/* Estilos para los botones de navegación */
 .nav-buttons {
   display: flex;
   align-items: center;
+  margin-left: auto; /* Empuja los botones hacia el lado derecho */
+  gap: 10px;
 }
 
+/* Estilos para los botones de navegación */
 .nav-button {
   background-color: white;
   color: #007bff;
   border: none;
   padding: 10px 20px;
-  margin-left: 10px;
   cursor: pointer;
   border-radius: 5px;
   font-weight: bold;
+  white-space: nowrap;
 }
 
+/* Efectos de hover del botón */
 .nav-button:hover {
   background-color: #0056b3;
   color: white;
@@ -411,7 +380,6 @@ export default {
 .nav-icon {
   color: white;
   font-size: 20px;
-  margin-right: 15px;
   cursor: pointer;
 }
 
@@ -419,14 +387,64 @@ export default {
   color: #0056b3;
 }
 
-.blue-bar, .q-page {
-    width: 100%; /* Aseguramos que todos los contenedores principales se ajusten al ancho de la pantalla */
-    max-width: 100vw; /* Limita el ancho máximo al tamaño de la ventana del navegador */
-    overflow-x: hidden; /* Evita cualquier desbordamiento horizontal */
+/* Ajustes de responsividad para pantallas medianas */
+@media (max-width: 768px) {
+  .blue-bar {
+    justify-content: space-between; /* Mantiene los elementos a los extremos */
+    padding: 0 10px;
+  }
+
+  .blue-bar .logo {
+    width: 80px; /* Reduce el tamaño del logo para tablets */
+    margin-right: 10px;
+  }
+
+  .nav-buttons {
+    gap: 5px;
+  }
+
+  .nav-button {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+
+  .nav-icon {
+    font-size: 18px;
+  }
 }
+
+/* Ajustes para pantallas móviles pequeñas */
+@media (max-width: 480px) {
+  .blue-bar {
+    justify-content: space-between;
+    padding: 0 5px;
+  }
+
+  .blue-bar .logo {
+    width: 60px;
+    margin-right: 10px;
+  }
+
+  .nav-button {
+    font-size: 10px;
+    padding: 6px 10px;
+  }
+
+  .nav-icon {
+    font-size: 16px;
+  }
+}
+
+/* Estilos para la página */
+.blue-bar, .q-page {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 .search-container {
   width: 50%;
-  margin: 40px auto 0 auto; /* Añade 40px de espacio en la parte superior, ajusta según lo que necesites */
+  margin: 40px auto 0 auto;
   display: flex;
   justify-content: center;
 }
@@ -434,14 +452,14 @@ export default {
 @media (max-width: 1024px) {
   .search-container {
     width: 70%;
-    margin-top: 30px; /* Ajusta el margen superior para tablets si es necesario */
+    margin-top: 30px;
   }
 }
 
 @media (max-width: 768px) {
   .search-container {
     width: 70%;
-    margin-top: 20px; /* Ajusta el margen superior para pantallas móviles */
+    margin-top: 20px;
   }
 }
 
@@ -457,26 +475,30 @@ export default {
   padding: 0;
   box-sizing: border-box;
 }
+
+/* Estilos para las imágenes */
 img {
   width: 100%;
   height: auto;
   max-height: 566px;
   object-fit: cover;
 }
+
 /* Estilos para el carrusel grande */
 .carousel-container-large {
-  aspect-ratio: 16 / 5; /* Mantiene una proporción de 16:9 */
+  aspect-ratio: 16 / 5;
   width: 100vw;
-  overflow: hidden; /* Evitar desbordamiento de contenido */
+  overflow: hidden;
 }
 
+/* Estilos para las diapositivas del carrusel */
 .q-carousel-slide {
   margin: 0;
   padding: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: transform 0.5s ease-in-out; /* Suaviza la transición */
+  transition: transform 0.5s ease-in-out;
 }
 
 </style>
