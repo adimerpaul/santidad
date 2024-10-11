@@ -174,11 +174,18 @@ export default {
   margin-right: 125px;
 }
 
+/* Ajustes para pantallas pequeñas (tablets y celulares) */
+@media only screen and (max-width: 768px) {
+  .image-track img {
+    width: 20%; /* Aumenta el tamaño de las imágenes en pantallas pequeñas */
+    margin-right: 50px; /* Reduce el espacio entre imágenes */
+  }
+}
+
 @keyframes scroll-left {
   0% { transform: translateX(0); }
   100% { transform: translateX(-75%); }
 }
-
 /* Estilos para la barra azul */
 .blue-bar {
   background-color: #007bff;
@@ -187,6 +194,46 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between; /* Distribuye logo a la izquierda y botones a la derecha */
+}
+
+/* Mantén los estilos actuales del botón aquí */
+.blue-bar button {
+  padding: 10px 20px; /* Ajuste del espaciado para pantallas más grandes */
+  font-size: 16px;    /* Tamaño de fuente inicial */
+  border: none;
+  color: white;       /* Color de texto */
+  background-color: #0056b3; /* Color de fondo */
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+/* Efectos de hover del botón (mantén tus efectos actuales) */
+.blue-bar button:hover {
+  background-color: #003f7f; /* Color al hacer hover */
+  transform: scale(1.05);    /* Efecto de aumento al pasar el mouse */
+}
+
+/* Responsividad para pantallas medianas */
+@media (max-width: 768px) {
+  .blue-bar button {
+    padding: 6px 11px;    /* Reducimos el padding */
+    font-size: 9px;      /* Reducimos el tamaño de fuente */
+  }
+}
+/* Responsividad para pantallas pequeñas (teléfonos móviles) */
+@media (max-width: 480px) {
+  .blue-bar button {
+    padding: 6px 11px;    /* Reducimos más el padding */
+    font-size: 9px;      /* Reducimos más el tamaño de fuente */
+  }
+
+  /* Ajustar la barra para pantallas pequeñas si es necesario */
+  .blue-bar {
+    flex-direction: column;   /* Opcional: Disposición en columna */
+    align-items: flex-start;  /* Alinear los elementos a la izquierda en pantallas pequeñas */
+    height: auto;             /* Ajustar la altura */
+  }
 }
 
 .blue-bar .logo {

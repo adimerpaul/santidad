@@ -35,7 +35,11 @@
           arrows
           navigation
           infinite
+          transition-prev="slide-right"
+          transition-next="slide-left"
           height="auto"
+          autoplay
+          autoplay-interval="5000"
       >
 <!--        <q-carousel-slide :name="1">-->
 <!--          <img src="images/1.png" alt="Imagen 1" />-->
@@ -140,19 +144,19 @@
       <div class="col-12">
         <div class="text-h6 text-center text-bold no-select flex flex-center">
           <q-input
-            v-model="search"
-            dense
-            style="width: 300px;min-width: 300px;"
-            outlined
-            bg-color="grey-4"
-            rounded
-            @keyup.enter="buscar"
-            placeholder="Buscar producto"
-            class="q-ml-sm">
-            <template v-slot:prepend>
-              <q-icon name="search" />
-            </template>
-          </q-input>
+          v-model="search"
+          dense
+          style="width: 70%; margin-top: 5px; margin-bottom: 5px;"
+          outlined
+          bg-color="grey-4"
+          rounded
+          @keyup.enter="buscar"
+          placeholder="Buscar Producto / Palabra Clave"
+          class="search-input q-ml-sm">
+          <template v-slot:prepend>
+            <q-icon name="search" />
+          </template>
+        </q-input>
           <q-btn
             rounded
             style="width: 90px"
@@ -310,19 +314,70 @@ export default {
   margin-right: 125px;
 }
 
+/* Ajustes para pantallas pequeñas (tablets y celulares) */
+@media only screen and (max-width: 768px) {
+  .image-track img {
+    width: 20%; /* Aumenta el tamaño de las imágenes en pantallas pequeñas */
+    margin-right: 50px; /* Reduce el espacio entre imágenes */
+  }
+}
+
 @keyframes scroll-left {
   0% { transform: translateX(0); }
   100% { transform: translateX(-75%); }
 }
-
 /* Estilos para la barra azul */
 .blue-bar {
   background-color: #007bff;
-  height: 60px;
+  height: 60px; /* Ajusta esta altura si es necesario */
   padding: 0 20px;
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Distribuye logo a la izquierda y botones a la derecha */
+  justify-content: space-between;
+  width: 100%;
+  max-width: 100vw; /* Evita que la barra se extienda más allá de la ventana */
+  box-sizing: border-box;
+  overflow: hidden; /* Evita cualquier desbordamiento dentro de la barra */
+}
+
+/* Mantén los estilos actuales del botón aquí */
+.blue-bar button {
+  padding: 10px 20px; /* Ajuste del espaciado para pantallas más grandes */
+  font-size: 16px;    /* Tamaño de fuente inicial */
+  border: none;
+  color: white;       /* Color de texto */
+  background-color: #0056b3; /* Color de fondo */
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+/* Efectos de hover del botón (mantén tus efectos actuales) */
+.blue-bar button:hover {
+  background-color: #003f7f; /* Color al hacer hover */
+  transform: scale(1.05);    /* Efecto de aumento al pasar el mouse */
+}
+
+/* Responsividad para pantallas medianas */
+@media (max-width: 768px) {
+  .blue-bar button {
+    padding: 6px 11px;    /* Reducimos el padding */
+    font-size: 9px;      /* Reducimos el tamaño de fuente */
+  }
+}
+/* Responsividad para pantallas pequeñas (teléfonos móviles) */
+@media (max-width: 480px) {
+  .blue-bar button {
+    padding: 6px 11px;    /* Reducimos más el padding */
+    font-size: 9px;      /* Reducimos más el tamaño de fuente */
+  }
+
+  /* Ajustar la barra para pantallas pequeñas si es necesario */
+  .blue-bar {
+    flex-direction: column;   /* Opcional: Disposición en columna */
+    align-items: flex-start;  /* Alinear los elementos a la izquierda en pantallas pequeñas */
+    height: auto;             /* Ajustar la altura */
+  }
 }
 
 .blue-bar .logo {
@@ -364,25 +419,30 @@ export default {
   color: #0056b3;
 }
 
-/* Estilos para el carrusel grande */
-.carousel-container-large {
-  margin: 0;
-  padding: 0;
-  width: 100vw;
+.blue-bar, .q-page {
+    width: 100%; /* Aseguramos que todos los contenedores principales se ajusten al ancho de la pantalla */
+    max-width: 100vw; /* Limita el ancho máximo al tamaño de la ventana del navegador */
+    overflow-x: hidden; /* Evita cualquier desbordamiento horizontal */
 }
-
-img {
-  width: 100%;
-  height: auto;
-  object-fit: cover;
-}
-
-.q-carousel-slide {
-  margin: 0;
-  padding: 0;
+.search-container {
+  width: 50%;
+  margin: 40px auto 0 auto; /* Añade 40px de espacio en la parte superior, ajusta según lo que necesites */
   display: flex;
   justify-content: center;
-  align-items: center;
+}
+
+@media (max-width: 1024px) {
+  .search-container {
+    width: 70%;
+    margin-top: 30px; /* Ajusta el margen superior para tablets si es necesario */
+  }
+}
+
+@media (max-width: 768px) {
+  .search-container {
+    width: 70%;
+    margin-top: 20px; /* Ajusta el margen superior para pantallas móviles */
+  }
 }
 
 /* Asegúrate de que no haya espacio entre los elementos */
@@ -397,4 +457,26 @@ img {
   padding: 0;
   box-sizing: border-box;
 }
+img {
+  width: 100%;
+  height: auto;
+  max-height: 566px;
+  object-fit: cover;
+}
+/* Estilos para el carrusel grande */
+.carousel-container-large {
+  aspect-ratio: 16 / 5; /* Mantiene una proporción de 16:9 */
+  width: 100vw;
+  overflow: hidden; /* Evitar desbordamiento de contenido */
+}
+
+.q-carousel-slide {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.5s ease-in-out; /* Suaviza la transición */
+}
+
 </style>
