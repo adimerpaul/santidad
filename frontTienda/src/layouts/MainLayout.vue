@@ -136,6 +136,91 @@
         <div class="text-caption">© 2024</div>
       </q-toolbar>
     </q-footer>
+    <q-dialog v-model="carritoDialog" maximized position="right">
+      <q-card style="width: 350px; max-width: 80vw;">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-bold text-h6 row items-center">
+              Carrito de compras
+          </div>
+          <q-space />
+          <q-btn flat icon="close" @click="clickCarrito" />
+        </q-card-section>
+        <q-card-section>
+          <q-item
+            v-for="item in $store?.carrito"
+            :key="item.id"
+            clickable
+            @click="clickCarrito"
+          >
+            <q-item-section avatar>
+              <q-avatar>
+                <q-img :src="item.imagen.includes('http')?item.imagen:`${$url}../images/${item.imagen}`" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>
+                {{ item.nombre }}
+              </q-item-label>
+              <q-item-label caption>
+                {{ item.cantidad }} x {{ item.precio }}
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side top>
+              <q-btn flat icon="delete" @click="removeCarrito(item)" />
+            </q-item-section>
+          </q-item>
+<!--          boton pedir por whatasapp-->
+          <q-btn
+            icon="fa-brands fa-whatsapp"
+            label="Pedir por WhatsApp"
+            color="green"
+            no-caps
+            class="full-width"
+            @click="pedirCarritoWhatsApp"
+          />
+<!--          <pre>{{ $store?.carrito }}</pre>-->
+<!--          [-->
+<!--          {-->
+<!--          "id": 34,-->
+<!--          "nombre": "AZIMAX  200 MG SUSP. X 30 ML",-->
+<!--          "barra": null,-->
+<!--          "cantidad": 7,-->
+<!--          "cantidadAlmacen": 0,-->
+<!--          "cantidadSucursal1": 0,-->
+<!--          "cantidadSucursal2": 0,-->
+<!--          "cantidadSucursal3": 1,-->
+<!--          "cantidadSucursal4": 2,-->
+<!--          "costo": 79.09,-->
+<!--          "precioAntes": null,-->
+<!--          "precio": "94.59",-->
+<!--          "porcentaje": 8,-->
+<!--          "activo": "ACTIVO",-->
+<!--          "unidad": "FRASCOS",-->
+<!--          "registroSanitario": "NN-64180/2023",-->
+<!--          "paisOrigen": "BOLIVIA",-->
+<!--          "nombreComun": "Azitrimicina",-->
+<!--          "composicion": "Azitrimicina 200 mg/5ml",-->
+<!--          "marca": "BRESKOT",-->
+<!--          "distribuidora": "COFAR",-->
+<!--          "imagen": "1718814998fsfd.jpg",-->
+<!--          "descripcion": "Antibiótico macrólido de amplio espectro.",-->
+<!--          "category_id": 3,-->
+<!--          "agencia_id": null,-->
+<!--          "created_at": "2024-01-09T15:56:12.000000Z",-->
+<!--          "updated_at": "2024-10-03T19:22:19.000000Z",-->
+<!--          "subcategory_id": 13,-->
+<!--          "cantidadSucursal5": 0,-->
+<!--          "cantidadSucursal6": 2,-->
+<!--          "cantidadSucursal7": 2,-->
+<!--          "cantidadSucursal8": 0,-->
+<!--          "cantidadSucursal9": 0,-->
+<!--          "cantidadSucursal10": 0,-->
+<!--          "image": "productDefault.jpg",-->
+<!--          "precioNormal": 102.82-->
+<!--          },-->
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-layout>
 </template>
 
@@ -154,12 +239,24 @@ export default defineComponent({
         // { name: 'Contactos', label: 'Contactos', to: '/contactos' }
       ],
       leftDrawerOpen: false,
+      carritoDialog: false,
       search: ''
     }
   },
   methods: {
+    pedirCarritoWhatsApp () {
+      const carrito = this.$store.carrito
+      const mensaje = carrito.reduce((acc, item) => {
+        return `${acc}${item.nombre} x ${item.cantidad}\n`
+      }, 'Hola, me gustaría pedir los siguientes productos:\n')
+      const url = `https://wa.me/59172319869?text=${encodeURIComponent(mensaje)}`
+      window.open(url, '_blank')
+    },
     clickCarrito () {
-      alert('Carrito')
+      this.carritoDialog = !this.carritoDialog
+    },
+    removeCarrito (item) {
+      this.$store.commit('removeCarrito', item)
     }
   }
 })
