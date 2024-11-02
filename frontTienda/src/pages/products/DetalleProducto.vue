@@ -132,7 +132,7 @@
         </div>
         <div class="col-4 q-pa-xs">
           <q-btn
-            @click="addCart(product, cantidad)"
+            @click="addCarrito(product, cantidad)"
             label="Añadir al carrito"
             icon="add_shopping_cart"
             class="full-width"
@@ -202,6 +202,10 @@ export default {
       }
       this.loading = false
       this.$q.loading.hide()
+    },
+    addCarrito (product, cantidad) {
+      this.$store.addCarrito({ ...product, ...cantidad })
+      this.$alert.success('Producto añadido al carrito')
     },
     addCart (product, cantidad, comprar = false) {
       const text = `Deseo comprar ${cantidad} ${product.nombre} a Bs. ${product.precio} c/u. Total Bs. ${(product.precio * cantidad).toFixed(2)}`

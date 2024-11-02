@@ -100,6 +100,28 @@
     <q-page-container>
       <router-view />
     </q-page-container>
+    <q-page-sticky
+      position="bottom-right"
+      class="q-ma-md"
+      :offset="[18, 18]"
+    >
+      <q-btn
+        color="green"
+        fab
+        icon="fa-solid fa-cart-shopping"
+        @click="clickCarrito"
+      >
+<!--        <pre>-->
+<!--          {{ $store?.carrito }}-->
+<!--        </pre>-->
+        <q-badge
+          v-if="$store?.carrito.length"
+          color="red"
+          floating
+          :label="$store?.carrito.length"
+        />
+      </q-btn>
+    </q-page-sticky>
     <q-footer>
 <!--      iconos faceoob instagram ticktick whtsapp-->
       <div class="text-center bg-white">
@@ -133,6 +155,11 @@ export default defineComponent({
       ],
       leftDrawerOpen: false,
       search: ''
+    }
+  },
+  methods: {
+    clickCarrito () {
+      alert('Carrito')
     }
   }
 })

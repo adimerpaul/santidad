@@ -3,7 +3,8 @@ import { defineStore } from 'pinia'
 export const useCounterStore = defineStore('counter', {
   state: () => ({
     counter: 0,
-    products: []
+    products: [],
+    carrito: []
   }),
   getters: {
     doubleCount: (state) => state.counter * 2
@@ -11,6 +12,9 @@ export const useCounterStore = defineStore('counter', {
   actions: {
     increment () {
       this.counter++
+    },
+    addCarrito (producto) {
+      this.carrito.push(producto)
     }
   }
 })

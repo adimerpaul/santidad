@@ -253,7 +253,9 @@ export default {
       this.$router.push('/detalle-producto/' + p.id + '/' + this.espacioCambioGuion(p.nombre))
     },
     espacioCambioGuion (text) {
-      return text.replace(/ |\/+/g, '-')
+      // Reemplaza espacios y barras por guiones y elimina puntos y comas
+      const texto = text.replace(/ |\/|\./g, '-').replace(/,/g, '')
+      return texto
     },
     buscar () {
       this.loading = true
