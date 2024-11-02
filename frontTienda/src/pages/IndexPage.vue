@@ -197,7 +197,21 @@
                   {{p.nombre}}
                 </div>
                 <q-card-section class="q-pa-none q-ma-none">
-                  <div class="text-left bg-white" style="font-size: 13px">Bs. {{p.precio}}</div>
+                  <div class="text-left bg-white" style="font-size: 13px">
+<!--                    {{p.precio}}-->
+<!--                    <q-badge v-if="es_porcentaje" color="red">-->
+<!--                      Descu {{p?.porcentaje}}%-->
+<!--                      - Bs. {{(p?.precio * p?.porcentaje / 100).toFixed(2)}}-->
+<!--                    </q-badge>-->
+                    <div class="text-grey text-bold tachar">
+<!--                      <q-badge color="green" v-if="es_porcentaje">-->
+                       Antes  Bs. {{p?.precioNormal}}
+<!--                      </q-badge>-->
+                    </div>
+                    <div class="text-bold text-blue">
+                      Ahora Bs. {{p?.precio}}
+                    </div>
+                  </div>
                   <q-btn
                     @click="clickDetalleProducto(p)"
                     label="Añadir al carrito"
@@ -272,6 +286,12 @@ export default {
         response.data.data.forEach(p => {
           const esPorcentaje = p.porcentaje > 0
           if (esPorcentaje) {
+            const precio = p.precio - (p.precio * p.porcentaje / 100)
+            p.precio = precio.toFixed(2)
+          }
+          if (p.porcentaje > 0) {
+            this.es_porcentaje = true
+            p.precioNormal = p.precio
             const precio = p.precio - (p.precio * p.porcentaje / 100)
             p.precio = precio.toFixed(2)
           }

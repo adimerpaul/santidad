@@ -161,6 +161,34 @@
             dense/>
         </div>
       </div>
+      <div class="q-pt-xs">
+        <div class="text-bold text-blue">Disponible en las siguientes sucursales:</div>
+        <q-list dense>
+          <template v-for="sucursal in sucursales" :key="sucursal.id">
+          <q-item
+            clickable
+            v-if="sucursal.cantidad > 0"
+          >
+            <q-item-section avatar>
+              <q-avatar>
+                <q-icon name="store" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>
+                {{ sucursal.nombre }}
+              </q-item-label>
+              <q-item-label caption>
+                {{ sucursal.direccion }}
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-badge color="green" :label="'Disponible: ' + sucursal.cantidad" />
+            </q-item-section>
+          </q-item>
+          </template>
+        </q-list>
+      </div>
     </div>
     <div class="col-12">
       <label class="text-bold text-h6">Descripción:</label>
@@ -171,6 +199,7 @@
     </div>
   </div>
 <!--  <pre>{{product}}</pre>-->
+<!--  <pre>{{sucursales}}</pre>-->
 </q-page>
 </template>
 <script>
@@ -182,13 +211,19 @@ export default {
       product: {},
       loading: true,
       cantidad: 1,
-      es_porcentaje: false
+      es_porcentaje: false,
+      sucursales: []
     }
   },
-  mounted () {
-    this.getProduct()
+  async mounted () {
+    await this.getSucursales()
+    await this.getProduct()
   },
   methods: {
+    async getSucursales () {
+      const response = await this.$axios.get('sucursales')
+      this.sucursales = response.data
+    },
     async getProduct () {
       this.loading = true
       this.$q.loading.show()
@@ -200,6 +235,9 @@ export default {
         const precio = this.product.precio - (this.product.precio * this.product.porcentaje / 100)
         this.product.precio = precio.toFixed(2)
       }
+      this.sucursales.forEach(sucursal => {
+        sucursal.cantidad = this.product[`cantidadSucursal${sucursal.id}`]
+      })
       this.loading = false
       this.$q.loading.hide()
     },
