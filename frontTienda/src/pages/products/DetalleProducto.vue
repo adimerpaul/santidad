@@ -69,6 +69,7 @@
                   Bs. {{product?.precioNormal}}
                 </q-badge>
               </span>
+<!--              <pre>{{product}}</pre>-->
             </td>
           </tr>
           <tr>
