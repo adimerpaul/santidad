@@ -18,7 +18,8 @@ class TiendaController extends Controller{
         $productos = Product::where('activo', 'ACTIVO')
             ->where(function($query) use ($search) {
                 $query->where('nombre', 'like', '%' . $search . '%')
-                    ->orWhere('descripcion', 'like', '%' . $search . '%');
+                    ->orWhere('descripcion', 'like', '%' . $search . '%')
+                    ->orWhere('composicion', 'like', '%' . $search . '%');
             })
             ->paginate($paginate); // Paginación automática
 
