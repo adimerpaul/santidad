@@ -69,6 +69,7 @@
                   Bs. {{product?.precioNormal}}
                 </q-badge>
               </span>
+<!--              <pre>{{product}}</pre>-->
             </td>
           </tr>
           <tr>
@@ -77,7 +78,7 @@
           </tr>
           <tr>
             <td class="text-bold">Stock:</td>
-            <td>{{product?.cantidad}}</td>
+            <td>{{product?.cantidad > 100 ? '100' : product?.cantidad}}</td>
           </tr>
           <tr>
             <td class="text-bold">Principio activo:</td>
@@ -183,7 +184,7 @@
               </q-item-label>
             </q-item-section>
             <q-item-section side>
-              <q-badge color="green" :label="'Disponible: ' + sucursal.cantidad" />
+              <q-badge color="green" :label="'Disponible'" />
             </q-item-section>
           </q-item>
           </template>
@@ -242,7 +243,8 @@ export default {
       this.$q.loading.hide()
     },
     addCarrito (product, cantidad) {
-      this.$store.addCarrito({ ...product, ...cantidad })
+      product.cantidad = cantidad
+      this.$store.addCarrito(product)
       this.$alert.success('Producto añadido al carrito')
     },
     addCart (product, cantidad, comprar = false) {

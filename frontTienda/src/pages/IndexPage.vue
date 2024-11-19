@@ -211,6 +211,7 @@
                     <div class="text-bold text-blue">
                       Ahora Bs. {{p?.precio}}
                     </div>
+<!--                    <pre>{{p}}</pre>-->
                   </div>
                   <q-btn
                     @click="clickDetalleProducto(p)"
@@ -284,11 +285,11 @@ export default {
         // this.$store.products = response.data.data
         this.totalPages = response.data.last_page
         response.data.data.forEach(p => {
-          const esPorcentaje = p.porcentaje > 0
-          if (esPorcentaje) {
-            const precio = p.precio - (p.precio * p.porcentaje / 100)
-            p.precio = precio.toFixed(2)
-          }
+          // const esPorcentaje = p.porcentaje > 0
+          // if (esPorcentaje) {
+          //   const precio = p.precio - (p.precio * p.porcentaje / 100)
+          //   p.precio = precio.toFixed(2)
+          // }
           if (p.porcentaje > 0) {
             this.es_porcentaje = true
             p.precioNormal = p.precio

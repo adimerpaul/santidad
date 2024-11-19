@@ -147,7 +147,7 @@
         </q-card-section>
         <q-card-section>
           <q-item
-            v-for="item in $store?.carrito"
+            v-for="(item,index) in $store?.carrito"
             :key="item.id"
             clickable
             @click="clickCarrito"
@@ -166,7 +166,7 @@
               </q-item-label>
             </q-item-section>
             <q-item-section side top>
-              <q-btn flat icon="delete" @click="removeCarrito(item)" />
+              <q-btn flat icon="delete" @click="removeCarrito(index)" />
             </q-item-section>
           </q-item>
 <!--          boton pedir por whatasapp-->
@@ -255,8 +255,8 @@ export default defineComponent({
     clickCarrito () {
       this.carritoDialog = !this.carritoDialog
     },
-    removeCarrito (item) {
-      this.$store.commit('removeCarrito', item)
+    removeCarrito (index) {
+      this.$store.carrito.splice(index, 1)
     }
   }
 })

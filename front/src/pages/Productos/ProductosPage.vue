@@ -22,7 +22,7 @@
         </q-btn>
       </div>
       <div class="col-12 col-md-6 q-pa-xs">
-        <q-card class="">
+        <q-card class="" v-if="$store.user.id=='1'">
           <q-card-section class="q-pa-none">
             <q-item>
               <q-item-section avatar>
@@ -37,7 +37,7 @@
         </q-card>
       </div>
       <div class="col-12 col-md-6 q-pa-xs">
-        <q-card class="">
+        <q-card class="" v-if="$store.user.id=='1'">
           <q-card-section class="q-pa-none">
             <q-item>
               <q-item-section avatar>
