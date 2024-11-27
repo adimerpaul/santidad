@@ -2,10 +2,10 @@
   <q-page class="bg-grey-2 q-pa-xs">
     <div class="row">
       <div class="col-6 col-md-2 bg-white">
-        <q-input dense outlined v-model="dateIni" label="Fecha inicial" type="date" required />
+        <q-input dense outlined v-model="dateIni" label="Fecha inicial" type="datetime-local" required />
       </div>
       <div class="col-6 col-md-2 bg-white">
-        <q-input dense outlined v-model="dateFin" label="Fecha final" type="date" required />
+        <q-input dense outlined v-model="dateFin" label="Fecha final" type="datetime-local" required />
       </div>
       <div class="col-12 col-md-2 bg-white">
         <q-select dense outlined v-model="agencia" label="Agencia" :options="agencias" hint="Agencia de la venta"
@@ -297,8 +297,8 @@ export default {
       filter: '',
       saleDialogUpdate: false,
       saleUpate: {},
-      dateIni: moment().format('YYYY-MM-DD'),
-      dateFin: moment().format('YYYY-MM-DD'),
+      dateIni: moment().format('YYYY-MM-DDTHH:mm'),
+      dateFin: moment().format('YYYY-MM-DDTHH:mm'),
       loading: false,
       dialogSale: false,
       sale: {},
