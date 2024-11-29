@@ -297,7 +297,7 @@ export default {
       filter: '',
       saleDialogUpdate: false,
       saleUpate: {},
-      dateIni: moment().format('YYYY-MM-DDTHH:mm'),
+      dateIni: moment().startOf('day').format('YYYY-MM-DDTHH:mm'),
       dateFin: moment().format('YYYY-MM-DDTHH:mm'),
       loading: false,
       dialogSale: false,
