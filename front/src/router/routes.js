@@ -13,6 +13,7 @@ import ComprasPage from 'pages/Compras/ComprasPage.vue'
 import AgenciaPage from 'pages/AgenciaPage.vue'
 import ProductosVencidosPage from 'pages/ProductosVencidosPage.vue'
 import ProductosRetiradosPage from 'pages/ProductosRetiradosPage.vue'
+import FacturasPage from 'src/pages/FacturasPage.vue'
 
 const routes = [
   {
@@ -25,6 +26,7 @@ const routes = [
       { path: 'compras', component: ComprasPage, meta: { requiresAuth: true } },
       { path: 'users', component: UserPage, meta: { requiresAuth: true } },
       { path: 'reportes', component: ReportPage, meta: { requiresAuth: true } },
+      { path: 'facturas', component: FacturasPage, meta: { requiresAuth: true } },
       { path: 'clientes', component: ClientesPage, meta: { requiresAuth: true } },
       { path: 'proveedores', component: ProvedoresPage, meta: { requiresAuth: true } },
       { path: 'unidades', component: Unidades, meta: { requiresAuth: true } },

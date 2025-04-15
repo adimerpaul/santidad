@@ -90,6 +90,16 @@
                 </q-tooltip>
               </q-item-section>
             </q-item>
+            <!-- NUEVO: Opción Facturas -->
+          <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/facturas">
+            <q-item-section avatar><q-icon name="receipt_long" /></q-item-section>
+            <q-item-section>
+              <q-item-label>Facturas</q-item-label>
+              <q-tooltip anchor="top middle" self="bottom middle">
+                Control de facturas
+              </q-tooltip>
+            </q-item-section>
+          </q-item>
             <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/clientes" v-if="$store.user.id=='1'">
               <q-item-section avatar><q-icon name="o_face" /></q-item-section>
               <q-item-section>
