@@ -290,7 +290,7 @@ Oruro</div>
     })
   }
 
-  static reciboTransferenciaMultiple (productos, origen, destino) {
+  static reciboTransferenciaMultiple (productos, nombreOrigen, nombreDestino, fechaHora) {
     return new Promise((resolve, reject) => {
       const totalCantidad = productos.reduce((acc, p) => acc + parseInt(p.cantidad), 0)
       const ClaseConversor = conversor.conversorNumerosALetras
@@ -308,7 +308,15 @@ Oruro</div>
         }
       }
       const env = useCounterStore().env
-      QRCode.toDataURL(`de: ${origen} A: ${destino}`, opts).then(url => {
+      QRCode.toDataURL(`de: ${nombreOrigen} A: ${nombreDestino}`, opts).then(url => {
+        const fechaHora = new Date().toLocaleString('es-BO', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        })
         let cadena = `${this.head()}
         <div style='padding-left: 0.5cm;padding-right: 0.5cm'>
           <img src="logo.png" alt="logo" style="width: 100px; height: 100px; display: block; margin: auto;">
@@ -316,8 +324,9 @@ Oruro</div>
           <div class='titulo2'>${env.razon}<br>Casa Matriz<br>No. Punto de Venta 0<br>
           ${env.direccion}<br>Tel. ${env.telefono}<br>Oruro</div>
           <hr>
-          <div class='contenido'><b>Origen:</b> ${origen}</div>
-          <div class='contenido'><b>Destino:</b> ${destino}</div>
+          <div class='contenido'><b>Origen:</b> ${nombreOrigen}</div>
+          <div class='contenido'><b>Destino:</b> ${nombreDestino}</div>
+          <div class='contenido'><b>Fecha y hora:</b> ${fechaHora}</div>
           <hr>
           <div class='titulo'>DETALLE DE PRODUCTOS</div>`
         productos.forEach(p => {
@@ -338,48 +347,18 @@ Oruro</div>
         </html>`
         const elem = document.getElementById('myElement')
         if (elem) {
-          elem.style.display = 'block' // 👈 Asegura que sea visible
+          elem.style.display = 'block'
           elem.innerHTML = cadena
           setTimeout(() => {
             const d = new Printd()
             d.print(elem)
+            elem.style.display = 'none'
             resolve(url)
           }, 100)
         } else {
           reject('Elemento con id "myElement" no encontrado en el DOM')
         }
       }).catch(err => reject(err))
-    })
-  }
-
-  static reciboTranferencia (nombre, origen, destino, cantidad) {
-    return new Promise((resolve, reject) => {
-      const ClaseConversor = conversor.conversorNumerosALetras
-      const miConversor = new ClaseConversor()
-      const cantidadLiteral = miConversor.convertToText(parseInt(cantidad))
-      const env = useCounterStore().env
-
-      const contenido = `${this.head()}
-        <div style='padding-left: 0.5cm;padding-right: 0.5cm'>
-          <img src="logo.png" alt="logo" style="width: 100px; height: 100px; display: block; margin: auto;">
-          <div class='titulo'>RECIBO DE TRANSFERENCIA</div>
-          <div class='titulo2'>${env.razon}<br>Casa Matriz<br>No. Punto de Venta 0<br>
-          ${env.direccion}<br>Tel. ${env.telefono}<br>Oruro</div>
-          <hr>
-          <div class='contenido'><b>Producto:</b> ${nombre}</div>
-          <div class='contenido'><b>Origen:</b> ${origen}</div>
-          <div class='contenido'><b>Destino:</b> ${destino}</div>
-          <div class='contenido'><b>Cantidad:</b> ${cantidad} (${cantidadLiteral})</div>
-          <hr>
-          <div style='text-align: center;'>Gracias por su preferencia</div>
-        </div>
-      </body>
-      </html>`
-
-      document.getElementById('myElement').innerHTML = contenido
-      const d = new Printd()
-      d.print(document.getElementById('myElement'))
-      resolve()
     })
   }
 

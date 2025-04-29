@@ -325,8 +325,9 @@ export default {
         // Preparar datos para impresión consolidada
         const origen = this.carrito[0]?.origen === 'almacen'
           ? 'Almacén'
-          : 'Sucursal ' + this.$store.agencia_id
-        const destino = 'Sucursal ' + this.agenciaDestino
+          : this.agencias.find(a => a.id === this.$store.agencia_id)?.nombre || 'Sucursal desconocida'
+
+        const destino = this.agencias.find(a => a.id === this.agenciaDestino)?.nombre || 'Sucursal desconocida'
 
         const productos = this.carrito.map(p => ({
           nombre: p.nombre,
