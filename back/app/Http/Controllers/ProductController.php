@@ -186,6 +186,55 @@ class ProductController extends Controller{
 //        }
         return $product;
     }
+    public function transferenciasMultiples(Request $request)
+{
+    $productos = $request->productos;
+    $agencia_origen = $request->agencia_origen_id;
+    $agencia_destino = $request->agencia_destino_id;
+
+    foreach ($productos as $item) {
+        $producto = Product::find($item['id']);
+        $cantidad = $item['cantidad'];
+        $fecha = $item['fechaVencimiento'] ?? null;
+        $origen = $item['origen'] ?? 'sucursal'; // puede ser 'almacen' o 'sucursal'
+
+        if ($origen === 'almacen') {
+            // Validar stock en almacén
+            if ($producto->cantidadAlmacen < $cantidad) {
+                return response()->json([
+                    'message' => "No hay suficiente stock en almacén para el producto: " . $producto->nombre
+                ], 400);
+            }
+
+            // Transferencia desde almacén
+            $producto->cantidadAlmacen -= $cantidad;
+            $campo_destino = 'cantidadSucursal' . $agencia_destino;
+            $producto->$campo_destino += $cantidad;
+
+            $this->transferHistoryCreate(null, $agencia_destino, $producto->id, $cantidad, $fecha, $request);
+        } else {
+            // Transferencia entre sucursales
+            $campo_origen = 'cantidadSucursal' . $agencia_origen;
+            $campo_destino = 'cantidadSucursal' . $agencia_destino;
+
+            if ($producto->$campo_origen < $cantidad) {
+                return response()->json([
+                    'message' => "No hay suficiente stock en la sucursal origen para el producto: " . $producto->nombre
+                ], 400);
+            }
+
+            $producto->$campo_origen -= $cantidad;
+            $producto->$campo_destino += $cantidad;
+
+            $this->transferHistoryCreate($agencia_origen, $agencia_destino, $producto->id, $cantidad, $fecha, $request);
+        }
+
+        $producto->save();
+    }
+
+    return response()->json(['message' => 'Transferencia múltiple exitosa']);
+}
+
     public  function agregarSucursal(Request $request){
         $product = Product::find($request->id);
         $sucursal = 'cantidadSucursal'.$request->sucursal;

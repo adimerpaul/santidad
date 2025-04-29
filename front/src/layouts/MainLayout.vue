@@ -90,6 +90,12 @@
                 </q-tooltip>
               </q-item-section>
             </q-item>
+            <q-item to="/transferencias" clickable v-ripple>
+            <q-item-section avatar>
+              <q-icon name="swap_horiz" />
+            </q-item-section>
+            <q-item-section>Transferencias</q-item-section>
+          </q-item>
             <!-- NUEVO: Opción Facturas -->
           <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/facturas">
             <q-item-section avatar><q-icon name="receipt_long" /></q-item-section>
@@ -217,6 +223,8 @@
     <q-page-container>
       <router-view />
     </q-page-container>
+    <!-- Div para impresión -->
+    <div id="myElement" style="display: none;"></div>
   </q-layout>
 </template>
 

@@ -46,6 +46,7 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
 
     Route::post('/duplicateProduct',[\App\Http\Controllers\ProductController::class,'duplicateProduct']);
     Route::post('/moverProducto',[\App\Http\Controllers\ProductController::class,'moverProducto']);
+    Route::post('/transferencias-multiples', [\App\Http\Controllers\ProductController::class, 'transferenciasMultiples']);
     Route::get('/productsSale',[\App\Http\Controllers\ProductController::class,'productsSale']);
     Route::post('/agregarSucursal',[\App\Http\Controllers\ProductController::class,'agregarSucursal']);
     Route::resource('/clients',\App\Http\Controllers\ClientController::class);

@@ -290,12 +290,12 @@ Oruro</div>
     })
   }
 
-  static reciboTranferencia (producto, de, ha, cantidad) {
-    console.log('producto', producto, 'de', de, 'ha', ha, 'cantidad', cantidad)
+  static reciboTransferenciaMultiple (productos, origen, destino) {
     return new Promise((resolve, reject) => {
+      const totalCantidad = productos.reduce((acc, p) => acc + parseInt(p.cantidad), 0)
       const ClaseConversor = conversor.conversorNumerosALetras
       const miConversor = new ClaseConversor()
-      const a = miConversor.convertToText(parseInt(cantidad))
+      const totalLiteral = miConversor.convertToText(totalCantidad)
       const opts = {
         errorCorrectionLevel: 'M',
         type: 'png',
@@ -308,40 +308,78 @@ Oruro</div>
         }
       }
       const env = useCounterStore().env
-      QRCode.toDataURL(`de: ${de} A: ${ha}`, opts).then(url => {
+      QRCode.toDataURL(`de: ${origen} A: ${destino}`, opts).then(url => {
         let cadena = `${this.head()}
-    <div style='padding-left: 0.5cm;padding-right: 0.5cm'>
-    <img src="logo.png" alt="logo" style="width: 100px; height: 100px; display: block; margin-left: auto; margin-right: auto;">
-      <div class='titulo'>RECIBO DE TRANSFERENCIA</div>
-      <div class='titulo2'>${env.razon} <br>
-      Casa Matriz<br>
-      No. Punto de Venta 0<br>
-    ${env.direccion}<br>
-    Tel. ${env.telefono}<br>
-    Oruro</div>
-    <hr>
-    <table>
-    </table><hr><div class='titulo'>DETALLE</div>`
-        cadena += `<div style='font-size: 12px'><b>Producto: ${producto} de Sucursal${de} a ${ha} </b></div>`
-        cadena += `<hr>
-      <table style='font-size: 8px;'>
-      <tr><td class='titder' style='width: 60%'>CANTIDAD </td><td class='conte2'>${cantidad + ''}</td></tr>
-      </table>
-      <br>
-      <div>Son ${a + ''} ${cantidad + ''} unidades</div><hr>
-      <div style='display: flex;justify-content: center;'>
-        <img  src="${url}" style="width: 75px; height: 75px; display: block; margin-left: auto; margin-right: auto;">
-      </div></div>
-      </div>
-    </body>
-    </html>`
-        document.getElementById('myElement').innerHTML = cadena
-        const d = new Printd()
-        d.print(document.getElementById('myElement'))
-        resolve(url)
-      }).catch(err => {
-        reject(err)
-      })
+        <div style='padding-left: 0.5cm;padding-right: 0.5cm'>
+          <img src="logo.png" alt="logo" style="width: 100px; height: 100px; display: block; margin: auto;">
+          <div class='titulo'>RECIBO DE TRANSFERENCIA</div>
+          <div class='titulo2'>${env.razon}<br>Casa Matriz<br>No. Punto de Venta 0<br>
+          ${env.direccion}<br>Tel. ${env.telefono}<br>Oruro</div>
+          <hr>
+          <div class='contenido'><b>Origen:</b> ${origen}</div>
+          <div class='contenido'><b>Destino:</b> ${destino}</div>
+          <hr>
+          <div class='titulo'>DETALLE DE PRODUCTOS</div>`
+        productos.forEach(p => {
+          cadena += `<div style='font-size: 12px'><b>Producto:</b> ${p.nombre}</div>`
+          cadena += `<div><b>Cantidad:</b> ${p.cantidad}</div><hr>`
+        })
+        cadena += `
+          <table style='font-size: 8px;'>
+            <tr><td class='titder' style='width: 60%'>TOTAL DE UNIDADES</td><td class='conte2'>${totalCantidad}</td></tr>
+          </table>
+          <br>
+          <div>Son ${totalLiteral} ${((totalCantidad - Math.floor(totalCantidad)) * 100).toFixed(2)} /100 unidades</div><hr>
+          <div style='display: flex;justify-content: center;'>
+            <img  src="${url}" style="width: 75px; height: 75px;">
+          </div>
+        </div>
+        </body>
+        </html>`
+        const elem = document.getElementById('myElement')
+        if (elem) {
+          elem.style.display = 'block' // 👈 Asegura que sea visible
+          elem.innerHTML = cadena
+          setTimeout(() => {
+            const d = new Printd()
+            d.print(elem)
+            resolve(url)
+          }, 100)
+        } else {
+          reject('Elemento con id "myElement" no encontrado en el DOM')
+        }
+      }).catch(err => reject(err))
+    })
+  }
+
+  static reciboTranferencia (nombre, origen, destino, cantidad) {
+    return new Promise((resolve, reject) => {
+      const ClaseConversor = conversor.conversorNumerosALetras
+      const miConversor = new ClaseConversor()
+      const cantidadLiteral = miConversor.convertToText(parseInt(cantidad))
+      const env = useCounterStore().env
+
+      const contenido = `${this.head()}
+        <div style='padding-left: 0.5cm;padding-right: 0.5cm'>
+          <img src="logo.png" alt="logo" style="width: 100px; height: 100px; display: block; margin: auto;">
+          <div class='titulo'>RECIBO DE TRANSFERENCIA</div>
+          <div class='titulo2'>${env.razon}<br>Casa Matriz<br>No. Punto de Venta 0<br>
+          ${env.direccion}<br>Tel. ${env.telefono}<br>Oruro</div>
+          <hr>
+          <div class='contenido'><b>Producto:</b> ${nombre}</div>
+          <div class='contenido'><b>Origen:</b> ${origen}</div>
+          <div class='contenido'><b>Destino:</b> ${destino}</div>
+          <div class='contenido'><b>Cantidad:</b> ${cantidad} (${cantidadLiteral})</div>
+          <hr>
+          <div style='text-align: center;'>Gracias por su preferencia</div>
+        </div>
+      </body>
+      </html>`
+
+      document.getElementById('myElement').innerHTML = contenido
+      const d = new Printd()
+      d.print(document.getElementById('myElement'))
+      resolve()
     })
   }
 

@@ -14,6 +14,7 @@ import AgenciaPage from 'pages/AgenciaPage.vue'
 import ProductosVencidosPage from 'pages/ProductosVencidosPage.vue'
 import ProductosRetiradosPage from 'pages/ProductosRetiradosPage.vue'
 import FacturasPage from 'src/pages/FacturasPage.vue'
+import TransferenciasPage from 'src/pages/Compras/TransferenciasPage.vue'
 
 const routes = [
   {
@@ -27,6 +28,7 @@ const routes = [
       { path: 'users', component: UserPage, meta: { requiresAuth: true } },
       { path: 'reportes', component: ReportPage, meta: { requiresAuth: true } },
       { path: 'facturas', component: FacturasPage, meta: { requiresAuth: true } },
+      { path: 'transferencias', component: TransferenciasPage, meta: { requiresAuth: true } },
       { path: 'clientes', component: ClientesPage, meta: { requiresAuth: true } },
       { path: 'proveedores', component: ProvedoresPage, meta: { requiresAuth: true } },
       { path: 'unidades', component: Unidades, meta: { requiresAuth: true } },
