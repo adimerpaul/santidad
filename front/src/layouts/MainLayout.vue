@@ -341,26 +341,43 @@ export default {
     abrirNotificacion (notif) {
       this.notificacionActiva = notif
 
-      let mensaje = `<div><b>${notif.mensaje}</b></div><br>`
+      // Título con estilo
+      let mensaje = `<div style="font-size: 16px; margin-bottom: 15px;"><b>${notif.mensaje}</b></div>`
 
       try {
         const productos = JSON.parse(notif.detalle)
 
         if (productos.length > 0) {
-          mensaje += '<div><b>Productos recibidos:</b><ul>'
+          // Encabezado de productos
+          mensaje += '<div style="margin-bottom: 10px;"><b>Productos recibidos:</b></div>'
+
+          // Tabla para alinear la información
+          mensaje += '<div style="max-height: 300px; overflow-y: auto;"><table style="width: 100%; border-collapse: collapse;">'
+
           productos.forEach(p => {
-            mensaje += `<li>• ${p.nombre} – ${p.cantidad} unidad${p.cantidad > 1 ? 'es' : ''}`
-            if (p.fechaVencimiento) {
-              mensaje += ` (Vence: ${p.fechaVencimiento})`
-            }
-            mensaje += '</li>'
+            mensaje += `
+              <tr style="border-bottom: 1px solid #eaeaea;">
+                <td style="padding: 8px 0;">
+                  <span style="display: flex; align-items: start;">
+                    <span style="margin-right: 8px;">•</span>
+                    <span>
+                      <b>${p.nombre}</b> – ${p.cantidad} unidad${p.cantidad > 1 ? 'es' : ''}
+                      ${p.fechaVencimiento
+                        ? `<div style="color: #777; font-size: 12px; margin-top: 2px;">(Vence: ${p.fechaVencimiento})</div>`
+                        : ''}
+                    </span>
+                  </span>
+                </td>
+              </tr>
+            `
           })
-          mensaje += '</ul></div>'
+
+          mensaje += '</table></div>'
         } else {
-          mensaje += '<div>Sin detalle de productos.</div>'
+          mensaje += '<div style="color: #777;">Sin detalle de productos.</div>'
         }
       } catch (e) {
-        mensaje += '<div>Error al mostrar detalle.</div>'
+        mensaje += '<div style="color: #c00;">Error al mostrar detalle.</div>'
       }
 
       this.$q.dialog({
