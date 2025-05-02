@@ -14,7 +14,7 @@ import AgenciaPage from 'pages/AgenciaPage.vue'
 import ProductosVencidosPage from 'pages/ProductosVencidosPage.vue'
 import ProductosRetiradosPage from 'pages/ProductosRetiradosPage.vue'
 import FacturasPage from 'src/pages/FacturasPage.vue'
-import TransferenciasPage from 'src/pages/Compras/TransferenciasPage.vue'
+import TransferenciasPage from 'src/pages/TransferenciasPage.vue'
 
 const routes = [
   {

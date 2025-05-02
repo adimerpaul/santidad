@@ -9,6 +9,8 @@ use App\Http\Requests\UpdateProductRequest;
 use App\Models\TransferHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Notificacion;
+
 
 class ProductController extends Controller{
     public function productsAll(Request $request){
@@ -231,6 +233,20 @@ class ProductController extends Controller{
 
         $producto->save();
     }
+    // Obtener nombre de la agencia origen
+        $origen = Agencia::find($agencia_origen);
+        $origenNombre = $origen ? $origen->nombre : 'Sucursal desconocida';
+
+        // Armar mensaje
+        $mensaje = "Has recibido una transferencia de productos desde la agencia: $origenNombre.";
+
+        // Crear la notificación
+        Notificacion::create([
+            'agencia_id' => $agencia_destino,
+            'mensaje' => $mensaje,
+            'detalle' => json_encode($productos), // Puedes guardar el detalle como JSON
+            'leida' => false
+        ]);
 
     return response()->json(['message' => 'Transferencia múltiple exitosa']);
 }

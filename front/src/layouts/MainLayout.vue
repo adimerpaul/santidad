@@ -18,6 +18,28 @@
                   class="bg-primary text-white text-subtitle2 text-bold">{{$store.user.agencia.nombre}}</q-chip>
         </q-toolbar-title>
         <div>
+          <q-btn flat dense icon="notifications" color="primary">
+          <q-badge v-if="notificaciones.length > 0" color="red" floating>
+            {{ notificaciones.length }}
+          </q-badge>
+          <q-menu>
+            <q-list style="min-width: 250px">
+              <q-item-label header>Notificaciones</q-item-label>
+              <q-item
+              v-for="(notif, index) in notificaciones"
+              :key="index"
+              clickable
+              @click="abrirNotificacion(notif)"
+            >
+              <q-item-section>{{ notif.mensaje }}</q-item-section>
+            </q-item>
+
+              <q-item v-if="notificaciones.length === 0">
+                <q-item-section class="text-grey">Sin notificaciones nuevas</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
           <q-btn
             dense
             round
@@ -229,16 +251,16 @@
 </template>
 
 <script>
-// import EssentialLink from 'components/EssentialLink.vue'
-
 export default {
   name: 'MainLayout',
-  components: {
-    // EssentialLink: EssentialLink
-  },
+  components: {},
   data () {
     return {
       leftDrawerOpen: false,
+      notificaciones: [],
+      prevNotificaciones: [],
+      notificacionActiva: null,
+      dialogoNotificacion: false,
       essentialLinks: [
         {
           title: 'Home',
@@ -258,18 +280,17 @@ export default {
       ]
     }
   },
+  mounted () {
+    this.getNotificaciones()
+    setInterval(this.getNotificaciones, 30000)
+  },
   methods: {
     logout () {
       this.$q.dialog({
         message: '¿Quieres cerrar sesión?',
         title: 'Salir',
-        ok: {
-          push: true
-        },
-        cancel: {
-          push: true,
-          color: 'negative'
-        }
+        ok: { push: true },
+        cancel: { push: true, color: 'negative' }
       }).onOk(() => {
         this.$q.loading.show()
         this.$axios.post('logout').then(() => {
@@ -281,6 +302,81 @@ export default {
           this.$q.loading.hide()
           this.$router.push('/login')
         })
+      })
+    },
+    getNotificaciones () {
+      const agencia = this.$store.agencia_id
+      this.$axios.get(`/notificaciones/${agencia}`)
+        .then(res => {
+          if (Array.isArray(this.prevNotificaciones) &&
+              res.data.length > this.prevNotificaciones.length) {
+            // Toma la última notificación nueva
+            const nuevaNotif = res.data[res.data.length - 1]
+
+            this.$q.notify({
+              type: 'info',
+              color: 'primary',
+              icon: 'info',
+              message: '📦 ¡Tienes una nueva transferencia de productos!',
+              position: 'top-right',
+              timeout: 6000,
+              actions: [
+                {
+                  label: 'VER',
+                  color: 'white',
+                  handler: () => {
+                    this.abrirNotificacion(nuevaNotif)
+                  }
+                }
+              ]
+            })
+          }
+          this.prevNotificaciones = res.data
+          this.notificaciones = res.data
+        })
+        .catch(() => {
+          this.notificaciones = []
+        })
+    },
+    abrirNotificacion (notif) {
+      this.notificacionActiva = notif
+
+      let mensaje = `<div><b>${notif.mensaje}</b></div><br>`
+
+      try {
+        const productos = JSON.parse(notif.detalle)
+
+        if (productos.length > 0) {
+          mensaje += '<div><b>Productos recibidos:</b><ul>'
+          productos.forEach(p => {
+            mensaje += `<li>• ${p.nombre} – ${p.cantidad} unidad${p.cantidad > 1 ? 'es' : ''}`
+            if (p.fechaVencimiento) {
+              mensaje += ` (Vence: ${p.fechaVencimiento})`
+            }
+            mensaje += '</li>'
+          })
+          mensaje += '</ul></div>'
+        } else {
+          mensaje += '<div>Sin detalle de productos.</div>'
+        }
+      } catch (e) {
+        mensaje += '<div>Error al mostrar detalle.</div>'
+      }
+
+      this.$q.dialog({
+        html: true,
+        title: '📦 Transferencia recibida',
+        message: mensaje,
+        ok: {
+          label: 'Cerrar',
+          color: 'primary'
+        }
+      }).onOk(() => {
+        this.$axios.put(`/notificaciones/${notif.id}/leer`)
+          .then(() => {
+            this.notificaciones = this.notificaciones.filter(n => n.id !== notif.id)
+            this.prevNotificaciones = this.prevNotificaciones.filter(n => n.id !== notif.id)
+          })
       })
     }
   }

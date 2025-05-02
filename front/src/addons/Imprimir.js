@@ -292,10 +292,6 @@ Oruro</div>
 
   static reciboTransferenciaMultiple (productos, nombreOrigen, nombreDestino, fechaHora) {
     return new Promise((resolve, reject) => {
-      const totalCantidad = productos.reduce((acc, p) => acc + parseInt(p.cantidad), 0)
-      const ClaseConversor = conversor.conversorNumerosALetras
-      const miConversor = new ClaseConversor()
-      const totalLiteral = miConversor.convertToText(totalCantidad)
       const opts = {
         errorCorrectionLevel: 'M',
         type: 'png',
@@ -307,7 +303,13 @@ Oruro</div>
           light: '#FFF'
         }
       }
-      const env = useCounterStore().env
+      const store = useCounterStore()
+      const env = store.env || {}
+
+      if (!env.razon) {
+        console.warn('⚠️ Variable "env.razon" está vacía o no definida.')
+        return reject('Información de entorno no disponible')
+      }
       QRCode.toDataURL(`de: ${nombreOrigen} A: ${nombreDestino}`, opts).then(url => {
         const fechaHora = new Date().toLocaleString('es-BO', {
           day: '2-digit',
@@ -334,16 +336,12 @@ Oruro</div>
           cadena += `<div><b>Cantidad:</b> ${p.cantidad}</div><hr>`
         })
         cadena += `
-          <table style='font-size: 8px;'>
-            <tr><td class='titder' style='width: 60%'>TOTAL DE UNIDADES</td><td class='conte2'>${totalCantidad}</td></tr>
-          </table>
-          <br>
-          <div>Son ${totalLiteral} ${((totalCantidad - Math.floor(totalCantidad)) * 100).toFixed(2)} /100 unidades</div><hr>
-          <div style='display: flex;justify-content: center;'>
-            <img  src="${url}" style="width: 75px; height: 75px;">
+            </table>
+            <div style='display: flex;justify-content: center;'>
+              <img  src="${url}" style="width: 75px; height: 75px;">
+            </div>
           </div>
-        </div>
-        </body>
+          </body>
         </html>`
         const elem = document.getElementById('myElement')
         if (elem) {

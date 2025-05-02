@@ -2,6 +2,14 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\NotificacionController;
+
+
+Route::get('/notificaciones/{agencia}', [NotificacionController::class, 'index']);
+Route::put('/notificaciones/{id}/leer', [NotificacionController::class, 'marcarComoLeida']);
+
+
+/*
 
 /*
 |--------------------------------------------------------------------------
