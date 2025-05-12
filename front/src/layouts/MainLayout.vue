@@ -341,9 +341,25 @@ export default {
     abrirNotificacion (notif) {
       this.notificacionActiva = notif
 
-      // Título con estilo
-      let mensaje = `<div style="font-size: 16px; margin-bottom: 15px;"><b>${notif.mensaje}</b></div>`
+      // Formateo con fecha y hora: "5 de mayo del 2025, 14:30"
+      const formatDate = iso => {
+        const d = new Date(iso)
+        const day = d.getDate()
+        const month = d.toLocaleDateString('es-ES', { month: 'long' })
+        const year = d.getFullYear()
+        const hours = String(d.getHours()).padStart(2, '0')
+        const mins = String(d.getMinutes()).padStart(2, '0')
+        return `${day} de ${month} del ${year}, ${hours}:${mins}`
+      }
 
+      let mensaje = `
+        <div style="font-size:16px;margin-bottom:8px;">
+          <b>${notif.mensaje}</b>
+        </div>
+        <div style="color:#777;font-size:12px;margin-bottom:12px;">
+          Fecha: ${formatDate(notif.created_at)}
+        </div>
+      `
       try {
         const productos = JSON.parse(notif.detalle)
 
@@ -391,8 +407,9 @@ export default {
       }).onOk(() => {
         this.$axios.put(`/notificaciones/${notif.id}/leer`)
           .then(() => {
-            this.notificaciones = this.notificaciones.filter(n => n.id !== notif.id)
-            this.prevNotificaciones = this.prevNotificaciones.filter(n => n.id !== notif.id)
+            const nuevas = this.prevNotificaciones.filter(n => n.id !== notif.id)
+            this.prevNotificaciones = nuevas
+            this.notificaciones = nuevas
           })
       })
     }
