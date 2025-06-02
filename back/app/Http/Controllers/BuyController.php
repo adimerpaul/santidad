@@ -15,70 +15,93 @@ use Illuminate\Support\Facades\DB;
 class BuyController extends Controller{
     //productos por vencer
     public function index(Request $request)
-    {
-        $search = $request->search;
-        $agencia_id = $request->agencia_id;
-        $order = $request->order ?? null;
+{
+    $search = $request->search;
+    $agencia_id = $request->agencia_id;
+    $proveedor_id = $request->proveedor_id;
+    $order = $request->order ?? null;
 
-        $buys = Buy::with(['product' => function($query) {
-                    $query->select('id', 'nombre','cantidad','cantidadSucursal1','cantidadSucursal2','cantidadSucursal3','cantidadSucursal4','cantidadSucursal5','cantidadSucursal6','cantidadSucursal7','cantidadSucursal8','cantidadSucursal9','cantidadSucursal10');
-                }, 'user' => function($query) {
-                    $query->select('id', 'name');
-                }, 'proveedor' => function($query) {
-                    $query->select('id', 'nombreRazonSocial');
-                }, 'agencia' => function($query) {
-                    $query->select('id', 'nombre');
-                }]);
-        if ($search != null && $search != '') {
-            $buys = $buys->whereRaw('(lote = "'.$search.'" or factura = "'.$search.'")')
-                ->orWhereHas('product', function($query) use ($search) {
-                    $query->where('nombre', 'like', '%'.$search.'%');
-                });
-            if ($agencia_id != null && $agencia_id != '') {
-                $buys = $buys->where('agencia_id', $agencia_id);
-            }
-        }else{
-            if ($order=='Dias para Vencer') {
-                $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '>', Carbon::now());
-            }elseif ($order=='Fecha de Vencimiento') {
-                $buys = $buys->orderBy('dateExpiry', 'asc');
-            }elseif ($order=='Fecha de Compra') {
-                $buys = $buys->orderBy('date', 'asc');
-            }
-            if ($agencia_id != null && $agencia_id != '') {
-                $buys = $buys->where('agencia_id', $agencia_id);
-            }
+    $buys = Buy::with([
+        'product' => function($query) {
+            $query->select('id', 'nombre', 'cantidad', 'cantidadSucursal1', 'cantidadSucursal2', 'cantidadSucursal3', 'cantidadSucursal4', 'cantidadSucursal5', 'cantidadSucursal6', 'cantidadSucursal7', 'cantidadSucursal8', 'cantidadSucursal9', 'cantidadSucursal10');
+        },
+        'user' => function($query) {
+            $query->select('id', 'name');
+        },
+        'proveedor' => function($query) {
+            $query->select('id', 'nombreRazonSocial');
+        },
+        'agencia' => function($query) {
+            $query->select('id', 'nombre');
         }
-        $buys = $buys->paginate(100);
-        $buys->getCollection()->transform(function($value) {
-            if ($value->agencia_id == 1) {
-                $value->cantidadAgencia = $value->product->cantidadSucursal1;
-            }elseif ($value->agencia_id == 2) {
-                $value->cantidadAgencia = $value->product->cantidadSucursal2;
-            }elseif ($value->agencia_id == 3) {
-                $value->cantidadAgencia = $value->product->cantidadSucursal3;
-            }elseif ($value->agencia_id == 4) {
-                $value->cantidadAgencia = $value->product->cantidadSucursal4;
-            }elseif ($value->agencia_id == 5) {
-                $value->cantidadAgencia = $value->product->cantidadSucursal5;
-            }elseif ($value->agencia_id == 6) {
-                $value->cantidadAgencia = $value->product->cantidadSucursal6;
-            }elseif ($value->agencia_id == 7) {
-                $value->cantidadAgencia = $value->product->cantidadSucursal7;
-            }elseif ($value->agencia_id == 8) {
-                $value->cantidadAgencia = $value->product->cantidadSucursal8;
-            }elseif ($value->agencia_id == 9) {
-                $value->cantidadAgencia = $value->product->cantidadSucursal9;
-            }elseif ($value->agencia_id == 10) {
-                $value->cantidadAgencia = $value->product->cantidadSucursal10;
-            }else{
-                $value->cantidadAgencia = $value->product->cantidad;
-            }
-            return $value;
+    ]);
+
+    // Aplicar filtro búsqueda + proveedor juntos
+    if (($search != null && $search != '') && ($proveedor_id != null && $proveedor_id != '')) {
+        $buys = $buys->where(function($query) use ($search) {
+            $query->where('lote', $search)
+                  ->orWhere('factura', $search)
+                  ->orWhereHas('product', function($q) use ($search) {
+                      $q->where('nombre', 'like', '%'.$search.'%');
+                  });
+        })->where('proveedor_id', $proveedor_id);
+
+    // Solo búsqueda
+    } elseif ($search != null && $search != '') {
+        $buys = $buys->where(function($query) use ($search) {
+            $query->where('lote', $search)
+                  ->orWhere('factura', $search)
+                  ->orWhereHas('product', function($q) use ($search) {
+                      $q->where('nombre', 'like', '%'.$search.'%');
+                  });
         });
-        return response()->json($buys);
-//        return response()->json($buys->paginate(100));
+
+    // Solo filtro proveedor
+    } elseif ($proveedor_id != null && $proveedor_id != '') {
+        $buys = $buys->where('proveedor_id', $proveedor_id);
     }
+
+    // Filtro por agencia
+    if ($agencia_id != null && $agencia_id != '') {
+        $buys = $buys->where('agencia_id', $agencia_id);
+    }
+
+    // Aplicar ordenamiento SIEMPRE después de los filtros
+    if ($order == 'Dias para Vencer') {
+        // Suponiendo que quieres los productos que aún no vencieron primero
+        $buys = $buys->where('dateExpiry', '>', Carbon::now())->orderBy('dateExpiry', 'asc');
+    } elseif ($order == 'Fecha de Vencimiento') {
+        $buys = $buys->orderBy('dateExpiry', 'asc');
+    } elseif ($order == 'Fecha de Compra') {
+        $buys = $buys->orderBy('date', 'asc');
+    } else {
+        // Orden por defecto (por ejemplo por fecha de compra descendente)
+        $buys = $buys->orderBy('date', 'desc');
+    }
+
+    $buys = $buys->paginate(100);
+
+    // Aquí transformas la cantidad según la agencia
+    $buys->getCollection()->transform(function($value) {
+        switch ($value->agencia_id) {
+            case 1: $value->cantidadAgencia = $value->product->cantidadSucursal1; break;
+            case 2: $value->cantidadAgencia = $value->product->cantidadSucursal2; break;
+            case 3: $value->cantidadAgencia = $value->product->cantidadSucursal3; break;
+            case 4: $value->cantidadAgencia = $value->product->cantidadSucursal4; break;
+            case 5: $value->cantidadAgencia = $value->product->cantidadSucursal5; break;
+            case 6: $value->cantidadAgencia = $value->product->cantidadSucursal6; break;
+            case 7: $value->cantidadAgencia = $value->product->cantidadSucursal7; break;
+            case 8: $value->cantidadAgencia = $value->product->cantidadSucursal8; break;
+            case 9: $value->cantidadAgencia = $value->product->cantidadSucursal9; break;
+            case 10: $value->cantidadAgencia = $value->product->cantidadSucursal10; break;
+            default: $value->cantidadAgencia = $value->product->cantidad;
+        }
+        return $value;
+    });
+
+    return response()->json($buys);
+}
+
     //productos vencidos
     public function indexVencidos(Request $request)
     {

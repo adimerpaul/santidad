@@ -140,12 +140,21 @@
                             <span style="font-size: 10px" class="text-red text-bold" v-if="props.row.porcentaje">{{$filters.precioRebajaVenta(props.row.precio, props.row.porcentaje)}} Bs</span>
                             )
                           </div>
-                          <q-input v-model="props.row.precioVenta" style="width: 170px"  step="0.1" type="number" @update:model-value="precioVenta(props.row)" dense outlined>
-                            <template v-slot:prepend>
-                              <q-icon name="edit" size="xs" />
-                              <div style="font-size: 10px">Bs.</div>
-                            </template>
-                          </q-input>
+                          <q-input
+                      v-model="props.row.precioVenta"
+                      style="width: 170px"
+                      step="0.1"
+                      type="number"
+                      @update:model-value="precioVenta(props.row)"
+                      dense
+                      outlined
+                      :rules="[val => val > 0 || 'El precio debe ser mayor a 0']"
+                    >
+                      <template v-slot:prepend>
+                        <q-icon name="edit" size="xs" />
+                        <div style="font-size: 10px">Bs.</div>
+                      </template>
+                    </q-input>
                         </div>
                       </div>
                     </q-td>
@@ -432,7 +441,13 @@ export default {
             return false
           }
         }
+        if (!p.precioVenta || p.precioVenta <= 0) {
+          this.$alert.error(`El precio de venta de "${p.nombre}" debe ser mayor a 0.`)
+          hayProblema = true
+          return false
+        }
       })
+
       if (hayProblema) {
         return false
       }

@@ -1,9 +1,6 @@
 <template>
   <q-layout view="lHh Lpr lFf">
-    <q-header
-      class="bg-white text-black"
-    >
-
+    <q-header class="bg-white text-black">
       <q-toolbar>
         <q-btn
           flat
@@ -15,32 +12,54 @@
         />
         <q-toolbar-title>
           <span class="text-bold">{{ $store.user.name }}</span>
-          <q-chip dense v-if="$store.user.agencia"
-                  class="bg-primary text-white text-subtitle2 text-bold">{{$store.user.agencia.nombre}}</q-chip>
+          <q-chip
+            dense
+            v-if="$store.user.agencia"
+            class="bg-primary text-white text-subtitle2 text-bold"
+          >
+            {{$store.user.agencia.nombre}}
+          </q-chip>
         </q-toolbar-title>
         <div>
           <q-btn flat dense icon="notifications" color="primary">
-          <q-badge v-if="notificaciones.length > 0" color="red" floating>
-            {{ notificaciones.length }}
+            <q-badge v-if="notificaciones.some(n => !n.leida)" color="red" floating>
+            {{ notificaciones.filter(n => !n.leida).length }}
           </q-badge>
-          <q-menu>
-            <q-list style="min-width: 250px">
-              <q-item-label header>Notificaciones</q-item-label>
-              <q-item
-              v-for="(notif, index) in notificaciones"
-              :key="index"
-              clickable
-              @click="abrirNotificacion(notif)"
-            >
-              <q-item-section>{{ notif.mensaje }}</q-item-section>
-            </q-item>
 
-              <q-item v-if="notificaciones.length === 0">
-                <q-item-section class="text-grey">Sin notificaciones nuevas</q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-        </q-btn>
+            <!-- Agregar ref="menuNotificaciones" aquí -->
+            <q-menu ref="menuNotificaciones">
+              <q-list style="min-width: 250px">
+                <q-item-label header>Notificaciones</q-item-label>
+                <q-item
+                  v-for="(notif, index) in notificaciones"
+                  :key="index"
+                  clickable
+               @click="abrirNotificacion(notif)"
+                >
+                  <!-- Chip "Nuevo" si no está leído -->
+                  <q-item-section avatar v-if="!notif.leida" style="min-width: 50px;">
+                    <q-chip dense color="green" text-color="white" label>
+                      Nuevo
+                    </q-chip>
+                  </q-item-section>
+
+                  <!-- Mensaje y fecha -->
+                  <q-item-section>
+                    <div>{{ notif.mensaje }}</div>
+                    <div style="font-size: 11px; color: gray; margin-top: 2px;">
+                      {{ formatDate(notif.created_at) }}
+                    </div>
+                  </q-item-section>
+                </q-item>
+                <q-item v-if="notificaciones.length === 0">
+                  <q-item-section class="text-grey">
+                    Sin notificaciones nuevas
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+
           <q-btn
             dense
             round
@@ -309,11 +328,22 @@ export default {
       const agencia = this.$store.agencia_id
       this.$axios.get(`/notificaciones/${agencia}`)
         .then(res => {
-          if (Array.isArray(this.prevNotificaciones) &&
-              res.data.length > this.prevNotificaciones.length) {
-            // Toma la última notificación nueva
-            const nuevaNotif = res.data[res.data.length - 1]
+          const nuevasNotificaciones = res.data
 
+          // Normalizar leida y eliminar duplicados por ID
+          const mapNotifs = new Map()
+          nuevasNotificaciones.forEach(n => {
+            n.leida = n.leida === 1 || n.leida === true
+            mapNotifs.set(n.id, n)
+          })
+          const notifsArray = Array.from(mapNotifs.values())
+
+          // Extraer IDs de notificaciones nuevas que no están en prevNotificaciones
+          const prevIds = new Set(this.prevNotificaciones.map(n => n.id))
+          const newNotifs = notifsArray.filter(n => !prevIds.has(n.id) && !n.leida)
+
+          // Solo mostrar alerta si hay nuevas notificaciones no leídas no notificadas antes
+          if (newNotifs.length > 0) {
             this.$q.notify({
               type: 'info',
               color: 'primary',
@@ -326,19 +356,25 @@ export default {
                   label: 'VER',
                   color: 'white',
                   handler: () => {
-                    this.abrirNotificacion(nuevaNotif)
+                    if (this.$refs.menuNotificaciones) {
+                      this.$refs.menuNotificaciones.show()
+                    }
                   }
                 }
               ]
             })
           }
-          this.prevNotificaciones = res.data
-          this.notificaciones = res.data
+
+          // Actualizar los arrays de notificaciones y prevNotificaciones con los nuevos datos
+          this.notificaciones = notifsArray
+          this.prevNotificaciones = notifsArray
         })
         .catch(() => {
           this.notificaciones = []
+          this.prevNotificaciones = []
         })
     },
+
     abrirNotificacion (notif) {
       this.notificacionActiva = notif
 
@@ -408,11 +444,24 @@ export default {
       }).onOk(() => {
         this.$axios.put(`/notificaciones/${notif.id}/leer`)
           .then(() => {
-            const nuevas = this.prevNotificaciones.filter(n => n.id !== notif.id)
-            this.prevNotificaciones = nuevas
-            this.notificaciones = nuevas
+            const index = this.notificaciones.findIndex(n => n.id === notif.id)
+            if (index !== -1) {
+              this.notificaciones[index].leida = 1
+              this.notificaciones = [...this.notificaciones]
+            }
           })
       })
+    },
+
+    // Nueva función para formatear fecha, para usar en template (lista)
+    formatDate (iso) {
+      const d = new Date(iso)
+      const day = d.getDate()
+      const month = d.toLocaleDateString('es-ES', { month: 'long' })
+      const year = d.getFullYear()
+      const hours = String(d.getHours()).padStart(2, '0')
+      const mins = String(d.getMinutes()).padStart(2, '0')
+      return `${day} de ${month} del ${year}, ${hours}:${mins}`
     }
   }
 }
