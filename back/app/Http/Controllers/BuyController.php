@@ -247,6 +247,7 @@ class BuyController extends Controller{
             $buyNew->product_id= $buy['id'];
             $buyNew->lote= $buy['lote'];
             $buyNew->quantity= $buy['cantidadCompra'];
+            $buyNew->cantidadVendida= $buy['cantidadCompra'];
             $buyNew->price= $buy['price'];
             $buyNew->total= $buy['cantidadCompra'] * $buy['price'];
             $buyNew->dateExpiry= $buy['fechaVencimiento'];

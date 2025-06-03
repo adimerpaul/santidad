@@ -130,6 +130,22 @@ class SalesController extends Controller{
                 $descuento_producto += $montoAhorrro;
             }
             $productSale->save();
+
+            $buys = $product['buys'];
+            foreach ($buys as $buy){
+//                $cantidadAVender = $buy['cantidadAVender'];
+//                if ($cantidadAVender != "" && $cantidadAVender > 0){
+//                    $buyModel = \App\Models\Buy::find($buy['id']);
+//                    error_log(json_encode($buyModel));
+//                    $buyModel->cantidadVendida = $buyModel->cantidadVendida - $cantidadAVender;
+//                    $buyModel->save();
+//                }
+                if (isset($buy['cantidadAVender']) && $buy['cantidadAVender'] != "" && $buy['cantidadAVender'] > 0){
+                    $buyModel = \App\Models\Buy::find($buy['id']);
+                    $buyModel->cantidadVendida = $buyModel->cantidadVendida - $buy['cantidadAVender'];
+                    $buyModel->save();
+                }
+            }
         }
         $sales->concepto = substr($concepto,0,-1);
         $sales->descuento_producto = $descuento_producto;
