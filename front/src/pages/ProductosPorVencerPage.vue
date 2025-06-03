@@ -76,7 +76,7 @@
             dense
             v-model="search"
             label="Buscar"
-            style="margin-top: 0; width: 500px;"
+            style="margin-top: 0; width: 250px;"
             @update:model-value="buyGet"
             debounce="500"
           >

@@ -115,11 +115,31 @@
                  class="uppercase"
         />
         <q-input label-color="black" outlined v-model="product.barra" label="Código de barras" dense hint="Escríbelo o escanéalo" />
-        <q-input label-color="black" outlined type="number" step="0.01" v-model="product.costo" label="Costo" dense hint="Valor que pagas al proveedor por el producto"/>
-
+        <q-input
+          label-color="black"
+          outlined
+          type="number"
+          step="0.01"
+          v-model="product.costo"
+          label="Costo"
+          dense
+          hint="Valor que pagas al proveedor por el producto"
+          :disable="!isAdmin"
+        />
         <div class="row">
           <div class="col-12 col-md-5">
-            <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precio" label="Precio*" dense hint="Valor que le cobras a tus clientes por el producto" :rules="[val => !!val || 'Este campo es requerido']"/>
+            <q-input
+        label-color="black"
+        outlined
+        type="number"
+        step="0.01"
+        v-model="product.precio"
+        label="Precio*"
+        dense
+        hint="Valor que le cobras a tus clientes por el producto"
+        :rules="[val => !!val || 'Este campo es requerido']"
+        :disable="!isAdmin"
+      />
           </div>
           <div class="col-12 col-md-3">
 <!--            <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>-->
@@ -127,7 +147,17 @@
           <span class="text-bold">{{precioVenta}}</span>
           </div>
           <div class="col-12 col-md-4" style="line-height:1em;">
-            <q-input label-color="black" outlined type="number" step="0.01" v-model="product.porcentaje" label="%" dense hint="Porcentaje de descuento"/>
+            <q-input
+            label-color="black"
+            outlined
+            type="number"
+            step="0.01"
+            v-model="product.porcentaje"
+            label="%"
+            dense
+            hint="Porcentaje de descuento"
+            :disable="!isAdmin"
+          />
             <!--            <label for="" class="text-red text-caption text-bold">Porcentaje</label><br>-->
 <!--            <span class="text-bold">{{porcentaje}}%</span>-->
           </div>
@@ -588,6 +618,9 @@ export default {
       }
       return porcentaje
     //   ((product.precioAntes-product.precio)/product.precioAntes*100).toFixed(2)
+    },
+    isAdmin () {
+      return this.$store.user && Number(this.$store.user.id) === 1
     }
   }
 }
