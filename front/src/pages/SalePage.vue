@@ -105,7 +105,10 @@
         <q-card>
           <q-card-section class="q-pa-none q-ma-none ">
             <div class="row">
-              <div class="col-6 text-h6 q-pt-xs q-pl-lg">Canasta</div>
+              <div class="col-6 text-h6 q-pt-xs q-pl-lg">
+                Canasta
+                ({{ $store.productosVenta.length }})
+              </div>
               <div class="col-6 text-right"><q-btn class="text-subtitle1 text-blue-10 text-bold" style="text-decoration: underline;" label="Vaciar canasta" @click="vaciarCanasta" no-caps flat outline/></div>
             </div>
           </q-card-section>
@@ -131,10 +134,10 @@
                                style="padding: 0px; margin: 0px; border-radius: 0px;position: absolute;crop: auto;object-fit: cover;"
                         />
                         <div style="padding-left: 42px">
-                          <div class="text-caption" style="max-width: 170px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">
+                          <div class="text-caption" style="max-width: 120px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">
                             {{props.row.nombre}}
                           </div>
-                          <div class="text-grey">Disponible: {{props.row.cantidad}}
+                          <div class="text-grey">Dis: {{props.row.cantidad}}
                             (
                             <span style="font-size: 10px">{{props.row.precio}} Bs </span>
                             <span style="font-size: 10px" class="text-red text-bold" v-if="props.row.porcentaje">{{$filters.precioRebajaVenta(props.row.precio, props.row.porcentaje)}} Bs</span>
@@ -142,7 +145,7 @@
                           </div>
                     <q-input
                     v-model="props.row.precioVenta"
-                    style="width: 170px"
+                    style="width: 120px"
                     step="0.1"
                     type="number"
                     dense
@@ -158,15 +161,53 @@
                       </div>
                     </q-td>
                     <q-td key="cantidadVenta" :props="props">
-                      <q-input dense outlined bottom-slots min="1"  v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>
-                        <template v-slot:prepend>
-                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>
-                        </template>
-                        <template v-slot:append>
-                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>
-                        </template>
-                      </q-input>
+<!--                      <q-input dense outlined bottom-slots min="1"  v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>-->
+<!--                        <template v-slot:prepend>-->
+<!--                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>-->
+<!--                        </template>-->
+<!--                        <template v-slot:append>-->
+<!--                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>-->
+<!--                        </template>-->
+<!--                      </q-input>-->
+                      <input type="number" min="1" v-model="props.row.cantidadVenta" @change="cambioNumero(props.row,props.pageIndex)" style="width: 70px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>
                       <div class="text-grey">= Bs {{redondeo(props.row.cantidadVenta*props.row.precioVenta)}}</div>
+                    </q-td>
+                    <q-td key="lotes" :props="props">
+                      <div v-for="(lote, index) in props.row.buys" :key="index" class="q-mb-xs">
+                        <q-badge color="blue-10" text-color="white" class="q-mr-xs">{{ lote.lote }}</q-badge>
+                        <span class="text-grey-8" style="font-size: 12px;">
+                          {{ lote.cantidadVendida }}u | {{ lote.price }} Bs <br>
+                          {{ lote.dateExpiry }} <input type="number" min="1" v-model="lote.cantidadAVender" style="width: 50px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>
+                        </span>
+                      </div>
+<!--                      <pre>-->
+<!--                        {{props.row.buys}}-->
+<!--                      </pre>-->
+<!--                      [-->
+<!--                      {-->
+<!--                      "id": 36644,-->
+<!--                      "user_id": 25,-->
+<!--                      "product_id": 33,-->
+<!--                      "agencia_id": 3,-->
+<!--                      "lote": "CN004942",-->
+<!--                      "quantity": 60,-->
+<!--                      "total": "876.00",-->
+<!--                      "price": "14.60",-->
+<!--                      "dateExpiry": "2025-11-23",-->
+<!--                      "date": "2024-11-06",-->
+<!--                      "time": "20:19:00",-->
+<!--                      "factura": "30345",-->
+<!--                      "proveedor_id": 15026,-->
+<!--                      "user_baja_id": null,-->
+<!--                      "cantidadBaja": null,-->
+<!--                      "cantidadVendida": 60,-->
+<!--                      "sucursal_id_baja": null,-->
+<!--                      "description_baja": null,-->
+<!--                      "fecha_baja": null,-->
+<!--                      "diasPorVencer": 172-->
+<!--                      }-->
+<!--                      ]-->
+
                     </q-td>
                   </q-tr>
                 </template>
@@ -333,7 +374,8 @@ export default {
       columnsProductosVenta: [
         { label: 'borrar', field: 'borrar', name: 'borrar', align: 'left' },
         { label: 'nombre', field: 'nombre', name: 'nombre', align: 'left' },
-        { label: 'cantidadVenta', field: 'cantidadVenta', name: 'cantidadVenta' }
+        { label: 'cantidadVenta', field: 'cantidadVenta', name: 'cantidadVenta' },
+        { label: 'lotes', field: 'lotes', name: 'lotes', align: 'left' }
       ],
       orders: [
         { label: 'Ordenar por', value: 'id' },

@@ -105,7 +105,10 @@
         <q-card>
           <q-card-section class="q-pa-none q-ma-none ">
             <div class="row">
-              <div class="col-6 text-h6 q-pt-xs q-pl-lg bg-orange">Canasta Compras</div>
+              <div class="col-6 text-h6 q-pt-xs q-pl-lg bg-orange">
+                Canasta Compras
+                ({{ $store.productosCompra.length }})
+              </div>
               <div class="col-6 text-right"><q-btn class="text-subtitle1 text-blue-10 text-bold" style="text-decoration: underline;" label="Vaciar canasta" @click="vaciarCanasta" no-caps flat outline/></div>
             </div>
           </q-card-section>

@@ -93,6 +93,11 @@ class ProductController extends Controller{
 
         $query = Product::query();
         $query->where('nombre', 'like', "%$search%");
+        $query->with(['buys' => function ($query) {
+            $query->orderBy('created_at', 'desc')
+                ->where('cantidadVendida', '>', 0)
+                ->limit(7);
+        }]);
 
         if ($category_id != 0) {
             $query->where('category_id', $category_id);
