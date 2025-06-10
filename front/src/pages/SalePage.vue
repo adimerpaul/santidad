@@ -173,13 +173,13 @@
                       <div class="text-grey">= Bs {{redondeo(props.row.cantidadVenta*props.row.precioVenta)}}</div>
                     </q-td>
                     <q-td key="lotes" :props="props">
-                      <div v-for="(lote, index) in props.row.buys" :key="index" class="q-mb-xs">
-                        <q-badge color="blue-10" text-color="white" class="q-mr-xs">{{ lote.lote }}</q-badge>
-                        <span class="text-grey-8" style="font-size: 12px;">
-                          {{ lote.cantidadVendida }}u | {{ lote.price }} Bs <br>
-                          {{ lote.dateExpiry }} <input type="number" min="1" v-model="lote.cantidadAVender" style="width: 50px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>
-                        </span>
-                      </div>
+<!--                      <div v-for="(lote, index) in props.row.buys" :key="index" class="q-mb-xs">-->
+<!--                        <q-badge color="blue-10" text-color="white" class="q-mr-xs">{{ lote.lote }}</q-badge>-->
+<!--                        <span class="text-grey-8" style="font-size: 12px;">-->
+<!--                          {{ lote.cantidadVendida }}u | {{ lote.price }} Bs <br>-->
+<!--                          {{ lote.dateExpiry }} <input type="number" min="1" v-model="lote.cantidadAVender" style="width: 50px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>-->
+<!--                        </span>-->
+<!--                      </div>-->
 <!--                      <pre>-->
 <!--                        {{props.row.buys}}-->
 <!--                      </pre>-->
