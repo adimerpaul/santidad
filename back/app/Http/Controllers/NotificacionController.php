@@ -10,7 +10,6 @@ class NotificacionController extends Controller
     public function index($agenciaId)
     {
         return Notificacion::where('agencia_id', $agenciaId)
-            ->where('leida', false)
             ->orderBy('created_at', 'desc')
             ->get();
     }
