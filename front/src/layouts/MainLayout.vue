@@ -283,7 +283,7 @@ export default {
   },
   mounted () {
     this.getNotificaciones()
-    setInterval(this.getNotificaciones, 30000)
+    setInterval(this.getNotificaciones, 180000)
   },
   methods: {
     logout () {
