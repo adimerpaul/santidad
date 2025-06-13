@@ -161,54 +161,54 @@
                       </div>
                     </q-td>
                     <q-td key="cantidadVenta" :props="props">
-<!--                      <q-input dense outlined bottom-slots min="1"  v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>-->
-<!--                        <template v-slot:prepend>-->
-<!--                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>-->
-<!--                        </template>-->
-<!--                        <template v-slot:append>-->
-<!--                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>-->
-<!--                        </template>-->
-<!--                      </q-input>-->
-                      <input type="number" min="1" v-model="props.row.cantidadVenta" @change="cambioNumero(props.row,props.pageIndex)" style="width: 70px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>
+                      <q-input dense outlined bottom-slots min="1"  v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>
+                        <template v-slot:prepend>
+                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>
+                        </template>
+                        <template v-slot:append>
+                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>
+                        </template>
+                      </q-input>
+<!--                      <input type="number" min="1" v-model="props.row.cantidadVenta" @change="cambioNumero(props.row,props.pageIndex)" style="width: 70px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>-->
                       <div class="text-grey">= Bs {{redondeo(props.row.cantidadVenta*props.row.precioVenta)}}</div>
                     </q-td>
-<!--                    <q-td key="lotes" :props="props">-->
-<!--&lt;!&ndash;                      <div v-for="(lote, index) in props.row.buys" :key="index" class="q-mb-xs">&ndash;&gt;-->
-<!--&lt;!&ndash;                        <q-badge color="blue-10" text-color="white" class="q-mr-xs">{{ lote.lote }}</q-badge>&ndash;&gt;-->
-<!--&lt;!&ndash;                        <span class="text-grey-8" style="font-size: 12px;">&ndash;&gt;-->
-<!--&lt;!&ndash;                          {{ lote.cantidadVendida }}u | {{ lote.price }} Bs <br>&ndash;&gt;-->
-<!--&lt;!&ndash;                          {{ lote.dateExpiry }} <input type="number" min="1" v-model="lote.cantidadAVender" style="width: 50px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>&ndash;&gt;-->
-<!--&lt;!&ndash;                        </span>&ndash;&gt;-->
-<!--&lt;!&ndash;                      </div>&ndash;&gt;-->
-<!--&lt;!&ndash;                      <pre>&ndash;&gt;-->
-<!--&lt;!&ndash;                        {{props.row.buys}}&ndash;&gt;-->
-<!--&lt;!&ndash;                      </pre>&ndash;&gt;-->
-<!--&lt;!&ndash;                      [&ndash;&gt;-->
-<!--&lt;!&ndash;                      {&ndash;&gt;-->
-<!--&lt;!&ndash;                      "id": 36644,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "user_id": 25,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "product_id": 33,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "agencia_id": 3,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "lote": "CN004942",&ndash;&gt;-->
-<!--&lt;!&ndash;                      "quantity": 60,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "total": "876.00",&ndash;&gt;-->
-<!--&lt;!&ndash;                      "price": "14.60",&ndash;&gt;-->
-<!--&lt;!&ndash;                      "dateExpiry": "2025-11-23",&ndash;&gt;-->
-<!--&lt;!&ndash;                      "date": "2024-11-06",&ndash;&gt;-->
-<!--&lt;!&ndash;                      "time": "20:19:00",&ndash;&gt;-->
-<!--&lt;!&ndash;                      "factura": "30345",&ndash;&gt;-->
-<!--&lt;!&ndash;                      "proveedor_id": 15026,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "user_baja_id": null,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "cantidadBaja": null,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "cantidadVendida": 60,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "sucursal_id_baja": null,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "description_baja": null,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "fecha_baja": null,&ndash;&gt;-->
-<!--&lt;!&ndash;                      "diasPorVencer": 172&ndash;&gt;-->
-<!--&lt;!&ndash;                      }&ndash;&gt;-->
-<!--&lt;!&ndash;                      ]&ndash;&gt;-->
+                    <q-td key="lotes" :props="props">
+                      <div v-for="(lote, index) in props.row.buys" :key="index" class="q-mb-xs">
+                        <q-badge color="blue-10" text-color="white" class="q-mr-xs">{{ lote.lote }}</q-badge>
+                        <span class="text-grey-8" style="font-size: 12px;">
+                          {{ lote.cantidadVendida }}u | {{ lote.price }} Bs <br>
+                          {{ lote.dateExpiry }} <input type="number" min="1" v-model="lote.cantidadAVender" style="width: 50px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>
+                        </span>
+                      </div>
+<!--                      <pre>-->
+<!--                        {{props.row.buys}}-->
+<!--                      </pre>-->
+<!--                      [-->
+<!--                      {-->
+<!--                      "id": 36644,-->
+<!--                      "user_id": 25,-->
+<!--                      "product_id": 33,-->
+<!--                      "agencia_id": 3,-->
+<!--                      "lote": "CN004942",-->
+<!--                      "quantity": 60,-->
+<!--                      "total": "876.00",-->
+<!--                      "price": "14.60",-->
+<!--                      "dateExpiry": "2025-11-23",-->
+<!--                      "date": "2024-11-06",-->
+<!--                      "time": "20:19:00",-->
+<!--                      "factura": "30345",-->
+<!--                      "proveedor_id": 15026,-->
+<!--                      "user_baja_id": null,-->
+<!--                      "cantidadBaja": null,-->
+<!--                      "cantidadVendida": 60,-->
+<!--                      "sucursal_id_baja": null,-->
+<!--                      "description_baja": null,-->
+<!--                      "fecha_baja": null,-->
+<!--                      "diasPorVencer": 172-->
+<!--                      }-->
+<!--                      ]-->
 
-<!--                    </q-td>-->
+                    </q-td>
                   </q-tr>
                 </template>
               </q-table>
