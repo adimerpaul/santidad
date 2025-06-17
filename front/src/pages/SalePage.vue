@@ -237,14 +237,26 @@
                       <div class="col-7 text-grey">Cantidades de referencia</div>
                       <div class="col-5 text-right">{{$store.productosVenta.length}}</div>
                       <div class="col-7 text-grey">
-                        Ganancia
+                        Descuentos
+                        <q-icon name="o_info">
+                          <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">
+<!--                            Para calcular la ganancia correctamente, deberás cargar el costo unitario de todos los productos desde tu Inventario.-->
+                            Si realizas un descuento, este se restará del total de la venta.
+                          </q-tooltip>
+                        </q-icon>
+                      </div>
+                      <div class="col-5 text-right text-green">{{totalganancia}} Bs</div>
+                      <div class="col-7 text-grey">
+                        Monto Sin descuento
                         <q-icon name="o_info">
                           <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">
                             Para calcular la ganancia correctamente, deberás cargar el costo unitario de todos los productos desde tu Inventario.
                           </q-tooltip>
                         </q-icon>
                       </div>
-                      <div class="col-5 text-right text-green">{{totalganancia}} Bs</div>
+                      <div class="col-5 text-right text-green">
+                        {{parseFloat(total) + parseFloat(totalganancia)}} Bs
+                      </div>
                     </div>
                   </q-card-section>
                 </q-card>
@@ -330,6 +342,10 @@
       </q-card>
     </q-dialog>
     <div id="myElement" class="hidden"></div>
+<!--    Lorem ipsum dolor sit amet, consectetur adipisicing elit. Alias blanditiis, culpa dolorem ea eveniet fugiat fugit, illum ipsa placeat quas repudiandae sunt? Asperiores culpa eum inventore nam odio rem, vero.-->
+<!--    <pre>-->
+<!--      {{$store.env}}-->
+<!--    </pre>-->
 </q-page>
 </template>
 <script>

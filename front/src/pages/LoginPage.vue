@@ -86,7 +86,7 @@ export default {
         .then(response => {
           this.$store.user = response.data.user
           this.$store.agencia_id = response.data.user.agencia_id
-          this.$store.env = response.data.user.env
+          this.$store.env = response.data.env
           this.$store.isLoggedIn = true
           this.$axios.defaults.headers.common.Authorization = `Bearer ${response.data.token}`
           localStorage.setItem('tokenSantidad', response.data.token)

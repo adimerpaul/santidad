@@ -129,9 +129,9 @@ Oruro</div>
         cadena += `<hr>
       <table style='font-size: 8px;'>
       <tr>
-        <td class='titder' style='width: 60%'>MONTO Bs</td>
+        <td class='titder' style='width: 60%'>MONTO TOTAL Bs</td>
         <td class='conte2'>
-            ${parseFloat(factura.montoTotal - factura.aporte).toFixed(2)}
+        ${(parseFloat(factura.montoTotal) + parseFloat(factura.descuento_producto) + parseFloat(factura.descuento)).toFixed(2)}
         </td>
       </tr>
       <tr>
@@ -147,7 +147,7 @@ Oruro</div>
         <td class='conte2'>-${parseFloat(factura.descuento_producto).toFixed(2)}</td>
       </tr>
       <tr>
-        <td class='titder' style='width: 60%'>SUBTOTAL Bs</td>
+        <td class='titder' style='width: 60%'>MONTO A PAGAR Bs</td>
         <td class='conte2'>${parseFloat(factura.montoTotal).toFixed(2)}</td>
       </tr>
       </table>
