@@ -58,7 +58,34 @@ class ProductController extends Controller{
             $query->where("cantidadSucursal$agencia_id", '>', 0);
         }
 
-        $products = $query->orderByRaw($ordenar)
+//        orders: [
+//        { label: 'Ordenar por', value: 'id' },
+//        { label: 'Menor precio', value: 'precio asc' },
+//        { label: 'Mayor precio', value: 'precio desc' },
+//        { label: 'Menor cantidad', value: 'cantidad asc' },
+//        { label: 'Mayor cantidad', value: 'cantidad desc' },
+//        { label: 'Orden alfabetico', value: 'nombre asc' }
+//      ],
+        if ($ordenar == 'id') {
+            $ordenarRaw = 'id desc';
+        } else if ($ordenar == 'precio asc') {
+            $sucursal = $agencia_id == 0 ? 'cantidadAlmacen' : "cantidadSucursal$agencia_id";
+            $ordenarRaw = "$sucursal asc";
+        }else if ($ordenar == 'precio desc') {
+            $sucursal = $agencia_id == 0 ? 'cantidadAlmacen' : "cantidadSucursal$agencia_id";
+            $ordenarRaw = "$sucursal desc";
+        } else if ($ordenar == 'cantidad asc') {
+            $sucursal = $agencia_id == 0 ? 'cantidadAlmacen' : "cantidadSucursal$agencia_id";
+            $ordenarRaw = "$sucursal asc";
+        } else if ($ordenar == 'cantidad desc') {
+            $sucursal = $agencia_id == 0 ? 'cantidadAlmacen' : "cantidadSucursal$agencia_id";
+            $ordenarRaw = "$sucursal desc";
+        } else if ($ordenar == 'nombre asc') {
+            $ordenarRaw = "nombre asc";
+        } else {
+            $ordenarRaw = "id desc";
+        }
+        $products = $query->orderByRaw($ordenarRaw)
             ->with(['category', 'agencia'])
             ->paginate($paginate);
 

@@ -137,7 +137,6 @@
         label="Precio*"
         dense
         hint="Valor que le cobras a tus clientes por el producto"
-        :rules="[val => !!val || 'Este campo es requerido']"
         :disable="!isAdmin"
       />
           </div>
@@ -187,8 +186,8 @@
           <q-toggle :label="product.activo" color="green" false-value="INACTIVO" true-value="ACTIVO" v-model="product.activo" class="text-grey-9 text-bold" />
         </div>
         <q-btn class="full-width" rounded
-               :color="!product.nombre || !product.precio ? 'grey' : 'green'"
-               :disable="!product.nombre || !product.precio"
+               :color="!product.nombre ? 'grey' : 'green'"
+               :disable="!product.nombre"
                :label="productAction === 'create' ? 'Guardar' : 'Editar'"
                no-caps
                type="submit"

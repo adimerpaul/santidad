@@ -371,7 +371,7 @@ export default {
         { name: 'name', label: 'Nombre', field: 'name', align: 'left', sortable: true },
         { name: 'actions', label: 'Acciones', field: 'actions', align: 'right', sortable: false }
       ],
-      order: 'id',
+      order: 'cantidad desc',
       columnsProductosVenta: [
         { label: 'borrar', field: 'borrar', name: 'borrar', align: 'left' },
         { label: 'nombre', field: 'nombre', name: 'nombre', align: 'left' },
