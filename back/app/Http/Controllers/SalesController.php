@@ -72,6 +72,16 @@ class SalesController extends Controller{
         DB::beginTransaction();
         $agencia_id = $request->agencia_id;
         $client=$this->insertUpdateClient($request);
+
+        foreach ($request->products as $product){
+            $productModel = Product::find($product['id']);
+            if ($productModel->cantidad < $product['cantidadPedida']){
+                DB::rollBack();
+                return response()->json(['message' => 'No hay suficiente stock del producto '.$productModel->nombre], 400);
+            }
+        }
+
+
         $montoTotal =  $request->montoTotal + $request->aporte - $request->descuento;
         $sales = new Sales();
         $sales->numeroFactura = 0;

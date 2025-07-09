@@ -33,7 +33,10 @@ class BuyController extends Controller{
         },
         'agencia' => function($query) {
             $query->select('id', 'nombre');
-        }
+        },
+        'agenciaComprador' => function($query) {
+            $query->select('id', 'nombre');
+        },
     ]);
 
     // Aplicar filtro búsqueda + proveedor juntos
@@ -234,8 +237,13 @@ class BuyController extends Controller{
     }
     public function show(Buy $buy){ return $buy; }
     public function store(StoreBuyRequest $request){
+        $user = $request->user();
+        error_log('user:');
+        error_log(json_encode($user));
+
         $buy = new Buy();
         $buy->user_id= $request->user()->id;
+        $buy->agencia_comprador_id = $request->user()->agencia_id;
         $buy->product_id= $request->product_id;
         $buy->lote= $request->lote;
         $buy->quantity= $request->quantity;
@@ -267,6 +275,7 @@ class BuyController extends Controller{
 //            error_log(json_encode($buy));
             $buyNew = new Buy();
             $buyNew->user_id= $request->user()->id;
+            $buyNew->agencia_comprador_id = $request->user()->agencia_id;
             $buyNew->product_id= $buy['id'];
             $buyNew->lote= $buy['lote'];
             $buyNew->quantity= $buy['cantidadCompra'];

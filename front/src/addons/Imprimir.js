@@ -144,7 +144,7 @@ Oruro</div>
       </tr>
       <tr style="display: ${factura.descuento_producto ? '' : 'none'}">
         <td class='titder' style='width: 60%'>DESC PROD Bs</td>
-        <td class='conte2'>-${parseFloat(factura.descuento_producto).toFixed(2)}</td>
+        <td class='conte2'>${parseFloat(factura.descuento_producto).toFixed(2)}</td>
       </tr>
       <tr>
         <td class='titder' style='width: 60%'>MONTO A PAGAR Bs</td>

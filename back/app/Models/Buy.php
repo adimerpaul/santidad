@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
 class Buy extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
     protected $fillable = [
         'user_id',
         'product_id',
@@ -26,6 +27,7 @@ class Buy extends Model
         'cantidadBaja',
         'sucursal_id_baja',
         'description_baja',
+        'agencia_comprador_id',
     ];
     protected $appends = ['diasPorVencer'];
 
@@ -37,6 +39,9 @@ class Buy extends Model
     }
     public function agencia(){
         return $this->belongsTo(Agencia::class);
+    }
+    public function agenciaComprador(){
+        return $this->belongsTo(Agencia::class, 'agencia_comprador_id');
     }
     public function user(){
         return $this->belongsTo(User::class);

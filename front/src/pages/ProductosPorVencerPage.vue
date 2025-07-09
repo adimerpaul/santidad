@@ -108,6 +108,7 @@
         </q-td>
       </template>
     </q-table>
+<!--    <pre>{{compras}}</pre>-->
     <div id="myElement" class="hidden"></div>
   </q-page>
 </template>
@@ -149,7 +150,8 @@ export default {
         { name: 'date', label: 'Fecha de Compra', field: (row) => row.date + ' ' + row.time, align: 'left', sortable: true },
         { name: 'user', label: 'Usuario', field: row => row.user.name, align: 'left', sortable: true },
         { name: 'provider', label: 'Proveedor', field: row => row.proveedor?.nombreRazonSocial, align: 'left', sortable: true },
-        { name: 'agencia', label: 'Agencia', field: row => row.agencia?.nombre, align: 'left', sortable: true }
+        { name: 'agencia', label: 'Agencia', field: row => row.agencia?.nombre, align: 'left', sortable: true },
+        { name: 'agenciaComprador', label: 'Agencia Comprador', field: row => row.agencia_comprador?.nombre, align: 'left', sortable: true }
       ]
     }
   },
