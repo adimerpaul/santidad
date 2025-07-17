@@ -275,7 +275,7 @@ class BuyController extends Controller{
 //            error_log(json_encode($buy));
             $buyNew = new Buy();
             $buyNew->user_id= $request->user()->id;
-            $buyNew->agencia_comprador_id = $request->user()->agencia_id;
+            $buyNew->agencia_comprador_id = $request->agencia_comprador_id;
             $buyNew->product_id= $buy['id'];
             $buyNew->lote= $buy['lote'];
             $buyNew->quantity= $buy['cantidadCompra'];
@@ -283,7 +283,7 @@ class BuyController extends Controller{
             $buyNew->price= $buy['price'];
             $buyNew->total= $buy['cantidadCompra'] * $buy['price'];
             $buyNew->dateExpiry= $buy['fechaVencimiento'];
-            $buyNew->agencia_id= $request->user()->agencia_id;
+            $buyNew->agencia_id= $request->agencia_id;
             $buyNew->factura= isset($request->factura) ? $request->factura : 0;
             $buyNew->date= date("Y-m-d");
             $buyNew->time= date("H:i:s");
