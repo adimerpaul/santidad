@@ -298,7 +298,7 @@ export default {
       saleDialogUpdate: false,
       saleUpate: {},
       dateIni: moment().startOf('day').format('YYYY-MM-DDTHH:mm'),
-      dateFin: moment().format('YYYY-MM-DDTHH:mm'),
+      dateFin: moment().add(2, 'minutes').format('YYYY-MM-DDTHH:mm'),
       loading: false,
       dialogSale: false,
       sale: {},
@@ -457,7 +457,7 @@ export default {
       this.saleUpate.details.forEach(detail => {
         total += detail.cantidad * detail.precioUnitario
       })
-      return total
+      return total.toFixed(2)
     },
     totalIngresos () {
       const monto = this.sales.filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO').reduce((a, b) => parseFloat(a) + parseFloat(b.montoTotal), 0)
