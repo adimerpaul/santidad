@@ -13,6 +13,18 @@ use App\Models\Notificacion;
 
 
 class ProductController extends Controller{
+    public function verificarStock($id)
+    {
+        $producto = Product::find($id);
+
+        if (!$producto) {
+            return response()->json(['error' => 'Producto no encontrado'], 404);
+        }
+
+        return response()->json([
+            'stock' => $producto->cantidad
+        ]);
+    }
     public function productsAll(Request $request){
         return Product::all();
     }

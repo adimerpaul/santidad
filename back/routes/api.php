@@ -81,4 +81,7 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
 
     Route::get('/historySucursal',[\App\Http\Controllers\TransferHistoryController::class,'historySucursal']);
     Route::get('/historySucursalProduct',[\App\Http\Controllers\TransferHistoryController::class,'historySucursalProduct']);
+
+    Route::get('productos/{id}/stock', [\App\Http\Controllers\ProductController::class, 'verificarStock']);
+
 });
