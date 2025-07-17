@@ -154,7 +154,9 @@
                 </div>
               </q-td>
               <q-td key="montoTotal" :props="props">
-                <span class="text-grey">{{ props.row.montoTotal }} Bs</span>
+                <span class="text-grey">{{ (props.row.montoTotal - props.row.descuento).toFixed(2) }} Bs</span>
+<!--                so tiene desucnto mostrar en rojo -->
+                <span v-if="props.row.descuento > 0" class="text-red-7 text-bold"> - {{ props.row.descuento.toFixed(2) }} Bs</span>
               </q-td>
               <q-td key="agencia" :props="props" class="text-grey">
                 <div class="text-caption" style="width: 100px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.agencia?.nombre }}</div>
@@ -307,7 +309,8 @@ export default {
       columns: [
         { name: 'opcion', label: 'Opcion', align: 'left', field: 'opcion' },
         { name: 'concepto', label: 'Concepto', align: 'left', field: 'concepto', sortable: true },
-        { name: 'montoTotal', label: 'Monto total', align: 'left', field: 'montoTotal', sortable: true },
+        // { name: 'montoTotal', label: 'Monto total', align: 'left', field: 'montoTotal', sortable: true },
+        { name: 'montoTotal', label: 'Monto total', align: 'left', field: (row) => (row.montoTotal - row.descuento).toFixed(2), sortable: true },
         { name: 'agencia', label: 'Agencia', align: 'left', field: 'agencia', sortable: true },
         // { name: 'metodoPago', label: 'Metodo de pago', align: 'left', field: 'metodoPago', sortable: true },
         { name: 'proveedorcliente', label: 'Proveedor / cliente', align: 'left', field: 'proveedor / cliente', sortable: true },
@@ -460,8 +463,9 @@ export default {
       return total.toFixed(2)
     },
     totalIngresos () {
-      const monto = this.sales.filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO').reduce((a, b) => parseFloat(a) + parseFloat(b.montoTotal), 0)
-      console.log('monto', monto)
+      const monto = this.sales
+        .filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO')
+        .reduce((a, b) => a + (parseFloat(b.montoTotal) - parseFloat(b.descuento || 0)), 0)
       return Math.round(monto * 100) / 100
     },
     totalEgresos () {

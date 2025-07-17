@@ -262,7 +262,7 @@
                 </q-card>
               </q-expansion-item>
             </q-list>
-            <q-btn @click="clickSale" class="full-width" no-caps label="Confirmar venta" :color="$store.productosVenta.length==0?'grey':'warning'" :disable="$store.productosVenta.length==0?true:false"/>
+            <q-btn @click="clickSale" class="full-width" no-caps label="Confirmar venta" :color="$store.productosVenta.length==0?'grey':'warning'" :disable="$store.productosVenta.length==0?true:false" :loading="loading"/>
           </q-card-section>
         </q-card>
       </div>
@@ -570,19 +570,58 @@ export default {
       })
       this.$store.productosVenta = []
     },
-    clickAddSale (product) {
-      product.cantidad--
-      product.cantidadPedida++
-      // si tiene procentaje colocar el precio mas la rebaja
-      if (product.porcentaje) {
-        product.precioVenta = this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
-      }
-      const productVenta = this.$store.productosVenta.find(p => p.id === product.id)
-      if (productVenta) {
-        productVenta.cantidadVenta++
-      } else {
-        product.cantidadVenta = 1
-        this.$store.productosVenta.push(product)
+    // clickAddSale (product) {
+    //   product.cantidad--
+    //   product.cantidadPedida++
+    //   // si tiene procentaje colocar el precio mas la rebaja
+    //   if (product.porcentaje) {
+    //     product.precioVenta = this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
+    //   }
+    //   const productVenta = this.$store.productosVenta.find(p => p.id === product.id)
+    //   if (productVenta) {
+    //     productVenta.cantidadVenta++
+    //   } else {
+    //     product.cantidadVenta = 1
+    //     this.$store.productosVenta.push(product)
+    //   }
+    // },
+    async clickAddSale (product) {
+      try {
+        this.loading = true
+        const res = await this.$axios.get(`productos/${product.id}/stock`)
+        this.loading = false
+        const stockDisponible = res.data.stock
+        if (stockDisponible <= 0 || product.cantidad <= 0) {
+          this.$q.notify({
+            color: 'negative',
+            message: 'Producto sin stock disponible',
+            icon: 'error',
+            position: 'top'
+          })
+          return
+        }
+
+        // ↓ Solo si hay stock, continúa
+        product.cantidad--
+        product.cantidadPedida++
+
+        if (product.porcentaje) {
+          product.precioVenta = this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
+        }
+
+        const productVenta = this.$store.productosVenta.find(p => p.id === product.id)
+        if (productVenta) {
+          productVenta.cantidadVenta++
+        } else {
+          product.cantidadVenta = 1
+          this.$store.productosVenta.push(product)
+        }
+      } catch (error) {
+        this.$q.notify({
+          color: 'negative',
+          message: 'Error al verificar stock',
+          icon: 'warning'
+        })
       }
     },
     agenciasGet () {
