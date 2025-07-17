@@ -82,7 +82,11 @@ class SalesController extends Controller{
         }
 
 
-        $montoTotal =  $request->montoTotal + $request->aporte - $request->descuento;
+        $montoTotalDetalles = 0;
+        foreach ($request->products as $product) {
+            $montoTotalDetalles += $product['cantidadPedida'] * $product['precioVenta'];
+        }
+        $montoTotal = $montoTotalDetalles + $request->aporte - $request->descuento;
         $sales = new Sales();
         $sales->numeroFactura = 0;
         $sales->fechaEmision = date('Y-m-d H:i:s');
@@ -103,7 +107,7 @@ class SalesController extends Controller{
             $detail = new Detail();
             $detail->cantidad = $product['cantidadPedida'];
             $detail->precioUnitario = $product['precioVenta'];
-            $detail->subTotal = $product['subTotal'];
+            $detail->subTotal =  $product['cantidadPedida'] * $product['precioVenta'];
             $detail->sale_id = $sales->id;
             $detail->descripcion = $product['nombre'];
             $detail->user_id = $request->user()->id;
