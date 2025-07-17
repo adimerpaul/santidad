@@ -10,15 +10,19 @@
           aria-label="Menu"
           @click="leftDrawerOpen = !leftDrawerOpen"
         />
-        <q-toolbar-title>
-          <span class="text-bold">{{ $store.user.name }}</span>
-          <q-chip
-            dense
-            v-if="$store.user.agencia"
-            class="bg-primary text-white text-subtitle2 text-bold"
-          >
+        <q-toolbar-title style="line-height: 0.7;padding: 0;margin: 0">
+          <div class="text-bold" style="line-height: 0.7;padding: 0;margin: 0">
+            {{ $store.user.name }} <br>
+            <q-chip
+              dense
+              size="10px"
+              v-if="$store.user.agencia"
+              class="bg-primary text-white text-subtitle2 text-bold"
+            >
             {{$store.user.agencia.nombre}}
           </q-chip>
+            <span class="text-caption">{{ $version }}</span>
+          </div>
         </q-toolbar-title>
         <div>
           <q-btn flat dense icon="notifications" color="primary">
@@ -302,7 +306,7 @@ export default {
   },
   mounted () {
     this.getNotificaciones()
-    setInterval(this.getNotificaciones, 180000)
+    setInterval(this.getNotificaciones, 200000)
   },
   methods: {
     logout () {

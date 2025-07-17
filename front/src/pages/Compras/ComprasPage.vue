@@ -141,10 +141,10 @@
                       </div>
                     </q-td>
                     <q-td key="cantidadVenta" :props="props">
-                      <q-input dense outlined class="super-small" v-model="props.row.lote" placeholder="Lote" style="width: 170px;" hide-hint />
-                      <q-input dense outlined class="super-small" type="date" v-model="props.row.fechaVencimiento" placeholder="Vencimiento" style="width: 170px;" hide-hint />
-                      <q-input dense outlined class="super-small" v-model="props.row.cantidadCompra" type="number" placeholder="Cantidad" style="width: 170px;" hide-hint />
-                      <q-input dense outlined class="super-small" v-model="props.row.price" type="number" step="0.01" placeholder="Precio" style="width: 170px;" hide-hint />
+                      <input v-model="props.row.lote" placeholder="Lote" style="width: 170px;"/><br>
+                      <input type="date" v-model="props.row.fechaVencimiento" placeholder="Vencimiento" style="width: 170px;"/><br>
+                      <input v-model="props.row.cantidadCompra" type="number" placeholder="Cantidad" style="width: 170px;"/><br>
+                      <input v-model="props.row.price" type="number" step="0.01" placeholder="Precio" style="width: 170px;"/><br>
                       <div><b>Subtotal:</b> {{(props.row.price*props.row.cantidadCompra).toFixed(2)}} Bs</div>
                     </q-td>
                   </q-tr>
