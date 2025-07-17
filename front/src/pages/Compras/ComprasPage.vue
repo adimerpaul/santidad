@@ -406,7 +406,7 @@ export default {
       })
     },
     agenciasGet () {
-      this.agencias = [{ nombre: 'Selecciona una agencia', id: 0 }]
+      this.agencias = [{ nombre: 'Almacen', id: 0 }]
       this.$axios.get('agencias').then(response => {
         this.agencias = this.agencias.concat(response.data)
       }).catch(error => {

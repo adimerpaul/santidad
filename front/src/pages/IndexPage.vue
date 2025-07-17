@@ -154,8 +154,7 @@
                 </div>
               </q-td>
               <q-td key="montoTotal" :props="props">
-                <span class="text-grey">{{ (props.row.montoTotal - props.row.descuento).toFixed(2) }} Bs</span>
-<!--                so tiene desucnto mostrar en rojo -->
+                <span class="text-grey">{{ (props.row.montoTotal).toFixed(2) }} Bs</span>
                 <span v-if="props.row.descuento > 0" class="text-red-7 text-bold"> - {{ props.row.descuento.toFixed(2) }} Bs</span>
               </q-td>
               <q-td key="agencia" :props="props" class="text-grey">
@@ -465,7 +464,7 @@ export default {
     totalIngresos () {
       const monto = this.sales
         .filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO')
-        .reduce((a, b) => a + (parseFloat(b.montoTotal) - parseFloat(b.descuento || 0)), 0)
+        .reduce((a, b) => a + (parseFloat(b.montoTotal)), 0)
       return Math.round(monto * 100) / 100
     },
     totalEgresos () {

@@ -15,7 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained();
             $table->foreignId('product_id')->constrained();
-            $table->foreignId('agencia_id')->constrained();
+//            $table->foreignId('agencia_id')->constrained();
+            $table->unsignedBigInteger('agencia_id')->nullable();
+            $table->foreign('agencia_id')->references('id')->on('agencias');
             $table->string('lote');
             $table->integer('quantity');
             $table->decimal('total', 10, 2);
