@@ -363,7 +363,8 @@ export default {
             buys: this.$store.productosCompra,
             factura: this.factura,
             agencia_id: this.agencia_id,
-            proveedor_id: this.proveedor_id
+            proveedor_id: this.proveedor_id,
+            agencia_comprador_id: this.$store.agencia_id
           })
           this.$alert.success('Compra realizada con éxito')
           this.$store.productosCompra = []
