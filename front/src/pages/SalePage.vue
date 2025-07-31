@@ -169,7 +169,7 @@
                           <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>
                         </template>
                       </q-input>
-<!--                      <pre>asa</pre>-->
+                      <pre>{{props.row.cantidadPedida}}</pre>
 <!--                      <input type="number" min="1" v-model="props.row.cantidadVenta" @change="cambioNumero(props.row,props.pageIndex)" style="width: 70px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>-->
                       <div class="text-grey">= Bs {{redondeo(props.row.cantidadVenta*props.row.precioVenta)}}</div>
                     </q-td>
@@ -591,6 +591,7 @@ export default {
         const res = await this.$axios.get(`productos/${product.id}/stock`)
         this.loading = false
         const stockDisponible = res.data.stock
+
         if (stockDisponible <= 0 || product.cantidad <= 0) {
           this.$q.notify({
             color: 'negative',
@@ -603,7 +604,7 @@ export default {
 
         // ↓ Solo si hay stock, continúa
         product.cantidad--
-        product.cantidadPedida++
+        // product.cantidadPedida = (product.cantidadPedida || 0) + 1
 
         if (product.porcentaje) {
           product.precioVenta = this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
@@ -612,11 +613,14 @@ export default {
         const productVenta = this.$store.productosVenta.find(p => p.id === product.id)
         if (productVenta) {
           productVenta.cantidadVenta++
+          productVenta.cantidadPedida++
         } else {
           product.cantidadVenta = 1
+          product.cantidadPedida = 1
           this.$store.productosVenta.push(product)
         }
       } catch (error) {
+        this.loading = false
         this.$q.notify({
           color: 'negative',
           message: 'Error al verificar stock',
