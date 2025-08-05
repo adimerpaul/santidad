@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ProductController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\NotificacionController;
@@ -83,5 +84,7 @@ Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::get('/historySucursalProduct',[\App\Http\Controllers\TransferHistoryController::class,'historySucursalProduct']);
 
     Route::get('productos/{id}/stock', [\App\Http\Controllers\ProductController::class, 'verificarStock']);
+    Route::post('/verificar-stock-venta', [ProductController::class, 'verificarStockVenta']);
+
 
 });

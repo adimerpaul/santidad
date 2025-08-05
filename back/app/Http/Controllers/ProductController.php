@@ -13,7 +13,35 @@ use App\Models\Notificacion;
 
 
 class ProductController extends Controller{
-    public function verificarStock($id)
+    public function verificarStockVenta(Request $request)
+    {
+        $productos = $request->input('productos', []);
+        $agencia_id = $request->input('agencia_id');
+
+        $errores = [];
+
+        foreach ($productos as $item) {
+            $producto = Product::find($item['id']);
+            if (!$producto) {
+                $errores[] = "Producto con ID {$item['id']} no encontrado.";
+                continue;
+            }
+
+            $campoCantidad = $agencia_id ? 'cantidadSucursal' . $agencia_id : 'cantidadAlmacen';
+            $stockDisponible = $producto->$campoCantidad ?? 0;
+
+            if ($item['cantidadVenta'] > $stockDisponible) {
+                $errores[] = "Stock insuficiente para '{$producto->nombre}'. Solo hay {$stockDisponible} disponibles.";
+            }
+        }
+
+        if (!empty($errores)) {
+            return response()->json(['errores' => $errores], 400);
+        }
+
+        return response()->json(['message' => 'Stock verificado correctamente']);
+    }
+    public function verificarStock(Request $request, $id)
     {
         $producto = Product::find($id);
 
@@ -21,8 +49,13 @@ class ProductController extends Controller{
             return response()->json(['error' => 'Producto no encontrado'], 404);
         }
 
+        $agencia_id = $request->input('agencia_id');
+        $campo = $agencia_id ? 'cantidadSucursal' . $agencia_id : 'cantidadAlmacen';
+
+        $stock = $producto->$campo ?? 0;
+
         return response()->json([
-            'stock' => $producto->cantidad
+            'stock' => $stock
         ]);
     }
     public function productsAll(Request $request){

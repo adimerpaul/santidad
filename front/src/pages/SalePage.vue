@@ -169,7 +169,7 @@
                           <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>
                         </template>
                       </q-input>
-                      <pre>{{props.row.cantidadPedida}}</pre>
+<!--                      <pre>{{props.row.cantidadPedida}}</pre>-->
 <!--                      <input type="number" min="1" v-model="props.row.cantidadVenta" @change="cambioNumero(props.row,props.pageIndex)" style="width: 70px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>-->
                       <div class="text-grey">= Bs {{redondeo(props.row.cantidadVenta*props.row.precioVenta)}}</div>
                     </q-td>
@@ -488,40 +488,56 @@ export default {
         this.clientSearch()
       }
     },
-    clickSale () {
+    async clickSale () {
+      // Validación rápida en frontend
       let hayProblema = false
       this.$store.productosVenta.forEach(p => {
-        const product = this.products.find(pr => pr.id === p.id)
-        if (product) {
-          if ((p.cantidadVenta) > product.cantidadReal) {
-            this.$alert.error(`No hay suficiente stock de ${product.nombre}`)
-            hayProblema = true
-            return false
-          }
-        }
         if (!p.precioVenta || p.precioVenta <= 0) {
           this.$alert.error(`El precio de venta de "${p.nombre}" debe ser mayor a 0.`)
           hayProblema = true
-          return false
         }
       })
+      if (hayProblema) return
 
-      if (hayProblema) {
-        return false
+      try {
+        this.loading = true
+
+        // Preparamos los datos para enviar al backend
+        const productos = this.$store.productosVenta.map(p => ({
+          id: p.id,
+          cantidadVenta: p.cantidadVenta
+        }))
+
+        await this.$axios.post('verificar-stock-venta', {
+          productos,
+          agencia_id: this.agencia_id
+        })
+
+        // Si todo bien, abrir el diálogo
+        this.aporte = 0
+        this.descuento = 0
+        this.saleDialog = true
+        this.efectivo = 0
+        this.qr = false
+        this.client = {
+          numeroDocumento: '0',
+          nombreRazonSocial: 'SN',
+          email: '',
+          complemento: ''
+        }
+        this.metodoPago = 'Efectivo'
+      } catch (error) {
+        this.loading = false
+        if (error.response && error.response.data && error.response.data.errores) {
+          error.response.data.errores.forEach(msg => {
+            this.$alert.error(msg)
+          })
+        } else {
+          this.$alert.error('Error al verificar stock')
+        }
+      } finally {
+        this.loading = false
       }
-      this.aporte = 0
-      this.descuento = 0
-      this.saleDialog = true
-      // this.aporte = false
-      this.efectivo = 0
-      this.qr = false
-      this.client = {
-        numeroDocumento: '0',
-        nombreRazonSocial: 'SN',
-        email: '',
-        complemento: ''
-      }
-      this.metodoPago = 'Efectivo'
     },
     precioVenta (n) {
       if (n.precioVenta === '') {
@@ -588,7 +604,11 @@ export default {
     async clickAddSale (product) {
       try {
         this.loading = true
-        const res = await this.$axios.get(`productos/${product.id}/stock`)
+        const res = await this.$axios.get(`productos/${product.id}/stock`, {
+          params: {
+            agencia_id: this.agencia_id
+          }
+        })
         this.loading = false
         const stockDisponible = res.data.stock
 
