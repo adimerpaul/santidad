@@ -161,7 +161,7 @@
             <q-input
                 filled
                 v-model="dato2.email"
-                type="email"
+                type="text"
                 label="Email"
                 hint="Correo electronico"
                 lazy-rules
