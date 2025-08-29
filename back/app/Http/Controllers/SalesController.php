@@ -10,6 +10,8 @@ use App\Http\Requests\StoreSalesRequest;
 use App\Http\Requests\UpdateSalesRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+
 
 class SalesController extends Controller{
     public function salesAnular($id, Request $request){
@@ -349,4 +351,87 @@ class SalesController extends Controller{
             ->get();
         return $sales;
     }
+public function topSellers(Request $request)
+{
+    // ?days=1 (hoy) | 7 | 30 ...
+    $days = (int) $request->get('days', 1);
+    $days = max($days, 1);
+
+    // ?agencia_id=2 (opcional)
+    $agenciaId = $request->get('agencia_id');
+
+    // Rango de fechas basado en sales.fechaEmision
+    $start = Carbon::now()->subDays($days - 1)->startOfDay();
+    $end   = Carbon::now()->endOfDay();
+
+    // 1) Cantidades por producto (solo ventas válidas)
+    $base = DB::table('details as d')
+        ->join('sales as s', 's.id', '=', 'd.sale_id')
+        ->whereBetween('s.fechaEmision', [$start, $end])
+        ->where('s.estado', '!=', 'ANULADO')
+        ->where('s.tipoVenta', 'Ingreso');
+
+    if (!empty($agenciaId)) {
+        $base->where('s.agencia_id', $agenciaId);
+    }
+
+    $rows = $base
+        ->select('d.product_id', DB::raw('SUM(d.cantidad) as cantidad_total'))
+        ->groupBy('d.product_id')
+        ->orderByDesc('cantidad_total')
+        ->limit(20)
+        ->get();
+
+    if ($rows->isEmpty()) {
+        return response()->json([]);
+    }
+
+    // 2) Datos de producto
+    $ids = $rows->pluck('product_id')->all();
+
+    // Traemos productos y NORMALIZAMOS imagen como en ProductController
+    $products = DB::table('products as p')
+        ->whereIn('p.id', $ids)
+        ->select('p.id','p.nombre','p.imagen','p.precio','p.porcentaje','p.cantidad')
+        ->get()
+        ->map(function ($p) {
+            $nombre = $p->imagen;
+
+            // Si viene vacío o el archivo no existe, forzar el default EXACTO que usas
+            if (!$nombre || !file_exists(public_path('/images/' . $nombre))) {
+                $p->imagen = 'productDefault.jpg';
+            }
+
+            return $p;
+        })
+        ->keyBy('id');
+
+    // 3) Armar respuesta respetando el orden de ventas
+    $out = $rows->map(function ($r) use ($products) {
+        $p = $products[$r->product_id] ?? null;
+        if (!$p) return null;
+
+        // Precios con % de descuento
+        $precio = (float) $p->precio;
+        $precioNormal = null;
+        if (!empty($p->porcentaje) && (int)$p->porcentaje > 0) {
+            $precioNormal = $precio;
+            $precio = round($precio - ($precio * $p->porcentaje / 100), 2);
+        }
+
+        return [
+            'id'           => (int)$p->id,
+            'nombre'       => $p->nombre,
+            'imagen'       => $p->imagen ?: 'productDefault.jpg', // ya normalizado arriba
+            'precio'       => number_format($precio, 2, '.', ''),
+            'precioNormal' => $precioNormal,
+            'porcentaje'   => (int)($p->porcentaje ?? 0),
+            'cantidad'     => (int)($p->cantidad ?? 0),   // stock actual
+            'vendido'      => (int)$r->cantidad_total,    // vendidos en el rango
+        ];
+    })->filter()->values();
+
+    return response()->json($out);
+}
+
 }

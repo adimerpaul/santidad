@@ -71,10 +71,10 @@
             />
 <!--            input select-->
             <q-select
-                outlined
+              outlined
               v-model="carousel.tipo"
-              :options="['Normal','Mini']"
-              label="Estado"
+              :options="['Normal','Mini','Medio']"
+              label="Tipo"
               dense
             />
           </q-card-section>

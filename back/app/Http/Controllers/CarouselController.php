@@ -3,98 +3,130 @@
 namespace App\Http\Controllers;
 
 use App\Models\Carousel;
-use App\Http\Requests\StoreCarouselRequest;
-use App\Http\Requests\UpdateCarouselRequest;
 use Illuminate\Http\Request;
 
-class CarouselController extends Controller{
-    function carouselsPage(){
-        return Carousel::where('status','active')->where('tipo','Normal')->get();
+class CarouselController extends Controller
+{
+    /**
+     * Carrusel principal (tipo: Normal)
+     */
+    public function carouselsPage()
+    {
+        return Carousel::where('status', 'active')
+            ->where('tipo', 'Normal')
+            ->orderBy('id', 'desc')
+            ->get();
     }
-    function carouselsMini(){
-        $caroulestMini= Carousel::where('status','active')->where('tipo','Mini')->get();
-        $carouselRes=[];
-        $i=0;
-        foreach ($caroulestMini as $carousel){
-            if($i<10){
-                $carouselRes[]=$carousel;
-            }
-            $i++;
-        }
-        foreach ($caroulestMini as $carousel){
-            if($i<10){
-                $carouselRes[]=$carousel;
-            }
-            $i++;
-        }
-        foreach ($caroulestMini as $carousel){
-            if($i<10){
-                $carouselRes[]=$carousel;
-            }
-            $i++;
-        }
-        foreach ($caroulestMini as $carousel){
-            if($i<10){
-                $carouselRes[]=$carousel;
-            }
-            $i++;
-        }
-        foreach ($caroulestMini as $carousel){
-            if($i<10){
-                $carouselRes[]=$carousel;
-            }
-            $i++;
-        }
-        return $carouselRes;
+
+    /**
+     * Carrusel mini (tipo: Mini) — devuelve hasta 10
+     */
+    public function carouselsMini()
+    {
+        return Carousel::where('status', 'active')
+            ->where('tipo', 'Mini')
+            ->orderBy('id', 'desc')
+            ->take(10)
+            ->get();
     }
-    public function index(){ return Carousel::orderBy('id','desc')->get(); }
-    public function show(Carousel $carousel){ return $carousel; }
-    function storeFile(Request $request, $id) {
-        // Validar si se envía una imagen, pero no es obligatorio
 
+    /**
+     * Carrusel medio (tipo: Medio) — para reemplazar el banner
+     */
+    public function carouselsMedio()
+    {
+        return Carousel::where('status', 'active')
+            ->where('tipo', 'Medio')
+            ->orderBy('id', 'desc')
+            ->get();
+    }
 
-        // Buscar el registro en la base de datos
+    /**
+     * Listado total (admin)
+     */
+    public function index()
+    {
+        return Carousel::orderBy('id', 'desc')->get();
+    }
+
+    /**
+     * Mostrar uno (admin)
+     */
+    public function show(Carousel $carousel)
+    {
+        return $carousel;
+    }
+
+    /**
+     * Crear (imagen obligatoria)
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|image|max:2048',
+        ]);
+
+        $imageName = time() . '.' . $request->file->extension();
+        $request->file->move(public_path('images'), $imageName);
+
+        // Normaliza campos de imagen
+        $request->merge([
+            'image'           => $imageName,
+            'url'             => $imageName,
+            'imageResponsive' => $imageName,
+        ]);
+
+        return Carousel::create($request->all());
+    }
+
+    /**
+     * Actualizar SIN cambiar imagen (usa storeFile para cambiarla)
+     */
+    public function update(Request $request, $id)
+    {
+        $request->merge(['url' => $request->url ?? '']);
+
+        $carousel = Carousel::findOrFail($id);
+        $carousel->update($request->all());
+
+        return $carousel;
+    }
+
+    /**
+     * Actualizar CON archivo (imagen opcional)
+     */
+    public function storeFile(Request $request, $id)
+    {
         $carousel = Carousel::findOrFail($id);
 
-        // Si el archivo existe, procesarlo
         if ($request->hasFile('file')) {
-            $validated = $request->validate([
+            $request->validate([
                 'file' => 'nullable|image|max:2048',
             ]);
+
             $imageName = time() . '.' . $request->file->extension();
             $request->file->move(public_path('images'), $imageName);
 
-            // Actualizar los campos de la imagen si hay una
             $request->merge([
-                'image' => $imageName,
-                'url' => $imageName,
+                'image'           => $imageName,
+                'url'             => $imageName,
                 'imageResponsive' => $imageName,
             ]);
         }
 
-        // Actualizar el resto de los campos
         $carousel->update($request->all());
 
         return $carousel;
     }
-    public function store(Request $request){
-        $validated = $request->validate([
-            'file' => 'required|image|max:2048',
-        ]);
-        $imageName = time().'.'.$request->file->extension();
-        $request->file->move(public_path('images'), $imageName);
-        $request->merge(['image' => $imageName]);
-        $request->merge(['url' => $imageName]);
-        $request->merge(['imageResponsive' => $imageName]);
 
-
-        return Carousel::create($request->all());
-    }
-    public function update(Request $request, $id){
-        $url = isset($request->url) ? $request->url : '';
-        $request->merge(['url' => $url]);
+    /**
+     * Eliminar (admin)
+     */
+    public function destroy($id)
+    {
         $carousel = Carousel::findOrFail($id);
-        $carousel->update($request->all());
-        return $carousel;
+        $carousel->delete();
+
+        return response()->json(['deleted' => true]);
     }
 }

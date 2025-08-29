@@ -46,7 +46,7 @@ class ProductController extends Controller{
         $producto = Product::find($id);
 
         if (!$producto) {
-            return response()->json(['error' => 'Producto no encontrado'], 404);
+            return response()->json(['error' => 'Producto no encontrado Product controller'], 404);
         }
 
         $agencia_id = $request->input('agencia_id');

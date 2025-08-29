@@ -184,6 +184,18 @@
         <q-input label-color="black" type="textarea" outlined v-model="product.descripcion" label="Descripción" dense hint="Agrega una descripción del producto"/>
         <div class="text-center borderRoundGrey">
           <q-toggle :label="product.activo" color="green" false-value="INACTIVO" true-value="ACTIVO" v-model="product.activo" class="text-grey-9 text-bold" />
+          <!-- NUEVO: solo permite oferta si está ACTIVO -->
+          <div class="text-center q-mt-sm">
+            <q-toggle
+            v-model="product.en_oferta"
+            :disable="!isActive"
+            color="orange"
+            label="Poner en oferta"
+          />
+          <div v-if="!isActive" class="text-caption text-grey">
+            Activa el producto para poder ponerlo en oferta.
+          </div>
+        </div>
         </div>
         <q-btn class="full-width" rounded
                :color="!product.nombre ? 'grey' : 'green'"
@@ -388,8 +400,21 @@ export default {
       quantity: 1,
       dateExpiry: ''
     }
-    this.compraTotal = 0
+    // 👇 Normalizaciones CLAVE:
+    //   - activo siempre como 'ACTIVO' / 'INACTIVO'
+    const a = this.product.activo
+    const isOn = a === 'ACTIVO' || a === true || a === 1 || a === '1'
+    this.product.activo = isOn ? 'ACTIVO' : 'INACTIVO'
+
+    //   - en_oferta siempre boolean
+    this.product.en_oferta = this.product.en_oferta === true || this.product.en_oferta === 'true' || Number(this.product.en_oferta) === 1
   },
+  watch: {
+    'product.activo' (v) {
+      if (v !== 'ACTIVO') this.product.en_oferta = false
+    }
+  },
+
   methods: {
     historySucursalProduct (product) {
       this.loading = true
@@ -620,6 +645,10 @@ export default {
     },
     isAdmin () {
       return this.$store.user && Number(this.$store.user.id) === 1
+    },
+    // 👇 nuevo
+    isActive () {
+      return String(this.product.activo).toUpperCase() === 'ACTIVO'
     }
   }
 }

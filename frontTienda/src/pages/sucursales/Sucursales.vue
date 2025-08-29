@@ -1,92 +1,175 @@
 <template>
-  <q-page class="q-pa-xs bg-grey-3">
-    <div class="page-wrapper">
-      <!-- Carrusel continuo arriba de la barra azul -->
-      <div class="carousel-container">
-        <div class="image-track">
-          <img v-for="(c,i) in carouselsMini" :key="i" :src="`${$url}../images/${c.image}`" alt="Imagen 1" />
-        </div>
+  <q-page class="q-pa-none bg-grey-2">
+    <!-- ===== Barra superior (igual al principal) ===== -->
+    <div class="barra-superior">
+      <q-btn flat round dense icon="menu" @click="toggleDrawer" size="md" />
+
+      <div class="search-container">
+        <q-input
+          v-model="search"
+          dense
+          outlined
+          rounded
+          @keyup.enter="buscar"
+          placeholder="Buscar Producto / Palabra Clave"
+          class="search-input"
+        >
+          <template v-slot:prepend><q-icon name="search" /></template>
+        </q-input>
+        <q-btn
+          label="Buscar"
+          rounded
+          class="search-btn"
+          :loading="loading"
+          @click="buscar"
+          no-caps
+        />
       </div>
-      <!-- Barra azul -->
-      <div class="blue-bar">
-        <img src="images/logo.png" alt="Logo" class="logo" />
-        <!-- Botones a la derecha -->
-        <div class="nav-buttons">
-          <!-- Icono de carrito de compras -->
-          <i class="fas fa-shopping-cart nav-icon"></i>
-          <!-- Icono de lupa de búsqueda -->
-          <i class="fas fa-search nav-icon"></i>
-          <button class="nav-button" @click="$router.push('/')">
-            INICIO
-          </button>
-          <button class="nav-button" @click="$router.push('/sucursales')">
-            SUCURSALES
-          </button>
+    </div>
+
+    <!-- ☰ Drawer -->
+    <div v-if="drawer" class="menu-navegacion">
+      <div class="menu-item" @click="navigateTo('/')">
+        <q-icon name="home" class="q-mr-sm" /> Inicio
+      </div>
+      <div class="menu-item" @click="navigateTo('/sucursales')">
+        <q-icon name="store" class="q-mr-sm" /> Sucursales
+      </div>
+    </div>
+
+    <!-- ===== Contenido ===== -->
+    <div class="page-wrapper q-pa-md">
+      <div class="encabezado">
+        <div class="titulo-wrap">
+          <img src="images/logo.png" alt="Logo" class="logo" />
+          <div>
+            <h1 class="titulo">Nuestras Sucursales</h1>
+            <div class="subtitulo">Encuentra la más cercana, revisa horarios y contáctanos.</div>
+          </div>
         </div>
       </div>
 
-      <!-- Carrusel grande debajo de la barra azul -->
-    </div>
-    <div class="row">
-      <div class="col-12">
-        <label class="text-bold text-h6">Sucursales:</label>
-      </div>
-      <div class="col-12 col-md-5">
-        <q-card>
-          <q-card-section>
-            <q-list>
-              <q-expansion-item
-                v-for="sucursal in sucursales"
-                :key="sucursal.id"
-                clickable
-                @click="clickDetalleSucursal(sucursal)"
-                :label="sucursal.nombre"
-                :caption="sucursal.direccion"
-                class="text-bold"
-              >
-                <q-item-section>
-                  <q-item-label>
-<!--                    <div class="text-h6">{{sucursal.nombre}}</div>-->
-<!--                    direccion telefono atencion horario whatsapp facebook-->
-                    <div class="text-caption">
-                      <span class="text-bold text-subtitle2">Direccion</span> {{sucursal.direccion}}
-                      <br>
-                      <span class="text-bold text-subtitle2">Telefono</span> {{sucursal.telefono}}
-                      <br>
-                      <span class="text-bold text-subtitle2">Atencion</span> {{sucursal.atencion}}
-                      <br>
-                      <span class="text-bold text-subtitle2">Horario</span> {{sucursal.horario}}
-                      <br>
-<!--                      <i class="fa-brands fa-whatsapp"></i>-->
-                      <q-btn flat dense color="success" icon="fa-brands fa-whatsapp" :href="sucursal.whatsapp"></q-btn>
-                      <span class="text-bold text-subtitle2">Whatsapp</span> {{sucursal.whatsapp}}
-                      <br>
-                      <q-btn flat dense color="primary" icon="fa-brands fa-facebook" :href="sucursal.facebook"></q-btn>
-                      <span class="text-bold text-subtitle2">Facebook</span> {{sucursal.facebook}}
+      <div class="row q-col-gutter-md">
+        <!-- Lista -->
+        <div class="col-12 col-md-5">
+          <q-card class="card-elevada">
+            <q-card-section class="q-pb-sm">
+              <div class="text-h6 q-mb-xs">Sucursales</div>
+              <div class="text-caption text-blue-grey-6">Toca una sucursal para centrar el mapa y ver detalles.</div>
+            </q-card-section>
+            <q-separator />
+            <q-card-section class="q-pt-none">
+              <q-list separator>
+                <q-expansion-item
+                  v-for="sucursal in sucursales"
+                  :key="sucursal.id"
+                  switch-toggle-side
+                  expand-separator
+                  :header-class="{'row-active': sucursal.id===activeId}"
+                  @show="focusSucursal(sucursal, true)"
+                >
+                  <template v-slot:header>
+                    <q-item-section avatar>
+                      <q-avatar :color="sucursal.id===activeId ? 'primary' : 'grey-7'"
+                                text-color="white" icon="store" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="text-weight-bold">{{ sucursal.nombre }}</q-item-label>
+                      <q-item-label caption>{{ sucursal.direccion }}</q-item-label>
+                    </q-item-section>
+                    <q-item-section side>
+                      <q-badge :color="sucursal.id===activeId ? 'primary' : 'blue-6'" outline>Ver</q-badge>
+                    </q-item-section>
+                  </template>
+
+                  <div class="q-pa-sm">
+                    <div class="chips">
+                      <q-chip dense icon="location_on" color="grey-2" text-color="blue-grey-9">{{ sucursal.direccion }}</q-chip>
+                      <q-chip dense icon="call" color="grey-2" text-color="blue-grey-9">{{ sucursal.telefono }}</q-chip>
+                      <q-chip dense icon="schedule" color="grey-2" text-color="blue-grey-9">{{ sucursal.horario }}</q-chip>
+                      <q-chip dense icon="event_available" color="grey-2" text-color="blue-grey-9">{{ sucursal.atencion }}</q-chip>
                     </div>
-                  </q-item-label>
-                </q-item-section>
-              </q-expansion-item>
-            </q-list>
-          </q-card-section>
-        </q-card>
-      </div>
-      <div class="col-12 col-md-7">
-        <div id="map" style="height: 500px;" v-if="!loading">
-          <l-map ref="map" :zoom="zoom" :center="center">
-            <l-tile-layer
-              url="https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}"
-              layer-type="base"
-              name="OpenStreetMap"
-            ></l-tile-layer>
-            <l-marker
-              v-for="sucursal in sucursales"
-              :key="sucursal.id"
-              :lat-lng="[sucursal.latitud, sucursal.longitud]"
-              @click="clickDetalleSucursal(sucursal)">
-              <l-tooltip :content="sucursal.nombre" />
-            </l-marker>
-          </l-map>
+
+                    <div class="q-mt-sm q-gutter-sm">
+                      <q-btn :href="sucursal.whatsapp" target="_blank" color="green-6" icon="fab fa-whatsapp" label="WhatsApp" no-caps dense unelevated />
+                      <q-btn :href="sucursal.facebook" target="_blank" color="indigo-7" icon="fab fa-facebook" label="Facebook" no-caps dense unelevated />
+                      <q-btn outline color="primary" icon="my_location" label="Centrar en mapa" no-caps dense @click="focusSucursal(sucursal, true)" />
+                    </div>
+                  </div>
+                </q-expansion-item>
+              </q-list>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Mapa -->
+        <div class="col-12 col-md-7">
+          <q-card class="card-elevada mapa-card">
+            <q-card-section class="q-pb-none flex items-center justify-between">
+              <div class="text-h6">Mapa</div>
+              <div class="q-gutter-xs">
+                <q-btn dense outline no-caps color="primary" icon="near_me" label="Mi ubicación" @click="goToMyLocation"/>
+                <q-btn dense outline no-caps color="grey-8" icon="refresh" label="Ajustar a sucursales" @click="fitToAll()"/>
+              </div>
+            </q-card-section>
+            <q-card-section>
+              <div class="mapa-wrap" v-if="!loadingMapa">
+                <l-map
+                  ref="map"
+                  :zoom="zoom"
+                  :center="center"
+                  :use-global-leaflet="false"
+                  :options="mapOptions"
+                  style="height: 520px; border-radius: 14px; overflow: hidden;"
+                >
+                  <!-- Capa principal -->
+                  <l-tile-layer
+                    ref="tilesMain"
+                    url="https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}"
+                    layer-type="base"
+                  />
+                  <!-- Fallback OSM -->
+                  <l-tile-layer
+                    ref="tilesFallback"
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    layer-type="overlay"
+                    :opacity="fallbackOpacity"
+                    attribution="&copy; OpenStreetMap contributors"
+                  />
+
+                  <!-- Marcadores -->
+                  <l-marker
+                    v-for="sucursal in sucursales"
+                    :key="sucursal.id"
+                    :lat-lng="[Number(sucursal.latitud), Number(sucursal.longitud)]"
+                    :icon="sucursal.id===activeId ? icons.active : icons.default"
+                    :z-index-offset="sucursal.id===activeId ? 1000 : 0"
+                    @click="focusSucursal(sucursal, false)"
+                  >
+                    <l-popup :options="{autoClose:true, closeButton:true}">
+                      <div class="popup">
+                        <div class="popup-title">{{ sucursal.nombre }}</div>
+                        <div class="popup-sub">{{ sucursal.direccion }}</div>
+                        <div class="q-mt-xs q-gutter-xs">
+                          <a :href="sucursal.whatsapp" target="_blank" class="popup-btn">WhatsApp</a>
+                          <a :href="sucursal.facebook" target="_blank" class="popup-btn alt">Facebook</a>
+                        </div>
+                      </div>
+                    </l-popup>
+                    <l-tooltip :content="sucursal.nombre" />
+                  </l-marker>
+
+                  <!-- Mi ubicación -->
+                  <l-marker v-if="userLatLng" :lat-lng="userLatLng" :icon="icons.user" :z-index-offset="500">
+                    <l-tooltip content="Estás aquí" />
+                  </l-marker>
+                </l-map>
+              </div>
+              <div v-else class="q-pa-lg flex flex-center">
+                <q-spinner-dots size="40px" color="primary" />
+              </div>
+            </q-card-section>
+          </q-card>
         </div>
       </div>
     </div>
@@ -94,267 +177,221 @@
 </template>
 
 <script>
-import { LMap, LTileLayer, LMarker, LTooltip } from '@vue-leaflet/vue-leaflet'
+import { nextTick } from 'vue' // ✅ usar nextTick (no this.$nextTick)
+import { LMap, LTileLayer, LMarker, LTooltip, LPopup } from '@vue-leaflet/vue-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
-import 'leaflet/dist/images/marker-icon.png'
-import 'leaflet/dist/images/marker-shadow.png'
 
 export default {
   name: 'SucursalesPage',
-  components: {
-    LMap,
-    LTileLayer,
-    LMarker,
-    LTooltip
-  },
+  components: { LMap, LTileLayer, LMarker, LTooltip, LPopup },
   data () {
     return {
-      carouselsMini: [],
+      // buscador
+      search: this.$route.query?.q || '',
+      loading: false,
+
+      // UI / nav
+      drawer: false,
+
+      // mapa
       sucursales: [],
       center: [-17.957072, -67.1217629],
-      l: L,
       zoom: 13,
-      primerClick: true,
-      loading: false
+      loadingMapa: false,
+      mapOptions: { zoomControl: true, scrollWheelZoom: true, preferCanvas: true },
+      fallbackOpacity: 0,
+
+      // estado
+      activeId: null,
+      userLatLng: null,
+
+      // iconos
+      icons: {
+        default: null,
+        active: null,
+        user: null
+      },
+
+      // handler para listeners (para remover luego)
+      invalidateHandler: null
     }
   },
   created () {
+    this.buildIcons()
     this.sucursalesGet()
-    this.carouselsMiniGet()
+  },
+  mounted () {
+    // ✅ sin $once: registra y remueve en beforeUnmount
+    this._invalidateHandler = () => {
+      const map = this.$refs.map?.leafletObject || this.$refs.map?.mapObject
+      if (map) map.invalidateSize()
+    }
+    window.addEventListener('resize', this._invalidateHandler)
+    document.addEventListener('visibilitychange', this._invalidateHandler)
+  },
+  beforeUnmount () {
+    // ✅ reemplaza $once/$off por remover listeners aquí
+    if (this._invalidateHandler) {
+      window.removeEventListener('resize', this._invalidateHandler)
+      document.removeEventListener('visibilitychange', this._invalidateHandler)
+    }
   },
   methods: {
-    carouselsMiniGet () {
-      this.$axios.get('carouselsMini').then(response => {
-        this.carouselsMini = response.data
-      })
+    /* ===== buscador ===== */
+    toggleDrawer () { this.drawer = !this.drawer },
+    navigateTo (ruta) { this.$router.push(ruta); this.drawer = false },
+
+    async buscar () { // ✅ async + await nextTick
+      const q = (this.search || '').trim()
+      if (!q) return
+      this.loading = true
+      this.$router.push({ path: '/buscar', query: { q, page: 1 } })
+      await nextTick()
+      this.loading = false
     },
+
+    /* ===== datos ===== */
     sucursalesGet () {
       this.$q.loading.show()
-      this.$axios.get('sucursales').then(response => {
-        this.sucursales = response.data
-      }).finally(() => {
-        this.$q.loading.hide()
+      this.$axios.get('sucursales')
+        .then(({ data }) => {
+          this.sucursales = (data || []).map(s => ({
+            ...s,
+            latitud: Number(s.latitud),
+            longitud: Number(s.longitud)
+          }))
+          this.$nextTick(() => this.fitToAll()) // aquí sí es válido usar callback o cambia a await nextTick()
+        })
+        .finally(() => this.$q.loading.hide())
+    },
+
+    /* ===== mapa ===== */
+    fitToAll () {
+      const map = this.$refs.map?.leafletObject || this.$refs.map?.mapObject
+      if (!map || this.sucursales.length === 0) return
+      const bounds = L.latLngBounds(this.sucursales.map(s => [s.latitud, s.longitud]))
+      map.fitBounds(bounds, { paddingTopLeft: [340, 40], paddingBottomRight: [40, 40], maxZoom: 16 })
+    },
+    focusSucursal (s, openPopup) {
+      if (!s) return
+      this.activeId = s.id
+      const map = this.$refs.map?.leafletObject || this.$refs.map?.mapObject
+      if (map && map.flyTo) map.flyTo([s.latitud, s.longitud], 16, { duration: 0.6 })
+      if (openPopup) {
+        // abrir popup del marcador activo
+        this.$nextTick(() => {
+          const layers = []
+          map.eachLayer(l => { if (l.getLatLng && l.openPopup) layers.push(l) })
+          const mk = layers.find(l => {
+            const ll = l.getLatLng?.()
+            return ll && Math.abs(ll.lat - s.latitud) < 1e-6 && Math.abs(ll.lng - s.longitud) < 1e-6
+          })
+          mk && mk.openPopup()
+        })
+      }
+    },
+    goToMyLocation () {
+      if (!navigator.geolocation) return
+      navigator.geolocation.getCurrentPosition(({ coords }) => {
+        this.userLatLng = [coords.latitude, coords.longitude]
+        const map = this.$refs.map?.leafletObject || this.$refs.map?.mapObject
+        if (map && map.flyTo) map.flyTo(this.userLatLng, 15, { duration: 0.6 })
       })
     },
-    clickDetalleSucursal (sucursal) {
-      this.center = [sucursal.latitud, sucursal.longitud]
-      this.loading = true
-      this.zoom = 16
-      this.loading = false
+
+    /* ===== iconos SVG sin assets externos ===== */
+    // buildIcons() mejorado con diseño moderno
+    buildIcons () {
+      // Pin moderno por defecto
+      const mk = (fill = '#2563eb', stroke = '#1e40af', size = 40) => {
+        const svg = `
+          <svg width="${size}" height="${size}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <!-- Sombra -->
+            <circle cx="24" cy="46" r="6" fill="rgba(0,0,0,0.25)" />
+            <!-- Pin -->
+            <path d="M24 4C15 4 8 11 8 20c0 11 13 23 14.5 25a2 2 0 0 0 3 0C27 43 40 31 40 20c0-9-7-16-16-16z"
+                  fill="${fill}" stroke="${stroke}" stroke-width="1.5" />
+            <!-- Círculo interno -->
+            <circle cx="24" cy="20" r="6" fill="white" stroke="${stroke}" stroke-width="2"/>
+          </svg>
+        `
+        return L.divIcon({
+          className: 'mk-modern',
+          html: svg,
+          iconSize: [size, size],
+          iconAnchor: [size / 2, size],
+          popupAnchor: [0, -size / 2]
+        })
+      }
+
+      // Pin activo (más grande y en otro color)
+      const active = (size = 48) => mk('#10b981', '#065f46', size)
+
+      // Ubicación del usuario
+      const user = (size = 30) => {
+        const svg = `
+          <svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" fill="#3b82f6"/>
+            <circle cx="12" cy="12" r="4" fill="white"/>
+          </svg>`
+        return L.divIcon({ className: 'mk-user', html: svg, iconSize: [size, size], iconAnchor: [size / 2, size / 2] })
+      }
+
+      this.icons.default = mk('#2563eb', '#1e40af', 40) // Azul elegante
+      this.icons.active = active(48) // Verde moderno
+      this.icons.user = user(30)
     }
   }
 }
 </script>
 
 <style scoped>
-/* Estilos para el carrusel continuo */
-.carousel-container {
-  width: 100vw;
-  height: auto;
-  overflow: hidden;
-  position: relative;
-  margin: 0;
-  padding: 0;
-  line-height: 0;
+/* ===== barra superior ===== */
+.barra-superior{
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+  width: 90vw; max-width: 1100px; z-index: 999;
+  background: #fff; display: flex; align-items: center; gap: 12px;
+  padding: 6px 12px; border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(9, 0, 141, 0.2);
 }
+.search-container{ display:flex; flex:1; gap:8px; align-items:center; }
+.search-input{ flex:1; min-width:120px; }
+.search-btn{ width:90px; min-width:60px; }
+.search-btn:deep(.q-btn__content){ font-weight:600; }
 
-.image-track {
-  display: flex;
-  animation: scroll-left 50s linear infinite;
+/* drawer */
+.menu-navegacion{
+  position: fixed; top:65px; left:26%; transform: translateX(-50%);
+  background-color: rgba(255,255,255,.96); border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.12); padding: 12px; z-index: 1200;
+  display:flex; flex-direction:column; gap:8px; min-width: 220px;
 }
+.menu-item{ padding:10px; font-size:16px; font-weight:600; color:#333;
+  display:flex; align-items:center; gap:10px; border-radius:8px; cursor:pointer; }
+.menu-item:hover{ background:#f5f7fb; }
 
-.image-track img {
-  width: 7%;
-  height: auto;
-  object-fit: contain;
-  margin-right: 125px;
-}
+/* contenido */
+.page-wrapper{ padding-top: 88px; max-width: 1280px; margin: 0 auto; }
+.titulo-wrap{ display:flex; align-items:center; gap:12px; }
+.logo{ width:56px; height:56px; object-fit:contain; border-radius:12px; box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+.titulo{ font-size:22px; font-weight:800; color:#0F172A; margin:0; }
+.subtitulo{ font-size:13px; color:#64748B; }
+.card-elevada{ border-radius: 14px; box-shadow: 0 6px 20px rgba(16,24,40,.10); overflow: hidden; background: #fff; }
+.row-active{ background: #eef2ff; }
+.chips{ display:flex; flex-wrap:wrap; gap:6px; }
 
-/* Ajustes para pantallas pequeñas (tablets y celulares) */
-@media only screen and (max-width: 768px) {
-  .image-track img {
-    width: 20%;
-    margin-right: 50px;
-  }
-}
+/* popups */
+.popup{ min-width: 180px; }
+.popup-title{ font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+.popup-sub{ font-size: 12px; color: #64748B; }
+.popup-btn{ display:inline-block; font-size:12px; padding:4px 8px; border-radius:8px; background:#2563eb; color:#fff; text-decoration:none; }
+.popup-btn.alt{ background:#4b5563; }
 
-@keyframes scroll-left {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-75%); }
-}
-
-/* Estilos para la barra azul */
-.blue-bar {
-  background-color: #007bff;
-  height: 60px;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between; /* Mantiene los elementos a los extremos */
-  flex-wrap: nowrap;
-  width: 100%;
-  max-width: 100vw;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-/* Estilo básico para el logo */
-.blue-bar .logo {
-  width: 100px;
-  height: auto;
-  margin-right: 20px;
-  flex-shrink: 0; /* Evita que el logo se reduzca */
-}
-
-/* Estilos para los botones de navegación */
-.nav-buttons {
-  display: flex;
-  align-items: center;
-  margin-left: auto; /* Empuja los botones hacia el lado derecho */
-  gap: 10px;
-}
-
-/* Estilos para los botones de navegación */
-.nav-button {
-  background-color: white;
-  color: #007bff;
-  border: none;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-radius: 5px;
-  font-weight: bold;
-  white-space: nowrap;
-}
-
-/* Efectos de hover del botón */
-.nav-button:hover {
-  background-color: #0056b3;
-  color: white;
-}
-
-/* Estilo para los íconos de carrito y lupa */
-.nav-icon {
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
-}
-
-.nav-icon:hover {
-  color: #0056b3;
-}
-
-/* Ajustes de responsividad para pantallas medianas */
-@media (max-width: 768px) {
-  .blue-bar {
-    justify-content: space-between; /* Mantiene los elementos a los extremos */
-    padding: 0 10px;
-  }
-
-  .blue-bar .logo {
-    width: 80px; /* Reduce el tamaño del logo para tablets */
-    margin-right: 10px;
-  }
-
-  .nav-buttons {
-    gap: 5px;
-  }
-
-  .nav-button {
-    font-size: 12px;
-    padding: 8px 12px;
-  }
-
-  .nav-icon {
-    font-size: 18px;
-  }
-}
-
-/* Ajustes para pantallas móviles pequeñas */
-@media (max-width: 480px) {
-  .blue-bar {
-    justify-content: space-between;
-    padding: 0 5px;
-  }
-
-  .blue-bar .logo {
-    width: 60px;
-    margin-right: 10px;
-  }
-
-  .nav-button {
-    font-size: 10px;
-    padding: 6px 10px;
-  }
-
-  .nav-icon {
-    font-size: 16px;
-  }
-}
-
-/* Estilos para la página */
-.blue-bar, .q-page {
-  width: 100%;
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-.search-container {
-  width: 50%;
-  margin: 40px auto 0 auto;
-  display: flex;
-  justify-content: center;
-}
-
-@media (max-width: 1024px) {
-  .search-container {
-    width: 70%;
-    margin-top: 30px;
-  }
-}
-
-@media (max-width: 768px) {
-  .search-container {
-    width: 70%;
-    margin-top: 20px;
-  }
-}
-
-/* Asegúrate de que no haya espacio entre los elementos */
-.page-wrapper {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Eliminamos cualquier espacio entre elementos */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-/* Estilos para las imágenes */
-img {
-  width: 100%;
-  height: auto;
-  max-height: 566px;
-  object-fit: cover;
-}
-
-/* Estilos para el carrusel grande */
-.carousel-container-large {
-  aspect-ratio: 16 / 5;
-  width: 100vw;
-  overflow: hidden;
-}
-
-/* Estilos para las diapositivas del carrusel */
-.q-carousel-slide {
-  margin: 0;
-  padding: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: transform 0.5s ease-in-out;
+/* responsive */
+@media (max-width: 768px){
+  .barra-superior{ width: 95vw; }
+  .titulo{ font-size:18px; }
+  .logo{ width:46px; height:46px; }
 }
 </style>

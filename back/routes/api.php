@@ -33,6 +33,10 @@ Route::get('/carouselsMini',[\App\Http\Controllers\CarouselController::class,'ca
 Route::get('/productos',[\App\Http\Controllers\TiendaController::class,'productos']);
 Route::get('/sucursales',[\App\Http\Controllers\TiendaController::class,'sucursales']);
 Route::get('/productos/{id}',[\App\Http\Controllers\TiendaController::class,'productosId']);
+Route::get('/top-sellers', [\App\Http\Controllers\SalesController::class, 'topSellers']);
+Route::get('carouselsMedio', [\App\Http\Controllers\CarouselController::class, 'carouselsMedio']);
+
+
 
 Route::group(['middleware'=>'auth:sanctum'],function (){
     Route::post('/me', [\App\Http\Controllers\UserController::class,'me']);

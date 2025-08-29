@@ -34,6 +34,12 @@ class Product extends Model
         'distribuidora',
         'subcategory_id',
         'porcentaje',
+        'en_oferta',
+    ];
+       // 👇 Aquí lo pegas
+    protected $casts = [
+        'en_oferta'   => 'boolean',
+         'activo'    => 'boolean',
     ];
     public function category(){
         return $this->belongsTo(Category::class);
