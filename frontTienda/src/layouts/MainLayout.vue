@@ -1,5 +1,102 @@
 <template>
   <q-layout view="lHh Lpr lff">
+    <!-- ===== Barra superior (buscador + menú + predictivo) ===== -->
+    <div class="barra-superior">
+      <!-- Menú -->
+      <q-btn
+        flat round dense icon="menu"
+        @click="toggleDrawer" size="md"
+      />
+
+      <!-- Buscador + Sugerencias -->
+      <div class="search-container" ref="searchWrap">
+        <q-input
+          v-model="search"
+          dense outlined rounded
+          placeholder="Buscar Producto / Palabra Clave"
+          class="search-input q-ml-sm"
+          :debounce="250"
+          @update:model-value="onType"
+          @keyup.enter.prevent="enterSelect"
+          @keydown.down.prevent="move(1)"
+          @keydown.up.prevent="move(-1)"
+          @focus="maybeOpen"
+          @blur="onBlur"
+        >
+          <template v-slot:prepend>
+            <q-icon name="search" />
+          </template>
+        </q-input>
+
+        <q-btn
+          label="Buscar" rounded no-caps
+          :loading="loading" class="q-ml-sm"
+          @click="buscar"
+        />
+
+        <!-- Panel de sugerencias -->
+        <div
+          v-if="showSuggestions"
+          class="predictive-panel"
+          :style="panelStyle"
+        >
+          <div v-if="suggestions.length" class="predictive-list">
+            <button
+              v-for="(s, idx) in suggestions"
+              :key="s.id"
+              class="predictive-item"
+              :class="{ active: idx === activeIndex }"
+              @mousedown.prevent="selectSuggestion(s)"
+              type="button"
+            >
+              <img
+                class="predictive-thumb"
+                :src="`${$url}../images/${s.imagen}`"
+                alt=""
+                @error="$event.target.src='/images/productDefault.jpg'"
+              />
+              <div class="predictive-info">
+                <div class="predictive-title">{{ s.title }}</div>
+
+                <div class="predictive-prices">
+                  <span v-if="s.precio_antes" class="old">Bs. {{ formatPrice(s.precio_antes) }}</span>
+                  <span class="now">Bs. {{ formatPrice(s.precio_ahora ?? s.precio) }}</span>
+                  <span v-if="Number(s.porcentaje) > 0" class="badge">-{{ s.porcentaje }}%</span>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div v-else class="predictive-empty">
+            No hay resultados
+          </div>
+
+          <div class="predictive-footer">
+            <button class="predictive-seeall" @mousedown.prevent="verTodos" type="button">
+              Ver todos los resultados
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overlay para cerrar el menú al hacer clic fuera -->
+    <div v-if="drawer" class="overlay-cierra-menu" @click="drawer=false"></div>
+
+    <!-- Menú de navegación -->
+    <div v-if="drawer" class="menu-navegacion">
+      <div class="menu-item" @click="navegarA('/')">
+        <q-icon name="home" class="q-mr-sm" />Inicio
+      </div>
+      <div class="menu-item" @click="navegarA('/sucursales')">
+        <q-icon name="store" class="q-mr-sm" />Sucursales
+      </div>
+      <div class="menu-item" @click="scrollCategorias">
+        <q-icon name="category" class="q-mr-sm" />Categorías
+      </div>
+    </div>
+
+    <!-- Contenido de páginas -->
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -79,7 +176,7 @@
                 <q-icon name="phone" size="20px" /><a class="link" href="tel:+59172319869">+591 72319869</a>
               </div>
             </div>
-            <!-- Newsletter (opcional) -->
+            <!-- Newsletter -->
             <div class="q-mt-md">
               <q-input dense standout v-model="newsletter" placeholder="Tu correo electrónico" type="email">
                 <template #append>
@@ -151,31 +248,72 @@
 </template>
 
 <script>
-import { defineComponent } from 'vue'
+import { defineComponent, nextTick } from 'vue'
 
 export default defineComponent({
   name: 'MainLayout',
   data () {
     return {
+      // Tabs existentes
       tab: 'Inicio',
       tabs: [
         { name: 'Inicio', label: 'Inicio', to: '/' },
         { name: 'Sucursales', label: 'Sucursales', to: '/sucursales' }
       ],
+
       leftDrawerOpen: false,
+
+      // Carrito
       carritoDialog: false,
-      search: '',
+
+      // Newsletter
       newsletter: '',
-      newsletterOk: false
+      newsletterOk: false,
+
+      // ====== Buscador & Predictivo (migrado del Index) ======
+      search: '',
+      loading: false,
+      drawer: false,
+      suggestions: [],
+      showSuggestions: false,
+      activeIndex: -1,
+      panelWidth: 0
+    }
+  },
+  computed: {
+    panelStyle () { return { width: this.panelWidth ? `${this.panelWidth}px` : '100%' } }
+  },
+  mounted () {
+    this.$nextTick(() => {
+      this.calcPanelWidth()
+      window.addEventListener('resize', this.calcPanelWidth, { passive: true })
+      document.addEventListener('click', this.handleClickOutside)
+    })
+
+    // Si llega con hash (ej. /#seccion-categorias), intenta hacer scroll
+    if (this.$route.hash === '#seccion-categorias') {
+      this.scrollToCategoriesWithRetry()
+    }
+  },
+  beforeUnmount () {
+    window.removeEventListener('resize', this.calcPanelWidth)
+    document.removeEventListener('click', this.handleClickOutside)
+  },
+  watch: {
+    // Reintenta el scroll suave cuando cambia el hash a #seccion-categorias
+    '$route.hash' (h) {
+      if (h === '#seccion-categorias') this.scrollToCategoriesWithRetry()
     }
   },
   methods: {
+    // ===== Newsletter =====
     suscribir () {
       if (!this.newsletter) return
-      // Aquí puedes integrar tu endpoint de suscripción (Laravel)
       this.newsletterOk = true
       setTimeout(() => { this.newsletter = ''; this.newsletterOk = false }, 2000)
     },
+
+    // ===== Carrito =====
     pedirCarritoWhatsApp () {
       const carrito = this.$store.carrito
       const mensaje = carrito.reduce((acc, item) => {
@@ -184,17 +322,255 @@ export default defineComponent({
       const url = `https://wa.me/59172319869?text=${encodeURIComponent(mensaje)}`
       window.open(url, '_blank')
     },
-    clickCarrito () {
-      this.carritoDialog = !this.carritoDialog
+    clickCarrito () { this.carritoDialog = !this.carritoDialog },
+    removeCarrito (index) { this.$store.carrito.splice(index, 1) },
+
+    // ===== Predictivo (migrado del Index) =====
+    async onType () {
+      const q = this.search.trim()
+      if (q.length < 2) {
+        this.suggestions = []
+        this.showSuggestions = false
+        this.activeIndex = -1
+        return
+      }
+      try {
+        const { data } = await this.$axios.get('/products/suggest', { params: { q, limit: 8 } })
+
+        // Normalización de precios
+        this.suggestions = (data || []).map(p => {
+          const x = { ...p }
+          x.porcentaje = Number(x.porcentaje || x.descuento || 0)
+
+          const precioBase = Number(x.precio ?? 0)
+          const antesRaw = (x.precioAntes ?? x.precioNormal ?? null)
+          const precioAntes = (antesRaw !== null && antesRaw !== '' && !isNaN(Number(antesRaw)))
+            ? Number(antesRaw) : null
+
+          if (x.porcentaje > 0) {
+            const baseAntes = (precioAntes && precioAntes > 0) ? precioAntes : precioBase
+            x.precio_antes = baseAntes
+            x.precio_ahora = Number(baseAntes * (1 - x.porcentaje / 100))
+          } else {
+            x.precio_antes = (precioAntes && precioAntes > 0) ? precioAntes : null
+            x.precio_ahora = precioBase
+          }
+
+          if ((!x.porcentaje || x.porcentaje === 0) && x.precio_antes && x.precio_ahora) {
+            const diff = x.precio_antes - x.precio_ahora
+            x.porcentaje = (x.precio_antes > 0) ? Math.round((diff / x.precio_antes) * 100) : 0
+          }
+          return x
+        })
+
+        this.activeIndex = this.suggestions.length ? 0 : -1
+        this.maybeOpen()
+      } catch (e) {
+        console.error('Error en sugerencias', e)
+        this.suggestions = []
+        this.showSuggestions = false
+        this.activeIndex = -1
+      }
     },
-    removeCarrito (index) {
-      this.$store.carrito.splice(index, 1)
-    }
+    maybeOpen () {
+      if ((this.suggestions || []).length > 0) {
+        this.showSuggestions = true
+        this.calcPanelWidth()
+      }
+    },
+    onBlur () { setTimeout(() => { this.showSuggestions = false }, 120) },
+    handleClickOutside (e) {
+      const wrap = this.$refs.searchWrap
+      if (wrap && !wrap.contains(e.target)) this.showSuggestions = false
+    },
+    calcPanelWidth () {
+      const wrap = this.$refs.searchWrap
+      if (!wrap) return
+      const input = wrap.querySelector('.q-field')
+      this.panelWidth = input ? input.getBoundingClientRect().width : wrap.getBoundingClientRect().width
+    },
+    move (dir) {
+      if (!this.showSuggestions || !this.suggestions.length) return
+      const n = this.suggestions.length
+      this.activeIndex = (this.activeIndex + dir + n) % n
+    },
+    enterSelect () {
+      if (!this.showSuggestions || this.activeIndex < 0) { this.buscar(); return }
+      const item = this.suggestions[this.activeIndex]
+      this.selectSuggestion(item)
+    },
+    selectSuggestion (s) {
+      this.search = s.title
+      this.showSuggestions = false
+      this.activeIndex = -1
+      this.$router.push('/detalle-producto/' + s.id + '/' + this.espacioCambioGuion(s.title))
+    },
+    verTodos () { this.buscar() },
+
+    // ===== Buscar / navegación =====
+    buscar () {
+      const term = (this.search || '').trim()
+      if (!term) return
+      this.$router.push({ name: 'buscar', query: { q: term, page: 1 } })
+      this.drawer = false
+      this.showSuggestions = false
+      this.activeIndex = -1
+    },
+    toggleDrawer () { this.drawer = !this.drawer },
+    navegarA (ruta) { this.$router.push(ruta); this.drawer = false },
+
+    // ===== Categorías (funciona desde cualquier ruta) =====
+    scrollCategorias () {
+      this.drawer = false
+      const hash = '#seccion-categorias'
+
+      // Si ya estoy en Home
+      if (this.$route.path === '/') {
+        // Ajusta el hash para que scrollBehavior (o el watcher) dispare
+        if (this.$route.hash !== hash) {
+          this.$router.replace({ hash })
+        }
+        // De todos modos, intenta con retry para casos sin scrollBehavior
+        this.scrollToCategoriesWithRetry()
+        return
+      }
+
+      // Si estoy en otra ruta, navego a Home + hash y luego intento scroll
+      this.$router.push({ path: '/', hash }).then(() => {
+        this.scrollToCategoriesWithRetry()
+      })
+    },
+
+    // Reintento de scroll hasta que el DOM del Index monte la sección
+    scrollToCategoriesWithRetry () {
+      const hash = '#seccion-categorias'
+      let intentos = 0
+      const maxIntentos = 20 // ~2s
+      const intentar = () => {
+        const el = document.querySelector(hash)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          return
+        }
+        if (intentos++ < maxIntentos) {
+          setTimeout(intentar, 100)
+        }
+      }
+      // Espera al siguiente tick por si aún no montó el router-view
+      nextTick(() => intentar())
+    },
+
+    // ===== Utils =====
+    formatPrice (v) { return Number(v ?? 0).toFixed(2) },
+    espacioCambioGuion (text) { return text.replace(/ |\/|\./g, '-').replace(/,/g, '') }
   }
 })
 </script>
 
 <style scoped>
+/* ===== Barra superior ===== */
+.barra-superior{
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+  width: 90vw; max-width: 1100px; z-index: 999; background: #fff;
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  padding: 6px 12px; border-radius: 12px; box-shadow: 0 8px 24px rgba(9, 0, 141, 0.2);
+  background: rgba(255, 255, 255, 0.3); /* Transparencia */
+  backdrop-filter: blur(10px);           /* Desenfoque vidrio */
+  -webkit-backdrop-filter: blur(10px);   /* Compatibilidad Safari */
+  border: 1px solid rgba(255, 255, 255, 0.2); /* Borde sutil translúcido */
+}
+.search-container{ display:flex; flex:1; gap:8px; align-items:center; min-width:250px; position:relative; }
+.search-input{ flex:1; min-width: 120px; }
+.search-container .q-btn {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #000;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+.search-container .q-btn:hover {
+  background: rgba(255, 255, 255, 0.45);
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+/* Menú */
+.menu-navegacion{
+  position: fixed;
+  top: calc(10px + 52px);
+  left: calc(50% - min(45vw, 550px));
+  transform: none;
+  background: rgba(255,255,255,.92);
+  border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,.1);
+  padding:12px; max-width:320px; z-index: 9999; display:flex; flex-direction:column; gap:8px;
+}
+@media (max-width: 400px){ .menu-navegacion{ left:12px; right:12px; max-width:none; } }
+.overlay-cierra-menu{ position: fixed; inset: 0; z-index: 9998; background: transparent; }
+.menu-item{ padding:10px; font-size:18px; font-weight:bold; color:#333; display:flex; align-items:center; gap:10px; cursor:pointer; transition: background-color .3s; border-radius:6px; }
+.menu-item:hover{ background:#f0f0f0; }
+.q-icon{ color:#2D9CDB }
+
+/* ===== Panel de sugerencias ===== */
+.predictive-panel{
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: #fff;
+  border: 1px solid rgba(15,23,42,.12);
+  border-radius: 14px;
+  box-shadow:
+    0 2px 6px rgba(16,24,40,0.06),
+    0 18px 40px rgba(16,24,40,0.14);
+  overflow: hidden;
+  z-index: 10000;
+}
+.predictive-list{ max-height: 340px; overflow: auto; padding: 6px; }
+.predictive-item{
+  display: grid; grid-template-columns: 56px 1fr; gap: 12px;
+  width: 100%; text-align: left; background: transparent; border: 0;
+  padding: 10px 12px; border-radius: 10px; cursor: pointer;
+}
+.predictive-item:hover,
+.predictive-item.active{
+  background: #F8FAFC;
+}
+.predictive-thumb{
+  width: 56px; height: 56px; object-fit: contain;
+  border-radius: 10px; border: 1px solid rgba(2,32,71,.08);
+  background: #fff;
+}
+.predictive-info{ display: grid; align-content: center; }
+.predictive-title{ font-weight: 600; color: #0F172A; font-size: .95rem; line-height: 1.25; }
+
+/* Fila de precios en sugerencia */
+.predictive-prices{
+  display:flex; align-items:center; gap:8px;
+  margin-top:2px; font-size:.92rem;
+}
+.predictive-prices .old{
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+.predictive-prices .now{
+  font-weight: 800;
+  color: #0ea5e9;
+}
+.predictive-prices .badge{
+  background: #ef4444;
+  color: #fff;
+  font-size: .75rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+.predictive-empty{ padding: 16px; text-align: center; color: #64748B; font-size: .95rem; }
+.predictive-footer{ border-top: 1px solid rgba(15,23,42,.08); padding: 8px; display:flex; justify-content:center; background:#fff; }
+.predictive-seeall{ background:#EFF6FF; color:#1D4ED8; border:1px solid rgba(29,78,216,.25); padding:8px 12px; border-radius:10px; font-weight:600; cursor:pointer; }
+
+/* ===== Footer ===== */
 .footer-modern {
   background: linear-gradient(165deg, #0b132b 0%, #1c2541 60%, #3a506b 100%);
   color: #fff;

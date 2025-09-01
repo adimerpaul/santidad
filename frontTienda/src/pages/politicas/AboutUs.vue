@@ -1,59 +1,5 @@
 <template>
   <q-page class="q-pa-none">
-    <!-- 🔎 BARRA SUPERIOR + BUSCADOR -->
-    <div class="barra-superior">
-      <q-btn
-        flat
-        round
-        dense
-        icon="menu"
-        @click="toggleDrawer"
-        size="md"
-      />
-      <div class="search-container">
-        <q-input
-          v-model="search"
-          dense
-          outlined
-          rounded
-          @keyup.enter="buscar"
-          placeholder="Buscar Producto / Palabra Clave"
-          class="search-input"
-        >
-          <template v-slot:prepend>
-            <q-icon name="search" />
-          </template>
-        </q-input>
-        <q-btn
-          label="Buscar"
-          rounded
-          :loading="loading"
-          @click="buscar"
-          class="search-btn"
-          no-caps
-        />
-      </div>
-    </div>
-
-    <!-- 📌 MENÚ FLOTANTE -->
-    <div v-if="drawer" class="menu-navegacion">
-      <div class="menu-item" @click="navigateTo('/')">
-        <q-icon name="home" class="q-mr-sm" />
-        Inicio
-      </div>
-      <div class="menu-item" @click="navigateTo('/sucursales')">
-        <q-icon name="store" class="q-mr-sm" />
-        Sucursales
-      </div>
-      <div class="menu-item" @click="navigateTo('/envio')">
-        <q-icon name="local_shipping" class="q-mr-sm" />
-        Envío
-      </div>
-      <div class="menu-item" @click="navigateTo('/terminos')">
-        <q-icon name="policy" class="q-mr-sm" />
-        Términos
-      </div>
-    </div>
 
     <!-- Hero -->
     <section class="pp-hero pp-offset">
@@ -160,7 +106,7 @@
           <div class="kpi-label">Sucursales en Oruro</div>
         </q-card>
         <q-card flat bordered class="kpi">
-          <div class="kpi-num">24+</div>
+          <div class="kpi-num">15+</div>
           <div class="kpi-label">Años de servicio</div>
         </q-card>
       </div>
@@ -187,29 +133,9 @@ export default {
   data () {
     return {
       // 🔎 buscador
-      search: '',
-      drawer: false,
-      loading: false
     }
   },
   methods: {
-    toggleDrawer () {
-      this.drawer = !this.drawer
-    },
-    navigateTo (ruta) {
-      this.$router.push(ruta)
-      this.drawer = false
-    },
-    buscar () {
-      if (!this.search) return
-      this.loading = true
-      // Integra búsqueda real si te conviene:
-      // this.$router.push({ path: '/', query: { q: this.search } })
-      setTimeout(() => {
-        this.loading = false
-        this.$q.notify({ type: 'info', message: `Buscando: ${this.search}` })
-      }, 600)
-    }
   }
 }
 </script>
@@ -281,59 +207,4 @@ export default {
   margin: 12px 0 18px;
 }
 
-/* ===== Buscador ===== */
-.barra-superior {
-  position: fixed;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90vw;
-  max-width: 1100px;
-  z-index: 999;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 12px;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(9, 0, 141, 0.2);
-}
-.search-container { display: flex; flex: 1; gap: 8px; align-items: center; }
-.search-input { flex: 1; min-width: 120px; }
-.search-btn { width: 90px; min-width: 60px; }
-.search-container button {
-  margin-left: 10px;
-  width: 10%;
-  min-width: 50px;
-  background: linear-gradient(135deg, #2D9CDB, #2D9CDB);
-  color: white; border: none; border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(9, 0, 141, 0.2);
-  font-weight: 600; font-size: 14px; cursor: pointer;
-  transition: all 0.3s ease; padding: 8px 0;
-}
-
-/* ===== Menú flotante ===== */
-.menu-navegacion {
-  position: fixed; top: 65px; left: 26%; transform: translateX(-50%);
-  background-color: rgba(255, 255, 255, 0.9);
-  border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 15px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;
-}
-.menu-item {
-  padding: 10px; font-size: 18px; font-weight: bold; color: #333;
-  display: flex; align-items: center; gap: 10px; cursor: pointer;
-  transition: background-color 0.3s ease; border-radius: 6px;
-}
-.menu-item:hover { background: #f0f0f0; }
-.menu-item .q-icon { color: #2D9CDB; font-size: 20px; }
-
-/* ===== Responsive ===== */
-@media (max-width: 1024px) {
-  .pp-columns { grid-template-columns: 1fr; }
-  .pp-grid-2 { grid-template-columns: 1fr; }
-  .kpis { grid-template-columns: 1fr 1fr 1fr; }
-}
-@media (max-width: 640px) {
-  .kpis { grid-template-columns: 1fr 1fr; }
-}
 </style>

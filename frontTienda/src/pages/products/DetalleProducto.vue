@@ -1,35 +1,5 @@
 <template>
   <q-page class="q-pa-none modern-bg">
-    <!-- ===== Barra superior (glass + blur) ===== -->
-    <div class="barra-superior glass">
-      <q-btn flat round dense icon="menu" @click="toggleDrawer" size="md" class="text-primary" />
-      <div class="search-container">
-        <q-input
-          v-model="search"
-          dense
-          outlined
-          rounded
-          @keyup.enter="buscar"
-          placeholder="Buscar Producto / Palabra clave"
-          class="search-input"
-        >
-          <template v-slot:prepend>
-            <q-icon name="search" />
-          </template>
-        </q-input>
-        <q-btn label="Buscar" rounded :loading="loading" @click="buscar" class="search-btn grad-btn" no-caps />
-      </div>
-    </div>
-
-    <!-- Menú flotante -->
-    <div v-if="drawer" class="menu-navegacion glass">
-      <div class="menu-item" @click="navigateTo('/')">
-        <q-icon name="home" class="q-mr-sm" />Inicio
-      </div>
-      <div class="menu-item" @click="navigateTo('/sucursales')">
-        <q-icon name="store" class="q-mr-sm" />Sucursales
-      </div>
-    </div>
 
     <!-- separador por barra fija -->
     <div class="page-spacer" />
@@ -285,8 +255,6 @@ export default {
       cantidad: 1,
       es_porcentaje: false,
       sucursales: [],
-      drawer: false,
-      search: '',
       // relacionados
       relacionados: [],
       relLoading: false,
@@ -775,13 +743,7 @@ export default {
     #fbfdff;
   min-height: 100vh;
 }
-.glass{
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  background: rgba(255,255,255,0.75);
-  border: 1px solid rgba(13, 94, 171, 0.08);
-  border-radius: 14px;
-}
+
 .soft-shadow{
   box-shadow:
     0 2px 6px rgba(16,24,40,0.06),

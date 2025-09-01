@@ -1,40 +1,5 @@
 <template>
   <q-page class="q-pa-none">
-    <!-- 🔎 Barra superior -->
-    <div class="barra-superior">
-      <q-btn flat round dense icon="menu" @click="toggleDrawer" size="md" />
-      <div class="search-container">
-        <q-input
-          v-model="search"
-          dense
-          outlined
-          rounded
-          @keyup.enter="buscar"
-          placeholder="Buscar Producto / Palabra Clave"
-          class="search-input"
-        >
-          <template v-slot:prepend><q-icon name="search" /></template>
-        </q-input>
-        <q-btn
-          label="Buscar"
-          rounded
-          class="search-btn"
-          :loading="loading"
-          @click="buscar"
-          no-caps
-        />
-      </div>
-    </div>
-
-    <!-- ☰ Drawer simple -->
-    <div v-if="drawer" class="menu-navegacion">
-      <div class="menu-item" @click="navigateTo('/')">
-        <q-icon name="home" class="q-mr-sm" /> Inicio
-      </div>
-      <div class="menu-item" @click="navigateTo('/sucursales')">
-        <q-icon name="store" class="q-mr-sm" /> Sucursales
-      </div>
-    </div>
 
     <!-- Contenido -->
     <div class="page-wrapper q-pa-md">
@@ -139,10 +104,7 @@ export default {
   data () {
     return {
       productos: [],
-      loading: false,
       isFetched: false,
-      drawer: false,
-      search: this.$route.query.q || '',
       currentPage: Number(this.$route.query.page) || 1,
       totalPages: 1
     }
@@ -165,15 +127,6 @@ export default {
     }
   },
   methods: {
-    toggleDrawer () { this.drawer = !this.drawer },
-    navigateTo (ruta) { this.$router.push(ruta); this.drawer = false },
-
-    buscar () {
-      const q = (this.search || '').trim()
-      if (!q) return
-      this.$router.push({ path: '/buscar', query: { q, page: 1 } })
-    },
-
     async fetchResultados () {
       const q = (this.$route.query.q || '').trim()
       const page = Number(this.$route.query.page) || 1
@@ -228,33 +181,6 @@ export default {
 </script>
 
 <style scoped>
-/* ▲ Barra superior fija */
-.barra-superior{
-  position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-  width: 90vw; max-width: 1100px; z-index: 999;
-  background: #fff; display: flex; align-items: center; gap: 12px;
-  padding: 6px 12px; border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(9, 0, 141, 0.2);
-}
-.search-container{ display:flex; flex:1; gap:8px; align-items:center; }
-.search-input{ flex:1; min-width:120px; }
-.search-btn{ width:90px; min-width:60px; }
-.search-btn:deep(.q-btn__content){ font-weight:600; }
-.search-container button{
-  margin-left:10px; background: linear-gradient(135deg,#2D9CDB,#2D9CDB);
-  color:#fff; border:none; border-radius:10px; box-shadow:0 8px 24px rgba(9,0,141,.2);
-}
-
-/* ☰ Drawer */
-.menu-navegacion{
-  position: fixed; top:65px; left:26%; transform: translateX(-50%);
-  background-color: rgba(255,255,255,.9); border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,.1); padding: 15px; z-index: 9999;
-  display:flex; flex-direction:column; gap:10px;
-}
-.menu-item{ padding:10px; font-size:18px; font-weight:bold; color:#333;
-  display:flex; align-items:center; gap:10px; border-radius:6px; cursor:pointer; }
-.menu-item:hover{ background:#f0f0f0; }
 
 /* separador para que el contenido no quede debajo de la barra fija */
 .page-wrapper{ padding-top: 88px; }
