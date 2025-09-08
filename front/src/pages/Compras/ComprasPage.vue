@@ -15,46 +15,41 @@
               <q-tooltip>Actualizar</q-tooltip>
             </q-btn>
           </div>
+
           <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" emit-value map-options dense outlined
                       v-model="category" option-value="id" option-label="name" :options="categories"
-                      @update:model-value="productsGet"
-            >
-            </q-select>
+                      @update:model-value="productsGet"/>
           </div>
           <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" label="Subcategoria" dense outlined v-model="subcategory"
                       :options="subcategories" map-options emit-value
                       option-value="id" option-label="name"
-                      @update:model-value="productsGet"
-            />
+                      @update:model-value="productsGet"/>
           </div>
           <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" label="Ordenar" dense outlined v-model="order"
                       :options="orders" map-options emit-value
                       option-value="value" option-label="label"
-                      @update:model-value="productsGet"
-            />
+                      @update:model-value="productsGet"/>
           </div>
           <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" label="Agencia" dense outlined v-model="$store.agencia_id"
                       :options="agencias" map-options emit-value
                       option-value="id" option-label="nombre"
                       @update:model-value="productsGet"
-                      :disable="!($store.user?.agencia_id==1)"
-            />
-<!--            <pre>{{$store.user?.agencia_id==1}}</pre>-->
-<!--            <pre>{{$store.user}}</pre>-->
+                      :disable="!($store.user?.agencia_id==1)"/>
           </div>
+
           <div class="col-12 flex flex-center">
             <q-pagination
               v-model="current_page"
               :max="last_page"
               :max-pages="6"
               boundary-numbers
-              @update:model-value="productsGet"
-            />
+              @update:model-value="productsGet"/>
           </div>
+
           <div class="col-12">
             <q-card>
               <q-card-section class="q-pa-none">
@@ -74,15 +69,18 @@
                         <div class="text-center text-subtitle2">
                           {{ p.precio }}
                           <span class="text-red" v-if="p.porcentaje">
-                        {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
-                      </span>
+                            {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
+                          </span>
                           Bs
                         </div>
-                        <div :class="p.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">{{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}</div>
+                        <div :class="p.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">
+                          {{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}
+                        </div>
                       </q-card-section>
                     </q-card>
                   </div>
                 </div>
+
                 <q-card v-else>
                   <q-card-section>
                     <div class="row">
@@ -101,122 +99,141 @@
           </div>
         </div>
       </div>
+
       <div class="col-12 col-md-4">
         <q-card>
           <q-card-section class="q-pa-none q-ma-none ">
             <div class="row">
               <div class="col-6 text-h6 q-pt-xs q-pl-lg bg-orange">
-                Canasta Compras
-                ({{ $store.productosCompra.length }})
+                Canasta Compras ({{ $store.productosCompra.length }})
               </div>
-              <div class="col-6 text-right"><q-btn class="text-subtitle1 text-blue-10 text-bold" style="text-decoration: underline;" label="Vaciar canasta" @click="vaciarCanasta" no-caps flat outline/></div>
+              <div class="col-6 text-right">
+                <q-btn class="text-subtitle1 text-blue-10 text-bold" style="text-decoration: underline;"
+                       label="Vaciar canasta" @click="vaciarCanasta" no-caps flat outline/>
+              </div>
             </div>
           </q-card-section>
-          <q-separator></q-separator>
-          <q-card-section class="q-pa-none q-ma-none" >
+
+          <q-separator />
+
+          <q-card-section class="q-pa-none q-ma-none">
             <div v-if="$store.productosCompra.length==0" class="flex flex-center q-pa-lg">
               <q-icon name="o_shopping_basket" color="grey" size="100px"/>
               <div class="q-pa-lg text-grey text-center noSelect">
                 Aún no tienes productos en tu canasta. Haz clic sobre un producto para agregarlo.
               </div>
             </div>
+
             <q-scroll-area v-else style="height: 400px;">
-              <q-table dense flat bordered hide-bottom hide-header :rows="$store.productosCompra" :columns="columnsProductosVenta" :rows-per-page-options="[0]">
+              <q-table dense flat bordered hide-bottom hide-header
+                       :rows="$store.productosCompra"
+                       :columns="columnsProductosVenta"
+                       :rows-per-page-options="[0]">
                 <template v-slot:body="props">
                   <q-tr :props="props">
                     <q-td key="borrar" :props="props" style="padding: 0px;margin: 0px" auto-width>
-                      <q-btn flat dense @click="deleteProductosVenta(props.row,props.pageIndex)" icon="delete" color="red" size="10px" class="q-pa-none q-ma-none" />
+                      <q-btn flat dense @click="deleteProductosVenta(props.row,props.pageIndex)"
+                             icon="delete" color="red" size="10px" class="q-pa-none q-ma-none" />
                     </q-td>
+
                     <q-td key="nombre" :props="props">
                       <div>
                         <q-img :src="props.row.imagen.includes('http')?props.row.imagen:`${$url}../images/${props.row.imagen}`"
                                width="40px" height="40px"
-                               style="padding: 0px; margin: 0px; border-radius: 0px;position: absolute;crop: auto;object-fit: cover;"
-                        />
+                               style="padding:0;margin:0;border-radius:0;position:absolute;object-fit:cover;" />
                         <div style="padding-left: 42px">
-                          <div class="text-caption" style="max-width: 170px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">
+                          <div class="text-caption" style="max-width:170px; white-space:normal; overflow-wrap:break-word; line-height:.9;">
                             {{props.row.nombre}}
                           </div>
                         </div>
                       </div>
                     </q-td>
+
                     <q-td key="cantidadVenta" :props="props">
-                      <input v-model="props.row.lote" placeholder="Lote" style="width: 170px;"/><br>
-                      <input type="date" v-model="props.row.fechaVencimiento" placeholder="Vencimiento" style="width: 170px;"/><br>
-                      <input v-model="props.row.cantidadCompra" type="number" placeholder="Cantidad" style="width: 170px;"/><br>
-                      <input v-model="props.row.price" type="number" step="0.01" placeholder="Precio" style="width: 170px;"/><br>
-                      <div><b>Subtotal:</b> {{(props.row.price*props.row.cantidadCompra).toFixed(2)}} Bs</div>
+                      <div class="td-venta">
+                        <input v-model="props.row.lote" placeholder="Lote" style="width: 170px;"/><br>
+
+                        <!-- Fila del input de fecha con el texto a la DERECHA (sin empujar nada) -->
+                        <div class="date-row">
+                          <input type="date"
+                                 v-model="props.row.fechaVencimiento"
+                                 placeholder="Vencimiento"
+                                 style="width: 170px;"
+                                 :class="{'invalid-date': props.row._fechaVencimientoError}"
+                                 @input="props.row._fechaVencimientoError=false; props.row._tocoFecha=true"
+                                 @change="props.row._fechaVencimientoError=false; props.row._tocoFecha=true" />
+                          <div class="vence-right-inline">
+                            <span class="vence-label"
+                                  :class="{'corto-vencimiento': esCortoVencimiento(props.row.fechaVencimiento)}">
+                              {{ venceEn(props.row.fechaVencimiento) }}
+                            </span>
+                            <q-icon v-if="esCortoVencimiento(props.row.fechaVencimiento)"
+                                    name="warning" size="16px" class="warning-right"/>
+                          </div>
+                        </div>
+                        <br>
+
+                        <input v-model="props.row.cantidadCompra" type="number" placeholder="Cantidad" style="width: 170px;"/><br>
+                        <input v-model="props.row.price" type="number" step="0.01" placeholder="Precio" style="width: 170px;"/><br>
+
+                        <div><b>Subtotal:</b> {{(props.row.price*props.row.cantidadCompra).toFixed(2)}} Bs</div>
+
+                        <!-- Alerta debajo del Subtotal: SOLO tras modificar la fecha -->
+                        <q-badge
+                          v-if="props.row._tocoFecha && esCortoVencimiento(props.row.fechaVencimiento)"
+                          class="alert-under-subtotal q-mt-xs"
+                          color="red-5" text-color="white" outline>
+                          <q-icon name="warning" size="14px" class="q-mr-xs" />
+                          Producto con corto vencimiento
+                        </q-badge>
+                      </div>
                     </q-td>
                   </q-tr>
                 </template>
               </q-table>
             </q-scroll-area>
           </q-card-section>
-          <q-card-section >
+
+          <q-card-section>
             <q-list padding bordered dense class="rounded-borders full-width q-pa-none q-ma-none">
-<!--              <q-expansion-item-->
-<!--                dense-->
-<!--                dense-toggle-->
-<!--                expand-separator-->
-<!--                label="Total"-->
-<!--              >-->
-<!--                <template v-slot:header>-->
-                  <q-item-section>
-                    <div class="row">
-                      <div class="col-4 text-grey flex flex-center">Numero Factura</div>
-                      <div class="col-8 text-right"><q-input dense outlined v-model="factura" placeholder="Numero Factura" style="width: 170px;" hide-hint /></div>
-                      <div class="col-4 text-grey flex flex-center">Agencia</div>
-                      <div class="col-8 text-right">
-                        <q-select class="bg-white" dense outlined v-model="agencia_id"
-                                  :options="agencias" map-options emit-value
-                                  option-value="id" option-label="nombre"
-                                  :disable="!($store.user?.agencia_id==1)"
-                        />
-                      </div>
-                      <div class="col-4 text-grey flex flex-center">Proveedor</div>
-                      <div class="col-8 text-right">
-                        <q-select class="bg-white" dense outlined v-model="proveedor_id"
-                                  :options="proveedores" map-options emit-value
-                                  use-input @filter="filterFn"
-                                  option-value="id" option-label="nombreRazonSocial"
-                        />
-<!--                        <pre>{{proveedores}}</pre>-->
-                      </div>
-                    </div>
-                  </q-item-section>
-<!--                  <q-item-section side>-->
-<!--                    <q-item-section side>-->
-<!--                      -->
-<!--                    </q-item-section>-->
-<!--                  </q-item-section>-->
-<!--                </template>-->
-<!--                <q-card>-->
-<!--                  <q-card-section>-->
-<!--                    <div class="row">-->
-<!--                      <div class="col-7 text-grey">Cantidades de referencia</div>-->
-<!--                      <div class="col-5 text-right">{{$store.productosCompra.length}}</div>-->
-<!--                      <div class="col-7 text-grey">-->
-<!--                        Ganancia-->
-<!--                        <q-icon name="o_info">-->
-<!--                          <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">-->
-<!--                            Para calcular la ganancia correctamente, deberás cargar el costo unitario de todos los productos desde tu Inventario.-->
-<!--                          </q-tooltip>-->
-<!--                        </q-icon>-->
-<!--                      </div>-->
-<!--                      <div class="col-5 text-right text-green">{{totalganancia}} Bs</div>-->
-<!--                    </div>-->
-<!--                  </q-card-section>-->
-<!--                </q-card>-->
-<!--              </q-expansion-item>-->
+              <q-item-section>
+                <div class="row">
+                  <div class="col-4 text-grey flex flex-center">Numero Factura</div>
+                  <div class="col-8 text-right">
+                    <q-input dense outlined v-model="factura" placeholder="Numero Factura" style="width: 170px;" hide-hint />
+                  </div>
+
+                  <div class="col-4 text-grey flex flex-center">Agencia</div>
+                  <div class="col-8 text-right">
+                    <q-select class="bg-white" dense outlined v-model="agencia_id"
+                              :options="agencias" map-options emit-value
+                              option-value="id" option-label="nombre"
+                              :disable="!($store.user?.agencia_id==1)"/>
+                  </div>
+
+                  <div class="col-4 text-grey flex flex-center">Proveedor</div>
+                  <div class="col-8 text-right">
+                    <q-select class="bg-white" dense outlined v-model="proveedor_id"
+                              :options="proveedores" map-options emit-value
+                              use-input @filter="filterFn"
+                              option-value="id" option-label="nombreRazonSocial"/>
+                  </div>
+                </div>
+              </q-item-section>
             </q-list>
-            <q-btn @click="compraInsert" class="full-width" no-caps label="Confirmar compra" :color="$store.productosCompra.length==0?'grey':'warning'" :disable="$store.productosCompra.length==0?true:false" :loading="loading"/>
+
+            <q-btn @click="compraInsert" class="full-width" no-caps label="Confirmar compra"
+                   :color="$store.productosCompra.length==0?'grey':'warning'"
+                   :disable="$store.productosCompra.length==0"
+                   :loading="loading"/>
           </q-card-section>
         </q-card>
       </div>
     </div>
     <div id="myElement" class="hidden"></div>
-</q-page>
+  </q-page>
 </template>
+
 <script>
 // import { Imprimir } from 'src/addons/Imprimir'
 import { date } from 'quasar'
@@ -231,7 +248,6 @@ export default {
       qr: false,
       documents: [],
       metodoPago: 'Efectivo',
-      // textoCambio: 'Aporte',
       document: {},
       factura: '',
       agencia_id: 0,
@@ -250,7 +266,6 @@ export default {
       products: [],
       totalProducts: 0,
       agencias: [],
-      // agencia: 0,
       product: { cantidad: 0, nombre: '', barra: '', costo: 0, precio: 0, descripcion: '', category_id: 0 },
       category: 0,
       subcategory: 0,
@@ -287,7 +302,6 @@ export default {
   },
   created () {
     this.agencia_id = this.$store.agencia_id
-    // this.$store.agencia_id = 0
   },
   mounted () {
     this.proveedoresGet()
@@ -296,10 +310,7 @@ export default {
     this.subcategoriesGet()
     this.agenciasGet()
     this.$axios.get('documents').then(res => {
-      // console.log(this.documents)
-      res.data.forEach(r => {
-        r.label = r.descripcion
-      })
+      res.data.forEach(r => { r.label = r.descripcion })
       this.documents = res.data
       this.document = this.documents[0]
     })
@@ -309,17 +320,11 @@ export default {
       this.subcategories = [{ name: 'Ver todas las sub categorias', id: 0 }]
       this.$axios.get('subcategories').then(response => {
         this.subcategories = this.subcategories.concat(response.data)
-      }).catch(error => {
-        console.log(error)
-      })
+      }).catch(error => console.log(error))
     },
     filterFn (val, update, abort) {
-      // console.log(val)
-      // console.log(this.proveedoresAll)
       if (val === '') {
-        update(() => {
-          this.proveedores = this.proveedoresAll
-        })
+        update(() => { this.proveedores = this.proveedoresAll })
         return
       }
       const needle = val.toLowerCase()
@@ -337,18 +342,44 @@ export default {
       this.$store.productosCompra.splice(index, 1)
     },
     async compraInsert () {
-      // Verificar que todos tengan lote, fecha de vencimiento y cantidad
       for (const p of this.$store.productosCompra) {
+        p._fechaVencimientoError = false
         if (
           p.lote === '' || p.fechaVencimiento === '' || p.cantidadCompra === '' || p.price === '' ||
           p.lote === null || p.fechaVencimiento === null || p.cantidadCompra === null || p.price === null
         ) {
+          if (!p.fechaVencimiento) p._fechaVencimientoError = true
           this.$alert.error('Debes ingresar el lote, la fecha de vencimiento y la cantidad de compra para todos los productos.')
+          return false
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(p.fechaVencimiento)) {
+          p._fechaVencimientoError = true
+          this.$alert.error(`La fecha de vencimiento de "${p.nombre}" debe tener el formato AAAA-MM-DD.`)
+          return false
+        }
+        const [yy, mm, dd] = p.fechaVencimiento.split('-').map(Number)
+        const fecha = new Date(yy, mm - 1, dd)
+        if (fecha.getFullYear() !== yy || fecha.getMonth() + 1 !== mm || fecha.getDate() !== dd) {
+          p._fechaVencimientoError = true
+          this.$alert.error(`La fecha de vencimiento de "${p.nombre}" no es válida.`)
+          return false
+        }
+        const hoyDate = new Date()
+        const maxDate = new Date(hoyDate.getFullYear() + 10, hoyDate.getMonth(), hoyDate.getDate())
+        const hoy = date.formatDate(hoyDate, 'YYYY-MM-DD')
+        const fechaStr = date.formatDate(fecha, 'YYYY-MM-DD')
+        if (fechaStr <= hoy) {
+          p._fechaVencimientoError = true
+          this.$alert.error(`El vencimiento de "${p.nombre}" debe ser posterior a hoy.`)
+          return false
+        }
+        if (fecha > maxDate) {
+          p._fechaVencimientoError = true
+          this.$alert.error(`El vencimiento de "${p.nombre}" es demasiado lejano (máximo 10 años).`)
           return false
         }
       }
 
-      // Mostrar diálogo de confirmación
       await this.$q.dialog({
         title: 'Confirmar compra',
         message: `¿Estás seguro de confirmar la compra a <span style="color: red"> <b> ${this.agencias.find(a => a.id === this.agencia_id).nombre}</b></span> con <span style="color: red"> <b>${this.$store.productosCompra.length}</b></span> productos?`,
@@ -357,7 +388,6 @@ export default {
         persistent: true
       }).onOk(async () => {
         try {
-          // Realizar la compra
           this.loading = true
           await this.$axios.post('compraInsert', {
             buys: this.$store.productosCompra,
@@ -371,9 +401,8 @@ export default {
           this.loading = false
           this.productsGet()
           this.factura = ''
-          // this.agencia_id = 0
         } catch (err) {
-          this.$alert.error(err.response.data.message)
+          this.$alert.error(err.response?.data?.message || 'Error')
           this.loading = false
         }
       })
@@ -387,22 +416,16 @@ export default {
       this.$store.productosCompra = []
     },
     clickAddSale (product) {
-      // product.cantidad--
       product.cantidadPedida++
-      // const productVenta = this.$store.productosCompra.find(p => p.id === product.id)
-      // if (productVenta) {
-      //   productVenta.cantidadVenta++
-      // } else {
-      //   product.cantidadVenta = 1
-      // this.$store.productosCompra.push(product)
-      // }
       this.$store.productosCompra.push({
         id: product.id,
         nombre: product.nombre,
         imagen: product.imagen,
         lote: '',
         fechaVencimiento: date.formatDate(new Date(), 'YYYY-MM-DD'),
-        cantidadCompra: ''
+        cantidadCompra: '',
+        _fechaVencimientoError: false,
+        _tocoFecha: false // <-- inicia ocultando la alerta
       })
     },
     agenciasGet () {
@@ -410,7 +433,7 @@ export default {
       this.$axios.get('agencias').then(response => {
         this.agencias = this.agencias.concat(response.data)
       }).catch(error => {
-        this.$alert.error(error.response.data.message)
+        this.$alert.error(error.response?.data?.message || 'Error')
       })
     },
     categoriesGet () {
@@ -418,14 +441,11 @@ export default {
       this.$axios.get('categories').then(response => {
         this.categories = this.categories.concat(response.data)
         this.categoriesTable = response.data
-      }).catch(error => {
-        console.log(error)
-      })
+      }).catch(error => console.log(error))
     },
     productsGet () {
       this.loading = true
       this.products = []
-      // this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.$store.agencia_id}`).then(res => {
       this.$axios.get('productsSale', {
         params: {
           page: this.current_page,
@@ -437,10 +457,7 @@ export default {
         }
       }).then(res => {
         this.loading = false
-        // console.log(res.data.products)
         this.totalProducts = res.data.products.total
-        // this.products = res.data.products.data
-        // console.log(this.products)
         this.last_page = res.data.products.last_page
         this.current_page = res.data.products.current_page
         this.costoTotalProducts = parseFloat(res.data.costoTotal).toFixed(2)
@@ -454,6 +471,36 @@ export default {
         this.loading = false
         console.log(err)
       })
+    },
+    venceEn (fechaStr) {
+      if (!fechaStr || !/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) return ''
+      const [Y, M, D] = fechaStr.split('-').map(Number)
+      const target = new Date(Y, M - 1, D)
+      if (target.getFullYear() !== Y || target.getMonth() !== M - 1 || target.getDate() !== D) return ''
+
+      const today = new Date()
+      let months = (target.getFullYear() - today.getFullYear()) * 12 + (target.getMonth() - today.getMonth())
+      if (target.getDate() < today.getDate()) months -= 1
+
+      if (months < 0) return 'Vencido'
+      const years = Math.floor(months / 12)
+      const rem = months % 12
+
+      if (years === 0) return `${months} ${months === 1 ? 'mes' : 'meses'}`
+      if (rem === 0) return `${years} ${years === 1 ? 'año' : 'años'}`
+      return `${years} ${years === 1 ? 'año' : 'años'} y ${rem} ${rem === 1 ? 'mes' : 'meses'}`
+    },
+    esCortoVencimiento (fechaStr) {
+      if (!fechaStr || !/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) return false
+      const [Y, M, D] = fechaStr.split('-').map(Number)
+      const target = new Date(Y, M - 1, D)
+      if (isNaN(target)) return false
+
+      const hoy = new Date()
+      let months = (target.getFullYear() - hoy.getFullYear()) * 12 + (target.getMonth() - hoy.getMonth())
+      if (target.getDate() < hoy.getDate()) months -= 1
+
+      return months >= 0 && months < 12
     }
   },
   computed: {
@@ -498,24 +545,50 @@ export default {
   }
 }
 </script>
+
 <style lang="scss">
 .super-small.q-field--dense {
-  .q-field__control-container,
-  .q-field__native {
-    //padding-top: 10px !important;
-  }
+  .q-field__control { height: 25px !important; min-height: 25px !important; }
+  .q-field__marginal { height: 25px !important; }
+  .q-field__label { top: 6px !important; }
+}
 
-  .q-field__control {
-    height: 25px !important;
-    min-height: 25px !important;
-  }
+input[type="date"].invalid-date {
+  background-color: #fa4a4a !important;
+  border: 1px solid #000000 !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
 
-  .q-field__marginal {
-    height: 25px !important;
-  }
+/* Contenedor del TD */
+.td-venta { position: relative; }
 
-  .q-field__label {
-    top: 6px !important;
-  }
+/* Fila del input de fecha: sirve de ancla para el texto a la derecha */
+.date-row { position: relative; display: inline-block; }
+
+/* Texto (meses/años) a la DERECHA del input de fecha, sin empujar nada */
+.vence-right-inline{
+  position: absolute;
+  right: 178px;             /* 170px del input + 8px de separación */
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;    /* no bloquea clics en el input */
+  white-space: nowrap;
+}
+
+.vence-label { font-size: 12px; color: #666; }
+.corto-vencimiento { color: #d9534f; font-weight: 600; }
+.warning-right { color: #d9534f; }
+
+/* Alerta debajo del Subtotal */
+.alert-under-subtotal{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
 }
 </style>
