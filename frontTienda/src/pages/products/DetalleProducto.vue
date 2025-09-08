@@ -1,6 +1,5 @@
 <template>
   <q-page class="q-pa-none modern-bg">
-
     <!-- separador por barra fija -->
     <div class="page-spacer" />
 
@@ -47,6 +46,8 @@
                 class="media-img"
                 :img-style="zoomImgStyle"
                 @error="onImgError"
+                :alt="product?.nombre ? `Imagen de ${product.nombre}` : 'Imagen de producto'"
+                :title="product?.nombre || 'Producto'"
               >
                 <q-badge v-if="es_porcentaje" color="red" floating class="text-bold">-{{ product.porcentaje }}%</q-badge>
               </q-img>
@@ -65,7 +66,7 @@
 
         <!-- Info -->
         <div class="col-12 col-md-7">
-          <div class="product-title">{{ product?.nombre }}</div>
+          <h1 class="product-title">{{ product?.nombre }}</h1>
 
           <!-- Precio / Stock -->
           <div class="price-card q-mt-sm q-mb-md">
@@ -241,8 +242,11 @@
 </template>
 
 <script>
+import { nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { useMeta } from 'quasar'
-import { getCurrentInstance, nextTick } from 'vue'
+
+const SITE = 'https://farmaciasantidaddivina.com'
 
 export default {
   name: 'DetalleProducto',
@@ -255,7 +259,6 @@ export default {
       cantidad: 1,
       es_porcentaje: false,
       sucursales: [],
-      // relacionados
       relacionados: [],
       relLoading: false,
       fallbackUsed: false,
@@ -268,55 +271,43 @@ export default {
       // zoom
       zoom: { on: false, x: 50, y: 50 },
 
-      // control de concurrencia para evitar respuestas viejas
+      // control de concurrencia
       reqSeq: 0
     }
   },
 
+  // Meta base (se sobreescribe imperativamente luego)
   setup () {
-    const vm = getCurrentInstance()
-    useMeta(() => {
-      const p = vm?.proxy?.product || {}
-      const nombre = p.nombre || 'Santidad Divina'
-      const desc = (p.descripcion
-        ? p.descripcion + ' Producto disponible en Santidad Divina. Encuéntralo en nuestra farmacia digital.'
-        : 'Producto disponible en Santidad Divina. Encuéntralo en nuestra farmacia digital.')
-      const imagen = p?.imagen
-        ? (String(p.imagen).startsWith('http') ? p.imagen : `${vm.proxy.$url}../images/${p.imagen}`)
-        : '/images/placeholder-producto.png'
+    const route = useRoute()
+    const baseTitle = 'Santidad Divina | Farmacia Santidad Divina'
+    const canonical = new URL(route.path || '/', SITE).toString()
 
-      return {
-        title: nombre,
-        description: desc,
-        meta: {
-          description: { name: 'description', content: desc },
-          keywords: { name: 'keywords', content: `medicamento, salud, ${p.nombre || ''}, ${p.marca || ''}, ${p.composicion || ''}` },
-          robots: { name: 'robots', content: 'index, follow' },
-          'og:title': { property: 'og:title', content: nombre },
-          'og:description': { property: 'og:description', content: desc },
-          'og:image': { property: 'og:image', content: imagen },
-          'og:type': { property: 'og:type', content: 'product' },
-          'og:url': { property: 'og:url', content: typeof window !== 'undefined' ? window.location.href : '' }
-        },
-        link: { canonical: { rel: 'canonical', href: typeof window !== 'undefined' ? window.location.href : '' } }
-      }
+    useMeta({
+      title: baseTitle,
+      meta: {
+        description: { name: 'description', content: 'Compra este producto en Farmacia Santidad Divina. Entrega rápida y precios solidarios.' },
+        robots: { name: 'robots', content: 'index, follow, max-image-preview:large' },
+        'og:type': { property: 'og:type', content: 'product' },
+        'og:title': { property: 'og:title', content: baseTitle },
+        'og:description': { property: 'og:description', content: 'Compra este producto en Farmacia Santidad Divina. Entrega rápida y precios solidarios.' },
+        'og:site_name': { property: 'og:site_name', content: 'Farmacia Santidad Divina' },
+        'og:locale': { property: 'og:locale', content: 'es_BO' },
+        'og:url': { property: 'og:url', content: canonical },
+        'twitter:card': { name: 'twitter:card', content: 'summary_large_image' }
+      },
+      link: { canonical: { rel: 'canonical', href: canonical } }
     })
+
     return {}
   },
 
   computed: {
-    // Forzar re-montaje del bloque detalle al cambiar id/imagen (evita residuos)
-    detailKey () {
-      return `${this.id}-${this.imgBust}`
-    },
-    // Key único para que el <q-img> se re-monte + bust de caché
-    imgKey () {
-      return `${this.id}-${this.product?.imagen || 'noimg'}-${this.imgBust}`
-    },
+    detailKey () { return `${this.id}-${this.imgBust}` },
+    imgKey () { return `${this.id}-${this.product?.imagen || 'noimg'}-${this.imgBust}` },
     imgSrc () {
       const img = this.product?.imagen
       let base = img
-        ? (img.includes('http') ? img : `${this.$url}../images/${img}`)
+        ? (String(img).includes('http') ? img : `${this.$url}../images/${img}`)
         : '/images/placeholder-producto.png'
       base += (base.includes('?') ? '&' : '?') + 'v=' + this.imgBust
       return base
@@ -331,7 +322,6 @@ export default {
       const p = Number(this.product?.precio || 0)
       return (p * (Number(this.cantidad) || 0)).toFixed(2)
     },
-    // === STOCK: suma por sucursales (robusto al cambiar de producto) ===
     availableStock () {
       return this.sucursales.reduce((acc, s) => acc + Number(s.cantidad || 0), 0)
     },
@@ -339,7 +329,6 @@ export default {
       const s = this.availableStock
       return s > 100 ? 100 : s
     },
-    // estilos del zoom (aplicados al <img> interno del QImg)
     zoomImgStyle () {
       const style = {
         transition: 'transform .15s ease-out, transform-origin .1s ease-out',
@@ -367,9 +356,7 @@ export default {
         await this.initLoad()
       }
     },
-    'product.imagen' () {
-      this.bumpImg()
-    }
+    'product.imagen' () { this.bumpImg() }
   },
 
   async mounted () {
@@ -377,26 +364,147 @@ export default {
   },
 
   methods: {
+    // ==== SEO helpers (imperativos) ====
+    abs (u) {
+      if (!u) return `${SITE}/images/placeholder-producto.png`
+      if (/^https?:\/\//i.test(u)) return u
+      return u.startsWith('/') ? `${SITE}${u}` : `${SITE}/images/${u}`
+    },
+    cleanText (t = '') {
+      return String(t).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    },
+    seoTitleFrom (p) {
+      const name = p?.nombre || 'Santidad Divina'
+      const pres = p?.presentacion ? ` ${p.presentacion}` : ''
+      const brand = p?.marca ? ` | ${p.marca}` : ''
+      return `${name}${pres}${brand} | Farmacia Santidad Divina`
+    },
+    seoDescFrom (p) {
+      const body = this.cleanText(p?.descripcion || '')
+      const raw = body
+        ? `${body} Producto disponible en Farmacia Santidad Divina. Compra online en Oruro.`
+        : `Compra ${p?.nombre || 'este producto'} en Farmacia Santidad Divina. Entrega rápida y precios solidarios.`
+      return raw.substring(0, 155)
+    },
+    ensureMetaName (name, content) {
+      let tag = document.head.querySelector(`meta[name="${name}"]`)
+      if (!tag) {
+        tag = document.createElement('meta')
+        tag.setAttribute('name', name)
+        document.head.appendChild(tag)
+      }
+      tag.setAttribute('content', content || '')
+    },
+    ensureMetaProp (prop, content) {
+      let tag = document.head.querySelector(`meta[property="${prop}"]`)
+      if (!tag) {
+        tag = document.createElement('meta')
+        tag.setAttribute('property', prop)
+        document.head.appendChild(tag)
+      }
+      tag.setAttribute('content', content || '')
+    },
+    ensureCanonical (href) {
+      let link = document.head.querySelector('link[rel="canonical"]')
+      if (!link) {
+        link = document.createElement('link')
+        link.setAttribute('rel', 'canonical')
+        document.head.appendChild(link)
+      }
+      link.setAttribute('href', href)
+    },
+    setJsonLd (id, obj) {
+      let s = document.getElementById(id)
+      if (!s) {
+        s = document.createElement('script')
+        s.type = 'application/ld+json'
+        s.id = id
+        document.head.appendChild(s)
+      }
+      s.textContent = JSON.stringify(obj)
+    },
+    applySEO () {
+      const p = this.product || {}
+      const title = this.seoTitleFrom(p)
+      const desc = this.seoDescFrom(p)
+      const img = this.abs(p?.imagen)
+      const canonical = new URL(this.$route.path || '/', SITE).toString()
+
+      // <title>
+      document.title = title
+
+      // Meta básicos
+      this.ensureMetaName('description', desc)
+      this.ensureMetaName('keywords', ['farmacia', 'medicamento', 'salud', 'Bolivia', p?.nombre, p?.marca, p?.composicion].filter(Boolean).join(', '))
+      this.ensureMetaName('robots', 'index, follow, max-image-preview:large')
+      this.ensureMetaName('author', 'Farmacia Santidad Divina')
+      this.ensureMetaName('publisher', 'Farmacia Santidad Divina')
+
+      // Open Graph
+      this.ensureMetaProp('og:site_name', 'Farmacia Santidad Divina')
+      this.ensureMetaProp('og:locale', 'es_BO')
+      this.ensureMetaProp('og:type', 'product')
+      this.ensureMetaProp('og:title', title)
+      this.ensureMetaProp('og:description', desc)
+      this.ensureMetaProp('og:image', img)
+      this.ensureMetaProp('og:image:secure_url', img)
+      this.ensureMetaProp('og:url', canonical)
+
+      // Twitter
+      this.ensureMetaName('twitter:card', 'summary_large_image')
+      this.ensureMetaName('twitter:title', title)
+      this.ensureMetaName('twitter:description', desc)
+      this.ensureMetaName('twitter:image', img)
+
+      // Canonical
+      this.ensureCanonical(canonical)
+
+      // JSON-LD Product
+      this.setJsonLd('ld-product', {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: p?.nombre || 'Producto',
+        description: desc,
+        image: [img],
+        sku: p?.sku || undefined,
+        brand: p?.marca ? { '@type': 'Brand', name: p.marca } : undefined,
+        offers: {
+          '@type': 'Offer',
+          priceCurrency: 'BOB',
+          price: String(p?.precio ?? ''),
+          availability: (Number(p?.stock) || 0) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+          url: canonical
+        }
+      })
+
+      // JSON-LD Breadcrumbs
+      this.setJsonLd('ld-breadcrumbs', {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Inicio', item: SITE },
+          { '@type': 'ListItem', position: 2, name: 'Productos', item: `${SITE}/productos` },
+          { '@type': 'ListItem', position: 3, name: p?.nombre || 'Producto', item: canonical }
+        ]
+      })
+    },
+    // ==== /SEO helpers ====
+
     async prepareForNewProduct () {
-      // limpiar y NO montar imagen hasta tener datos
       this.imgReady = false
       this.imgBust = Date.now()
       this.fallbackUsed = false
       this.product = {}
       this.es_porcentaje = false
       this.cantidad = 1
-      // reset visual de cantidades por sucursal hasta que llegue el nuevo detalle
       this.sucursales = this.sucursales.map(s => ({ ...s, cantidad: 0 }))
       this.zoom = { on: false, x: 50, y: 50 }
       await nextTick()
     },
 
-    bumpImg () {
-      this.imgBust = Date.now()
-    },
+    bumpImg () { this.imgBust = Date.now() },
 
     async initLoad () {
-      // Traer sucursales si no tenemos
       if (!this.sucursales || this.sucursales.length === 0) {
         await this.getSucursales()
       }
@@ -426,7 +534,6 @@ export default {
         : '/images/placeholder-producto.png'
     },
 
-    // movimiento del zoom (transform-origin hacia el cursor)
     handleZoomMove (ev) {
       const el = ev.currentTarget
       const rect = el.getBoundingClientRect()
@@ -438,7 +545,6 @@ export default {
 
     async getSucursales () {
       const { data } = await this.$axios.get('sucursales')
-      // estandarizar con campo cantidad inicial en 0
       this.sucursales = (data || []).map(s => ({ ...s, cantidad: Number(s.cantidad || 0) }))
     },
 
@@ -450,9 +556,8 @@ export default {
       this.$q.loading.show()
       try {
         const { data } = await this.$axios.get(`productos/${id}`)
-        if (myReq !== this.reqSeq) return // ignorar respuesta vieja
+        if (myReq !== this.reqSeq) return
 
-        // Clonar para asegurar reactividad limpia
         this.product = { ...data }
 
         // precio / porcentaje
@@ -464,19 +569,19 @@ export default {
           this.es_porcentaje = false
         }
 
-        // cantidades por sucursal en listado (mostrar disponibilidad real)
+        // cantidades por sucursal
         this.sucursales = this.sucursales.map(s => ({
           ...s,
           cantidad: Number(this.product[`cantidadSucursal${s.id}`] || 0)
         }))
 
-        // reset cantidad
         this.cantidad = 1
-
-        // imagen ok
         this.fallbackUsed = false
         this.bumpImg()
         this.imgReady = true
+
+        // === SEO final (forzamos el <head> con datos del producto) ===
+        this.applySEO()
       } catch (e) {
         if (myReq !== this.reqSeq) return
         this.apiError = true
@@ -489,7 +594,6 @@ export default {
       }
     },
 
-    // ===== Relacionados (igual que tu lógica, sin tocar stock) =====
     async fetchRelacionados () {
       const comp = (this.product?.composicion || '').trim()
       this.relacionados = []
@@ -688,9 +792,7 @@ export default {
       const n = Number(this.cantidad)
       if (!Number.isFinite(n) || n < 1) this.cantidad = 1
     },
-    decCantidad () {
-      this.cantidad = Math.max(1, Number(this.cantidad || 1) - 1)
-    },
+    decCantidad () { this.cantidad = Math.max(1, Number(this.cantidad || 1) - 1) },
     incCantidad () {
       const max = this.availableStock
       const next = Number(this.cantidad || 1) + 1
@@ -774,40 +876,13 @@ export default {
 .container { max-width: 1200px; }
 .page-spacer { height: 80px; }
 
-/* ===== Top bar ===== */
-.barra-superior{
-  position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
-  width: 92vw; max-width: 1120px; z-index: 999;
-  display: flex; align-items: center; gap: 12px; padding: 8px 12px;
-}
-.search-container{ display:flex; flex:1; gap:8px; align-items:center; }
-.search-input{ flex:1; min-width:120px; }
-.search-btn{ width:110px; min-width:90px; }
-
-.menu-navegacion{
-  position: fixed; top: 72px; left: 25%; transform: translateX(-50%);
-  padding: 14px; z-index: 9999; display:flex; flex-direction:column; gap:10px;
-}
-.menu-item{ padding:10px 12px; font-size:16px; font-weight:600; color:#0f172a; border-radius:10px; cursor:pointer; }
-.menu-item:hover{ background:#eef7ff; }
-
 /* ===== Media ===== */
-.media-wrap{
-  width:100%; max-width:420px;
-  padding:14px; border-radius:16px;
-}
+.media-wrap{ width:100%; max-width:420px; padding:14px; border-radius:16px; }
 .media-actions{ display:flex; gap:8px; margin-top:8px; }
-
-/* Contenedor con lupa */
-.zoom-area{
-  position: relative;
-  overflow: hidden;
-  border-radius: 12px;
-}
+.zoom-area{ position: relative; overflow: hidden; border-radius: 12px; }
 .media-img{ width:100%; height:100%; object-fit:contain; border-radius:12px; }
 .zoom-hint{
-  position: absolute;
-  top: 8px; left: 8px;
+  position: absolute; top: 8px; left: 8px;
   background: rgba(255,255,255,.8);
   border: 1px solid rgba(0,0,0,.06);
   border-radius: 999px;
@@ -821,10 +896,7 @@ export default {
 .price-card .before{ font-size:14px; color:#94a3b8; text-decoration:line-through; }
 
 /* ===== Meta ===== */
-.meta-grid{
-  display:grid; grid-template-columns:1fr; gap:8px;
-  padding: 12px 14px;
-}
+.meta-grid{ display:grid; grid-template-columns:1fr; gap:8px; padding: 12px 14px; }
 .meta-row{ display:flex; gap:10px; align-items:center; }
 .meta-key{ width:170px; color:#475569; font-weight:700; }
 .meta-val{ color:#0F172A; }
@@ -832,16 +904,9 @@ export default {
 /* ===== Cantidad ===== */
 .qty-row{ display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; }
 .qty-title{ font-weight:800; color:#0F172A; }
-
-.qty-controls{
-  display:flex; align-items:center; gap:10px;
-  padding: 6px 8px; border-radius: 999px;
-}
+.qty-controls{ display:flex; align-items:center; gap:10px; padding: 6px 8px; border-radius: 999px; }
 .qty-btn{ width:38px; height:38px; }
-.qty-input{
-  width:100px; text-align:center; font-weight:700;
-  border-radius: 10px; background: transparent;
-}
+.qty-input{ width:100px; text-align:center; font-weight:700; border-radius: 10px; background: transparent; }
 .qty-input :deep(input){ text-align:center; font-weight:800; font-size:16px; }
 .qty-unit{ color:#475569; font-weight:700; padding:0 6px; }
 
