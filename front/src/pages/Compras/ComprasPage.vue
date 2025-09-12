@@ -425,7 +425,8 @@ export default {
         fechaVencimiento: date.formatDate(new Date(), 'YYYY-MM-DD'),
         cantidadCompra: '',
         _fechaVencimientoError: false,
-        _tocoFecha: false // <-- inicia ocultando la alerta
+        _tocoFecha: false, // <-- inicia ocultando la alerta
+        price: product.precioVenta // <-- Asignamos el precio aquí
       })
     },
     agenciasGet () {
