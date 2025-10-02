@@ -51,10 +51,9 @@
               <h2>Introducción y alcance</h2>
             </div>
             <p>
-              En Santidad Divina, reconocemos y valoramos profundamente tu derecho a la
-              privacidad. Esta política establece de manera concisa cómo recopilamos y utilizamos
-              la información de identificación personal, destacando los aspectos más relevantes
-              relacionados con tu privacidad.
+              En Santidad-Divina S.R.L., reconocemos y valoramos profundamente tu derecho a la
+              privacidad. Esta política de privacidad establece de manera concisa cómo recopilamos y utilizamos
+              la información de identificación personal, destacando los aspectos más relevantes relacionados con tu privacidad.
             </p>
           </q-card>
 
@@ -64,10 +63,10 @@
               <h2>Cumplimiento Normativo</h2>
             </div>
             <p>
-              Santidad Divina se compromete a cumplir con las leyes de privacidad y protección de
-              datos aplicables en el Estado Plurinacional de Bolivia. Este compromiso refleja
-              nuestra dedicación para ganar y mantener la confianza de nuestros clientes, socios
-              comerciales y todas las personas que comparten su información personal con nosotros.
+              Santidad-Divina S.R.L. se compromete a cumplir con todas las leyes de privacidad y protección de
+              datos aplicables en el Estado Plurinacional de Bolivia. Este compromiso refleja nuestra dedicación
+              para ganar y mantener la confianza de nuestros clientes, socios comerciales y todas las personas que
+              comparten su información personal con nosotros.
             </p>
           </q-card>
 
@@ -77,10 +76,9 @@
               <h2>Recopilación y Uso de Información Personal</h2>
             </div>
             <p>
-              Para acceder y utilizar los servicios ofrecidos por Santidad Divina, nuestros
-              clientes deben proporcionar ciertos datos personales. Esta información se procesa y
-              almacena con altos estándares de seguridad y protección tanto física como
-              tecnológica.
+              Para acceder y utilizar los servicios ofrecidos por Santidad-Divina S.R.L., los clientes deben
+              proporcionar ciertos datos de carácter personal. Esta información se procesa y almacena con altos
+              estándares de seguridad y protección tanto física como tecnológica.
             </p>
           </q-card>
 
@@ -90,10 +88,10 @@
               <h2>Información Requerida del Usuario</h2>
             </div>
             <p>
-              Al completar el formulario de registro solicitamos datos como nombre, correo
-              electrónico, dirección y número de teléfono. Esta información se utiliza para
-              responder consultas sobre productos y servicios, procesar pedidos y pagos, así como
-              para mantener una comunicación efectiva con nuestros clientes.
+              Al completar el formulario de registro en nuestro sitio web, solicitamos a los usuarios datos como
+              nombre, dirección de correo electrónico, dirección física y número de teléfono. Esta información se
+              utiliza para responder consultas sobre productos y servicios, procesar pedidos y pagos, así como para
+              mantener una comunicación efectiva con nuestros clientes.
             </p>
           </q-card>
 
@@ -103,10 +101,10 @@
               <h2>Consentimiento del Usuario</h2>
             </div>
             <p>
-              Al utilizar Santidad Divina Digital, los usuarios aceptan esta Política de
-              Privacidad. El envío de información a través del sitio implica el consentimiento para
-              la recopilación, transferencia, uso y divulgación de dicha información, según se
-              describe en este documento.
+              Al utilizar Santidad-Divina S.R.L. los usuarios aceptan los términos de esta Política de Privacidad. El
+              envío de información a través de nuestro sitio implica el consentimiento para la recopilación,
+              transferencia, uso y divulgación de dicha información, según lo descrito en esta política y en las
+              Declaraciones de Privacidad pertinentes.
             </p>
           </q-card>
 
@@ -116,10 +114,9 @@
               <h2>Uso y Finalidad de la Información</h2>
             </div>
             <p>
-              Santidad Divina recopilará información personal únicamente para fines específicos y
-              limitados. Procesaremos esta información de manera coherente con los propósitos para
-              los cuales fue recopilada originalmente o para los cuales el usuario otorgó su
-              consentimiento.
+              Santidad-Divina S.R.L. recopilará información personal únicamente para fines específicos y limitados,
+              detallados en este documento. Procesaremos esta información de manera coherente con los propósitos para
+              los cuales fue recopilada originalmente o para los cuales el usuario otorgó su consentimiento.
             </p>
           </q-card>
 
@@ -129,10 +126,9 @@
               <h2>Seguridad de la Información Personal</h2>
             </div>
             <p>
-              La información personal se almacena en bases de datos con medidas preventivas
-              razonables para garantizar su seguridad, confidencialidad e integridad. Aplicamos
-              protocolos de seguridad físicos y tecnológicos para proteger los datos de accesos no
-              autorizados.
+              La información personal se almacena en bases de datos con medidas preventivas razonables para garantizar
+              su seguridad, confidencialidad e integridad. Se aplican protocolos de seguridad tanto físicos como
+              tecnológicos para proteger los datos del acceso no autorizado.
             </p>
           </q-card>
 
@@ -142,10 +138,9 @@
               <h2>Cambios en la Política de Privacidad</h2>
             </div>
             <p>
-              Los cambios en esta política se publicarán en nuestro sitio web. Santidad Divina se
-              reserva el derecho de actualizarla o modificarla en cualquier momento y sin previo
-              aviso. Las modificaciones aplicarán únicamente a la información recopilada después
-              de la fecha de publicación.
+              Los cambios en esta Política de Privacidad se publicarán en nuestro sitio web. Santidad-Divina S.R.L. se
+              reserva el derecho de actualizar o modificar esta política en cualquier momento y sin previo aviso. Las
+              modificaciones se aplicarán únicamente a la información recopilada después de la fecha de publicación.
             </p>
           </q-card>
 
@@ -155,26 +150,18 @@
               <h2>Gestión de la Información Personal</h2>
             </div>
             <p>
-              Santidad Divina es responsable de la base de datos y cumple con los derechos de los
-              usuarios conforme a la legislación aplicable. Los usuarios pueden acceder, actualizar
-              y eliminar sus datos personales en cualquier momento, así como oponerse a su
-              tratamiento.
+              Santidad-Divina S.R.L. es responsable de la base de datos y está comprometida a cumplir con los derechos
+              de los usuarios en virtud de la legislación aplicable. Los usuarios tienen derecho a acceder, actualizar
+              y eliminar sus datos personales en cualquier momento, así como a oponerse al tratamiento de los mismos.
             </p>
             <p>
-              Para ejercer estos derechos o solicitar la eliminación de datos, contáctanos por
-              nuestros canales de atención. Una vez solicitada la eliminación, procederemos en un
-              plazo razonable y te notificaremos el resultado. Tras completarse, la información será
-              suprimida de nuestras bases de datos, conservando únicamente registros anónimos con
-              fines estadísticos y de prevención de fraude.
+              Para realizar modificaciones o solicitar la eliminación de datos personales, los usuarios pueden
+              comunicarse a través de nuestros canales de atención al cliente. Una vez solicitada la eliminación de
+              datos, Santidad-Divina S.R.L. procederá en un plazo razonable y notificará al usuario sobre el resultado
+              del proceso. Una vez completada la eliminación, la información personal será eliminada de nuestras bases
+              de datos, quedando solo registros anónimos para fines estadísticos y de prevención de fraude.
             </p>
 
-            <div class="pp-actions">
-              <q-btn color="primary" no-caps icon="support_agent" label="Atención al cliente"
-                     @click="$router.push('/contacto')" />
-              <q-btn outline color="primary" no-caps icon="mail"
-                     label="Escribir por correo"
-                     type="a" href="mailto:soporte@santidaddivina.bo" />
-            </div>
           </q-card>
 
           <div class="pp-top">
@@ -191,7 +178,6 @@ export default {
   name: 'PoliticaPrivacidad',
   data () {
     return {
-
       items: [
         { id: 'intro', label: 'Introducción y alcance', icon: 'shield' },
         { id: 'cumplimiento', label: 'Cumplimiento Normativo', icon: 'gavel' },
@@ -215,8 +201,6 @@ export default {
     }
   },
   methods: {
-
-    // existentes
     go (id) {
       const el = document.getElementById(id)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -277,7 +261,6 @@ export default {
 }
 .pp-section p { padding: 8px 16px 16px; color: #334155; line-height: 1.6; margin: 0; }
 
-/* Acciones */
 .pp-actions { display: flex; gap: 10px; padding: 6px 16px 16px; flex-wrap: wrap; }
 
 /* Botón “ir arriba” */
@@ -289,12 +272,6 @@ export default {
 @media (max-width: 1024px) {
   .pp-grid { grid-template-columns: 1fr; }
   .pp-toc__card { position: static; }
-}
-
-/* ======= ESTILOS DEL BUSCADOR (añadidos) ======= */
-/* Despegar el hero para que no lo tape la barra fija */
-.pp-offset {
-  margin-top: 80px;
 }
 
 </style>

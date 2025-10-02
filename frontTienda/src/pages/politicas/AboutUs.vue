@@ -35,14 +35,16 @@
         <div class="pp-columns">
           <div class="pp-col">
             <p>
-              Farmacia Santidad Divina inicia este proyecto un <strong>12 de julio de 2010</strong>. Nuestra
+              Farmacia Santidad Divina inicia este proyecto el <strong>12 de julio del año 2010</strong>. Nuestra
               transformación está constantemente vinculada al proceso de modernización, priorizando la expansión de
-              nuestros servicios, pensando en la población orureña y muy pronto a nivel nacional.
+              nuestros servicios, siempre pensando en la población orureña y muy pronto, a nivel nacional.
             </p>
             <p>
-              En nuestro vigésimo cuarto aniversario, mantenemos un arduo trabajo con prioridad en la mejora continua y
-              la excelencia, enfocándonos en nuestra clientela para ofrecerles un servicio de calidad. Actualmente
-              contamos con <strong>6 sucursales</strong> en la ciudad de Oruro.
+              Farmacia Santidad Divina en su vigésimo cuarto aniversario, ha logrado un arduo trabajo, siempre con la
+              prioridad de la mejora continua y perseverando en alcanzar la excelencia, enfocándose en nuestra
+              clientela y ofreciendo un servicio de calidad. Actualmente contamos con <strong>6 sucursales</strong> en
+              la ciudad de Oruro. Desde esa fecha, Oruro, <strong>05 de agosto de 2025</strong>, pasa a ser
+              <strong>Santidad-Divina S.R.L.</strong>
             </p>
           </div>
           <div class="pp-col">
@@ -75,9 +77,9 @@
           </div>
           <p>
             Brindar productos farmacéuticos y servicio de calidad, accesibles en todo momento y lugar para el
-            bienestar de la salud de la población orureña. A través de nuestra red de farmacias, ofrecemos
-            asesoramiento profesional, una experiencia excepcional y soluciones integrales, guiados por valores de
-            honestidad, transparencia, igualdad y ética.
+            bienestar de la salud de la población Orureña. A través de nuestra red de farmacias, ofrecemos
+            asesoramiento profesional, una experiencia excepcional, soluciones integrales, guiados por valores de
+            honestidad, transparencia, solidaridad, igualdad y ética.
           </p>
         </q-card>
 
@@ -87,10 +89,10 @@
             <h2>Visión</h2>
           </div>
           <p>
-            Ser la cadena de farmacias líder con mayor participación en el mercado, reconocida por nuestra excelencia
+            Ser la cadena de Farmacias líder con mayor participación en el mercado, reconocida por nuestra excelencia
             en el servicio al cliente, la calidad de nuestros productos y nuestra contribución al cuidado de la salud.
-            Nos esforzamos por ser la primera opción para cubrir necesidades de salud y bienestar, manteniendo los más
-            altos estándares éticos con responsabilidad social.
+            Nos esforzamos para ser la primera opción para cubrir necesidades de la salud y bienestar, manteniendo los
+            más altos estándares éticos con responsabilidad social.
           </p>
         </q-card>
       </div>

@@ -15,7 +15,7 @@ class UploadController extends Controller
 ////        if ($type=='shopUser'){
         $ruta=public_path('/images/'.$name);
         Image::make($file->getRealPath())
-            ->resize(500,500
+            ->resize(1000,1000
                 ,function ($constraint){
                     $constraint->aspectRatio();
                 }

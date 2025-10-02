@@ -413,7 +413,6 @@ class ProductController extends Controller
             if (Schema::hasColumn('products', 'composicion'))  { $qq->orWhereRaw('UPPER(composicion) LIKE ?',  [$likeContain]); }
             if (Schema::hasColumn('products', 'marca'))        { $qq->orWhereRaw('UPPER(marca) LIKE ?',        [$likeContain]); }
             if (Schema::hasColumn('products', 'distribuidora')){ $qq->orWhereRaw('UPPER(distribuidora) LIKE ?',[$likeContain]); }
-            if (Schema::hasColumn('products', 'sku'))          { $qq->orWhereRaw('UPPER(sku) LIKE ?',          [$likeContain]); }
         });
 
         if (Schema::hasColumn('products', 'activo')) {

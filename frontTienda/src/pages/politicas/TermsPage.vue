@@ -288,8 +288,11 @@
               <h2>Imposibilidad de Entrega</h2>
             </div>
             <p>
-              Si no hay nadie en el domicilio indicado, Santidad Divina dejará una nota de aviso. Se realizarán dos intentos de entrega.
-              Si no es posible entregar el pedido, se guardará en la sucursal del operador logístico más cercana.
+              Si en caso de que no haya nadie en el domicilio indicado, Santidad-Divina S.R.L. dejará una nota de aviso.
+               Si no es posible realizar la entrega y el pago ha sido efectuado de manera anticipada,
+               el pedido se guardará en la sucursal del operador logístico más cercano. Sin embargo,
+               si la hora de entrega supera las 10:00 p.m., el pedido será retornado a la sucursal de origen y se considerará anulado,
+               a menos que se haya realizado una cancelación previa
             </p>
           </q-card>
 
@@ -299,8 +302,9 @@
               <h2>Precio y Ofertas</h2>
             </div>
             <p>
-              Los precios publicados en el Sitio son válidos solo para este canal de venta. Santidad Divina se reserva el derecho de modificar la
-              información, incluidos precios y existencias, en cualquier momento y sin previo aviso.
+             Los precios establecidos en la página web y en las sucursales son los mismos. Santidad-Divina S.R.L.
+             se reserva el derecho de modificar la información, incluidos los precios y la disponibilidad de productos,
+              en cualquier momento y sin previo aviso.
             </p>
           </q-card>
 

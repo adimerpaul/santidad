@@ -43,7 +43,7 @@
           </div>
         </nav>
 
-        <!-- Secciones con TU TEXTO -->
+        <!-- Secciones con nuevo texto -->
         <article class="pp-content">
           <q-card flat bordered class="pp-section" id="proceso-pedido">
             <div class="pp-section__header">
@@ -63,7 +63,7 @@
               <h2>Servicio de envío a domicilio</h2>
             </div>
             <p>
-              Santidad Divina ofrece a sus clientes servicios de envío a domicilio a través de su Web Ecommerce.
+              Santidad-Divina S.R.L. ofrece a sus clientes servicios de envío a domicilio a través de su Página Web.
               Este servicio de entrega tiene un costo, claramente especificado al finalizar la compra. Al confirmar el pedido
               y aprobar la factura, el cliente acepta el costo del servicio de entrega a domicilio y el total correspondiente.
             </p>
@@ -97,10 +97,10 @@
               <h2>Responsabilidad</h2>
             </div>
             <p>
-              Santidad Divina se compromete a entregar los pedidos en buen estado según lo ofrecido, siempre que la entrega sea
-              responsabilidad de la Farmacia. En caso de envío a terminal, Santidad Divina solo es responsable hasta la entrega
+              Santidad-Divina S.R.L. se compromete a entregar los pedidos en buen estado según lo ofrecido, siempre que la entrega sea
+              responsabilidad de la Farmacia. En caso de envío a terminal, Santidad-Divina S.R.L. solo es responsable hasta la entrega
               de los productos a un tercero para su envío a otro destino. En caso de pérdida, robo o daño por parte de una empresa
-              ajena a Santidad Divina, el cliente debe contactar directamente a la empresa transportadora.
+              ajena a Santidad-Divina S.R.L., el cliente debe contactar directamente a la empresa transportadora.
             </p>
           </q-card>
 
@@ -110,19 +110,18 @@
               <h2>Forma de Entrega</h2>
             </div>
             <p>
-              Utilizaremos nuestro servicio interno de entrega Ecommerce para realizar la entrega en el domicilio registrado por
-              el cliente. El plazo de entrega se indica al aceptar el pedido, y varía según los días hábiles informados al finalizar
-              la transacción.
+              Utilizaremos nuestro servicio interno de entrega para llevar el pedido al domicilio registrado por el cliente. El plazo
+              de entrega se especificará al confirmar el pedido y variará según los días hábiles indicados al finalizar la transacción.
             </p>
           </q-card>
 
           <q-card flat bordered class="pp-section" id="compra-minima">
             <div class="pp-section__header">
               <q-icon name="production_quantity_limits" />
-              <h2>Compra mínima y cobertura</h2>
+              <h2>Compra mínima y Entrega</h2>
             </div>
             <p>
-              La compra mínima en línea es de Bs. 30. Realizamos entregas en toda la ciudad de Oruro, con costos de envío variables
+              La compra mínima en línea es de Bs. 50. Realizamos entregas en toda la ciudad de Oruro, con costos de envío variables
               según la distancia y zona de entrega.
             </p>
           </q-card>
@@ -133,8 +132,10 @@
               <h2>Horarios de Entrega</h2>
             </div>
             <p>
-              Las entregas se realizan de lunes a domingo de 08:00 A.M. a 22:30 P.M., salvo en casos de emergencia, que se atienden
-              las 24 horas del día.
+              Las entregas se realizan de lunes a domingo, entre las 08:00 A.M. y las 10:00 P.M. En los turnos de 24 horas de la
+              farmacia, se brindará atención mediante delivery o vehículos móviles particulares.
+              Los plazos estimados de entrega no aplican para pedidos durante condiciones climáticas adversas que afecten la
+              operación normal de entrega.
             </p>
           </q-card>
 
@@ -218,7 +219,6 @@ export default {
 .pp-meta { margin-top: 14px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .pp-offset { margin-top: 80px; }
 
-/* ===== Contenido ===== */
 .pp-container { max-width: 1100px; margin: 0 auto; padding: 18px 16px 48px; }
 .pp-grid { display: grid; grid-template-columns: 280px 1fr; gap: 18px; }
 
