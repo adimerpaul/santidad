@@ -59,7 +59,8 @@
               <q-card-section class="q-pa-none">
                 <div class="row cursor-pointer" v-if="products.length>0">
                   <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
-                    <q-card @click="clickAddSale(p)" class="q-pa-xs" flat bordered>
+                    <q-card @click="clickAddSale(p)" class="q-pa-xs" flat bordered
+                            :class="getProductCardClass(p)">
                       <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="100px">
                         <q-badge color="red" floating style="padding: 10px 10px 5px 5px;margin: 0px" v-if="p.porcentaje">
                           {{p.porcentaje}}%
@@ -68,6 +69,11 @@
                           {{$filters.capitalize(p.nombre)}}
                         </div>
                         <q-badge v-if="p.cantidadPedida>0" color="yellow-9" floating :label="p.cantidadPedida" style="padding: 5px"/>
+
+                        <!-- Badge de sin stock -->
+                        <q-badge v-if="p.cantidadReal <= 0" color="red" floating style="padding: 5px; margin: 5px">
+                          SIN STOCK
+                        </q-badge>
                       </q-img>
                       <q-card-section class="q-pa-none q-ma-none">
                         <div class="text-center text-subtitle2">
@@ -78,7 +84,9 @@
                           </span>
                           Bs
                         </div>
-                        <div :class="p.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">{{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}</div>
+                        <div :class="getStockTextClass(p)">
+                          {{ p.cantidadReal }} {{ $q.screen.lt.md?'Dis':'Disponible' }}
+                        </div>
                       </q-card-section>
                     </q-card>
                   </div>
@@ -137,31 +145,37 @@
                           <div class="text-caption" style="max-width: 120px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">
                             {{props.row.nombre}}
                           </div>
-                          <div class="text-grey">Dis: {{props.row.cantidad}}
+                          <div class="text-grey">Stock Real: {{props.row.cantidadReal}}
                             (
                             <span style="font-size: 10px">{{props.row.precio}} Bs </span>
                             <span style="font-size: 10px" class="text-red text-bold" v-if="props.row.porcentaje">{{$filters.precioRebajaVenta(props.row.precio, props.row.porcentaje)}} Bs</span>
                             )
                           </div>
-                    <q-input
-                    v-model="props.row.precioVenta"
-                    style="width: 120px"
-                    step="0.1"
-                    type="number"
-                    dense
-                    outlined
-                    readonly
-                  >
-                    <template v-slot:prepend>
-                      <q-icon name="edit" size="xs" />
-                      <div style="font-size: 10px">Bs.</div>
-                    </template>
-                  </q-input>
+                          <q-input
+                            v-model="props.row.precioVenta"
+                            style="width: 120px"
+                            step="0.1"
+                            type="number"
+                            dense
+                            outlined
+                            readonly
+                          >
+                            <template v-slot:prepend>
+                              <q-icon name="edit" size="xs" />
+                              <div style="font-size: 10px">Bs.</div>
+                            </template>
+                          </q-input>
                         </div>
                       </div>
                     </q-td>
                     <q-td key="cantidadVenta" :props="props">
-                      <q-input dense outlined bottom-slots min="1"  v-model="props.row.cantidadVenta" @update:model-value="cambioNumero(props.row,props.pageIndex)" :rules="ruleNumber" type="number" input-class="text-center" required>
+                      <q-input dense outlined bottom-slots min="1"
+                               v-model="props.row.cantidadVenta"
+                               @update:model-value="cambioNumero(props.row,props.pageIndex)"
+                               :rules="ruleNumber"
+                               type="number"
+                               input-class="text-center"
+                               required>
                         <template v-slot:prepend>
                           <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>
                         </template>
@@ -231,7 +245,24 @@
                 </q-card>
               </q-expansion-item>
             </q-list>
-            <q-btn @click="clickSale" class="full-width" no-caps label="Confirmar venta" :color="$store.productosVenta.length==0?'grey':'warning'" :disable="$store.productosVenta.length==0?true:false" :loading="loading"/>
+            <q-btn @click="clickSale" class="full-width" no-caps label="Confirmar venta"
+                   :color="$store.productosVenta.length==0?'grey':'warning'"
+                   :disable="$store.productosVenta.length==0"
+                   :loading="loading"/>
+
+            <!-- ✅ Alerta de productos que sobrepasaron stock -->
+            <div v-if="productosSobrepasaronStock.length > 0" class="q-mt-sm">
+              <q-banner dense class="bg-red-1 text-red-9">
+                <template v-slot:avatar>
+                  <q-icon name="warning" color="red" />
+                </template>
+                <div class="text-caption text-bold">Productos que exceden el stock disponible:</div>
+                <div v-for="producto in productosSobrepasaronStock" :key="producto.nombre" class="text-caption">
+                  • {{ producto.nombre }}: Solicitado {{ producto.cantidadSolicitada }}, Disponible {{ producto.stockDisponible }}
+                </div>
+                <div class="text-caption text-bold q-mt-xs">Por favor ajuste las cantidades antes de confirmar la venta.</div>
+              </q-banner>
+            </div>
           </q-card-section>
         </q-card>
       </div>
@@ -451,302 +482,25 @@ export default {
       this.document = this.documents[0]
     })
   },
-  methods: {
-    // Método para calcular el cambio
-    calcularCambio () {
-      this.$forceUpdate()
-    },
-
-    // Actualizar descuento desde monto fijo
-    actualizarDesdeMonto (nuevoMonto) {
-      if (nuevoMonto === '' || nuevoMonto === null) {
-        this.descuento = 0
-        this.descuentoPorcentaje = 0
-      } else {
-        this.descuento = parseFloat(nuevoMonto)
-
-        // Calcular el porcentaje equivalente sobre el total SIN descuentos
-        if (this.totalSinDescuentos > 0) {
-          this.descuentoPorcentaje = parseFloat(((this.descuento / this.totalSinDescuentos) * 100).toFixed(2))
-        } else {
-          this.descuentoPorcentaje = 0
-        }
-      }
-      this.calcularCambio()
-    },
-
-    // Actualizar descuento desde porcentaje
-    actualizarDesdePorcentaje (nuevoPorcentaje) {
-      if (nuevoPorcentaje === '' || nuevoPorcentaje === null) {
-        this.descuentoPorcentaje = 0
-        this.descuento = 0
-      } else {
-        this.descuentoPorcentaje = parseFloat(nuevoPorcentaje)
-
-        // Calcular el monto equivalente sobre el total SIN descuentos
-        this.descuento = parseFloat((this.totalSinDescuentos * (this.descuentoPorcentaje / 100)).toFixed(2))
-      }
-      this.calcularCambio()
-    },
-
-    // Calcular monto desde porcentaje (para el hint)
-    calcularMontoDesdePorcentaje () {
-      if (this.descuentoPorcentaje > 0 && this.totalSinDescuentos > 0) {
-        return (this.totalSinDescuentos * (this.descuentoPorcentaje / 100)).toFixed(2)
-      }
-      return '0.00'
-    },
-
-    subcategoriesGet () {
-      this.$axios.get('subcategories').then(response => {
-        this.subcategories = response.data
-      }).catch(error => {
-        console.log(error)
-      })
-    },
-    saleInsert () {
-      this.loading = true
-      this.client.codigoTipoDocumentoIdentidad = this.document.codigoClasificador
-      this.$store.productosVenta.forEach(p => {
-        p.subTotal = p.cantidadPedida * p.precioVenta
-      })
-      const data = {
-        montoTotal: this.totalFinal,
-        client: this.client,
-        aporte: this.aporte,
-        descuento: this.descuento,
-        qr: this.qr,
-        efectivo: this.efectivo,
-        products: this.$store.productosVenta,
-        metodoPago: this.metodoPago,
-        agencia_id: this.agencia_id
-      }
-      this.$axios.post('sales', data).then(res => {
-        this.loading = false
-        this.$alert.success('Venta realizada con exito')
-        this.saleDialog = false
-        this.$store.productosVenta = []
-        this.client = {}
-        this.aporte = 0
-        this.qr = false
-        this.efectivo = ''
-        this.descuento = 0
-        this.descuentoPorcentaje = 0
-        this.products.forEach(p => {
-          p.cantidadPedida = 0
-        })
-        this.totalProducts = 0
-        Imprimir.nota(res.data).then(r => {
-        })
-      }).catch(err => {
-        this.loading = false
-        this.$alert.error(err.response.data.message)
-      })
-    },
-    clientSearch () {
-      this.$axios.post('searchClient', this.client).then(res => {
-        if (res.data.nombreRazonSocial !== undefined) {
-          this.client.nombreRazonSocial = res.data.nombreRazonSocial
-          this.client.email = res.data.email
-          this.client.id = res.data.id
-          const documento = this.documents.find(r => r.codigoClasificador === res.data.codigoTipoDocumentoIdentidad)
-          documento.label = documento.descripcion
-          this.document = documento
-        }
-      })
-    },
-    searchClient () {
-      this.document = this.documents[0]
-      this.client.nombreRazonSocial = ''
-      this.client.complemento = ''
-      this.client.email = ''
-      this.client.id = undefined
-      if (this.client.numeroDocumento === '0') {
-        this.clientSearch()
-      } else if (this.client.numeroDocumento.length >= 5) {
-        this.clientSearch()
-      }
-    },
-    async clickSale () {
-      let hayProblema = false
-      this.$store.productosVenta.forEach(p => {
-        if (!p.precioVenta || p.precioVenta <= 0) {
-          this.$alert.error(`El precio de venta de "${p.nombre}" debe ser mayor a 0.`)
-          hayProblema = true
-        }
-      })
-      if (hayProblema) return
-
-      try {
-        this.loading = true
-
-        const productos = this.$store.productosVenta.map(p => ({
-          id: p.id,
-          cantidadVenta: p.cantidadVenta
-        }))
-
-        await this.$axios.post('verificar-stock-venta', {
-          productos,
-          agencia_id: this.agencia_id
-        })
-
-        this.aporte = 0
-        this.descuento = 0
-        this.descuentoPorcentaje = 0
-        this.saleDialog = true
-        this.efectivo = 0
-        this.qr = false
-        this.client = {
-          numeroDocumento: '0',
-          nombreRazonSocial: 'SN',
-          email: '',
-          complemento: ''
-        }
-        this.metodoPago = 'Efectivo'
-      } catch (error) {
-        this.loading = false
-        if (error.response && error.response.data && error.response.data.errores) {
-          error.response.data.errores.forEach(msg => {
-            this.$alert.error(msg)
-          })
-        } else {
-          this.$alert.error('Error al verificar stock')
-        }
-      } finally {
-        this.loading = false
-      }
-    },
-    precioVenta (n) {
-      if (n.precioVenta === '') {
-        n.precioVenta = 1
-      }
-    },
-    redondeo (n) {
-      return Math.round(n * 100) / 100
-    },
-    addCantidad (n, i) {
-      n.cantidad--
-      n.cantidadPedida++
-      n.cantidadVenta = parseInt(n.cantidadVenta) + 1
-    },
-    cambioNumero (n, i) {
-      if (n.cantidadVenta !== '') {
-        n.cantidad = parseInt(n.cantidadReal) - parseInt(n.cantidadVenta)
-        n.cantidadPedida = parseInt(n.cantidadVenta)
-      }
-      if (n.cantidadVenta === 0) {
-        n.cantidad = parseInt(n.cantidadReal) - 1
-        n.cantidadVenta = 1
-        n.cantidadPedida = 1
-      }
-    },
-    removeCantidad (n, i) {
-      n.cantidad++
-      n.cantidadPedida--
-      if (n.cantidadVenta > 1) {
-        n.cantidadVenta = parseInt(n.cantidadVenta) - 1
-      } else if (n.cantidadVenta === 1) {
-        this.$store.productosVenta.splice(i, 1)
-      }
-    },
-    deleteProductosVenta (p, i) {
-      this.$store.productosVenta.splice(i, 1)
-      p.cantidad = p.cantidadReal
-      p.cantidadVenta = 0
-      p.cantidadPedida = 0
-    },
-    async vaciarCanasta () {
-      await this.$store.productosVenta.forEach(p => {
-        p.cantidad = p.cantidadReal
-        p.cantidadVenta = 0
-        p.cantidadPedida = 0
-      })
-      this.$store.productosVenta = []
-    },
-    async clickAddSale (product) {
-      try {
-        this.loading = true
-        const res = await this.$axios.get(`productos/${product.id}/stock`, {
-          params: {
-            agencia_id: this.agencia_id
-          }
-        })
-        this.loading = false
-        const stockDisponible = res.data.stock
-
-        if (stockDisponible <= 0 || product.cantidad <= 0) {
-          this.$q.notify({
-            color: 'negative',
-            message: 'Producto sin stock disponible',
-            icon: 'error',
-            position: 'top'
-          })
-          return
-        }
-
-        product.cantidad--
-
-        if (product.porcentaje) {
-          product.precioVenta = this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
-        }
-
-        const productVenta = this.$store.productosVenta.find(p => p.id === product.id)
-        if (productVenta) {
-          productVenta.cantidadVenta++
-          productVenta.cantidadPedida++
-        } else {
-          product.cantidadVenta = 1
-          product.cantidadPedida = 1
-          this.$store.productosVenta.push(product)
-        }
-      } catch (error) {
-        this.loading = false
-        this.$q.notify({
-          color: 'negative',
-          message: 'Error al verificar stock',
-          icon: 'warning'
-        })
-      }
-    },
-    agenciasGet () {
-      this.agencias = [{ nombre: 'Selecciona una agencia', id: 0 }]
-      this.$axios.get('agencias').then(response => {
-        this.agencias = this.agencias.concat(response.data)
-      }).catch(error => {
-        this.$alert.error(error.response.data.message)
-      })
-    },
-    categoriesGet () {
-      this.categories = [{ name: 'Ver todas las categorias', id: 0 }]
-      this.$axios.get('categories').then(response => {
-        this.categories = this.categories.concat(response.data)
-        this.categoriesTable = response.data
-      }).catch(error => {
-        console.log(error)
-      })
-    },
-    productsGet () {
-      this.loading = true
-      this.products = []
-      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}&subcategory=${this.subcategoria}`).then(res => {
-        this.loading = false
-        this.totalProducts = res.data.products.total
-        this.last_page = res.data.products.last_page
-        this.current_page = res.data.products.current_page
-        this.costoTotalProducts = parseFloat(res.data.costoTotal).toFixed(2)
-        res.data.products.data.forEach(p => {
-          p.cantidadPedida = 0
-          p.cantidadReal = p.cantidad
-          p.precioVenta = p.precio
-          this.products.push(p)
-        })
-      }).catch(err => {
-        this.loading = false
-        console.log(err)
-      })
-    }
-  },
   computed: {
+    // ✅ PRODUCTOS QUE SOBREPASARON STOCK (se muestra en tiempo real)
+    productosSobrepasaronStock () {
+      const productos = []
+
+      this.$store.productosVenta.forEach(product => {
+        const stockDisponible = product.cantidadReal
+        if (product.cantidadVenta > stockDisponible) {
+          productos.push({
+            nombre: product.nombre,
+            cantidadSolicitada: product.cantidadVenta,
+            stockDisponible: stockDisponible
+          })
+        }
+      })
+
+      return productos
+    },
+
     // Total SIN NINGÚN descuento (precio original * cantidad)
     totalSinDescuentos () {
       let s = 0
@@ -807,6 +561,372 @@ export default {
     total () {
       return this.totalConDescuentoSistema
     }
+  },
+  methods: {
+    // ✅ VERIFICAR STOCK AL CONFIRMAR VENTA
+    verificarStockCanasta () {
+      const productosSinStock = []
+
+      this.$store.productosVenta.forEach(product => {
+        const stockDisponible = product.cantidadReal
+        if (product.cantidadVenta > stockDisponible) {
+          productosSinStock.push({
+            nombre: product.nombre,
+            cantidadSolicitada: product.cantidadVenta,
+            stockDisponible: stockDisponible
+          })
+        }
+      })
+
+      return productosSinStock
+    },
+
+    // Clases dinámicas para productos
+    getProductCardClass (product) {
+      if (product.cantidadReal <= 0) {
+        return 'bg-grey-3 cursor-not-allowed'
+      }
+      return 'bg-white cursor-pointer'
+    },
+
+    getStockTextClass (product) {
+      if (product.cantidadReal <= 0) {
+        return 'text-center text-bold text-red'
+      } else if (product.cantidadReal <= 5) {
+        return 'text-center text-bold text-orange'
+      }
+      return 'text-center text-bold'
+    },
+
+    // Método para calcular el cambio
+    calcularCambio () {
+      this.$forceUpdate()
+    },
+
+    // Actualizar descuento desde monto fijo
+    actualizarDesdeMonto (nuevoMonto) {
+      if (nuevoMonto === '' || nuevoMonto === null) {
+        this.descuento = 0
+        this.descuentoPorcentaje = 0
+      } else {
+        this.descuento = parseFloat(nuevoMonto)
+
+        // Calcular el porcentaje equivalente sobre el total SIN descuentos
+        if (this.totalSinDescuentos > 0) {
+          this.descuentoPorcentaje = parseFloat(((this.descuento / this.totalSinDescuentos) * 100).toFixed(2))
+        } else {
+          this.descuentoPorcentaje = 0
+        }
+      }
+      this.calcularCambio()
+    },
+
+    // Actualizar descuento desde porcentaje
+    actualizarDesdePorcentaje (nuevoPorcentaje) {
+      if (nuevoPorcentaje === '' || nuevoPorcentaje === null) {
+        this.descuentoPorcentaje = 0
+        this.descuento = 0
+      } else {
+        this.descuentoPorcentaje = parseFloat(nuevoPorcentaje)
+
+        // Calcular el monto equivalente sobre el total SIN descuentos
+        this.descuento = parseFloat((this.totalSinDescuentos * (this.descuentoPorcentaje / 100)).toFixed(2))
+      }
+      this.calcularCambio()
+    },
+
+    // Calcular monto desde porcentaje (para el hint)
+    calcularMontoDesdePorcentaje () {
+      if (this.descuentoPorcentaje > 0 && this.totalSinDescuentos > 0) {
+        return (this.totalSinDescuentos * (this.descuentoPorcentaje / 100)).toFixed(2)
+      }
+      return '0.00'
+    },
+
+    subcategoriesGet () {
+      this.$axios.get('subcategories').then(response => {
+        this.subcategories = response.data
+      }).catch(error => {
+        console.log(error)
+      })
+    },
+
+    saleInsert () {
+      this.loading = true
+      this.client.codigoTipoDocumentoIdentidad = this.document.codigoClasificador
+      this.$store.productosVenta.forEach(p => {
+        p.subTotal = p.cantidadPedida * p.precioVenta
+      })
+      const data = {
+        montoTotal: this.totalFinal,
+        client: this.client,
+        aporte: this.aporte,
+        descuento: this.descuento,
+        qr: this.qr,
+        efectivo: this.efectivo,
+        products: this.$store.productosVenta,
+        metodoPago: this.metodoPago,
+        agencia_id: this.agencia_id
+      }
+      this.$axios.post('sales', data).then(res => {
+        this.loading = false
+        this.$alert.success('Venta realizada con exito')
+        this.saleDialog = false
+        this.$store.productosVenta = []
+        this.client = {}
+        this.aporte = 0
+        this.qr = false
+        this.efectivo = ''
+        this.descuento = 0
+        this.descuentoPorcentaje = 0
+        this.products.forEach(p => {
+          p.cantidadPedida = 0
+        })
+        this.totalProducts = 0
+        Imprimir.nota(res.data).then(r => {
+        })
+      }).catch(err => {
+        this.loading = false
+        this.$alert.error(err.response.data.message)
+      })
+    },
+
+    clientSearch () {
+      this.$axios.post('searchClient', this.client).then(res => {
+        if (res.data.nombreRazonSocial !== undefined) {
+          this.client.nombreRazonSocial = res.data.nombreRazonSocial
+          this.client.email = res.data.email
+          this.client.id = res.data.id
+          const documento = this.documents.find(r => r.codigoClasificador === res.data.codigoTipoDocumentoIdentidad)
+          documento.label = documento.descripcion
+          this.document = documento
+        }
+      })
+    },
+
+    searchClient () {
+      this.document = this.documents[0]
+      this.client.nombreRazonSocial = ''
+      this.client.complemento = ''
+      this.client.email = ''
+      this.client.id = undefined
+      if (this.client.numeroDocumento === '0') {
+        this.clientSearch()
+      } else if (this.client.numeroDocumento.length >= 5) {
+        this.clientSearch()
+      }
+    },
+
+    async clickSale () {
+      // ✅ VERIFICACIÓN DE STOCK SOLO AL CONFIRMAR
+      const productosSinStock = this.verificarStockCanasta()
+
+      if (productosSinStock.length > 0) {
+        let mensaje = 'No se puede realizar la venta por falta de stock:\n\n'
+        productosSinStock.forEach(producto => {
+          mensaje += `• ${producto.nombre}: Solicitado ${producto.cantidadSolicitada}, Disponible ${producto.stockDisponible}\n`
+        })
+        mensaje += '\nPor favor ajuste las cantidades antes de confirmar la venta.'
+        this.$alert.error(mensaje)
+        return
+      }
+
+      let hayProblema = false
+      this.$store.productosVenta.forEach(p => {
+        if (!p.precioVenta || p.precioVenta <= 0) {
+          this.$alert.error(`El precio de venta de "${p.nombre}" debe ser mayor a 0.`)
+          hayProblema = true
+        }
+      })
+      if (hayProblema) return
+
+      try {
+        this.loading = true
+
+        // VERIFICACIÓN EN BACKEND
+        const productos = this.$store.productosVenta.map(p => ({
+          id: p.id,
+          cantidadVenta: p.cantidadVenta
+        }))
+
+        await this.$axios.post('verificar-stock-venta', {
+          productos,
+          agencia_id: this.agencia_id
+        })
+
+        this.aporte = 0
+        this.descuento = 0
+        this.descuentoPorcentaje = 0
+        this.saleDialog = true
+        this.efectivo = 0
+        this.qr = false
+        this.client = {
+          numeroDocumento: '0',
+          nombreRazonSocial: 'SN',
+          email: '',
+          complemento: ''
+        }
+        this.metodoPago = 'Efectivo'
+      } catch (error) {
+        this.loading = false
+        if (error.response && error.response.data && error.response.data.errores) {
+          error.response.data.errores.forEach(msg => {
+            this.$alert.error(msg)
+          })
+        } else {
+          this.$alert.error('Error al verificar stock')
+        }
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // ✅ CORREGIDO: Usa cantidadReal para verificar stock
+    async clickAddSale (product) {
+      // Verificación inmediata usando cantidadReal
+      if (product.cantidadReal <= 0) {
+        this.$q.notify({
+          color: 'negative',
+          message: 'Producto sin stock disponible',
+          icon: 'error',
+          position: 'top'
+        })
+        return
+      }
+
+      // Verificación de stock considerando lo ya en canasta
+      const productoEnCanasta = this.$store.productosVenta.find(p => p.id === product.id)
+      const cantidadReservada = productoEnCanasta ? productoEnCanasta.cantidadVenta : 0
+      const stockDisponible = product.cantidadReal - cantidadReservada
+
+      if (stockDisponible <= 0) {
+        this.$q.notify({
+          color: 'negative',
+          message: 'Stock insuficiente',
+          icon: 'error',
+          position: 'top'
+        })
+        return
+      }
+
+      // Solo actualizar el stock visual para mostrar
+      product.cantidad = stockDisponible - 1
+
+      if (product.porcentaje) {
+        product.precioVenta = this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
+      }
+
+      if (productoEnCanasta) {
+        productoEnCanasta.cantidadVenta++
+        productoEnCanasta.cantidadPedida++
+      } else {
+        product.cantidadVenta = 1
+        product.cantidadPedida = 1
+        this.$store.productosVenta.push(product)
+      }
+    },
+
+    precioVenta (n) {
+      if (n.precioVenta === '') {
+        n.precioVenta = 1
+      }
+    },
+
+    redondeo (n) {
+      return Math.round(n * 100) / 100
+    },
+
+    addCantidad (n, i) {
+      n.cantidadPedida++
+      n.cantidadVenta = parseInt(n.cantidadVenta) + 1
+    },
+
+    // ✅ PERMITE CUALQUIER VALOR - solo valida al confirmar
+    cambioNumero (n, i) {
+      if (n.cantidadVenta !== '') {
+        const nuevaCantidad = parseInt(n.cantidadVenta)
+
+        if (!isNaN(nuevaCantidad)) {
+          n.cantidadPedida = nuevaCantidad
+        }
+
+        // Si es 0 o negativo, eliminar del carrito
+        if (nuevaCantidad <= 0) {
+          this.$store.productosVenta.splice(i, 1)
+          n.cantidadVenta = 0
+          n.cantidadPedida = 0
+        }
+      }
+    },
+
+    removeCantidad (n, i) {
+      n.cantidadPedida--
+      if (n.cantidadVenta > 1) {
+        n.cantidadVenta = parseInt(n.cantidadVenta) - 1
+      } else if (n.cantidadVenta === 1) {
+        this.$store.productosVenta.splice(i, 1)
+      }
+    },
+
+    deleteProductosVenta (p, i) {
+      this.$store.productosVenta.splice(i, 1)
+      p.cantidadVenta = 0
+      p.cantidadPedida = 0
+    },
+
+    async vaciarCanasta () {
+      await this.$store.productosVenta.forEach(p => {
+        p.cantidadVenta = 0
+        p.cantidadPedida = 0
+      })
+      this.$store.productosVenta = []
+    },
+
+    agenciasGet () {
+      this.agencias = [{ nombre: 'Selecciona una agencia', id: 0 }]
+      this.$axios.get('agencias').then(response => {
+        this.agencias = this.agencias.concat(response.data)
+      }).catch(error => {
+        this.$alert.error(error.response.data.message)
+      })
+    },
+
+    categoriesGet () {
+      this.categories = [{ name: 'Ver todas las categorias', id: 0 }]
+      this.$axios.get('categories').then(response => {
+        this.categories = this.categories.concat(response.data)
+        this.categoriesTable = response.data
+      }).catch(error => {
+        console.log(error)
+      })
+    },
+
+    productsGet () {
+      this.loading = true
+      this.products = []
+      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}&subcategory=${this.subcategoria}`).then(res => {
+        this.loading = false
+        this.totalProducts = res.data.products.total
+        this.last_page = res.data.products.last_page
+        this.current_page = res.data.products.current_page
+        this.costoTotalProducts = parseFloat(res.data.costoTotal).toFixed(2)
+        res.data.products.data.forEach(p => {
+          p.cantidadPedida = 0
+          p.cantidadReal = p.cantidad // ✅ Guardar stock real
+          p.precioVenta = p.precio
+          this.products.push(p)
+        })
+      }).catch(err => {
+        this.loading = false
+        console.log(err)
+      })
+    }
   }
 }
 </script>
+
+<style scoped>
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
+</style>
