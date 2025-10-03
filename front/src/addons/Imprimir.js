@@ -66,9 +66,9 @@ Oruro</div>
       EL USO ILÍCITO SERÁ SANCIONADO PENALMENTE DE<br>
       ACUERDO A LEY<br><br>
       ${factura.leyenda} <br><br>
-      “Este documento es la Representación Gráfica de un<br>
+      "Este documento es la Representación Gráfica de un<br>
       Documento Fiscal Digital emitido en una modalidad de<br>
-      facturación en línea”</div><br>
+      facturación en línea"</div><br>
       <div style='display: flex;justify-content: center;'> <img  src="${url}" ></div></div>
       </div>
 </body>
@@ -89,6 +89,20 @@ Oruro</div>
       const ClaseConversor = conversor.conversorNumerosALetras
       const miConversor = new ClaseConversor()
       const a = miConversor.convertToText(parseInt(factura.montoTotal))
+      // Calcula el total antes de descuentos
+      const totalAntesDescuentos = parseFloat(factura.montoTotal) +
+                                  parseFloat(factura.descuento_producto || 0) +
+                                  parseFloat(factura.descuento || 0)
+
+      // Calcula los porcentajes con redondeo
+      const porcentajeDescuento = totalAntesDescuentos > 0
+        ? Math.round((parseFloat(factura.descuento || 0) / totalAntesDescuentos) * 100)
+        : 0
+
+      const porcentajeDescuentoProducto = totalAntesDescuentos > 0
+        ? Math.round((parseFloat(factura.descuento_producto || 0) / totalAntesDescuentos) * 100)
+        : 0
+
       const opts = {
         errorCorrectionLevel: 'M',
         type: 'png',
@@ -131,7 +145,7 @@ Oruro</div>
       <tr>
         <td class='titder' style='width: 60%'>MONTO TOTAL Bs</td>
         <td class='conte2'>
-        ${(parseFloat(factura.montoTotal) + parseFloat(factura.descuento_producto) + parseFloat(factura.descuento)).toFixed(2)}
+        ${totalAntesDescuentos.toFixed(2)}
         </td>
       </tr>
       <tr>
@@ -139,12 +153,12 @@ Oruro</div>
         <td class='conte2'>${parseFloat(factura.aporte).toFixed(2)}</td>
       </tr>
       <tr style='display: ${factura.descuento ? '' : 'none'}'>
-        <td class='titder' style='width: 60%'>DESCUENTO Bs</td>
-        <td class='conte2'>${parseFloat(factura.descuento).toFixed(2)}</td>
+        <td class='titder' style='width: 60%'>DESCUENTO ${porcentajeDescuento}% Bs</td>
+        <td class='conte2'>${parseFloat(factura.descuento || 0).toFixed(2)}</td>
       </tr>
       <tr style="display: ${factura.descuento_producto ? '' : 'none'}">
-        <td class='titder' style='width: 60%'>DESC PROD Bs</td>
-        <td class='conte2'>${parseFloat(factura.descuento_producto).toFixed(2)}</td>
+        <td class='titder' style='width: 60%'>DESC PROD ${porcentajeDescuentoProducto}% Bs</td>
+        <td class='conte2'>${parseFloat(factura.descuento_producto || 0).toFixed(2)}</td>
       </tr>
       <tr>
         <td class='titder' style='width: 60%'>MONTO A PAGAR Bs</td>

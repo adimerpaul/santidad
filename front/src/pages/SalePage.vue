@@ -169,8 +169,6 @@
                           <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>
                         </template>
                       </q-input>
-<!--                      <pre>{{props.row.cantidadPedida}}</pre>-->
-<!--                      <input type="number" min="1" v-model="props.row.cantidadVenta" @change="cambioNumero(props.row,props.pageIndex)" style="width: 70px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>-->
                       <div class="text-grey">= Bs {{redondeo(props.row.cantidadVenta*props.row.precioVenta)}}</div>
                     </q-td>
                     <q-td key="lotes" :props="props">
@@ -181,34 +179,6 @@
                           {{ lote.dateExpiry }} <input type="number" min="1" v-model="lote.cantidadAVender" style="width: 50px; text-align: center; padding: 0px; margin: 0px; border-radius: 0px; border: 1px solid #ccc;" class="q-pa-xs" required>
                         </span>
                       </div>
-<!--                      <pre>-->
-<!--                        {{props.row.buys}}-->
-<!--                      </pre>-->
-<!--                      [-->
-<!--                      {-->
-<!--                      "id": 36644,-->
-<!--                      "user_id": 25,-->
-<!--                      "product_id": 33,-->
-<!--                      "agencia_id": 3,-->
-<!--                      "lote": "CN004942",-->
-<!--                      "quantity": 60,-->
-<!--                      "total": "876.00",-->
-<!--                      "price": "14.60",-->
-<!--                      "dateExpiry": "2025-11-23",-->
-<!--                      "date": "2024-11-06",-->
-<!--                      "time": "20:19:00",-->
-<!--                      "factura": "30345",-->
-<!--                      "proveedor_id": 15026,-->
-<!--                      "user_baja_id": null,-->
-<!--                      "cantidadBaja": null,-->
-<!--                      "cantidadVendida": 60,-->
-<!--                      "sucursal_id_baja": null,-->
-<!--                      "description_baja": null,-->
-<!--                      "fecha_baja": null,-->
-<!--                      "diasPorVencer": 172-->
-<!--                      }-->
-<!--                      ]-->
-
                     </q-td>
                   </q-tr>
                 </template>
@@ -228,7 +198,7 @@
                     Total
                   </q-item-section>
                   <q-item-section side>
-                    <div class="text-right text-grey-8 text-bold"> <u> Bs {{total}}</u></div>
+                    <div class="text-right text-grey-8 text-bold"> <u> Bs {{totalConDescuentoSistema}}</u></div>
                   </q-item-section>
                 </template>
                 <q-card>
@@ -237,25 +207,24 @@
                       <div class="col-7 text-grey">Cantidades de referencia</div>
                       <div class="col-5 text-right">{{$store.productosVenta.length}}</div>
                       <div class="col-7 text-grey">
-                        Descuentos
+                        Descuentos del sistema
                         <q-icon name="o_info">
                           <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">
-<!--                            Para calcular la ganancia correctamente, deberás cargar el costo unitario de todos los productos desde tu Inventario.-->
-                            Si realizas un descuento, este se restará del total de la venta.
+                            Descuentos aplicados automáticamente por porcentajes en productos
                           </q-tooltip>
                         </q-icon>
                       </div>
-                      <div class="col-5 text-right text-green">{{totalganancia}} Bs</div>
+                      <div class="col-5 text-right text-green">{{totalDescuentoSistema}} Bs</div>
                       <div class="col-7 text-grey">
-                        Monto Sin descuento
+                        Monto Sin descuentos
                         <q-icon name="o_info">
                           <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">
-                            Para calcular la ganancia correctamente, deberás cargar el costo unitario de todos los productos desde tu Inventario.
+                            Total sin ningún descuento aplicado
                           </q-tooltip>
                         </q-icon>
                       </div>
                       <div class="col-5 text-right text-green">
-                        {{parseFloat(total) + parseFloat(totalganancia)}} Bs
+                        {{totalSinDescuentos}} Bs
                       </div>
                     </div>
                   </q-card-section>
@@ -298,32 +267,94 @@
           <q-card-section>
             <div class="row">
               <div class="col-6 col-md-2">
-                <q-input outlined dense label="TOTAL A PAGAR:" readonly v-model="total" :rules="ruleNumber"/>
+                <q-input outlined dense label="TOTAL A PAGAR:" readonly v-model="totalFinal" :rules="ruleNumber"/>
               </div>
               <div class="col-6 col-md-2">
-                <q-input outlined dense label="EFECTIVO BS."  v-model="efectivo" type="number" step="0.01" :rules="ruleNumber"/>
+                <q-input outlined dense label="EFECTIVO BS." v-model="efectivo" type="number" step="0.01" :rules="ruleNumber"
+                         @update:model-value="calcularCambio"/>
               </div>
               <div class="col-6 col-md-2">
-                <q-input outlined dense label="Aporte"  v-model="aporte" type="number" step="0.01" :rules="ruleNumber"/>
+                <q-input outlined dense label="Aporte" v-model="aporte" type="number" step="0.01" :rules="ruleNumber"
+                         @update:model-value="calcularCambio"/>
               </div>
+
+              <!-- Campo de descuento manual -->
               <div class="col-6 col-md-2">
-                <q-input outlined dense label="Descuento"  v-model="descuento" type="number" step="0.01" :rules="ruleNumber"/>
+                <q-input
+                  outlined
+                  dense
+                  label="Descuento (Bs.)"
+                  v-model="descuento"
+                  type="number"
+                  step="0.01"
+                  :rules="ruleNumber"
+                  @update:model-value="actualizarDesdeMonto"
+                >
+                  <template v-slot:append>
+                    <q-icon name="attach_money" class="cursor-pointer">
+                      <q-tooltip>Descuento adicional en monto fijo</q-tooltip>
+                    </q-icon>
+                  </template>
+                </q-input>
               </div>
-<!--              <div class="col-6 col-md-2">-->
-<!--                <q-checkbox v-model="aporte" :label="textoCambio"-->
-<!--                            :class="`bg-${parseFloat(efectivo)> parseFloat(total)?'green':'red'} text-white full-width bi-border-all`"-->
-<!--                            :disable="parseFloat(efectivo)> parseFloat(total)?false:true">-->
-<!--                  <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">-->
-<!--                    Si el cliente paga con un monto mayor al total, se registrará el cambio como un aporte.-->
-<!--                  </q-tooltip>-->
-<!--                </q-checkbox>-->
-<!--              </div>-->
+
+              <!-- Campo de descuento porcentual -->
               <div class="col-6 col-md-2">
-                <q-input outlined dense label="CAMBIO:" readonly v-model="cambio" bg-color="red" label-color="white"/>
+                <q-input
+                  outlined
+                  dense
+                  label="Descuento (%)"
+                  v-model="descuentoPorcentaje"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  :rules="rulePorcentaje"
+                  @update:model-value="actualizarDesdePorcentaje"
+                >
+                  <template v-slot:append>
+                    <q-icon name="percent" class="cursor-pointer">
+                      <q-tooltip>Descuento adicional en porcentaje</q-tooltip>
+                    </q-icon>
+                  </template>
+                  <template v-slot:hint>
+                    <div class="text-caption text-grey">
+                      {{ calcularMontoDesdePorcentaje() }} Bs.
+                    </div>
+                  </template>
+                </q-input>
+              </div>
+
+              <!-- CAMPO DE CAMBIO CORREGIDO -->
+              <div class="col-6 col-md-2">
+                <q-input outlined dense label="CAMBIO:" readonly v-model="cambioCalculado"
+                         :bg-color="cambioCalculado < 0 ? 'red' : 'green'"
+                         label-color="white"/>
               </div>
               <div class="col-6 col-md-2">
                 <q-select dense outlined v-model="metodoPago" label="Metodo de pago"
                           :options="$metodoPago" hint="Metodo de pago del gasto" />
+              </div>
+            </div>
+
+            <!-- Información del descuento aplicado -->
+            <div class="row q-mt-sm" v-if="descuento > 0">
+              <div class="col-12">
+                <q-banner dense class="bg-blue-1 text-blue-9">
+                  <template v-slot:avatar>
+                    <q-icon name="discount" color="blue" />
+                  </template>
+                  <div class="text-caption">
+                    <strong>Descuento adicional aplicado:</strong> {{ descuento }} Bs.
+                    <span v-if="descuentoPorcentaje > 0">({{ descuentoPorcentaje }}% del total sin descuentos)</span>
+                  </div>
+                  <div class="text-caption">
+                    <strong>Total sin descuentos:</strong> {{ totalSinDescuentos }} Bs.<br>
+                    <strong>Descuento del sistema:</strong> {{ totalDescuentoSistema }} Bs.<br>
+                    <strong>Total con descuento del sistema:</strong> {{ totalConDescuentoSistema }} Bs.<br>
+                    <strong>Total final con descuento adicional:</strong> {{ totalFinal }} Bs.
+                  </div>
+                </q-banner>
               </div>
             </div>
           </q-card-section>
@@ -342,12 +373,9 @@
       </q-card>
     </q-dialog>
     <div id="myElement" class="hidden"></div>
-<!--    Lorem ipsum dolor sit amet, consectetur adipisicing elit. Alias blanditiis, culpa dolorem ea eveniet fugiat fugit, illum ipsa placeat quas repudiandae sunt? Asperiores culpa eum inventore nam odio rem, vero.-->
-<!--    <pre>-->
-<!--      {{$store.env}}-->
-<!--    </pre>-->
 </q-page>
 </template>
+
 <script>
 import { Imprimir } from 'src/addons/Imprimir'
 
@@ -360,6 +388,7 @@ export default {
       client: {},
       aporte: 0,
       descuento: 0,
+      descuentoPorcentaje: 0,
       qr: false,
       documents: [],
       metodoPago: 'Efectivo',
@@ -369,6 +398,10 @@ export default {
       ruleNumber: [
         val => (val !== null && val !== '') || 'Por favor escriba su cantidad',
         val => (val >= 0 && val < 10000) || 'Por favor escriba una cantidad real'
+      ],
+      rulePorcentaje: [
+        val => (val !== null && val !== '') || 'Por favor escriba el porcentaje',
+        val => (val >= 0 && val <= 100) || 'El porcentaje debe estar entre 0 y 100'
       ],
       search: '',
       efectivo: '',
@@ -392,7 +425,6 @@ export default {
         { label: 'borrar', field: 'borrar', name: 'borrar', align: 'left' },
         { label: 'nombre', field: 'nombre', name: 'nombre', align: 'left' },
         { label: 'cantidadVenta', field: 'cantidadVenta', name: 'cantidadVenta' }
-        // { label: 'lotes', field: 'lotes', name: 'lotes', align: 'left' }
       ],
       orders: [
         { label: 'Ordenar por', value: 'id' },
@@ -420,6 +452,51 @@ export default {
     })
   },
   methods: {
+    // Método para calcular el cambio
+    calcularCambio () {
+      this.$forceUpdate()
+    },
+
+    // Actualizar descuento desde monto fijo
+    actualizarDesdeMonto (nuevoMonto) {
+      if (nuevoMonto === '' || nuevoMonto === null) {
+        this.descuento = 0
+        this.descuentoPorcentaje = 0
+      } else {
+        this.descuento = parseFloat(nuevoMonto)
+
+        // Calcular el porcentaje equivalente sobre el total SIN descuentos
+        if (this.totalSinDescuentos > 0) {
+          this.descuentoPorcentaje = parseFloat(((this.descuento / this.totalSinDescuentos) * 100).toFixed(2))
+        } else {
+          this.descuentoPorcentaje = 0
+        }
+      }
+      this.calcularCambio()
+    },
+
+    // Actualizar descuento desde porcentaje
+    actualizarDesdePorcentaje (nuevoPorcentaje) {
+      if (nuevoPorcentaje === '' || nuevoPorcentaje === null) {
+        this.descuentoPorcentaje = 0
+        this.descuento = 0
+      } else {
+        this.descuentoPorcentaje = parseFloat(nuevoPorcentaje)
+
+        // Calcular el monto equivalente sobre el total SIN descuentos
+        this.descuento = parseFloat((this.totalSinDescuentos * (this.descuentoPorcentaje / 100)).toFixed(2))
+      }
+      this.calcularCambio()
+    },
+
+    // Calcular monto desde porcentaje (para el hint)
+    calcularMontoDesdePorcentaje () {
+      if (this.descuentoPorcentaje > 0 && this.totalSinDescuentos > 0) {
+        return (this.totalSinDescuentos * (this.descuentoPorcentaje / 100)).toFixed(2)
+      }
+      return '0.00'
+    },
+
     subcategoriesGet () {
       this.$axios.get('subcategories').then(response => {
         this.subcategories = response.data
@@ -434,7 +511,7 @@ export default {
         p.subTotal = p.cantidadPedida * p.precioVenta
       })
       const data = {
-        montoTotal: this.total,
+        montoTotal: this.totalFinal,
         client: this.client,
         aporte: this.aporte,
         descuento: this.descuento,
@@ -450,9 +527,11 @@ export default {
         this.saleDialog = false
         this.$store.productosVenta = []
         this.client = {}
-        this.aporte = false
+        this.aporte = 0
         this.qr = false
         this.efectivo = ''
+        this.descuento = 0
+        this.descuentoPorcentaje = 0
         this.products.forEach(p => {
           p.cantidadPedida = 0
         })
@@ -489,7 +568,6 @@ export default {
       }
     },
     async clickSale () {
-      // Validación rápida en frontend
       let hayProblema = false
       this.$store.productosVenta.forEach(p => {
         if (!p.precioVenta || p.precioVenta <= 0) {
@@ -502,7 +580,6 @@ export default {
       try {
         this.loading = true
 
-        // Preparamos los datos para enviar al backend
         const productos = this.$store.productosVenta.map(p => ({
           id: p.id,
           cantidadVenta: p.cantidadVenta
@@ -513,9 +590,9 @@ export default {
           agencia_id: this.agencia_id
         })
 
-        // Si todo bien, abrir el diálogo
         this.aporte = 0
         this.descuento = 0
+        this.descuentoPorcentaje = 0
         this.saleDialog = true
         this.efectivo = 0
         this.qr = false
@@ -586,21 +663,6 @@ export default {
       })
       this.$store.productosVenta = []
     },
-    // clickAddSale (product) {
-    //   product.cantidad--
-    //   product.cantidadPedida++
-    //   // si tiene procentaje colocar el precio mas la rebaja
-    //   if (product.porcentaje) {
-    //     product.precioVenta = this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
-    //   }
-    //   const productVenta = this.$store.productosVenta.find(p => p.id === product.id)
-    //   if (productVenta) {
-    //     productVenta.cantidadVenta++
-    //   } else {
-    //     product.cantidadVenta = 1
-    //     this.$store.productosVenta.push(product)
-    //   }
-    // },
     async clickAddSale (product) {
       try {
         this.loading = true
@@ -622,9 +684,7 @@ export default {
           return
         }
 
-        // ↓ Solo si hay stock, continúa
         product.cantidad--
-        // product.cantidadPedida = (product.cantidadPedida || 0) + 1
 
         if (product.porcentaje) {
           product.precioVenta = this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
@@ -687,6 +747,54 @@ export default {
     }
   },
   computed: {
+    // Total SIN NINGÚN descuento (precio original * cantidad)
+    totalSinDescuentos () {
+      let s = 0
+      this.$store.productosVenta.forEach(p => {
+        s = s + parseFloat(p.precio * p.cantidadVenta)
+      })
+      return s.toFixed(2)
+    },
+
+    // Descuento aplicado por el sistema (diferencia entre precio original y precio con descuento)
+    totalDescuentoSistema () {
+      let s = 0
+      this.$store.productosVenta.forEach(p => {
+        const precioOriginal = parseFloat(p.precio)
+        const precioConDescuento = parseFloat(p.precioVenta)
+        s = s + ((precioOriginal - precioConDescuento) * p.cantidadVenta)
+      })
+      return s.toFixed(2)
+    },
+
+    // Total CON descuento del sistema (lo que ya venías usando)
+    totalConDescuentoSistema () {
+      let s = 0
+      this.$store.productosVenta.forEach(p => {
+        s = s + parseFloat(p.precioVenta * p.cantidadVenta)
+      })
+      return s.toFixed(2)
+    },
+
+    // Total FINAL con descuento adicional aplicado
+    totalFinal () {
+      const totalConSistema = parseFloat(this.totalConDescuentoSistema)
+      const descAdicional = parseFloat(this.descuento)
+      return (totalConSistema - descAdicional).toFixed(2)
+    },
+
+    // CAMBIO CALCULADO CORREGIDO
+    cambioCalculado () {
+      const efectivo = parseFloat(this.efectivo || 0)
+      const aporte = parseFloat(this.aporte || 0)
+      const totalFinal = parseFloat(this.totalFinal || 0)
+
+      // Fórmula corregida: (Efectivo - Aporte) - Total Final
+      const cambio = (efectivo - aporte) - totalFinal
+
+      return Math.round(cambio * 100) / 100
+    },
+
     totalganancia () {
       let s = 0
       this.$store.productosVenta.forEach(p => {
@@ -694,54 +802,10 @@ export default {
       })
       return s.toFixed(2)
     },
-    cambio () {
-      // consciderara el aporte
-      // if (this.aporte === false) {
-      //   const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
-      //   return Math.round(cambio * 100) / 100
-      // } else {
-      //   const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
-      //   const entero = Math.floor(cambio)
-      //   const decimal = cambio - entero
-      //   return cambio - decimal
-      // }
-      const efectivo = parseFloat(this.efectivo === '' ? 0 : this.efectivo)
-      const aporte = parseFloat(this.aporte === '' ? 0 : this.aporte)
-      const descuento = parseFloat(this.descuento === '' ? 0 : this.descuento)
-      const cambio = (efectivo - aporte) - parseFloat(this.total) + descuento
-      // if (cambio < 0) {
-      //   return 0
-      // } else {
-      //   return cambio.toFixed(2)
-      // }
-      return Math.round(cambio * 100) / 100
-    },
-    textoCambio () {
-      if (this.aporte === false) {
-        return this.cambio < 0 ? 'Aporte' : 'Cambio'
-      } else {
-        const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
-        const entero = Math.floor(cambio)
-        const decimal = cambio - entero
-        return this.cambio < 0 ? 'Aporte' : 'Bs.' + decimal.toFixed(2)
-      }
-    },
-    cambioDecimal () {
-      if (this.aporte === false) {
-        return this.cambio < 0 ? 0 : 0
-      } else {
-        const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
-        const entero = Math.floor(cambio)
-        const decimal = cambio - entero
-        return this.cambio < 0 ? 0 : decimal.toFixed(2)
-      }
-    },
+
+    // Mantener compatibilidad con código existente
     total () {
-      let s = 0
-      this.$store.productosVenta.forEach(p => {
-        s = s + parseFloat(p.precioVenta * p.cantidadVenta)
-      })
-      return s.toFixed(2)
+      return this.totalConDescuentoSistema
     }
   }
 }
