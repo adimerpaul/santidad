@@ -306,7 +306,7 @@
                   label="Descuento (%)"
                   v-model="descuentoPorcentaje"
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   min="0"
                   max="100"
                   :rules="rulePorcentaje"
