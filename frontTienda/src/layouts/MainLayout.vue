@@ -205,40 +205,103 @@
       </div>
     </q-footer>
 
-    <!-- Carrito -->
+    <!-- Carrito Modernizado -->
     <q-dialog v-model="carritoDialog" maximized position="right">
-      <q-card style="width: 350px; max-width: 80vw;">
-        <q-card-section class="row items-center q-pb-none">
-          <div class="text-bold text-h6 row items-center">Carrito de compras</div>
+      <q-card class="carrito-moderno">
+        <q-card-section class="carrito-header">
+          <div class="text-h6 row items-center">
+            <q-icon name="fa-solid fa-cart-shopping" class="q-mr-sm" />
+            Mi Carrito
+            <q-badge v-if="$store?.carrito.length" color="red" class="q-ml-sm">
+              {{ $store?.carrito.length }}
+            </q-badge>
+          </div>
           <q-space />
-          <q-btn flat icon="close" @click="clickCarrito" />
+          <q-btn flat round icon="close" @click="clickCarrito" />
         </q-card-section>
-        <q-card-section>
-          <q-item
-            v-for="(item,index) in $store?.carrito"
-            :key="item.id"
-            clickable
-          >
-            <q-item-section avatar>
-              <q-avatar>
-                <q-img :src="item.imagen.includes('http')?item.imagen:`${$url}../images/${item.imagen}`" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>{{ item.nombre }}</q-item-label>
-              <q-item-label caption>{{ item.cantidad }} x {{ item.precio }}</q-item-label>
-            </q-item-section>
-            <q-item-section side top>
-              <q-btn flat icon="delete" @click="removeCarrito(index)" />
-            </q-item-section>
-          </q-item>
 
+        <q-card-section class="carrito-content">
+          <!-- Carrito vacío -->
+          <div v-if="!$store?.carrito.length" class="carrito-vacio text-center q-pa-xl">
+            <q-icon name="fa-solid fa-cart-plus" size="64px" color="grey-4" />
+            <div class="text-h6 text-grey-6 q-mt-md">Tu carrito está vacío</div>
+            <div class="text-grey-5 q-mt-sm">Agrega algunos productos para continuar</div>
+          </div>
+
+          <!-- Lista de productos -->
+          <div v-else class="productos-list">
+            <div class="producto-item" v-for="(item, index) in $store?.carrito" :key="item.id">
+              <div class="producto-imagen">
+                <q-img
+                  :src="item.imagen.includes('http') ? item.imagen : `${$url}../images/${item.imagen}`"
+                  :alt="item.nombre"
+                  class="imagen"
+                  @error="$event.target.src='/images/productDefault.jpg'"
+                />
+              </div>
+              <div class="producto-info">
+                <div class="producto-nombre">{{ item.nombre }}</div>
+                <div class="producto-precio">Bs. {{ formatPrice(item.precio) }}</div>
+                <div class="producto-controls">
+                  <q-btn
+                    round
+                    dense
+                    icon="remove"
+                    size="sm"
+                    @click="decrementarCantidad(index)"
+                    :disable="item.cantidad <= 1"
+                  />
+                  <span class="cantidad">{{ item.cantidad }}</span>
+                  <q-btn
+                    round
+                    dense
+                    icon="add"
+                    size="sm"
+                    @click="incrementarCantidad(index)"
+                  />
+                </div>
+              </div>
+              <div class="producto-total">
+                <div class="subtotal">Bs. {{ formatPrice(item.precio * item.cantidad) }}</div>
+                <q-btn
+                  flat
+                  round
+                  icon="delete"
+                  color="red"
+                  size="sm"
+                  @click="removeCarrito(index)"
+                  class="q-mt-xs"
+                />
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <!-- Resumen del pedido -->
+        <q-card-section v-if="$store?.carrito.length" class="resumen-pedido">
+          <q-separator class="q-mb-md" />
+          <div class="resumen-item row justify-between q-mb-sm">
+            <span>Subtotal:</span>
+            <span class="text-weight-bold">Bs. {{ formatPrice(subtotal) }}</span>
+          </div>
+          <div class="resumen-item row justify-between q-mb-sm">
+            <span>Envío:</span>
+            <span class="text-positive">Por Coordinar</span>
+          </div>
+          <q-separator class="q-my-md" />
+          <div class="total-final row justify-between text-h6">
+            <span>Total:</span>
+            <span class="text-weight-bold text-green">Bs. {{ formatPrice(subtotal) }}</span>
+          </div>
+
+          <!-- Botón WhatsApp -->
           <q-btn
             icon="fa-brands fa-whatsapp"
             label="Pedir por WhatsApp"
             color="green"
             no-caps
-            class="full-width q-mt-md"
+            class="full-width q-mt-lg whatsapp-btn"
+            size="lg"
             @click="pedirCarritoWhatsApp"
           />
         </q-card-section>
@@ -281,7 +344,13 @@ export default defineComponent({
     }
   },
   computed: {
-    panelStyle () { return { width: this.panelWidth ? `${this.panelWidth}px` : '100%' } }
+    panelStyle () { return { width: this.panelWidth ? `${this.panelWidth}px` : '100%' } },
+    subtotal () {
+      if (!this.$store?.carrito.length) return 0
+      return this.$store.carrito.reduce((total, item) => {
+        return total + (Number(item.precio) * Number(item.cantidad))
+      }, 0)
+    }
   },
   mounted () {
     this.$nextTick(() => {
@@ -313,17 +382,53 @@ export default defineComponent({
       setTimeout(() => { this.newsletter = ''; this.newsletterOk = false }, 2000)
     },
 
-    // ===== Carrito =====
     pedirCarritoWhatsApp () {
       const carrito = this.$store.carrito
-      const mensaje = carrito.reduce((acc, item) => {
-        return `${acc}${item.nombre} x ${item.cantidad}\n`
-      }, 'Hola, me gustaría pedir los siguientes productos:\n')
+
+      // Calcular total correctamente
+      const totalPedido = carrito.reduce((total, item) => {
+        const precio = Number(item.precio) || 0
+        const cantidad = Number(item.cantidad) || 0
+        return total + (precio * cantidad)
+      }, 0)
+
+      // Crear mensaje más detallado
+      let mensaje = '¡Hola! Me gustaría realizar el siguiente pedido:\n\n'
+      // Lista de productos con detalles
+      carrito.forEach((item, index) => {
+        const precio = Number(item.precio) || 0
+        const cantidad = Number(item.cantidad) || 0
+        const subtotal = precio * cantidad
+
+        mensaje += `${index + 1}. *${item.nombre}*\n`
+        mensaje += `   Cantidad: ${cantidad}\n`
+        mensaje += `   Precio unitario: Bs. ${this.formatPrice(precio)}\n`
+        mensaje += `   Subtotal: Bs. ${this.formatPrice(subtotal)}\n\n`
+      })
+
+      // Resumen del pedido
+      mensaje += '*=======================*\n'
+      mensaje += '*RESUMEN DEL PEDIDO:*\n'
+      mensaje += `📦 Subtotal: Bs. ${this.formatPrice(totalPedido)}\n`
+      mensaje += '🚚 Envío: Por Coordinar\n'
+      mensaje += `💳 *TOTAL: Bs. ${this.formatPrice(totalPedido)}*\n\n`
+      mensaje += 'Por favor, confirmen mi pedido. ¡Gracias! 😊'
+
       const url = `https://wa.me/59172319869?text=${encodeURIComponent(mensaje)}`
       window.open(url, '_blank')
     },
     clickCarrito () { this.carritoDialog = !this.carritoDialog },
-    removeCarrito (index) { this.$store.carrito.splice(index, 1) },
+    removeCarrito (index) {
+      this.$store.carrito.splice(index, 1)
+    },
+    incrementarCantidad (index) {
+      this.$store.carrito[index].cantidad++
+    },
+    decrementarCantidad (index) {
+      if (this.$store.carrito[index].cantidad > 1) {
+        this.$store.carrito[index].cantidad--
+      }
+    },
 
     // ===== Predictivo (migrado del Index) =====
     async onType () {
@@ -569,6 +674,141 @@ export default defineComponent({
 .predictive-empty{ padding: 16px; text-align: center; color: #64748B; font-size: .95rem; }
 .predictive-footer{ border-top: 1px solid rgba(15,23,42,.08); padding: 8px; display:flex; justify-content:center; background:#fff; }
 .predictive-seeall{ background:#EFF6FF; color:#1D4ED8; border:1px solid rgba(29,78,216,.25); padding:8px 12px; border-radius:10px; font-weight:600; cursor:pointer; }
+
+/* ===== Carrito Modernizado ===== */
+.carrito-moderno {
+  width: 400px;
+  max-width: 90vw;
+  border-radius: 20px 0 0 20px;
+  box-shadow: -8px 0 40px rgba(0, 0, 0, 0.15);
+}
+
+.carrito-header {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  border-radius: 20px 0 0 0;
+  padding: 20px;
+}
+
+.carrito-content {
+  padding: 0;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.carrito-vacio {
+  opacity: 0.7;
+}
+
+.productos-list {
+  padding: 16px;
+}
+
+.producto-item {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  align-items: center;
+}
+
+.producto-item:last-child {
+  border-bottom: none;
+}
+
+.producto-imagen .imagen {
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.producto-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.producto-nombre {
+  font-weight: 600;
+  color: #1f2937;
+  line-height: 1.3;
+}
+
+.producto-precio {
+  font-weight: 700;
+  color: #22c55e;
+  font-size: 1.1em;
+}
+
+.producto-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.producto-controls .q-btn {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+}
+
+.cantidad {
+  font-weight: 600;
+  min-width: 30px;
+  text-align: center;
+  background: #f8fafc;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.producto-total {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.subtotal {
+  font-weight: 700;
+  color: #1f2937;
+  font-size: 1.1em;
+}
+
+.resumen-pedido {
+  background: #f8fafc;
+  border-radius: 0 0 0 20px;
+  padding: 20px;
+}
+
+.resumen-item {
+  font-size: 1em;
+  color: #64748b;
+}
+
+.total-final {
+  color: #1f2937;
+  padding: 8px 0;
+}
+
+.whatsapp-btn {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 1.1em;
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+  transition: all 0.3s ease;
+}
+
+.whatsapp-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+}
 
 /* ===== Footer ===== */
 .footer-modern {
