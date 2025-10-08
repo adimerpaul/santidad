@@ -148,77 +148,174 @@ class ProductController extends Controller
         return response()->json(['products' => $products, 'costoTotal' => $costoTotal]);
     }
 
+//    public function productsSale(Request $request)
+//    {
+//        $search = request()->input('search', '');
+//        $search = strtoupper($search);
+//        $search = str_replace(' ', '%', $search);
+//        $search = $search==null || $search=='' ? '%' : '%'.$search.'%';
+//        $ordenar = request()->input('order', 'id');
+//        $category_id = request()->input('category', 0);
+//        $sub_category_id = request()->input('subcategory', 0);
+//        $agencia_id = request()->input('agencia', 0);
+//        $paginate = request()->input('paginate', 30);
+//
+//        $query = Product::query();
+//        $query->where('nombre', 'like', "%$search%");
+//        $query->with(['buys' => function ($query) {
+//            $query->orderBy('created_at', 'desc')
+//                ->where('cantidadVendida', '>', 0)
+//                ->limit(7);
+//        }]);
+//
+//        if ($category_id != 0) {
+//            $query->where('category_id', $category_id);
+//        }
+//        if ($sub_category_id != 0) {
+//            $query->where('subcategory_id', $sub_category_id);
+//        }
+//
+//        if ($agencia_id != 0) {
+//            $query->where("cantidadSucursal$agencia_id", '>=', 0);
+//        }
+//
+//        if ($ordenar == 'id') {
+//            $ordenarRaw = 'id desc';
+//        } else if ($ordenar == 'precio asc') {
+//            $ordenarRaw = 'precio asc';
+//        } else if ($ordenar == 'precio desc') {
+//            $ordenarRaw = 'precio desc';
+//        } else if ($ordenar == 'cantidad asc') {
+//            $sucursal = $agencia_id == 0 ? 'cantidadAlmacen' : "cantidadSucursal$agencia_id";
+//            $ordenarRaw = "$sucursal asc";
+//        } else if ($ordenar == 'cantidad desc') {
+//            $sucursal = $agencia_id == 0 ? 'cantidadAlmacen' : "cantidadSucursal$agencia_id";
+//            $ordenarRaw = "$sucursal desc";
+//        } else if ($ordenar == 'nombre asc') {
+//            $ordenarRaw = "nombre asc";
+//        } else {
+//            $ordenarRaw = "id desc";
+//        }
+//        error_log('orderRaw: '.$ordenarRaw);
+//
+//        $products = $query->orderByRaw($ordenarRaw)
+//            ->with(['category', 'agencia'])
+//            ->paginate($paginate);
+//
+//        $costoTotal = $query->select(DB::raw('sum(costo*cantidad)'))
+//            ->groupBy('agencia_id')
+//            ->first();
+//
+//        $costoTotal = $costoTotal ? $costoTotal->{"sum(costo*cantidad)"} : 0;
+//        $products->each(function ($product) use ($agencia_id) {
+//            if ($agencia_id != 0) {
+//                $product->cantidad = $product->{"cantidadSucursal$agencia_id"};
+//            }
+//            if (!file_exists(public_path() . '/images/' . $product->imagen)) {
+//                $product->imagen = 'productDefault.jpg';
+//            }
+//        });
+//
+//        return response()->json(['products' => $products, 'costoTotal' => $costoTotal]);
+//    }
     public function productsSale(Request $request)
     {
-        $search = request()->input('search', '');
-        $search = strtoupper($search);
-        $search = str_replace(' ', '%', $search);
-        $search = $search==null || $search=='' ? '%' : '%'.$search.'%';
-        $ordenar = request()->input('order', 'id');
-        $category_id = request()->input('category', 0);
-        $sub_category_id = request()->input('subcategory', 0);
-        $agencia_id = request()->input('agencia', 0);
-        $paginate = request()->input('paginate', 30);
+        // 1) Sanitización y defaults
+        $search         = strtoupper((string) $request->input('search', ''));
+        $searchLike     = $search === '' ? '%' : '%' . str_replace(' ', '%', $search) . '%';
+        $orderInput     = strtolower((string) $request->input('order', 'id desc')); // ej: "cantidad desc"
+        $category_id    = (int) $request->input('category', 0);
+        $sub_category_id= (int) $request->input('subcategory', 0);
+        $agencia_id     = (int) $request->input('agencia', 0);
+        $paginate       = (int) $request->input('paginate', 30);
+        $paginate       = max(10, min($paginate, 100)); // límites sanos
 
-        $query = Product::query();
-        $query->where('nombre', 'like', "%$search%");
-        $query->with(['buys' => function ($query) {
-            $query->orderBy('created_at', 'desc')
-                ->where('cantidadVendida', '>', 0)
-                ->limit(7);
-        }]);
+        // 2) Resolver columna de cantidad por agencia de forma SEGURA
+        $sucursalColumn = $agencia_id > 0 ? "cantidadSucursal{$agencia_id}" : "cantidadAlmacen";
+        // Whitelist de columnas de cantidad permitidas (por si usas varias agencias)
+        $cantidadColumnsWhitelist = array_merge(
+            ['cantidadAlmacen'],
+            array_map(fn($n) => "cantidadSucursal{$n}", range(1, 50)) // ajusta rango según tu esquema
+        );
+        if (!in_array($sucursalColumn, $cantidadColumnsWhitelist, true)) {
+            $sucursalColumn = 'cantidadAlmacen';
+        }
 
-        if ($category_id != 0) {
+        // 3) Resolver orden seguro (columna + dirección)
+        //    Permitimos: id, precio, cantidad (usa $sucursalColumn), nombre
+        $allowedBase = ['id', 'precio', 'cantidad', 'nombre'];
+        $parts = preg_split('/\s+/', trim($orderInput));
+        $base  = $parts[0] ?? 'id';
+        $dir   = strtolower($parts[1] ?? 'desc');
+        $dir   = in_array($dir, ['asc', 'desc'], true) ? $dir : 'desc';
+
+        if (!in_array($base, $allowedBase, true)) {
+            $base = 'id';
+        }
+
+        $orderColumn = match ($base) {
+            'cantidad' => $sucursalColumn,
+            default    => $base,
+        };
+
+        // 4) Query base
+        $query = Product::query()
+            ->with([
+                'buys' => function ($q) {
+                    $q->where('cantidadVendida', '>', 0)
+                        ->orderBy('created_at', 'desc')
+                        ->limit(7);
+                },
+                'category', 'agencia'
+            ])
+            ->where('nombre', 'like', $searchLike);
+
+        if ($category_id !== 0) {
             $query->where('category_id', $category_id);
         }
-        if ($sub_category_id != 0) {
+        if ($sub_category_id !== 0) {
             $query->where('subcategory_id', $sub_category_id);
         }
-
-        if ($agencia_id != 0) {
-            $query->where("cantidadSucursal$agencia_id", '>=', 0);
+        // Nota: este where evita columnas inválidas y mantiene el plan de index
+        if ($agencia_id !== 0) {
+            $query->where($sucursalColumn, '>=', 0);
         }
 
-        if ($ordenar == 'id') {
-            $ordenarRaw = 'id desc';
-        } else if ($ordenar == 'precio asc') {
-            $ordenarRaw = 'precio asc';
-        } else if ($ordenar == 'precio desc') {
-            $ordenarRaw = 'precio desc';
-        } else if ($ordenar == 'cantidad asc') {
-            $sucursal = $agencia_id == 0 ? 'cantidadAlmacen' : "cantidadSucursal$agencia_id";
-            $ordenarRaw = "$sucursal asc";
-        } else if ($ordenar == 'cantidad desc') {
-            $sucursal = $agencia_id == 0 ? 'cantidadAlmacen' : "cantidadSucursal$agencia_id";
-            $ordenarRaw = "$sucursal desc";
-        } else if ($ordenar == 'nombre asc') {
-            $ordenarRaw = "nombre asc";
-        } else {
-            $ordenarRaw = "id desc";
-        }
-        error_log('orderRaw: '.$ordenarRaw);
+        // 5) Orden seguro
+        $query->orderBy($orderColumn, $dir);
 
-        $products = $query->orderByRaw($ordenarRaw)
-            ->with(['category', 'agencia'])
-            ->paginate($paginate);
+        // 6) Paginación
+        $products = $query->paginate($paginate);
 
-        $costoTotal = $query->select(DB::raw('sum(costo*cantidad)'))
-            ->groupBy('agencia_id')
+        // 7) Costo total correcto según agencia/almacén
+        //    SUM(costo * cantidadElegida)
+        $costoTotalRow = Product::query()
+            ->when($category_id !== 0, fn($q) => $q->where('category_id', $category_id))
+            ->when($sub_category_id !== 0, fn($q) => $q->where('subcategory_id', $sub_category_id))
+            ->where('nombre', 'like', $searchLike)
+            ->selectRaw("SUM(costo * {$sucursalColumn}) as costo_total")
             ->first();
 
-        $costoTotal = $costoTotal ? $costoTotal->{"sum(costo*cantidad)"} : 0;
-        $products->each(function ($product) use ($agencia_id) {
-            if ($agencia_id != 0) {
-                $product->cantidad = $product->{"cantidadSucursal$agencia_id"};
-            }
-            if (!file_exists(public_path() . '/images/' . $product->imagen)) {
+        $costoTotal = (float) ($costoTotalRow->costo_total ?? 0);
+
+        // 8) Post-proceso de imagen (fallback) — opcional:
+        $products->getCollection()->transform(function ($product) use ($sucursalColumn, $agencia_id) {
+            // cantidad visible para el front
+            $product->cantidad = $product->{$sucursalColumn} ?? 0;
+
+            // fallback de imagen (evita file_exists por cada item si es caro)
+            if (empty($product->imagen) || !is_file(public_path('images/' . $product->imagen))) {
                 $product->imagen = 'productDefault.jpg';
             }
+            return $product;
         });
 
-        return response()->json(['products' => $products, 'costoTotal' => $costoTotal]);
+        return response()->json([
+            'products'   => $products,
+            'costoTotal' => $costoTotal,
+            'order'      => "{$orderColumn} {$dir}",   // útil para depurar en el front (no loguea en stderr)
+        ]);
     }
-
     public function store(StoreProductRequest $request)
     {
         if ($request->category_id == 0) $request->merge(['category_id' => null]);
@@ -435,7 +532,7 @@ class ProductController extends Controller
             }
         }
 
-        $orderSql = 'CASE 
+        $orderSql = 'CASE
             WHEN UPPER(nombre) LIKE ? THEN 0
             WHEN UPPER(nombre) LIKE ? THEN 1
             ELSE 2
