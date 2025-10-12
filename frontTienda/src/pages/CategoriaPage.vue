@@ -90,64 +90,68 @@
       </div>
 
       <!-- Grid productos -->
-      <div v-else class="contenedor-productos">
-        <div class="products-grid">
-          <q-card
-            v-for="p in productos"
-            :key="p.id"
-            class="product-card-personalizada"
-            flat
-            @click="clickDetalleProducto(p)"
-          >
-            <q-img :src="resolverImagen(p)" style="height:160px; object-fit:cover;">
-              <div v-if="Number(p.cantidad) === 0" class="out-of-stock-overlay">
-                <span class="out-of-stock-text">Sin Stock</span>
-              </div>
-              <q-badge v-if="Number(p.porcentaje) > 0" color="red" floating>-{{ p.porcentaje }}%</q-badge>
-            </q-img>
-
-            <q-card-section class="q-pa-sm text-center">
-              <div class="product-name">{{ p.nombre }}</div>
-              <div class="product-prices">
-                <div class="price-old" v-if="p.precioNormal">
-                  <span>Antes</span><br /><strong>Bs. {{ p.precioNormal }}</strong>
-                </div>
-                <div class="price-now">
-                  <span>Ahora</span><br /><strong>Bs. {{ p.precio }}</strong>
-                </div>
-              </div>
-            </q-card-section>
-
-            <q-btn
-              v-if="Number(p.cantidad) > 0"
-              label="Añadir al carrito"
-              icon="shopping_cart"
-              class="q-mt-sm full-width"
-              style="background-color:#2D9CDB; color:#fff;"
-              glossy
-              unelevated
-              no-caps
-            />
-            <q-btn
-              v-else
-              label="Agotado"
-              icon="remove_shopping_cart"
-              class="q-mt-sm full-width"
-              style="background-color:#d9534f; color:#fff;"
-              unelevated
-              no-caps
-              disabled
-            />
-          </q-card>
+<div v-else class="contenedor-productos">
+  <div class="products-grid">
+    <q-card
+      v-for="p in productos"
+      :key="p.id"
+      class="product-card-personalizada"
+      flat
+      @click="clickDetalleProducto(p)"
+    >
+      <q-img :src="resolverImagen(p)" style="height:160px; object-fit:cover;">
+        <!-- Mostramos el estado de 'Sin Stock' si el stock es 0 -->
+        <div v-if="p.stockDisponible === 'Sin Stock'" class="out-of-stock-overlay">
+          <span class="out-of-stock-text">Sin Stock</span>
         </div>
+        <q-badge v-if="Number(p.porcentaje) > 0" color="red" floating>-{{ p.porcentaje }}%</q-badge>
+      </q-img>
 
-        <!-- Paginación BOTTOM -->
-        <div v-if="totalPages > 1" class="pagination-controls text-center q-mt-lg">
-          <q-btn flat label="Anterior" :disabled="currentPage === 1" @click="cambiarPagina(currentPage - 1)" />
-          <span>{{ currentPage }} / {{ totalPages }}</span>
-          <q-btn flat label="Siguiente" :disabled="currentPage === totalPages" @click="cambiarPagina(currentPage + 1)" />
+      <q-card-section class="q-pa-sm text-center">
+        <div class="product-name">{{ p.nombre }}</div>
+        <div class="product-prices">
+          <div class="price-old" v-if="p.precioNormal">
+            <span>Antes</span><br /><strong>Bs. {{ p.precioNormal }}</strong>
+          </div>
+          <div class="price-now">
+            <span>Ahora</span><br /><strong>Bs. {{ p.precio }}</strong>
+          </div>
         </div>
-      </div>
+      </q-card-section>
+
+      <!-- Mostrar el botón de "Añadir al carrito" si hay stock disponible -->
+      <q-btn
+        v-if="p.stockDisponible === 'Disponible'"
+        label="Añadir al carrito"
+        icon="shopping_cart"
+        class="q-mt-sm full-width"
+        style="background-color:#2D9CDB; color:#fff;"
+        glossy
+        unelevated
+        no-caps
+      />
+      <!-- Mostrar "Agotado" si no hay stock -->
+      <q-btn
+        v-else
+        label="Agotado"
+        icon="remove_shopping_cart"
+        class="q-mt-sm full-width"
+        style="background-color:#d9534f; color:#fff;"
+        unelevated
+        no-caps
+        disabled
+      />
+    </q-card>
+  </div>
+
+  <!-- Paginación BOTTOM -->
+  <div v-if="totalPages > 1" class="pagination-controls text-center q-mt-lg">
+    <q-btn flat label="Anterior" :disabled="currentPage === 1" @click="cambiarPagina(currentPage - 1)" />
+    <span>{{ currentPage }} / {{ totalPages }}</span>
+    <q-btn flat label="Siguiente" :disabled="currentPage === totalPages" @click="cambiarPagina(currentPage + 1)" />
+  </div>
+</div>
+
     </div>
   </q-page>
 </template>
@@ -161,6 +165,7 @@ export default {
       productos: [],
       subcategorias: [],
       loadingSubcats: false,
+      loading: false, // Añadido para la carga de productos
       categoriaNombre: '',
       subNombre: '',
       subId: null, // subcategoría seleccionada
@@ -238,11 +243,21 @@ export default {
         if (items.length > 0) {
           this.productos = items.map(p => {
             const x = { ...p }
-            x.imagen = x.imagen || 'noimagen.jpg'
-            if (Number(x.porcentaje) > 0) {
-              x.precioNormal = x.precio
-              x.precio = (x.precio - (x.precio * x.porcentaje / 100)).toFixed(2)
-            }
+
+            // Verificamos si alguna sucursal tiene stock mayor a 0
+            const stockDisponible = [
+              p.cantidadSucursal1,
+              p.cantidadSucursal2,
+              p.cantidadSucursal3,
+              p.cantidadSucursal4,
+              p.cantidadSucursal5,
+              p.cantidadSucursal6,
+              p.cantidadSucursal7
+            ].some(cantidad => cantidad > 0) // Verifica si alguna sucursal tiene stock > 0
+
+            // Si el stock está disponible en alguna sucursal, lo marcamos como disponible
+            x.stockDisponible = stockDisponible ? 'Disponible' : 'Sin Stock'
+
             return x
           })
           this.totalPages = pag.last_page || 1
