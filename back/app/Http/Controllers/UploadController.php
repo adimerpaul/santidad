@@ -20,7 +20,7 @@ class UploadController extends Controller
                     $constraint->aspectRatio();
                 }
             )
-            ->save($ruta,72);
+            ->save($ruta,80);
 //        $driver = Driver::find($driver_id);
 //        $driver->foto = $name;
 //        $driver->save();

@@ -87,6 +87,10 @@
                         <div :class="getStockTextClass(p)">
                           {{ p.cantidadReal }} {{ $q.screen.lt.md?'Dis':'Disponible' }}
                         </div>
+                        <div v-if="$store.user?.agencia_id == 1 && p.cantidadAlmacen !== undefined"
+                          class="text-center text-caption text-lead">
+                        Stock Almacén: {{ p.cantidadAlmacen }}
+                      </div>
                       </q-card-section>
                     </q-card>
                   </div>
@@ -914,6 +918,7 @@ export default {
           p.cantidadPedida = 0
           p.cantidadReal = p.cantidad // ✅ Guardar stock real
           p.precioVenta = p.precio
+          p.cantidadAlmacen = p.cantidadAlmacen || 0
           this.products.push(p)
         })
       }).catch(err => {

@@ -26,7 +26,6 @@ class CarouselController extends Controller
         return Carousel::where('status', 'active')
             ->where('tipo', 'Mini')
             ->orderBy('id', 'desc')
-            ->take(10)
             ->get();
     }
 

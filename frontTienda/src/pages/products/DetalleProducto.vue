@@ -7,7 +7,6 @@
       <!-- Migas -->
       <q-breadcrumbs class="q-mb-md text-grey-6">
         <q-breadcrumbs-el label="Inicio" to="/" />
-        <q-breadcrumbs-el label="Productos" to="/" />
         <q-breadcrumbs-el :label="product?.nombre || 'Detalle'" />
       </q-breadcrumbs>
 
@@ -483,7 +482,6 @@ export default {
         '@type': 'BreadcrumbList',
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Inicio', item: SITE },
-          { '@type': 'ListItem', position: 2, name: 'Productos', item: `${SITE}/productos` },
           { '@type': 'ListItem', position: 3, name: p?.nombre || 'Producto', item: canonical }
         ]
       })
