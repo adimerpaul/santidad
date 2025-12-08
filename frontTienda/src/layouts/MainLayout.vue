@@ -293,6 +293,17 @@
             <span>Total:</span>
             <span class="text-weight-bold text-green">Bs. {{ formatPrice(subtotal) }}</span>
           </div>
+              <!-- Selección de Sucursal en el carrito -->
+              <q-select
+                v-model="selectedSucursal"
+                :options="sucursales.map(s => ({ label: s.nombre, value: s.id }))"
+                label="Selecciona la sucursal"
+                filled
+                class="q-mb-md"
+                :disable="!sucursales.length"
+                placeholder="Elige una sucursal"
+                required
+              />
 
           <!-- Botón WhatsApp -->
           <q-btn
@@ -307,6 +318,72 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+    <!-- Diálogo de Validación de Stock -->
+<q-dialog v-model="validacionStock.dialog" persistent>
+  <q-card class="carrito-moderno" style="max-width: 500px;">
+    <q-card-section class="carrito-header">
+      <div class="text-h6 row items-center">
+        <q-icon name="warning" color="orange" class="q-mr-sm" />
+        Productos sin stock disponible
+      </div>
+    </q-card-section>
+
+    <q-card-section class="carrito-content">
+      <div class="text-subtitle2 q-mb-md">
+        Los siguientes productos no tienen stock suficiente en la sucursal
+        <strong>{{ validacionStock.sucursalSeleccionada?.label }}</strong>:
+      </div>
+
+      <div class="productos-sin-stock">
+        <div
+          v-for="producto in validacionStock.productosSinStock"
+          :key="producto.producto_id"
+          class="producto-sin-stock q-pa-sm q-mb-sm"
+          style="border: 1px solid #ffcdd2; border-radius: 8px; background: #fff5f5;"
+        >
+          <div class="row items-center">
+            <div class="col">
+              <div class="text-weight-bold">{{ producto.nombre }}</div>
+              <div class="text-caption">
+                Stock disponible: <strong>{{ producto.stock_disponible }}</strong> |
+                Pedido: <strong>{{ producto.cantidad_solicitada }}</strong>
+              </div>
+            </div>
+            <div class="col-auto">
+              <q-badge color="red" class="q-ml-sm">
+                Faltan: {{ producto.cantidad_solicitada - producto.stock_disponible }}
+              </q-badge>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-caption text-grey-7 q-mt-md">
+        ¿Qué deseas hacer?
+      </div>
+    </q-card-section>
+
+    <q-card-actions align="right" class="q-pa-md">
+      <q-btn
+        flat
+        label="Cancelar todo"
+        color="negative"
+        @click="cancelarPedido"
+      />
+      <q-btn
+        flat
+        label="Editar cantidades"
+        color="primary"
+        @click="editarCantidades"
+      />
+      <q-btn
+        label="Eliminar sin stock y enviar"
+        color="positive"
+        @click="eliminarSinStockYEnviar"
+      />
+    </q-card-actions>
+  </q-card>
+</q-dialog>
   </q-layout>
 </template>
 
@@ -340,6 +417,13 @@ export default defineComponent({
       suggestions: [],
       showSuggestions: false,
       activeIndex: -1,
+      selectedSucursal: null, // Sucursal seleccionada para el pedido
+      sucursales: [], // Lista de sucursales, se llenará con los datos
+      validacionStock: {
+        dialog: false,
+        productosSinStock: [],
+        sucursalSeleccionada: null
+      },
       panelWidth: 0
     }
   },
@@ -358,6 +442,7 @@ export default defineComponent({
       window.addEventListener('resize', this.calcPanelWidth, { passive: true })
       document.addEventListener('click', this.handleClickOutside)
     })
+    this.getSucursales()
 
     // Si llega con hash (ej. /#seccion-categorias), intenta hacer scroll
     if (this.$route.hash === '#seccion-categorias') {
@@ -381,42 +466,68 @@ export default defineComponent({
       this.newsletterOk = true
       setTimeout(() => { this.newsletter = ''; this.newsletterOk = false }, 2000)
     },
+    async pedirCarritoWhatsApp () {
+      // 1. Validar que hay sucursal seleccionada
+      if (!this.selectedSucursal) {
+        this.$q.notify({ type: 'warning', message: 'Por favor selecciona una sucursal' })
+        return
+      }
 
-    pedirCarritoWhatsApp () {
-      const carrito = this.$store.carrito
+      // 2. Verificar stock
+      const resultadoStock = await this.verificarStockSucursal()
+      if (!resultadoStock) return
 
-      // Calcular total correctamente
-      const totalPedido = carrito.reduce((total, item) => {
-        const precio = Number(item.precio) || 0
-        const cantidad = Number(item.cantidad) || 0
-        return total + (precio * cantidad)
-      }, 0)
+      // 3. Si hay productos sin stock, mostrar diálogo
+      if (resultadoStock.productos_sin_stock && resultadoStock.productos_sin_stock.length > 0) {
+        this.validacionStock.productosSinStock = resultadoStock.productos_sin_stock
+        this.validacionStock.sucursalSeleccionada = this.selectedSucursal
+        this.validacionStock.dialog = true
+        return
+      }
 
-      // Crear mensaje más detallado
-      let mensaje = '¡Hola! Me gustaría realizar el siguiente pedido:\n\n'
-      // Lista de productos con detalles
-      carrito.forEach((item, index) => {
-        const precio = Number(item.precio) || 0
-        const cantidad = Number(item.cantidad) || 0
-        const subtotal = precio * cantidad
-
-        mensaje += `${index + 1}. *${item.nombre}*\n`
-        mensaje += `   Cantidad: ${cantidad}\n`
-        mensaje += `   Precio unitario: Bs. ${this.formatPrice(precio)}\n`
-        mensaje += `   Subtotal: Bs. ${this.formatPrice(subtotal)}\n\n`
-      })
-
-      // Resumen del pedido
-      mensaje += '*=======================*\n'
-      mensaje += '*RESUMEN DEL PEDIDO:*\n'
-      mensaje += `📦 Subtotal: Bs. ${this.formatPrice(totalPedido)}\n`
-      mensaje += '🚚 Envío: Por Coordinar\n'
-      mensaje += `💳 *TOTAL: Bs. ${this.formatPrice(totalPedido)}*\n\n`
-      mensaje += 'Por favor, confirmen mi pedido. ¡Gracias! 😊'
-
-      const url = `https://wa.me/59172319869?text=${encodeURIComponent(mensaje)}`
-      window.open(url, '_blank')
+      // 4. Si todo está bien, proceder con el pedido normal
+      this.procesarPedidoWhatsApp()
     },
+    // Eliminar productos sin stock y enviar pedido
+    async eliminarSinStockYEnviar () {
+      const productosAEliminar = this.validacionStock.productosSinStock.map(p => p.producto_id)
+
+      // Filtrar carrito removiendo productos sin stock
+      this.$store.carrito = this.$store.carrito.filter(item =>
+        !productosAEliminar.includes(item.id)
+      )
+
+      // Cerrar diálogo
+      this.validacionStock.dialog = false
+
+      // Si el carrito quedó vacío
+      if (this.$store.carrito.length === 0) {
+        this.$q.notify({ type: 'warning', message: 'Todos los productos fueron removidos por falta de stock' })
+        this.carritoDialog = false
+        return
+      }
+
+      // Enviar pedido con los productos restantes
+      await this.procesarPedidoWhatsApp()
+    },
+
+    // Cancelar todo el pedido
+    cancelarPedido () {
+      this.validacionStock.dialog = false
+      this.$q.notify({ type: 'info', message: 'Pedido cancelado' })
+    },
+
+    // Editar cantidades manualmente
+    editarCantidades () {
+      this.validacionStock.dialog = false
+      // El usuario puede editar las cantidades manualmente en el carrito
+      this.$q.notify({
+        type: 'info',
+        message: 'Puedes ajustar las cantidades en el carrito',
+        timeout: 3000
+      })
+    },
+
     clickCarrito () { this.carritoDialog = !this.carritoDialog },
     removeCarrito (index) {
       this.$store.carrito.splice(index, 1)
@@ -429,7 +540,117 @@ export default defineComponent({
         this.$store.carrito[index].cantidad--
       }
     },
+    async getSucursales () {
+      const { data } = await this.$axios.get('sucursales')
+      this.sucursales = (data || []).map(s => ({
+        ...s, cantidad: Number(s.cantidad || 0)
+      }))
+      console.log(this.sucursales)
+    },
+    async verificarStockSucursal () {
+      if (!this.selectedSucursal) {
+        this.$q.notify({ type: 'warning', message: 'Por favor selecciona una sucursal' })
+        return null
+      }
 
+      try {
+        const productosParaVerificar = this.$store.carrito.map(item => ({
+          producto_id: item.id,
+          cantidad: item.cantidad
+        }))
+
+        const { data } = await this.$axios.post('stock/verificar-sucursal', {
+          sucursal_id: this.selectedSucursal.value,
+          productos: productosParaVerificar
+        })
+
+        return data // { productos_sin_stock: [], sucursal: {...} }
+      } catch (error) {
+        console.error('Error verificando stock:', error)
+        this.$q.notify({ type: 'negative', message: 'Error verificando disponibilidad' })
+        return null
+      }
+    },
+    async procesarPedidoWhatsApp () {
+      const carrito = this.$store.carrito
+      if (!carrito || !carrito.length) return
+
+      const totalPedido = carrito.reduce((t, i) => {
+        const p = Number(i.precio) || 0
+        const c = Number(i.cantidad) || 0
+        return t + (p * c)
+      }, 0)
+
+      // Payload para guardar el pedido
+      const payload = {
+        items: carrito.map(i => ({
+          product_id: i.id ?? null,
+          nombre: i.nombre,
+          precio: Number(i.precio) || 0,
+          cantidad: Number(i.cantidad) || 0,
+          imagen: i.imagen || null
+        })),
+        customer: {
+          name: this.$store?.cliente?.nombre ?? null,
+          phone: this.$store?.cliente?.celular ?? null,
+          address: this.$store?.cliente?.direccion ?? null
+        },
+        sucursal_id: this.selectedSucursal.value,
+        sucursal_nombre: this.selectedSucursal.label
+      }
+
+      // Intentamos guardar el pedido y obtener número
+      let orderNumber = ''
+      try {
+        const { data } = await this.$axios.post('orders', payload, {
+          headers: { 'Content-Type': 'application/json' }
+        })
+
+        // Aceptar varias formas de respuesta
+        orderNumber =
+          data?.order_number ||
+          data?.orderNumber ||
+          data?.numero ||
+          data?.numero_pedido ||
+          data?.order?.order_number ||
+          data?.data?.order_number ||
+          ''
+      } catch (e) {
+        console.error('Error guardando pedido:', {
+          message: e?.message,
+          status: e?.response?.status,
+          data: e?.response?.data
+        })
+        // Continuamos aunque falle el guardado
+      }
+
+      // Construir mensaje de WhatsApp
+      let mensaje = orderNumber
+        ? `📦 *Pedido:* ${orderNumber}\n\n`
+        : '📦 *Pedido:* (sin ID, no se pudo registrar)\n\n'
+
+      mensaje += `📍 *Sucursal seleccionada:* ${this.selectedSucursal.label}\n\n`
+
+      carrito.forEach((item, idx) => {
+        const precio = Number(item.precio) || 0
+        const cantidad = Number(item.cantidad) || 0
+        const subtotal = precio * cantidad
+        mensaje += `${idx + 1}. *${item.nombre}*\n`
+        mensaje += `   Cantidad: ${cantidad}\n`
+        mensaje += `   Precio unitario: Bs. ${this.formatPrice(precio)}\n`
+        mensaje += `   Subtotal: Bs. ${this.formatPrice(subtotal)}\n\n`
+      })
+
+      mensaje += '*=======================*\n'
+      mensaje += '*RESUMEN DEL PEDIDO:*\n'
+      mensaje += `📦 Subtotal: Bs. ${this.formatPrice(totalPedido)}\n`
+      mensaje += '🚚 Envío: Por Coordinar\n'
+      mensaje += `💳 *TOTAL: Bs. ${this.formatPrice(totalPedido)}*\n\n`
+      mensaje += 'Por favor, confirmen mi pedido. ¡Gracias! 😊'
+
+      const wa = `https://wa.me/59172319869?text=${encodeURIComponent(mensaje)}`
+      window.open(wa, '_blank')
+    },
     // ===== Predictivo (migrado del Index) =====
     async onType () {
       const q = this.search.trim()

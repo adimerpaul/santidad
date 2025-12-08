@@ -85,21 +85,31 @@
         </q-card>
       </div>
       <div class="col-12 col-md-4 q-pa-xs">
-        <q-card class="" flat bordered>
-          <q-tooltip anchor="top middle" self="bottom middle">
-            Total Gastos
-          </q-tooltip>
-          <q-card-section class="q-pa-none">
-            <q-item>
-              <q-item-section avatar>
-                <q-btn icon="o_local_atm" size="22px" color="red-7" class="bg-red-2"  flat />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="text-subtitle2 text-grey">Gastos totales</q-item-label>
-                <q-item-label :class="`text-bold text-h6 text-red`">{{totalEgresos}} Bs</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-card-section>
+        <q-card flat bordered style="border-radius: 12px; border-left: 5px solid #4caf50">
+          <q-tooltip anchor="top middle" self="bottom middle">Total Ingresos</q-tooltip>
+
+            <q-separator class="q-my-sm" color="grey-2"/>
+
+            <div class="row q-col-gutter-sm">
+              <div class="col-6">
+                <div class="bg-green-1 text-green-9 rounded-borders q-pa-xs text-center">
+                  <div class="text-caption text-weight-bold">
+                    <q-icon name="payments" class="q-mr-xs"/>Efectivo
+                  </div>
+                  <div class="text-subtitle2 text-weight-bold">{{totalEfectivo}}</div>
+                </div>
+              </div>
+
+              <div class="col-6">
+                <div class="bg-blue-1 text-blue-9 rounded-borders q-pa-xs text-center">
+                  <div class="text-caption text-weight-bold">
+                    <q-icon name="qr_code_2" class="q-mr-xs"/>Digital
+                  </div>
+                  <div class="text-subtitle2 text-weight-bold">{{totalDigital}}</div>
+                </div>
+              </div>
+            </div>
+
         </q-card>
       </div>
       <div class="col-12">
@@ -160,6 +170,11 @@
               <q-td key="agencia" :props="props" class="text-grey">
                 <div class="text-caption" style="width: 100px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.agencia?.nombre }}</div>
               </q-td>
+              <q-td key="metodoPago" :props="props">
+              <q-badge :color="props.row.metodoPago == 'Efectivo' ? 'green' : 'blue'" text-color="white">
+                {{ props.row.metodoPago }}
+              </q-badge>
+            </q-td>
               <q-td key="proveedorcliente" :props="props">
                 <div class="text-grey" v-if="props.row.client">{{ props.row.client.nombreRazonSocial }}</div>
               </q-td>
@@ -311,7 +326,7 @@ export default {
         // { name: 'montoTotal', label: 'Monto total', align: 'left', field: 'montoTotal', sortable: true },
         { name: 'montoTotal', label: 'Monto total', align: 'left', field: (row) => (row.montoTotal - row.descuento).toFixed(2), sortable: true },
         { name: 'agencia', label: 'Agencia', align: 'left', field: 'agencia', sortable: true },
-        // { name: 'metodoPago', label: 'Metodo de pago', align: 'left', field: 'metodoPago', sortable: true },
+        { name: 'metodoPago', label: 'Metodo de pago', align: 'left', field: 'metodoPago', sortable: true },
         { name: 'proveedorcliente', label: 'Proveedor / cliente', align: 'left', field: 'proveedor / cliente', sortable: true },
         { name: 'fechayhora', label: 'Fecha y hora', align: 'left', field: 'fechayhora', sortable: true },
         { name: 'egresoingreso', label: 'Egreso / ingreso', align: 'left', field: 'egreso / ingreso', sortable: true },
@@ -473,6 +488,20 @@ export default {
     },
     totalGanancias () {
       const monto = this.totalIngresos - this.totalEgresos
+      return Math.round(monto * 100) / 100
+    },
+    totalEfectivo () {
+      const monto = this.sales
+        .filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO' && sale.metodoPago === 'Efectivo')
+        .reduce((a, b) => a + (parseFloat(b.montoTotal)), 0)
+      return Math.round(monto * 100) / 100
+    },
+
+    // 2. Suma todo lo que NO sea "Efectivo" (QR, Tarjeta, etc.)
+    totalDigital () {
+      const monto = this.sales
+        .filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO' && sale.metodoPago !== 'Efectivo')
+        .reduce((a, b) => a + (parseFloat(b.montoTotal)), 0)
       return Math.round(monto * 100) / 100
     }
   }

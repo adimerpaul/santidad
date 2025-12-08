@@ -42,6 +42,45 @@ class ProductController extends Controller
 
         return response()->json(['message' => 'Stock verificado correctamente']);
     }
+    public function verificarStockSucursal(Request $request)
+{
+    $request->validate([
+        'sucursal_id' => 'required|exists:agencias,id',
+        'productos' => 'required|array',
+        'productos.*.producto_id' => 'required|exists:products,id',
+        'productos.*.cantidad' => 'required|integer|min:1'
+    ]);
+
+    $sucursal_id = $request->sucursal_id;
+    $productos = $request->productos;
+
+    $productosSinStock = [];
+
+    foreach ($productos as $producto) {
+        $productoModel = Product::find($producto['producto_id']);
+        if (!$productoModel) {
+            continue;
+        }
+
+        // Usar la misma lógica que en verificarStockVenta
+        $campoCantidad = 'cantidadSucursal' . $sucursal_id;
+        $stockDisponible = $productoModel->$campoCantidad ?? 0;
+
+        if ($producto['cantidad'] > $stockDisponible) {
+            $productosSinStock[] = [
+                'producto_id' => $producto['producto_id'],
+                'nombre' => $productoModel->nombre,
+                'cantidad_solicitada' => $producto['cantidad'],
+                'stock_disponible' => $stockDisponible
+            ];
+        }
+    }
+
+    return response()->json([
+        'sucursal' => ['id' => $sucursal_id],
+        'productos_sin_stock' => $productosSinStock
+    ]);
+}
 
     public function verificarStock(Request $request, $id)
     {
@@ -86,15 +125,13 @@ class ProductController extends Controller
         $agencia_id = request()->input('agencia', 0);
         $paginate = request()->input('paginate', 30);
         $sub_category_id = request()->input('subcategory', 0);
+        $distribuidora = request()->input('distribuidora');
 
         $query = Product::query();
 
         $query->where(function ($query) use ($search) {
             $query->where('nombre', 'like', "%$search%")
-                ->orWhere('composicion', 'like', "%$search%")
-                ->orWhere('marca', 'like', "%$search%")
-                ->orWhere('distribuidora', 'like', "%$search%")
-                ->orWhere('paisOrigen', 'like', "%$search%");
+                ->orWhere('composicion', 'like', "%$search%");
         });
 
         if ($category_id != 0) {
@@ -107,7 +144,10 @@ class ProductController extends Controller
         if ($agencia_id != 0) {
             $query->where("cantidadSucursal$agencia_id", '>=', 0);
         }
-
+        if ($distribuidora && $distribuidora != '' && $distribuidora != 'null') {
+             // Los signos % significan "cualquier cosa antes o después"
+             $query->where('distribuidora', 'LIKE', '%' . $distribuidora . '%');
+        }
         if ($ordenar == 'id') {
             $ordenarRaw = 'id desc';
         } else if ($ordenar == 'precio asc') {
@@ -603,6 +643,18 @@ class ProductController extends Controller
         });
 
         return response()->json($payload);
+    }
+    public function getDistribuidoras()
+    {
+        // Obtiene las distribuidoras únicas, que no sean nulas ni vacías, ordenadas alfabéticamente
+        $data = Product::select('distribuidora')
+            ->whereNotNull('distribuidora')
+            ->where('distribuidora', '!=', '')
+            ->distinct()
+            ->orderBy('distribuidora', 'ASC')
+            ->get();
+
+        return response()->json($data);
     }
 
     // ===== Helpers =====

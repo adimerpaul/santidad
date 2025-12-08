@@ -22,7 +22,7 @@ export default boot(({ app, router }) => {
   app.config.globalProperties.$store = useCounterStore()
   app.config.globalProperties.$imprimir = Imprimir
   app.config.globalProperties.$excel = Excel
-  app.config.globalProperties.$metodoPago = ['Efectivo', 'Tarjeta', 'Transferencia', 'Otro']
+  app.config.globalProperties.$metodoPago = ['Efectivo', 'Tarjeta', 'Transferencia', 'Qr']
   app.config.globalProperties.$filters = {
     dateDmYHis (value) {
       const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic']

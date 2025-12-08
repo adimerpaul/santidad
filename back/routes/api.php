@@ -18,6 +18,7 @@ use App\Http\Controllers\UnidController;
 use App\Http\Controllers\BuyController;
 use App\Http\Controllers\TransferHistoryController;
 use App\Http\Controllers\UploadController;
+use App\Http\Controllers\OrderController;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,6 +30,8 @@ use App\Http\Controllers\UploadController;
 Route::get('/notificaciones/{agencia}', [NotificacionController::class, 'index']);
 Route::put('/notificaciones/{id}/leer', [NotificacionController::class, 'marcarComoLeida']);
 
+Route::get('distribuidoras-list', [ProductController::class, 'getDistribuidoras']);
+
 // --- Público / pre-auth ---
 Route::post('/login', [UserController::class,'login']);
 Route::post('upload/{id}/{option}', [UploadController::class, 'upload']);
@@ -39,6 +42,10 @@ Route::get('/sucursales', [TiendaController::class,'sucursales']);
 Route::get('/productos/{id}', [TiendaController::class,'productosId']);
 Route::get('/top-sellers', [SalesController::class, 'topSellers']);
 Route::get('carouselsMedio', [CarouselController::class, 'carouselsMedio']);
+
+Route::post('/orders', [OrderController::class, 'store']);                  // crear pedido
+Route::get('/orders/{orderNumber}', [OrderController::class, 'showByNumber']); // recuperar por número (para “ventas” luego)
+Route::post('/stock/verificar-sucursal', [ProductController::class, 'verificarStockSucursal']);
 
 // ✅ Sugerencias predictivas (antes de /products)
 Route::get('/products/suggest', [ProductController::class, 'suggest'])

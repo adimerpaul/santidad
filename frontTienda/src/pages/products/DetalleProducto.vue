@@ -135,10 +135,6 @@
                      @click="addCarrito(product, cantidad)" :disable="availableStock === 0" />
             </div>
             <div class="col-12 col-sm-4">
-              <q-btn class="full-width grad-btn-2 big-cta" icon="shopping_cart" label="Comprar ahora" no-caps
-                     @click="addCart(product, cantidad)" :disable="availableStock === 0" />
-            </div>
-            <div class="col-12 col-sm-4">
               <q-btn class="full-width glass-btn big-cta" icon="share" label="Compartir" no-caps @click="share" />
             </div>
           </div>

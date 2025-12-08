@@ -14,6 +14,18 @@
             <q-btn :loading="loading" icon="refresh" dense label="Actualizar" color="indigo" no-caps class="text-bold" @click="productsGet">
               <q-tooltip>Actualizar</q-tooltip>
             </q-btn>
+             <q-btn
+              class="q-ml-sm"
+              icon="cloud_download"
+              dense
+              label="Pedido Online"
+              color="teal"
+              no-caps
+              :loading="loadingPedidoOnline"
+              @click="cargarPedidoOnline"
+            >
+              <q-tooltip>Cargar al carrito desde un número de pedido</q-tooltip>
+            </q-btn>
           </div>
           <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" emit-value map-options dense outlined
@@ -430,6 +442,7 @@ export default {
       document: {},
       current_page: 1,
       last_page: 1,
+      loadingPedidoOnline: false,
       ruleNumber: [
         val => (val !== null && val !== '') || 'Por favor escriba su cantidad',
         val => (val >= 0 && val < 10000) || 'Por favor escriba una cantidad real'
@@ -925,7 +938,109 @@ export default {
         this.loading = false
         console.log(err)
       })
+    },
+    cargarPedidoOnline () {
+      this.$q.dialog({
+        title: 'Pedido Online',
+        message: 'Ingrese el número de pedido',
+        prompt: {
+          model: '',
+          type: 'text',
+          isValid: val => !!(val && String(val).trim().length > 0)
+        },
+        cancel: true,
+        persistent: true
+      }).onOk(val => {
+        const raw = String(val || '').trim()
+        // 👇 Si son solo dígitos, construye el formato que tu API espera.
+        const numero = /^\d+$/.test(raw) ? `PEDIDOWEB_Nº${raw}` : raw
+        this.importarPedidoDesdeApi(numero)
+      })
+    },
+
+    async importarPedidoDesdeApi (orderNumber) {
+      try {
+        this.loadingPedidoOnline = true
+
+        const encoded = encodeURIComponent(orderNumber)
+        // ⚠️ Ajusta la ruta si tu backend usa otra
+        const { data: order } = await this.$axios.get(`orders/${encoded}`)
+
+        if (!order || !Array.isArray(order.items) || order.items.length === 0) {
+          this.$alert.error('Ese pedido no tiene ítems o no existe.')
+          return
+        }
+
+        // Para cada item del pedido: solo usamos product_id y quantity
+        for (const it of order.items) {
+          const cantidad = Number(it.quantity ?? it.cantidad ?? 0)
+          const productId = it.product_id ?? it.id ?? it.productId
+
+          if (!productId || cantidad <= 0) continue
+
+          const base = await this.obtenerProductoCanonico(productId)
+          if (!base) {
+            this.$alert.error(`No se pudo cargar el producto ID ${productId}.`)
+            continue
+          }
+
+          // Agregar tal cual “click” N veces (aplica tus descuentos y validaciones)
+          this.agregarComoClicks(base, cantidad)
+        }
+
+        this.$alert.success(`Pedido ${orderNumber} importado a la canasta.`)
+      } catch (e) {
+        console.error(e)
+        this.$alert.error(e?.response?.data?.message || 'No se pudo recuperar el pedido.')
+      } finally {
+        this.loadingPedidoOnline = false
+      }
+    },
+
+    async obtenerProductoCanonico (id) {
+      // 1) ¿Ya está cargado en tu grid?
+      const enGrid = this.products.find(p => p.id === id)
+      if (enGrid) {
+        // Aseguramos campos que usa tu canasta
+        if (!Array.isArray(enGrid.buys)) this.$set(enGrid, 'buys', [])
+        if (typeof enGrid.cantidadReal !== 'number') enGrid.cantidadReal = Number(enGrid.cantidad ?? 0)
+        return enGrid
+      }
+
+      // 2) Si no está en el grid, pedir al backend
+      try {
+        // ⚠️ Ajusta la ruta si tu API usa otra
+        const { data } = await this.$axios.get(`products/${id}`)
+        const raw = data?.product || data
+        if (!raw) return null
+
+        // Normaliza campos mínimos para que clickAddSale funcione igual que con el grid
+        const base = {
+          ...raw,
+          // stock para las validaciones de clickAddSale
+          cantidadReal: Number(raw.cantidadReal ?? raw.cantidad ?? raw.stock ?? 0),
+          // precio se recalcula dentro de clickAddSale si hay porcentaje,
+          // pero no molesta si lo dejamos así:
+          precioVenta: Number(raw.precio),
+          porcentaje: Number(raw.porcentaje ?? 0),
+          cantidadVenta: 0,
+          cantidadPedida: 0,
+          buys: Array.isArray(raw.buys) ? raw.buys : []
+        }
+        return base
+      } catch (e) {
+        console.error('No se pudo obtener el producto', id, e)
+        return null
+      }
+    },
+
+    agregarComoClicks (producto, cantidad) {
+      // Reutiliza TODA tu lógica de clickAddSale (descuento, stock, etc.)
+      for (let i = 0; i < cantidad; i++) {
+        this.clickAddSale(producto)
+      }
     }
+
   }
 }
 </script>

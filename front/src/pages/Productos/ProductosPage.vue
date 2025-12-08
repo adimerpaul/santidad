@@ -74,7 +74,25 @@
         >
         </q-select>
       </div>
-      <div class="col-12 col-md-3 q-pa-xs">
+      <!-- NUEVO FILTRO DE DISTRIBUIDORA -->
+    <div class="col-12 col-md-2 q-pa-xs">
+        <q-input
+            bg-color="white"
+            dense
+            outlined
+            v-model="distribuidora"
+            label="Filtrar Distribuidora"
+            placeholder="Ej: Inti"
+            debounce="800"
+            clearable
+            @update:model-value="productsGet"
+        >
+          <template v-slot:prepend>
+            <q-icon name="local_shipping" color="grey" />
+          </template>
+        </q-input>
+      </div>
+      <div class="col-4 col-md-1 q-pa-xs">
         <q-select class="bg-white" label="Ordenar" dense outlined v-model="order"
                   :options="orders" map-options emit-value
                   option-value="value" option-label="label"
@@ -206,6 +224,9 @@ export default {
         { label: 'Cantidad cero', value: 'cantidad asc' }
       ],
       costoTotalProducts: 0,
+      distribuidora: null, // Variable para el filtro seleccionado
+      distribuidoras: [], // Lista de opciones
+      producto: { cantidad: 0, nombre: '', barra: '', costo: 0, precio: 0, descripcion: '', category_id: 0 },
       subcategories: []
     }
   },
@@ -213,6 +234,7 @@ export default {
     this.categoriesGet()
     this.subcategoriesGet()
     this.agenciasGet()
+    this.distribuidorasGet()
     this.productsGet()
     this.unitsGet()
   },
@@ -268,7 +290,8 @@ export default {
     },
     productsGet () {
       this.loading = true
-      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&subcategory=${this.subcategoria}&agencia=${this.agencia}`).then(res => {
+      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&subcategory=${this.subcategoria}&agencia=${this.agencia}&distribuidora=${this.distribuidora || ''}`).then(res => {
+        this.loading = false
         this.loading = false
         // console.log(res.data.products)
         this.totalProducts = res.data.products.total
@@ -309,6 +332,17 @@ export default {
         this.categoriesTable = response.data
       }).catch(error => {
         console.log(error)
+      })
+    },
+    // Agrega este método
+    distribuidorasGet () {
+      // Si tienes un endpoint en tu backend que devuelva: SELECT DISTINCT distribuidora FROM products
+      this.$axios.get('distribuidoras-list').then(response => {
+        this.distribuidoras = response.data
+      }).catch(error => {
+        console.log(error)
+        // Si no tienes endpoint aún, puedes poner datos de prueba temporalmente:
+        // this.distribuidoras = [{distribuidora: 'N/A'}, {distribuidora: 'HUGGIES'}, {distribuidora: 'PRUDENTIAL'}]
       })
     },
     showAddCategory () {
