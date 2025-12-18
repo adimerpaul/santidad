@@ -3,7 +3,7 @@
     <q-card>
       <q-card-section class="row items-center justify-between">
         <div>
-          <div class="text-h6">Control de Facturas</div>
+          <div class="text-h6">Control de Facturas de Compra</div>
           <div class="text-subtitle2 text-grey">Facturas al contado o a crédito con pagos parciales</div>
         </div>
         <q-btn color="primary" icon="add" label="Registrar Factura" @click="abrirFormulario" />
@@ -17,7 +17,7 @@
             <q-card bordered flat>
               <q-card-section>
                 <div class="text-subtitle2">Total de facturas</div>
-                <div class="text-h5">{{ resumenFacturas.totalFacturas }}</div>
+                <div class="text-h5">{{ resumenFacturas.total_facturas }}</div>
               </q-card-section>
             </q-card>
           </div>
@@ -25,7 +25,7 @@
             <q-card bordered flat>
               <q-card-section>
                 <div class="text-subtitle2">Monto total facturado</div>
-                <div class="text-h5">{{ formatCurrency(resumenFacturas.montoTotal) }}</div>
+                <div class="text-h5">{{ formatCurrency(resumenFacturas.monto_total) }}</div>
               </q-card-section>
             </q-card>
           </div>
@@ -33,10 +33,10 @@
             <q-card bordered flat>
               <q-card-section>
                 <div class="text-subtitle2">Pagadas</div>
-                <div class="text-h5">{{ resumenFacturas.porcentajePagado }}%</div>
+                <div class="text-h5">{{ resumenFacturas.porcentaje_pagado }}%</div>
                 <q-linear-progress
                   size="10px"
-                  :value="resumenFacturas.porcentajePagado / 100"
+                  :value="resumenFacturas.porcentaje_pagado / 100"
                   color="positive"
                   class="q-mt-sm"
                 />
@@ -47,7 +47,7 @@
             <q-card bordered flat>
               <q-card-section>
                 <div class="text-subtitle2">Total pendiente</div>
-                <div class="text-h5">{{ formatCurrency(resumenFacturas.totalPendiente) }}</div>
+                <div class="text-h5">{{ formatCurrency(resumenFacturas.pendiente_total) }}</div>
               </q-card-section>
             </q-card>
           </div>
@@ -67,26 +67,52 @@
             emit-value
             map-options
             style="min-width: 250px"
+            @update:model-value="cargarFacturas"
           />
+<!--          <pre>{{ agencias }}</pre>-->
         </div>
 
         <div class="q-mb-sm text-primary text-subtitle1">
-          Mostrando facturas de: {{ agencias.find(a => a.value === agenciaSeleccionada)?.label }}
+          Mostrando facturas de: {{ agencias.find(a => a.value === agenciaSeleccionada)?.label || 'Todas' }}
         </div>
 
-        <div class="q-gutter-md row items-center">
-          <q-input v-model="filtroProveedor" label="Proveedor" outlined dense />
-          <q-input v-model="filtroNumero" label="N° Factura" outlined dense />
-          <q-select
-            v-model="filtroTipo"
-            :options="['Contado', 'Crédito']"
-            label="Tipo de Pago"
-            outlined
-            dense
-            clearable
-          />
-          <q-btn color="primary" label="Buscar" icon="search" @click="filtrarFacturas" />
-          <q-btn flat label="Actualizar" icon="refresh" @click="cargarFacturas" />
+        <div class="row q-col-gutter-md q-mb-md">
+          <div class="col-12 col-md-3">
+            <q-input v-model="filtroProveedor" label="Proveedor" outlined dense />
+          </div>
+          <div class="col-12 col-md-3">
+            <q-input v-model="filtroNumero" label="N° Factura" outlined dense />
+          </div>
+          <div class="col-12 col-md-2">
+            <q-select
+              v-model="filtroTipo"
+              :options="['Contado', 'Crédito']"
+              label="Tipo de Pago"
+              outlined
+              dense
+              clearable
+            />
+          </div>
+          <div class="col-12 col-md-2">
+            <q-select
+              v-model="filtroEstado"
+              :options="['Pagado', 'Pendiente', 'Parcial']"
+              label="Estado"
+              outlined
+              dense
+              clearable
+            />
+          </div>
+          <div class="col-12 col-md-2">
+            <div class="row q-col-gutter-xs">
+              <div class="col-6">
+                <q-btn color="primary" label="Buscar" icon="search" @click="filtrarFacturas" class="full-width" />
+              </div>
+              <div class="col-6">
+                <q-btn flat label="Limpiar" icon="refresh" @click="limpiarFiltros" class="full-width" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <q-table
@@ -97,26 +123,57 @@
           flat
           bordered
           dense
+          :loading="loading"
+          :pagination="pagination"
+          @request="onRequest"
         >
-          <template v-slot:body-cell-total="props">
-            <q-td class="text-right">
-              {{ formatCurrency(props.row.total) }}
+          <template v-slot:body-cell-numero_factura="props">
+            <q-td :props="props">
+              <div class="text-weight-medium">{{ props.row.numero_factura }}</div>
+              <div class="text-caption text-grey">{{ props.row.proveedor }}</div>
+            </q-td>
+          </template>
+
+          <template v-slot:body-cell-fecha_compra="props">
+            <q-td :props="props">
+              {{ formatDate(props.row.fecha_compra) }}
+            </q-td>
+          </template>
+
+          <template v-slot:body-cell-fecha_vencimiento="props">
+            <q-td :props="props">
+              <span v-if="props.row.fecha_vencimiento">
+                {{ formatDate(props.row.fecha_vencimiento) }}
+                <q-badge v-if="estaPorVencer(props.row.fecha_vencimiento)" color="warning" class="q-ml-xs">
+                  Por vencer
+                </q-badge>
+                <q-badge v-if="estaVencida(props.row.fecha_vencimiento)" color="negative" class="q-ml-xs">
+                  Vencida
+                </q-badge>
+              </span>
+              <span v-else>-</span>
+            </q-td>
+          </template>
+
+          <template v-slot:body-cell-monto_total="props">
+            <q-td class="text-right" :props="props">
+              {{ formatCurrency(props.row.monto_total) }}
             </q-td>
           </template>
 
           <template v-slot:body-cell-saldo="props">
-            <q-td class="text-right">
+            <q-td class="text-right" :props="props">
               <span v-if="props.row.tipo_pago === 'Crédito'">
-                {{ formatCurrency(props.row.total - props.row.pagado) }}
+                {{ formatCurrency(props.row.monto_total - props.row.pagado) }}
               </span>
               <span v-else>-</span>
             </q-td>
           </template>
 
           <template v-slot:body-cell-estado="props">
-            <q-td>
+            <q-td :props="props">
               <q-badge
-                :color="props.row.estado === 'Pagado' ? 'green' : 'red'"
+                :color="getEstadoColor(props.row.estado)"
                 :label="props.row.estado"
                 class="text-white"
                 style="padding: 6px 12px; border-radius: 6px;"
@@ -125,7 +182,7 @@
           </template>
 
           <template v-slot:body-cell-sucursal="props">
-            <q-td>
+            <q-td :props="props">
               {{ agencias.find(a => a.value === props.row.agencia_id)?.label || 'Desconocida' }}
             </q-td>
           </template>
@@ -133,7 +190,8 @@
           <template v-slot:body-cell-acciones="props">
             <q-td align="center">
               <q-btn dense flat icon="visibility" color="primary" @click="verDetalle(props.row)" />
-              <q-btn dense flat icon="payments" color="orange" @click="abrirPago(props.row)" v-if="props.row.estado !== 'Pagado'" />
+              <q-btn dense flat icon="payments" color="orange" @click="abrirPago(props.row)"
+                     v-if="props.row.estado !== 'Pagado' && props.row.tipo_pago === 'Crédito'" />
               <q-btn dense flat icon="edit" color="blue" @click="editarFactura(props.row)" />
               <q-btn dense flat icon="delete" color="red" @click="eliminarFactura(props.row)" />
             </q-td>
@@ -142,93 +200,233 @@
       </q-card-section>
     </q-card>
 
-    <!-- Registro de Factura -->
-    <q-dialog v-model="dialogoAbierto">
-      <q-card style="min-width: 400px">
+    <!-- Registro/Edición de Factura -->
+    <q-dialog v-model="dialogoAbierto" persistent>
+      <q-card style="min-width: 500px; max-width: 700px;">
         <q-card-section>
           <div class="text-h6">{{ facturaSeleccionada ? 'Editar' : 'Registrar' }} Factura</div>
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
-          <q-input v-model="form.numero" label="N° Factura" outlined dense />
-          <q-input v-model="form.proveedor" label="Proveedor" outlined dense />
-          <q-input v-model="form.fecha" type="date" label="Fecha de compra" outlined dense />
-          <q-input v-model="form.total" label="Monto total" type="number" outlined dense />
-          <q-select v-model="form.tipo_pago" :options="['Contado', 'Crédito']" label="Tipo de pago" outlined dense />
-          <q-select v-model="form.metodo_pago" :options="['Efectivo', 'Transferencia']" label="Método de pago" outlined dense /> <!-- Método de pago -->
-          <q-input v-if="form.tipo_pago === 'Crédito'" v-model="form.fecha_vencimiento" type="date" label="Fecha de vencimiento" outlined dense />
-          <q-select v-model="form.estado" :options="['Pagado', 'Pendiente']" label="Estado" outlined dense />
-          <q-input v-model="form.vendedor" label="Vendedor" outlined dense /> <!-- Campo para el nombre del vendedor -->
+          <div class="row q-col-gutter-md">
+            <div class="col-6">
+              <q-input v-model="form.numero_factura" label="N° Factura *" outlined dense
+                       :rules="[val => !!val || 'Campo requerido']" />
+            </div>
+            <div class="col-6">
+              <q-input v-model="form.vendedor" label="Vendedor" outlined dense />
+            </div>
+          </div>
+
+          <q-input v-model="form.proveedor" label="Proveedor *" outlined dense
+                   :rules="[val => !!val || 'Campo requerido']" />
+
+          <div class="row q-col-gutter-md">
+            <div class="col-6">
+              <q-input v-model="form.fecha_compra" type="date" label="Fecha de compra *" outlined dense
+                       :rules="[val => !!val || 'Campo requerido']" />
+            </div>
+            <div class="col-6">
+              <q-input v-model="form.monto_total" label="Monto total *" type="number" outlined dense
+                       :rules="[val => !!val || 'Campo requerido', val => val > 0 || 'Monto debe ser mayor a 0']" />
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-md">
+            <div class="col-6">
+              <q-select v-model="form.tipo_pago" :options="['Contado', 'Crédito']" label="Tipo de pago *"
+                        outlined dense :rules="[val => !!val || 'Campo requerido']" />
+            </div>
+            <div class="col-6">
+              <q-select v-model="form.metodo_pago" :options="['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta']"
+                        label="Método de pago" outlined dense />
+            </div>
+          </div>
+
+          <q-input v-if="form.tipo_pago === 'Crédito'" v-model="form.fecha_vencimiento" type="date"
+                   label="Fecha de vencimiento" outlined dense />
+
+          <div class="row q-col-gutter-md">
+            <div class="col-6">
+              <q-select v-model="form.estado" :options="['Pagado', 'Pendiente', 'Parcial']" label="Estado" outlined dense />
+            </div>
+            <div class="col-6">
+              <q-select v-model="form.agencia_id" :options="agencias" label="Sucursal *" outlined dense
+                        emit-value map-option :rules="[val => !!val || 'Campo requerido']" />
+            </div>
+          </div>
+
+          <q-input v-model="form.observaciones" label="Observaciones" type="textarea" outlined dense rows="2" />
+
+          <div class="text-caption text-grey">
+            * Campos obligatorios
+          </div>
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="Cancelar" v-close-popup />
-          <q-btn color="primary" label="Guardar" @click="guardarFactura" />
+          <q-btn flat label="Cancelar" color="negative" v-close-popup />
+          <q-btn color="primary" label="Guardar" @click="guardarFactura" :loading="loadingGuardar" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Registrar Pago -->
-    <q-dialog v-model="dialogoPago">
-      <q-card style="min-width: 350px">
+    <q-dialog v-model="dialogoPago" persistent>
+      <q-card style="min-width: 400px">
         <q-card-section>
           <div class="text-h6">Registrar Pago</div>
           <div class="text-subtitle2 text-grey">
-            Factura: {{ facturaEnPago?.numero }} - Total: {{ formatCurrency(facturaEnPago?.total) }}
+            Factura: {{ facturaEnPago?.numero_factura }} - Proveedor: {{ facturaEnPago?.proveedor }}
           </div>
         </q-card-section>
 
-        <q-card-section>
-          <q-input v-model.number="montoPago" label="Monto a pagar" type="number" outlined dense />
-          <q-input v-model="pagoVendedor" label="Vendedor del pago" outlined dense /> <!-- Campo para vendedor en el pago -->
+        <q-card-section class="q-gutter-md">
+          <div class="row q-col-gutter-md">
+            <div class="col-6">
+              <div class="text-subtitle2">Total Factura:</div>
+              <div class="text-h6">{{ formatCurrency(facturaEnPago?.monto_total) }}</div>
+            </div>
+            <div class="col-6">
+              <div class="text-subtitle2">Pagado:</div>
+              <div class="text-h6">{{ formatCurrency(facturaEnPago?.pagado) }}</div>
+            </div>
+          </div>
+
+          <div class="text-subtitle2 text-center q-mt-md">
+            Saldo Pendiente: <span class="text-h6">{{ formatCurrency(facturaEnPago?.monto_total - facturaEnPago?.pagado) }}</span>
+          </div>
+
+          <q-input v-model.number="montoPago" label="Monto a pagar *" type="number" outlined dense
+                   :rules="[val => !!val || 'Campo requerido', val => val > 0 || 'Monto debe ser mayor a 0']"
+                   :max="facturaEnPago?.monto_total - facturaEnPago?.pagado" />
+
+          <q-select v-model="metodoPagoSeleccionado" :options="['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta']"
+                    label="Método de pago" outlined dense />
+
+          <q-input v-model="referenciaPago" label="Referencia/Número" outlined dense />
+
+          <q-input v-model="vendedorPago" label="Vendedor que recibe el pago" outlined dense />
+
+          <q-input v-model="observacionesPago" label="Observaciones" type="textarea" outlined dense rows="2" />
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="Cancelar" v-close-popup />
-          <q-btn color="primary" label="Confirmar Pago" @click="registrarPago" />
+          <q-btn flat label="Cancelar" color="negative" v-close-popup />
+          <q-btn color="primary" label="Confirmar Pago" @click="registrarPago" :loading="loadingPago" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Detalle de Factura -->
-    <q-dialog v-model="verDialogoDetalle">
-      <q-card style="min-width: 400px; max-width: 90vw;">
+    <q-dialog v-model="verDialogoDetalle" persistent>
+      <q-card style="min-width: 600px; max-width: 90vw;">
         <q-card-section>
-          <div class="text-h6">Detalle de Factura {{ detalleFactura?.numero }}</div>
+          <div class="text-h6">Detalle de Factura {{ detalleFactura?.numero_factura }}</div>
           <div class="text-subtitle2">Proveedor: {{ detalleFactura?.proveedor }}</div>
         </q-card-section>
 
         <q-card-section>
-          <div class="text-subtitle2">Vendedor: {{ detalleFactura?.vendedor || 'No especificado' }}</div> <!-- Mostrar el nombre del vendedor -->
+          <div class="row q-col-gutter-md">
+            <div class="col-6">
+              <div><strong>Fecha de Compra:</strong> {{ formatDate(detalleFactura?.fecha_compra) }}</div>
+              <div><strong>Vendedor:</strong> {{ detalleFactura?.vendedor || 'No especificado' }}</div>
+              <div><strong>Tipo de Pago:</strong> {{ detalleFactura?.tipo_pago }}</div>
+            </div>
+            <div class="col-6">
+              <div><strong>Método de Pago:</strong> {{ detalleFactura?.metodo_pago || 'No especificado' }}</div>
+              <div><strong>Vencimiento:</strong> {{ detalleFactura?.fecha_vencimiento ? formatDate(detalleFactura.fecha_vencimiento) : 'No aplica' }}</div>
+              <div><strong>Sucursal:</strong> {{ agencias.find(a => a.value === detalleFactura?.agencia_id)?.label }}</div>
+            </div>
+          </div>
+
+          <div class="row q-col-gutter-md q-mt-md">
+            <div class="col-4">
+              <q-card bordered flat>
+                <q-card-section>
+                  <div class="text-subtitle2">Total Factura</div>
+                  <div class="text-h6">{{ formatCurrency(detalleFactura?.monto_total) }}</div>
+                </q-card-section>
+              </q-card>
+            </div>
+            <div class="col-4">
+              <q-card bordered flat>
+                <q-card-section>
+                  <div class="text-subtitle2">Pagado</div>
+                  <div class="text-h6">{{ formatCurrency(detalleFactura?.pagado) }}</div>
+                </q-card-section>
+              </q-card>
+            </div>
+            <div class="col-4">
+              <q-card bordered flat>
+                <q-card-section>
+                  <div class="text-subtitle2">Saldo</div>
+                  <div class="text-h6" :class="{'text-negative': (detalleFactura?.monto_total - detalleFactura?.pagado) > 0}">
+                    {{ formatCurrency(detalleFactura?.monto_total - detalleFactura?.pagado) }}
+                  </div>
+                </q-card-section>
+              </q-card>
+            </div>
+          </div>
+
+          <div class="q-mt-md">
+            <div class="text-subtitle2">Observaciones:</div>
+            <div class="q-pa-sm bg-grey-3 rounded-borders">{{ detalleFactura?.observaciones || 'Sin observaciones' }}</div>
+          </div>
         </q-card-section>
 
         <q-card-section>
-          <q-markup-table dense bordered>
+          <div class="text-h6 q-mb-sm">Pagos Realizados</div>
+          <q-markup-table dense bordered v-if="detalleFactura?.pagos?.length">
             <thead>
-              <tr>
-                <th>Monto</th>
-                <th>Fecha</th>
-                <th>Vendedor</th> <!-- Columna para mostrar el vendedor -->
-              </tr>
+            <tr>
+              <th>Fecha</th>
+              <th>Monto</th>
+              <th>Método</th>
+              <th>Vendedor</th>
+              <th>Referencia</th>
+              <th>Observaciones</th>
+            </tr>
             </thead>
             <tbody>
-              <tr v-if="!detalleFactura?.pagos?.length">
-                <td colspan="3">Sin pagos aún</td>
-              </tr>
-              <tr v-for="(p, i) in detalleFactura.pagos" :key="i">
-                <td>{{ formatCurrency(p.monto) }}</td>
-                <td>{{ p.fecha }}</td>
-                <td>{{ p.vendedor || 'No especificado' }}</td> <!-- Mostrar vendedor en el pago -->
-              </tr>
+            <tr v-for="(pago, index) in detalleFactura.pagos" :key="index">
+              <td>{{ formatDate(pago.fecha_pago) }}</td>
+              <td>{{ formatCurrency(pago.monto) }}</td>
+              <td>{{ pago.metodo_pago || '-' }}</td>
+              <td>{{ pago.vendedor || '-' }}</td>
+              <td>{{ pago.referencia || '-' }}</td>
+              <td>{{ pago.observaciones || '-' }}</td>
+            </tr>
             </tbody>
           </q-markup-table>
+          <div v-else class="text-center text-grey q-pa-lg">
+            No se han registrado pagos para esta factura
+          </div>
         </q-card-section>
 
-        <q-card-section>
-          <div><strong>Total:</strong> {{ formatCurrency(detalleFactura?.total) }}</div>
-          <div><strong>Pagado:</strong> {{ formatCurrency(detalleFactura?.pagado) }}</div>
-          <div><strong>Saldo:</strong> {{ formatCurrency(detalleFactura?.total - detalleFactura?.pagado) }}</div>
-          <div><strong>Estado:</strong> {{ detalleFactura?.estado }}</div>
+        <q-card-section v-if="detalleFactura?.buys?.length">
+          <div class="text-h6 q-mb-sm">Productos Comprados</div>
+          <q-markup-table dense bordered>
+            <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Lote</th>
+              <th>Cantidad</th>
+              <th>Precio Unit.</th>
+              <th>Subtotal</th>
+              <th>Vencimiento</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="(compra, index) in detalleFactura.buys" :key="index">
+              <td>{{ compra.product?.nombre || 'Producto no encontrado' }}</td>
+              <td>{{ compra.lote }}</td>
+              <td>{{ compra.quantity }}</td>
+              <td>{{ formatCurrency(compra.price) }}</td>
+              <td>{{ formatCurrency(compra.quantity * compra.price) }}</td>
+              <td>{{ formatDate(compra.dateExpiry) }}</td>
+            </tr>
+            </tbody>
+          </q-markup-table>
         </q-card-section>
 
         <q-card-actions align="right">
@@ -240,35 +438,43 @@
 </template>
 
 <script>
+import { date } from 'quasar'
+
 export default {
-  name: 'FacturasPage',
+  name: 'FacturacionPage',
   data () {
     return {
       agencias: [
-        { label: 'Casa Matriz - Velasco', value: 1 },
-        { label: 'Sucursal Central', value: 2 },
-        { label: 'Sucursal Norte', value: 3 }
+        { label: 'Almacén Central', value: 0 },
+        { label: 'Sucursal 1', value: 1 },
+        { label: 'Sucursal 2', value: 2 },
+        { label: 'Sucursal 3', value: 3 },
+        { label: 'Sucursal 4', value: 4 },
+        { label: 'Sucursal 5', value: 5 },
+        { label: 'Sucursal 6', value: 6 },
+        { label: 'Sucursal 7', value: 7 },
+        { label: 'Sucursal 8', value: 8 },
+        { label: 'Sucursal 9', value: 9 },
+        { label: 'Sucursal 10', value: 10 }
       ],
-      agenciaSeleccionada: 1,
+      agenciaSeleccionada: 0,
       facturas: [],
       columnas: [
-        { name: 'numero', label: 'N° Factura', field: 'numero', align: 'left' },
-        { name: 'proveedor', label: 'Proveedor', field: 'proveedor', align: 'left' },
-        { name: 'fecha', label: 'Fecha de Compra', field: 'fecha', align: 'left' },
-        { name: 'total', label: 'Monto', field: 'total', align: 'right' },
-        { name: 'saldo', label: 'Saldo', field: 'saldo', align: 'center' },
-        { name: 'tipo_pago', label: 'Tipo de Pago', field: 'tipo_pago', align: 'left' },
-        { name: 'metodo_pago', label: 'Método de Pago', field: 'metodo_pago', align: 'left' },
-        { name: 'fecha_vencimiento', label: 'Vence', field: 'fecha_vencimiento', align: 'left' },
-        { name: 'estado', label: 'Estado', field: 'estado', align: 'left' },
-        { name: 'vendedor', label: 'Vendedor', field: 'vendedor', align: 'left' }, // Columna para vendedor
-        { name: 'sucursal', label: 'Sucursal', field: 'sucursal', align: 'left' },
+        { name: 'numero_factura', label: 'Factura/Proveedor', field: 'numero_factura', align: 'left', sortable: true },
+        { name: 'fecha_compra', label: 'Fecha Compra', field: 'fecha_compra', align: 'left', sortable: true },
+        { name: 'fecha_vencimiento', label: 'Vencimiento', field: 'fecha_vencimiento', align: 'left', sortable: true },
+        { name: 'monto_total', label: 'Monto', field: 'monto_total', align: 'right', sortable: true },
+        { name: 'pagado', label: 'Pagado', field: 'pagado', align: 'right', sortable: true },
+        { name: 'saldo', label: 'Saldo', field: 'saldo', align: 'right', sortable: true },
+        { name: 'tipo_pago', label: 'Tipo', field: 'tipo_pago', align: 'center', sortable: true },
+        { name: 'estado', label: 'Estado', field: 'estado', align: 'center', sortable: true },
+        { name: 'sucursal', label: 'Sucursal', field: 'sucursal', align: 'left', sortable: true },
         { name: 'acciones', label: 'Acciones', field: 'acciones', align: 'center' }
       ],
       filtroProveedor: '',
       filtroNumero: '',
       filtroTipo: '',
-      filtroMetodoPago: '',
+      filtroEstado: '',
       dialogoAbierto: false,
       dialogoPago: false,
       verDialogoDetalle: false,
@@ -276,68 +482,127 @@ export default {
       facturaEnPago: null,
       detalleFactura: null,
       montoPago: 0,
-      pagoVendedor: '', // Campo para el vendedor en el pago
+      metodoPagoSeleccionado: 'Efectivo',
+      referenciaPago: '',
+      vendedorPago: '',
+      observacionesPago: '',
+      loading: false,
+      loadingGuardar: false,
+      loadingPago: false,
+      pagination: {
+        sortBy: 'fecha_compra',
+        descending: true,
+        page: 1,
+        rowsPerPage: 10,
+        rowsNumber: 0
+      },
       form: {
-        numero: '',
+        numero_factura: '',
         proveedor: '',
-        fecha: '',
-        total: '',
-        tipo_pago: '',
-        metodo_pago: '', // Campo para el método de pago
-        vendedor: '', // Campo para el nombre del vendedor
+        vendedor: '',
+        fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DD'),
+        monto_total: '',
+        tipo_pago: 'Contado',
+        metodo_pago: 'Efectivo',
         fecha_vencimiento: '',
         estado: 'Pendiente',
-        pagos: [],
+        observaciones: '',
+        agencia_id: 0,
+        proveedor_id: null,
         pagado: 0
+      },
+      resumenFacturas: {
+        total_facturas: 0,
+        monto_total: 0,
+        pagado_total: 0,
+        pendiente_total: 0,
+        porcentaje_pagado: 0
       }
     }
   },
   computed: {
-    resumenFacturas () {
-      const totalFacturas = this.facturas.length
-      const montoTotal = this.facturas.reduce((sum, factura) => sum + factura.total, 0)
-      const totalPagado = this.facturas.reduce((sum, factura) => sum + factura.pagado, 0)
-      const totalPendiente = montoTotal - totalPagado
-      const porcentajePagado = montoTotal > 0 ? Math.round((totalPagado / montoTotal) * 100) : 0
-
-      return {
-        totalFacturas,
-        montoTotal,
-        totalPagado,
-        totalPendiente,
-        porcentajePagado
-      }
+    userAgencia () {
+      return this.$store.user?.agencia_id || 0
     }
   },
   methods: {
     formatCurrency (value) {
+      if (!value) return 'Bs. 0.00'
       return new Intl.NumberFormat('es-BO', {
         style: 'currency',
         currency: 'BOB',
         minimumFractionDigits: 2
       }).format(value)
     },
-    cargarFacturas () {
-      const todasLasFacturas = [
-        {
-          id: 1,
-          numero: 'F001',
-          proveedor: 'Proveedor A',
-          vendedor: 'Juan Pérez', // Aquí agregas el nombre del vendedor
-          fecha: '2024-03-10',
-          total: 1000,
-          tipo_pago: 'Crédito',
-          metodo_pago: 'Transferencia',
-          fecha_vencimiento: '2024-04-10',
-          estado: 'Pendiente',
-          pagos: [],
-          pagado: 0,
-          agencia_id: 1
+    formatDate (dateString) {
+      if (!dateString) return '-'
+      return date.formatDate(dateString, 'DD/MM/YYYY')
+    },
+    estaPorVencer (fechaVencimiento) {
+      if (!fechaVencimiento) return false
+      const hoy = new Date()
+      const vencimiento = new Date(fechaVencimiento)
+      const diffTime = vencimiento - hoy
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      return diffDays > 0 && diffDays <= 30
+    },
+    estaVencida (fechaVencimiento) {
+      if (!fechaVencimiento) return false
+      const hoy = new Date()
+      const vencimiento = new Date(fechaVencimiento)
+      return vencimiento < hoy
+    },
+    getEstadoColor (estado) {
+      switch (estado) {
+        case 'Pagado': return 'positive'
+        case 'Parcial': return 'warning'
+        case 'Pendiente': return 'negative'
+        default: return 'grey'
+      }
+    },
+    onRequest (props) {
+      this.pagination = props.pagination
+      this.cargarFacturas()
+    },
+    async cargarFacturas () {
+      this.loading = true
+      try {
+        const params = {
+          page: this.pagination.page,
+          per_page: this.pagination.rowsPerPage,
+          sort_by: this.pagination.sortBy,
+          descending: this.pagination.descending,
+          agencia_id: this.agenciaSeleccionada,
+          proveedor: this.filtroProveedor,
+          numero_factura: this.filtroNumero,
+          tipo_pago: this.filtroTipo,
+          estado: this.filtroEstado
         }
-        // Otras facturas...
-      ]
 
-      this.facturas = todasLasFacturas.filter(f => f.agencia_id === this.agenciaSeleccionada)
+        const response = await this.$axios.get('facturas', { params })
+        this.facturas = response.data.data
+        this.pagination.rowsNumber = response.data.total
+        this.pagination.page = response.data.current_page
+        this.pagination.rowsPerPage = response.data.per_page
+
+        // Cargar resumen
+        await this.cargarResumen()
+      } catch (error) {
+        console.error('Error cargando facturas:', error)
+        this.$alert.error('Error al cargar las facturas')
+      } finally {
+        this.loading = false
+      }
+    },
+    async cargarResumen () {
+      try {
+        const response = await this.$axios.get('facturas-resumen', {
+          params: { agencia_id: this.agenciaSeleccionada }
+        })
+        this.resumenFacturas = response.data
+      } catch (error) {
+        console.error('Error cargando resumen:', error)
+      }
     },
     abrirFormulario () {
       this.facturaSeleccionada = null
@@ -349,109 +614,211 @@ export default {
       this.form = { ...factura }
       this.dialogoAbierto = true
     },
-    guardarFactura () {
-      if (this.facturaSeleccionada) {
-        Object.assign(this.facturaSeleccionada, this.form)
-        this.$q.notify({ type: 'positive', message: 'Factura editada correctamente' })
-      } else {
-        const nueva = {
-          ...this.form,
-          id: Date.now(),
-          pagos: [],
-          pagado: 0,
-          agencia_id: this.agenciaSeleccionada
+    async guardarFactura () {
+      try {
+        this.loadingGuardar = true
+
+        // Validaciones básicas
+        if (!this.form.numero_factura || !this.form.proveedor || !this.form.fecha_compra || !this.form.monto_total) {
+          this.$alert.error('Complete todos los campos obligatorios')
+          this.loadingGuardar = false
+          return
         }
-        this.facturas.push(nueva)
-        this.$q.notify({ type: 'positive', message: 'Factura registrada exitosamente' })
+
+        if (this.form.tipo_pago === 'Crédito' && this.form.estado === 'Pagado' && parseFloat(this.form.pagado) < parseFloat(this.form.monto_total)) {
+          this.$alert.error('Para marcar como Pagado, el monto pagado debe ser igual al total')
+          this.loadingGuardar = false
+          return
+        }
+
+        // let response
+        if (this.facturaSeleccionada) {
+          await this.$axios.put(`facturas/${this.facturaSeleccionada.id}`, this.form)
+          this.$alert.success('Factura actualizada correctamente')
+        } else {
+          await this.$axios.post('facturas', {
+            ...this.form,
+            user_id: this.$store.user.id
+          })
+          this.$alert.success('Factura registrada exitosamente')
+        }
+
+        this.dialogoAbierto = false
+        await this.cargarFacturas()
+      } catch (error) {
+        console.error('Error guardando factura:', error)
+        this.$alert.error(error.response?.data?.message || 'Error al guardar la factura')
+      } finally {
+        this.loadingGuardar = false
       }
-      this.dialogoAbierto = false
     },
-    eliminarFactura (factura) {
-      this.facturas = this.facturas.filter(f => f.id !== factura.id)
-      this.$q.notify({ type: 'warning', message: 'Factura eliminada' })
+    async eliminarFactura (factura) {
+      await this.$q.dialog({
+        title: 'Confirmar eliminación',
+        message: `¿Estás seguro de eliminar la factura ${factura.numero_factura}?`,
+        cancel: true,
+        persistent: true
+      }).onOk(async () => {
+        try {
+          await this.$axios.delete(`facturas/${factura.id}`)
+          this.$alert.success('Factura eliminada correctamente')
+          await this.cargarFacturas()
+        } catch (error) {
+          console.error('Error eliminando factura:', error)
+          this.$alert.error(error.response?.data?.message || 'Error al eliminar la factura')
+        }
+      })
     },
     abrirPago (factura) {
       this.facturaEnPago = factura
       this.montoPago = 0
+      this.metodoPagoSeleccionado = 'Efectivo'
+      this.referenciaPago = ''
+      this.vendedorPago = ''
+      this.observacionesPago = ''
       this.dialogoPago = true
     },
-    registrarPago () {
-      const factura = this.facturaEnPago
-      const saldoRestante = factura.total - factura.pagado
-      const EPSILON = 0.05
+    async registrarPago () {
+      try {
+        this.loadingPago = true
 
-      if (this.montoPago <= 0) {
-        this.$q.notify({ type: 'negative', message: 'El monto debe ser mayor a 0' })
-        return
-      }
+        if (!this.montoPago || this.montoPago <= 0) {
+          this.$alert.error('Ingrese un monto válido')
+          this.loadingPago = false
+          return
+        }
 
-      if (factura.tipo_pago === 'Contado' && Math.abs(this.montoPago - saldoRestante) > EPSILON) {
-        this.$q.notify({
-          type: 'negative',
-          message: `Para facturas al contado debes pagar ${this.formatCurrency(saldoRestante)}`
+        const saldoPendiente = this.facturaEnPago.monto_total - this.facturaEnPago.pagado
+        if (this.montoPago > saldoPendiente) {
+          this.$alert.error(`El monto no puede exceder el saldo pendiente (${this.formatCurrency(saldoPendiente)})`)
+          this.loadingPago = false
+          return
+        }
+
+        await this.$axios.post(`facturas/${this.facturaEnPago.id}/pagar`, {
+          monto: this.montoPago,
+          metodo_pago: this.metodoPagoSeleccionado,
+          referencia: this.referenciaPago,
+          vendedor: this.vendedorPago,
+          observaciones: this.observacionesPago
         })
-        return
+
+        this.$alert.success('Pago registrado exitosamente')
+        this.dialogoPago = false
+        await this.cargarFacturas()
+      } catch (error) {
+        console.error('Error registrando pago:', error)
+        this.$alert.error(error.response?.data?.message || 'Error al registrar el pago')
+      } finally {
+        this.loadingPago = false
       }
-
-      if (factura.tipo_pago === 'Crédito' && this.montoPago > saldoRestante + EPSILON) {
-        this.$q.notify({
-          type: 'negative',
-          message: `El monto ingresado supera el saldo pendiente (${this.formatCurrency(saldoRestante)})`
-        })
-        return
-      }
-
-      factura.pagos.push({
-        monto: this.montoPago,
-        fecha: new Date().toISOString().split('T')[0],
-        vendedor: this.pagoVendedor // Aquí asociamos el vendedor al pago
-      })
-
-      factura.pagado += this.montoPago
-
-      if (Math.abs(factura.pagado - factura.total) <= EPSILON || factura.pagado > factura.total) {
-        factura.estado = 'Pagado'
-        factura.pagado = factura.total
-      } else {
-        factura.estado = 'Pendiente'
-      }
-
-      this.dialogoPago = false
-      this.montoPago = 0
-      this.pagoVendedor = '' // Limpiar el vendedor del pago
-
-      this.$q.notify({ type: 'positive', message: 'Pago registrado exitosamente' })
     },
-    verDetalle (factura) {
-      this.detalleFactura = factura
-      this.verDialogoDetalle = true
+    async verDetalle (factura) {
+      try {
+        this.loading = true
+        const response = await this.$axios.get(`facturas/${factura.id}`)
+        this.detalleFactura = response.data
+        this.verDialogoDetalle = true
+      } catch (error) {
+        console.error('Error cargando detalle:', error)
+        this.$alert.error('Error al cargar el detalle de la factura')
+      } finally {
+        this.loading = false
+      }
     },
     resetForm () {
       this.form = {
-        numero: '',
+        numero_factura: '',
         proveedor: '',
-        fecha: '',
-        total: '',
-        tipo_pago: '',
-        metodo_pago: '', // Campo para el método de pago
-        vendedor: '', // Campo para el nombre del vendedor
+        vendedor: '',
+        fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DD'),
+        monto_total: '',
+        tipo_pago: 'Contado',
+        metodo_pago: 'Efectivo',
         fecha_vencimiento: '',
         estado: 'Pendiente',
-        pagos: [],
+        observaciones: '',
+        agencia_id: this.userAgencia,
+        proveedor_id: null,
         pagado: 0
       }
     },
     filtrarFacturas () {
+      this.pagination.page = 1
+      this.cargarFacturas()
+    },
+    sucursalGet () {
+      this.$axios.get('sucursales')
+        .then(response => {
+          console.log('Sucursales cargadas:', response.data)
+          this.agencias = response.data.map(sucursal => ({
+            label: sucursal.nombre,
+            value: sucursal.id
+          }))
+        })
+        .catch(error => {
+          console.error('Error cargando sucursales:', error)
+          this.$alert.error('Error al cargar las sucursales')
+        })
+    },
+    limpiarFiltros () {
+      this.filtroProveedor = ''
+      this.filtroNumero = ''
+      this.filtroTipo = ''
+      this.filtroEstado = ''
+      this.pagination.page = 1
       this.cargarFacturas()
     }
   },
   watch: {
     agenciaSeleccionada () {
+      this.pagination.page = 1
       this.cargarFacturas()
     }
   },
   mounted () {
+    // Si el usuario no es de agencia 1, solo puede ver su agencia
+    if (this.userAgencia !== 1) {
+      this.agenciaSeleccionada = this.userAgencia
+    }
     this.cargarFacturas()
+    // sucursalget
+    this.sucursalGet()
   }
 }
 </script>
+
+<style scoped>
+.q-table__card {
+  border-radius: 8px;
+}
+
+.q-card {
+  border-radius: 8px;
+}
+
+.text-h6 {
+  font-weight: 600;
+}
+
+.text-subtitle2 {
+  opacity: 0.7;
+}
+
+.q-badge {
+  font-weight: 500;
+}
+
+.q-markup-table {
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.q-input, .q-select {
+  border-radius: 6px;
+}
+
+.q-dialog__inner > div {
+  border-radius: 12px;
+}
+</style>

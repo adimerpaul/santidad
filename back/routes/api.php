@@ -120,4 +120,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
     Route::get('productos/{id}/stock', [ProductController::class, 'verificarStock']);
     Route::post('/verificar-stock-venta', [ProductController::class, 'verificarStockVenta']);
+
+    Route::apiResource('facturas', \App\Http\Controllers\FacturaController::class);
+    Route::post('facturas/{factura}/pagar', [\App\Http\Controllers\FacturaController::class, 'registrarPago']);
+    Route::get('facturas-resumen', [\App\Http\Controllers\FacturaController::class, 'resumen']);
 });

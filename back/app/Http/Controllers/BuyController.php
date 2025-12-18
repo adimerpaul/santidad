@@ -264,64 +264,93 @@ class BuyController extends Controller{
     public function compraInsert(Request $request){
         foreach ($request->buys as $buy) {
             if (
-                isset($buy['lote']) === false || isset($buy['fechaVencimiento']) === false || isset($buy['cantidadCompra']) === false || isset($buy['price']) === false ||
-                $buy['lote'] === '' || $buy['fechaVencimiento'] === '' || $buy['cantidadCompra'] === '' || $buy['price'] === ''
+                isset($buy['lote']) === false || isset($buy['fechaVencimiento']) === false ||
+                isset($buy['cantidadCompra']) === false || isset($buy['price']) === false ||
+                $buy['lote'] === '' || $buy['fechaVencimiento'] === '' ||
+                $buy['cantidadCompra'] === '' || $buy['price'] === ''
             ) {
                 return response()->json(['message' => 'Falta un campo fechaVencimiento, cantidadCompra, price, lote'], 400);
             }
         }
-        $insertbuys = [];
-        foreach ($request->buys as $buy) {
-//            error_log(json_encode($buy));
-            $buyNew = new Buy();
-            $buyNew->user_id= $request->user()->id;
-            $buyNew->agencia_comprador_id = $request->agencia_comprador_id == 0 ? null : $request->agencia_comprador_id;
-            $buyNew->product_id= $buy['id'];
-            $buyNew->lote= $buy['lote'];
-            $buyNew->quantity= $buy['cantidadCompra'];
-            $buyNew->cantidadVendida= $buy['cantidadCompra'];
-            $buyNew->price= $buy['price'];
-            $buyNew->total= $buy['cantidadCompra'] * $buy['price'];
-            $buyNew->dateExpiry= $buy['fechaVencimiento'];
-            $buyNew->agencia_id= $request->agencia_id == 0 ? null : $request->agencia_id;
-            $buyNew->factura= isset($request->factura) ? $request->factura : 0;
-            $buyNew->date= date("Y-m-d");
-            $buyNew->time= date("H:i:s");
-            $buyNew->proveedor_id= $request->proveedor_id;
-            $buyNew->save();
 
-            $product = Product::find($buy['id']);
-            $product->cantidad = $product->cantidad + $buy['cantidadCompra'];
-            if ($request->agencia_id == 0) {
-                $product->cantidadAlmacen = $product->cantidadAlmacen + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id == 1) {
-                $product->cantidadSucursal1 = $product->cantidadSucursal1 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id == 2) {
-                $product->cantidadSucursal2 = $product->cantidadSucursal2 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id == 3) {
-                $product->cantidadSucursal3 = $product->cantidadSucursal3 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id == 4) {
-                $product->cantidadSucursal4 = $product->cantidadSucursal4 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id == 5) {
-                $product->cantidadSucursal5 = $product->cantidadSucursal5 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id == 6) {
-                $product->cantidadSucursal6 = $product->cantidadSucursal6 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id == 7) {
-                $product->cantidadSucursal7 = $product->cantidadSucursal7 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id == 8) {
-                $product->cantidadSucursal8 = $product->cantidadSucursal8 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id == 9) {
-                $product->cantidadSucursal9 = $product->cantidadSucursal9 + $buy['cantidadCompra'];
-            }elseif ($request->agencia_id == 10) {
-                $product->cantidadSucursal10 = $product->cantidadSucursal10 + $buy['cantidadCompra'];
+        DB::beginTransaction();
+        try {
+            $insertbuys = [];
+            $buyIds = []; // Para almacenar IDs de compras creadas
+
+            foreach ($request->buys as $buy) {
+                $buyNew = new Buy();
+                $buyNew->user_id = $request->user()->id;
+                $buyNew->agencia_comprador_id = $request->agencia_comprador_id == 0 ? null : $request->agencia_comprador_id;
+                $buyNew->product_id = $buy['id'];
+                $buyNew->lote = $buy['lote'];
+                $buyNew->quantity = $buy['cantidadCompra'];
+                $buyNew->cantidadVendida = $buy['cantidadCompra'];
+                $buyNew->price = $buy['price'];
+                $buyNew->total = $buy['cantidadCompra'] * $buy['price'];
+                $buyNew->dateExpiry = $buy['fechaVencimiento'];
+                $buyNew->agencia_id = $request->agencia_id == 0 ? null : $request->agencia_id;
+                $buyNew->factura = isset($request->factura) ? $request->factura : 0;
+                $buyNew->date = date("Y-m-d");
+                $buyNew->time = date("H:i:s");
+                $buyNew->proveedor_id = $request->proveedor_id;
+                $buyNew->save();
+
+                $buyIds[] = $buyNew->id; // Guardar ID para factura
+
+                $product = Product::find($buy['id']);
+                $product->cantidad = $product->cantidad + $buy['cantidadCompra'];
+
+                if ($request->agencia_id == 0) {
+                    $product->cantidadAlmacen = $product->cantidadAlmacen + $buy['cantidadCompra'];
+                } elseif ($request->agencia_id == 1) {
+                    $product->cantidadSucursal1 = $product->cantidadSucursal1 + $buy['cantidadCompra'];
+                } elseif ($request->agencia_id == 2) {
+                    $product->cantidadSucursal2 = $product->cantidadSucursal2 + $buy['cantidadCompra'];
+                } elseif ($request->agencia_id == 3) {
+                    $product->cantidadSucursal3 = $product->cantidadSucursal3 + $buy['cantidadCompra'];
+                } elseif ($request->agencia_id == 4) {
+                    $product->cantidadSucursal4 = $product->cantidadSucursal4 + $buy['cantidadCompra'];
+                } elseif ($request->agencia_id == 5) {
+                    $product->cantidadSucursal5 = $product->cantidadSucursal5 + $buy['cantidadCompra'];
+                } elseif ($request->agencia_id == 6) {
+                    $product->cantidadSucursal6 = $product->cantidadSucursal6 + $buy['cantidadCompra'];
+                } elseif ($request->agencia_id == 7) {
+                    $product->cantidadSucursal7 = $product->cantidadSucursal7 + $buy['cantidadCompra'];
+                } elseif ($request->agencia_id == 8) {
+                    $product->cantidadSucursal8 = $product->cantidadSucursal8 + $buy['cantidadCompra'];
+                } elseif ($request->agencia_id == 9) {
+                    $product->cantidadSucursal9 = $product->cantidadSucursal9 + $buy['cantidadCompra'];
+                } elseif ($request->agencia_id == 10) {
+                    $product->cantidadSucursal10 = $product->cantidadSucursal10 + $buy['cantidadCompra'];
+                }
+
+                $product->precio = $buy['price'];
+                $product->costo = $buy['price']/1.3;
+                $product->save();
             }
 
-            $product->precio = $buy['price'];
-            $product->costo = $buy['price']/1.3;
-            $product->save();
-//            return Buy::with(['product','user'])->findOrFail($buy->id);
+            // Si hay factura definida, preguntar si se quiere crear factura
+            if ($request->filled('crear_factura') && $request->crear_factura) {
+                // Esta parte se manejará desde el frontend con un diálogo
+                // Las compras ya están creadas, la factura se creará en un paso separado
+            }
+
+            DB::commit();
+
+            // Retornar los IDs de compras para posible creación de factura
+            return response()->json([
+                'message' => 'Compra realizada con éxito',
+                'buy_ids' => $buyIds,
+                'total_compra' => collect($request->buys)->sum(function($b) {
+                    return $b['cantidadCompra'] * $b['price'];
+                })
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error al procesar la compra: ' . $e->getMessage()], 500);
         }
-        Buy::insert($insertbuys);
     }
     public function update(UpdateBuyRequest $request, Buy $buy){ return $buy->update($request->all()); }
     public function destroy(Buy $buy){ return $buy->delete(); }
