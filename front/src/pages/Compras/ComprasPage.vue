@@ -76,8 +76,8 @@
                         <div :class="p.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">
                           {{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}
                         </div>
-                          <div v-if="$store.user?.agencia_id == 1 && p.cantidadAlmacen !== undefined"
-                            class="text-center text-caption text-blue">
+                        <div v-if="$store.user?.agencia_id == 1 && p.cantidadAlmacen !== undefined"
+                             class="text-center text-caption text-blue">
                           Stock Almacén: {{ p.cantidadAlmacen }}
                         </div>
                       </q-card-section>
@@ -222,6 +222,16 @@
                               use-input @filter="filterFn"
                               option-value="id" option-label="nombreRazonSocial"/>
                   </div>
+
+                  <!-- Checkbox para crear factura -->
+                  <div class="col-12 q-mt-md">
+                    <q-checkbox
+                      v-model="crearFactura"
+                      label="Crear factura para esta compra"
+                      color="primary"
+                    />
+                    <q-tooltip>Creará un registro de factura con todos los productos comprados</q-tooltip>
+                  </div>
                 </div>
               </q-item-section>
             </q-list>
@@ -235,15 +245,128 @@
       </div>
     </div>
     <div id="myElement" class="hidden"></div>
+
+    <!-- Diálogo para datos de factura -->
+    <q-dialog v-model="dialogoFactura" persistent>
+      <q-card style="min-width: 500px">
+        <q-card-section>
+          <div class="text-h6">Crear Factura de Compra</div>
+          <div class="text-subtitle2 text-grey">Complete los datos de la factura</div>
+        </q-card-section>
+
+        <q-card-section class="q-gutter-md">
+          <div class="row">
+            <div class="col-6">
+              <q-input
+                v-model="facturaData.numero_factura"
+                label="Número de Factura *"
+                outlined
+                dense
+                :rules="[val => !!val || 'Campo requerido']"
+              />
+            </div>
+            <div class="col-6">
+              <q-input
+                v-model="facturaData.vendedor"
+                label="Vendedor"
+                outlined
+                dense
+              />
+            </div>
+          </div>
+
+          <q-input
+            v-model="facturaData.proveedor"
+            label="Proveedor *"
+            outlined
+            dense
+            :rules="[val => !!val || 'Campo requerido']"
+            readonly
+          />
+
+          <div class="row">
+            <div class="col-6">
+              <q-input
+                v-model="facturaData.fecha_compra"
+                type="date"
+                label="Fecha de Compra *"
+                outlined
+                dense
+                :rules="[val => !!val || 'Campo requerido']"
+              />
+            </div>
+            <div class="col-6">
+              <q-input
+                v-model="facturaData.monto_total"
+                label="Monto Total *"
+                type="number"
+                outlined
+                dense
+                :rules="[val => !!val || 'Campo requerido']"
+              />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-6">
+              <q-select
+                v-model="facturaData.tipo_pago"
+                :options="['Contado', 'Crédito']"
+                label="Tipo de Pago *"
+                outlined
+                dense
+                :rules="[val => !!val || 'Campo requerido']"
+              />
+            </div>
+            <div class="col-6">
+              <q-select
+                v-model="facturaData.metodo_pago"
+                :options="['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta']"
+                label="Método de Pago"
+                outlined
+                dense
+              />
+            </div>
+          </div>
+
+          <q-input
+            v-if="facturaData.tipo_pago === 'Crédito'"
+            v-model="facturaData.fecha_vencimiento"
+            type="date"
+            label="Fecha de Vencimiento"
+            outlined
+            dense
+          />
+
+          <q-input
+            v-model="facturaData.observaciones"
+            label="Observaciones"
+            type="textarea"
+            outlined
+            dense
+            rows="2"
+          />
+
+          <div class="text-caption text-grey">
+            * Campos obligatorios
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" color="negative" @click="cancelarFactura" />
+          <q-btn label="Crear sin Factura" color="grey" @click="finalizarSinFactura" />
+          <q-btn label="Guardar Factura" color="primary" @click="crearFacturaCompleta" :loading="loadingFactura" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script>
-// import { Imprimir } from 'src/addons/Imprimir'
 import { date } from 'quasar'
 
 export default {
-  name: 'SalePage',
+  name: 'ComprasPage',
   data () {
     return {
       saleDialog: false,
@@ -301,7 +424,24 @@ export default {
       ],
       proveedores: [],
       proveedoresAll: [],
-      proveedor_id: 0
+      proveedor_id: 0,
+      crearFactura: false,
+      dialogoFactura: false,
+      datosCompra: null,
+      loadingFactura: false,
+      facturaData: {
+        numero_factura: '',
+        proveedor: '',
+        vendedor: '',
+        fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DD'),
+        monto_total: 0,
+        tipo_pago: 'Contado',
+        metodo_pago: 'Efectivo',
+        fecha_vencimiento: '',
+        observaciones: '',
+        agencia_id: 0,
+        proveedor_id: 0
+      }
     }
   },
   created () {
@@ -313,11 +453,6 @@ export default {
     this.categoriesGet()
     this.subcategoriesGet()
     this.agenciasGet()
-    this.$axios.get('documents').then(res => {
-      res.data.forEach(r => { r.label = r.descripcion })
-      this.documents = res.data
-      this.document = this.documents[0]
-    })
   },
   methods: {
     subcategoriesGet () {
@@ -344,8 +479,11 @@ export default {
     },
     deleteProductosVenta (row, index) {
       this.$store.productosCompra.splice(index, 1)
+      // Recalcular total
+      this.calcularTotalFactura()
     },
     async compraInsert () {
+      // Validar que todos los productos tengan datos completos
       for (const p of this.$store.productosCompra) {
         p._fechaVencimientoError = false
         if (
@@ -384,40 +522,189 @@ export default {
         }
       }
 
+      // Validar proveedor seleccionado
+      if (!this.proveedor_id) {
+        this.$alert.error('Debes seleccionar un proveedor')
+        return false
+      }
+
       await this.$q.dialog({
         title: 'Confirmar compra',
-        message: `¿Estás seguro de confirmar la compra a <span style="color: red"> <b> ${this.agencias.find(a => a.id === this.agencia_id).nombre}</b></span> con <span style="color: red"> <b>${this.$store.productosCompra.length}</b></span> productos?`,
+        message: `¿Estás seguro de confirmar la compra a <span style="color: red"> <b> ${this.agencias.find(a => a.id === this.agencia_id)?.nombre || 'Almacén'}</b></span> con <span style="color: red"> <b>${this.$store.productosCompra.length}</b></span> productos?`,
         html: true,
         cancel: true,
         persistent: true
       }).onOk(async () => {
-        try {
-          this.loading = true
-          await this.$axios.post('compraInsert', {
+        // Calcular total de la compra
+        const totalCompra = this.calcularTotalCompra()
+
+        // Si el usuario quiere crear factura, mostrar diálogo
+        if (this.crearFactura) {
+          // Preparar datos para el diálogo
+          this.facturaData.monto_total = totalCompra
+          this.facturaData.agencia_id = this.agencia_id
+          this.facturaData.proveedor_id = this.proveedor_id
+          this.facturaData.proveedor = this.proveedores.find(p => p.id === this.proveedor_id)?.nombreRazonSocial || ''
+          this.facturaData.numero_factura = this.factura || this.generarNumeroFactura()
+
+          // Guardar datos de compra temporalmente
+          this.datosCompra = {
+            buys: this.$store.productosCompra.map(p => ({
+              id: p.id,
+              lote: p.lote,
+              fechaVencimiento: p.fechaVencimiento,
+              cantidadCompra: p.cantidadCompra,
+              price: p.price,
+              nombre: p.nombre
+            })),
+            factura: this.factura,
+            agencia_id: this.agencia_id,
+            proveedor_id: this.proveedor_id,
+            agencia_comprador_id: this.$store.agencia_id,
+            crear_factura: true
+          }
+
+          this.dialogoFactura = true
+        } else {
+          // Procesar compra sin factura
+          await this.procesarCompra({
             buys: this.$store.productosCompra,
             factura: this.factura,
             agencia_id: this.agencia_id,
             proveedor_id: this.proveedor_id,
-            agencia_comprador_id: this.$store.agencia_id
+            agencia_comprador_id: this.$store.agencia_id,
+            crear_factura: false
           })
-          this.$alert.success('Compra realizada con éxito')
-          this.$store.productosCompra = []
-          this.loading = false
-          this.productsGet()
-          this.factura = ''
-        } catch (err) {
-          this.$alert.error(err.response?.data?.message || 'Error')
-          this.loading = false
         }
       })
     },
-    async vaciarCanasta () {
-      await this.$store.productosCompra.forEach(p => {
-        p.cantidad = p.cantidadReal
-        p.cantidadVenta = 0
-        p.cantidadPedida = 0
+    async procesarCompra (datos) {
+      try {
+        this.loading = true
+        await this.$axios.post('compraInsert', datos)
+
+        this.$alert.success('Compra realizada con éxito')
+        this.$store.productosCompra = []
+        this.loading = false
+        this.productsGet()
+        this.factura = ''
+        this.crearFactura = false
+        this.resetFacturaData()
+      } catch (err) {
+        this.$alert.error(err.response?.data?.message || 'Error al procesar la compra')
+        this.loading = false
+      }
+    },
+    async crearFacturaCompleta () {
+      try {
+        // Validar datos de factura
+        if (!this.facturaData.numero_factura || !this.facturaData.proveedor || !this.facturaData.fecha_compra) {
+          this.$alert.error('Complete los campos obligatorios de la factura')
+          return
+        }
+
+        this.loadingFactura = true
+
+        // 1. Primero crear la compra
+        const compraResponse = await this.$axios.post('compraInsert', this.datosCompra)
+
+        if (!compraResponse.data.buy_ids) {
+          throw new Error('No se obtuvieron IDs de compra')
+        }
+
+        // 2. Crear la factura con los IDs de compra
+        const facturaRequest = {
+          ...this.facturaData,
+          detalle_compras: compraResponse.data.buy_ids,
+          user_id: this.$store.user.id
+        }
+
+        await this.$axios.post('facturas', facturaRequest)
+
+        this.$alert.success('Compra y factura creadas exitosamente')
+
+        // Limpiar todo
+        this.dialogoFactura = false
+        this.$store.productosCompra = []
+        this.loadingFactura = false
+        this.productsGet()
+        this.factura = ''
+        this.crearFactura = false
+        this.resetFacturaData()
+      } catch (err) {
+        this.$alert.error(err.response?.data?.message || 'Error al crear factura')
+        this.loadingFactura = false
+      }
+    },
+    async finalizarSinFactura () {
+      this.dialogoFactura = false
+      await this.procesarCompra({
+        ...this.datosCompra,
+        crear_factura: false
       })
-      this.$store.productosCompra = []
+    },
+    cancelarFactura () {
+      this.dialogoFactura = false
+      this.$alert.info('Compra cancelada')
+    },
+    resetFacturaData () {
+      this.facturaData = {
+        numero_factura: '',
+        proveedor: '',
+        vendedor: '',
+        fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DD'),
+        monto_total: 0,
+        tipo_pago: 'Contado',
+        metodo_pago: 'Efectivo',
+        fecha_vencimiento: '',
+        observaciones: '',
+        agencia_id: 0,
+        proveedor_id: 0
+      }
+    },
+    calcularTotalCompra () {
+      // return this.$store.productosCompra.reduce((total, p) => {
+      //   const precio = parseFloat(p.price) || 0
+      //   const cantidad = parseFloat(p.cantidadCompra) || 0
+      //   return total + (precio * cantidad)
+      // }, 0)
+      // returdir el 30 porciento
+      let total = 0
+      this.$store.productosCompra.forEach(p => {
+        const precio = parseFloat(p.price) || 0
+        const cantidad = parseFloat(p.cantidadCompra) || 0
+        total += precio * cantidad
+      })
+      total = total - (total * 0.3)
+      // redonde a 2 decimales
+      return Math.round(total * 100) / 100
+    },
+    calcularTotalFactura () {
+      this.facturaData.monto_total = this.calcularTotalCompra()
+    },
+    generarNumeroFactura () {
+      const fecha = new Date()
+      const year = fecha.getFullYear().toString().slice(-2)
+      const month = (fecha.getMonth() + 1).toString().padStart(2, '0')
+      const day = fecha.getDate().toString().padStart(2, '0')
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
+      return `FAC-${year}${month}${day}-${random}`
+    },
+    async vaciarCanasta () {
+      await this.$q.dialog({
+        title: 'Vaciar canasta',
+        message: '¿Estás seguro de vaciar la canasta de compras?',
+        cancel: true,
+        persistent: true
+      }).onOk(() => {
+        this.$store.productosCompra.forEach(p => {
+          p.cantidad = p.cantidadReal
+          p.cantidadVenta = 0
+          p.cantidadPedida = 0
+        })
+        this.$store.productosCompra = []
+        this.facturaData.monto_total = 0
+      })
     },
     clickAddSale (product) {
       product.cantidadPedida++
@@ -429,9 +716,12 @@ export default {
         fechaVencimiento: date.formatDate(new Date(), 'YYYY-MM-DD'),
         cantidadCompra: '',
         _fechaVencimientoError: false,
-        _tocoFecha: false, // <-- inicia ocultando la alerta
-        price: product.precioVenta // <-- Asignamos el precio aquí
+        _tocoFecha: false,
+        price: product.precioVenta,
+        cantidadReal: product.cantidad
       })
+      // Actualizar total de factura
+      this.calcularTotalFactura()
     },
     agenciasGet () {
       this.agencias = [{ nombre: 'Almacen', id: 0 }]
@@ -547,6 +837,23 @@ export default {
         s = s + parseFloat(p.precioVenta * p.cantidadVenta)
       })
       return s.toFixed(2)
+    }
+  },
+  watch: {
+    proveedor_id (newVal) {
+      if (newVal && this.proveedores.length > 0) {
+        const proveedor = this.proveedores.find(p => p.id === newVal)
+        if (proveedor) {
+          this.facturaData.proveedor = proveedor.nombreRazonSocial
+          this.facturaData.proveedor_id = newVal
+        }
+      }
+    },
+    '$store.productosCompra': {
+      handler () {
+        this.calcularTotalFactura()
+      },
+      deep: true
     }
   }
 }
