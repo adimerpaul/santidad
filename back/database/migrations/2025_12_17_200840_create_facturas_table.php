@@ -10,18 +10,23 @@ return new class extends Migration
     {
         Schema::create('facturas', function (Blueprint $table) {
             $table->id();
-            $table->string('numero_factura')->unique();
-            $table->string('proveedor');
+            $table->string('numero_factura')->nullable();
+            $table->string('proveedor')->nullable();
             $table->string('vendedor')->nullable();
+            $table->string('numero_transaccion')->nullable();
             $table->date('fecha_compra');
             $table->decimal('monto_total', 10, 2);
             $table->enum('tipo_pago', ['Contado', 'Crédito']);
             $table->enum('metodo_pago', ['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta'])->nullable();
             $table->date('fecha_vencimiento')->nullable();
-            $table->enum('estado', ['Pagado', 'Pendiente', 'Parcial'])->default('Pendiente');
+            $table->string('estado')->default('Pendiente');
             $table->decimal('pagado', 10, 2)->default(0);
-            $table->foreignId('agencia_id')->constrained('agencias');
-            $table->foreignId('proveedor_id')->nullable()->constrained('clients');
+//            $table->foreignId('agencia_id')->constrained('agencias');
+//            $table->foreignId('proveedor_id')->nullable()->constrained('clients');
+            $table->unsignedBigInteger('agencia_id')->nullable();
+            $table->unsignedBigInteger('proveedor_id')->nullable();
+            $table->foreign('agencia_id')->references('id')->on('agencias');
+            $table->foreign('proveedor_id')->references('id')->on('clients');
             $table->text('observaciones')->nullable();
             $table->json('detalle_compras')->nullable(); // Para relacionar con las compras
             $table->foreignId('user_id')->constrained('users'); // Usuario que crea la factura

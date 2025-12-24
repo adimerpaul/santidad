@@ -78,10 +78,23 @@
 
         <div class="row q-col-gutter-md q-mb-md">
           <div class="col-12 col-md-3">
-            <q-input v-model="filtroProveedor" label="Proveedor" outlined dense />
+<!--            <q-input v-model="filtroProveedor" label="Proveedor" outlined dense />-->
+            <q-select
+              v-model="filtroProveedor"
+              :options="proveedores"
+              label="Proveedor"
+              outlined
+              dense
+              clearable
+              option-value="nombreRazonSocial"
+              option-label="nombreRazonSocial"
+              emit-value
+              map-options
+            />
+<!--            <pre>{{proveedores}}</pre>-->
           </div>
           <div class="col-12 col-md-3">
-            <q-input v-model="filtroNumero" label="N° Factura" outlined dense />
+            <q-input v-model="filtroNumero" label="N° Factura" outlined dense clearable />
           </div>
           <div class="col-12 col-md-2">
             <q-select
@@ -207,8 +220,8 @@
           <div class="text-h6">{{ facturaSeleccionada ? 'Editar' : 'Registrar' }} Factura</div>
         </q-card-section>
 
-        <q-card-section class="q-gutter-md">
-          <div class="row q-col-gutter-md">
+        <q-card-section class="">
+          <div class="row ">
             <div class="col-6">
               <q-input v-model="form.numero_factura" label="N° Factura *" outlined dense
                        :rules="[val => !!val || 'Campo requerido']" />
@@ -421,8 +434,8 @@
               <td>{{ compra.product?.nombre || 'Producto no encontrado' }}</td>
               <td>{{ compra.lote }}</td>
               <td>{{ compra.quantity }}</td>
-              <td>{{ formatCurrency(compra.price) }}</td>
-              <td>{{ formatCurrency(compra.quantity * compra.price) }}</td>
+              <td>{{ formatCurrency(compra.price/1.3) }}</td>
+              <td>{{ formatCurrency(compra.quantity * compra.price/1.3) }}</td>
               <td>{{ formatDate(compra.dateExpiry) }}</td>
             </tr>
             </tbody>
@@ -444,18 +457,10 @@ export default {
   name: 'FacturacionPage',
   data () {
     return {
+      proveedor_id: null,
+      proveedores: [],
       agencias: [
-        { label: 'Almacén Central', value: 0 },
-        { label: 'Sucursal 1', value: 1 },
-        { label: 'Sucursal 2', value: 2 },
-        { label: 'Sucursal 3', value: 3 },
-        { label: 'Sucursal 4', value: 4 },
-        { label: 'Sucursal 5', value: 5 },
-        { label: 'Sucursal 6', value: 6 },
-        { label: 'Sucursal 7', value: 7 },
-        { label: 'Sucursal 8', value: 8 },
-        { label: 'Sucursal 9', value: 9 },
-        { label: 'Sucursal 10', value: 10 }
+        { label: 'Almacén Central', value: 0 }
       ],
       agenciaSeleccionada: 0,
       facturas: [],
@@ -755,6 +760,7 @@ export default {
             label: sucursal.nombre,
             value: sucursal.id
           }))
+          this.agencias.unshift({ label: 'Almacén Central', value: 0 })
         })
         .catch(error => {
           console.error('Error cargando sucursales:', error)
@@ -784,6 +790,15 @@ export default {
     this.cargarFacturas()
     // sucursalget
     this.sucursalGet()
+    // llenar provedores
+    this.$axios.get('providers')
+      .then(response => {
+        this.proveedores = response.data
+      })
+      .catch(error => {
+        console.error('Error cargando proveedores:', error)
+        this.$alert.error('Error al cargar los proveedores')
+      })
   }
 }
 </script>

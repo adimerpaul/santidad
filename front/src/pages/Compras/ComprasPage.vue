@@ -259,10 +259,9 @@
             <div class="col-6">
               <q-input
                 v-model="facturaData.numero_factura"
-                label="Número de Factura *"
+                label="Número de Factura "
                 outlined
                 dense
-                :rules="[val => !!val || 'Campo requerido']"
               />
             </div>
             <div class="col-6">
@@ -321,8 +320,17 @@
             <div class="col-6">
               <q-select
                 v-model="facturaData.metodo_pago"
-                :options="['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta']"
+                :options="['Efectivo', 'Transferencia','QR']"
                 label="Método de Pago"
+                outlined
+                dense
+              />
+            </div>
+<!--            numero_transaccion-->
+            <div class="col-6">
+              <q-input
+                v-model="facturaData.numero_transaccion"
+                label="Número de Transacción"
                 outlined
                 dense
               />
@@ -425,7 +433,7 @@ export default {
       proveedores: [],
       proveedoresAll: [],
       proveedor_id: 0,
-      crearFactura: false,
+      crearFactura: true,
       dialogoFactura: false,
       datosCompra: null,
       loadingFactura: false,
@@ -523,10 +531,10 @@ export default {
       }
 
       // Validar proveedor seleccionado
-      if (!this.proveedor_id) {
-        this.$alert.error('Debes seleccionar un proveedor')
-        return false
-      }
+      // if (!this.proveedor_id) {
+      //   this.$alert.error('Debes seleccionar un proveedor')
+      //   return false
+      // }
 
       await this.$q.dialog({
         title: 'Confirmar compra',
@@ -545,7 +553,7 @@ export default {
           this.facturaData.agencia_id = this.agencia_id
           this.facturaData.proveedor_id = this.proveedor_id
           this.facturaData.proveedor = this.proveedores.find(p => p.id === this.proveedor_id)?.nombreRazonSocial || ''
-          this.facturaData.numero_factura = this.factura || this.generarNumeroFactura()
+          this.facturaData.numero_factura = this.factura
 
           // Guardar datos de compra temporalmente
           this.datosCompra = {
@@ -598,7 +606,7 @@ export default {
     async crearFacturaCompleta () {
       try {
         // Validar datos de factura
-        if (!this.facturaData.numero_factura || !this.facturaData.proveedor || !this.facturaData.fecha_compra) {
+        if (!this.facturaData.fecha_compra) {
           this.$alert.error('Complete los campos obligatorios de la factura')
           return
         }
@@ -675,7 +683,8 @@ export default {
         const cantidad = parseFloat(p.cantidadCompra) || 0
         total += precio * cantidad
       })
-      total = total - (total * 0.3)
+      // total = total - (total * 0.3)
+      total = total / 1.3
       // redonde a 2 decimales
       return Math.round(total * 100) / 100
     },
