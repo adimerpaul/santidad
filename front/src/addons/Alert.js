@@ -9,6 +9,16 @@ export class Alert {
     })
   }
 
+  // info
+  static info (message) {
+    Notify.create({
+      message,
+      color: 'info',
+      icon: 'info',
+      position: 'top'
+    })
+  }
+
   static error (message) {
     Notify.create({
       message,

@@ -25,7 +25,8 @@ class Factura extends Model
         'proveedor_id',
         'observaciones',
         'detalle_compras',
-        'user_id'
+        'user_id',
+        'numero_transaccion'
     ];
 
     protected $casts = [

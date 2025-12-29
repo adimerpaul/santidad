@@ -19,7 +19,11 @@ class FacturaController extends Controller
 
         // Filtros
         if ($request->filled('agencia_id')) {
-            $query->where('agencia_id', $request->agencia_id);
+            if($request->agencia_id == 0){
+                $query->whereNull('agencia_id');
+            } else{
+                $query->where('agencia_id', $request->agencia_id);
+            }
         }
 
         if ($request->filled('proveedor')) {
@@ -54,14 +58,23 @@ class FacturaController extends Controller
         DB::beginTransaction();
         try {
             $request->validate([
-                'numero_factura' => 'required|unique:facturas',
-                'proveedor' => 'required|string|max:255',
+//                'numero_factura' => 'required|unique:facturas',
+//                'proveedor' => 'required|string|max:255',
                 'fecha_compra' => 'required|date',
                 'monto_total' => 'required|numeric|min:0',
                 'tipo_pago' => 'required|in:Contado,Crédito',
-                'agencia_id' => 'required|exists:agencias,id',
+//                'agencia_id' => 'required|exists:agencias,id',
                 'detalle_compras' => 'nullable|array'
             ]);
+
+            if ($request->proveedor_id == 0) {
+                $request->merge(['proveedor_id' => null]);
+            }
+//            error_log('agencia_id antes: ' . $request->agencia_id);
+            if($request->agencia_id == 0){
+                $request->merge(['agencia_id' => null]);
+            }
+//            error_log('agencia_id después: ' . $request->agencia_id);
 
             $factura = Factura::create([
                 'numero_factura' => $request->numero_factura,
