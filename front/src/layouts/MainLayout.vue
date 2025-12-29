@@ -127,6 +127,27 @@
                 </q-item-label>
               </q-item-section>
             </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/pedidos">
+              <q-item-section avatar>
+                <q-icon name="o_assignment" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>
+                  Pedidos
+                  <q-tooltip anchor="top middle" self="bottom middle">
+                    Realizar pedido a central
+                  </q-tooltip>
+                </q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-item clickable v-ripple to="/historial-pedidos">
+            <q-item-section avatar>
+              <q-icon name="history" />
+            </q-item-section>
+            <q-item-section>
+              Historial de Pedidos
+            </q-item-section>
+          </q-item>
             <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productos" >
               <q-item-section avatar><q-icon name="o_local_mall" /></q-item-section>
               <q-item-section>

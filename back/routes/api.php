@@ -19,6 +19,7 @@ use App\Http\Controllers\BuyController;
 use App\Http\Controllers\TransferHistoryController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\PedidoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,6 +32,7 @@ Route::get('/notificaciones/{agencia}', [NotificacionController::class, 'index']
 Route::put('/notificaciones/{id}/leer', [NotificacionController::class, 'marcarComoLeida']);
 
 Route::get('distribuidoras-list', [ProductController::class, 'getDistribuidoras']);
+
 
 // --- Público / pre-auth ---
 Route::post('/login', [UserController::class,'login']);
@@ -131,4 +133,19 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::apiResource('facturas', \App\Http\Controllers\FacturaController::class);
     Route::post('facturas/{factura}/pagar', [\App\Http\Controllers\FacturaController::class, 'registrarPago']);
     Route::get('facturas-resumen', [\App\Http\Controllers\FacturaController::class, 'resumen']);
+
+        // 1. PRIMERO: Las rutas específicas (custom)
+        Route::get('pedidos/historial', [PedidoController::class, 'historial']);
+        Route::post('pedidos/accion', [PedidoController::class, 'accion']);
+        Route::get('pedidos/{id}/detalles', [PedidoController::class, 'detalles']);
+        Route::get('pedidos/{id}/modificaciones', [PedidoController::class, 'modificaciones']);
+
+        // 2. SEGUNDO: Las rutas de recursos (generales)
+        // Esto crea: index, store, show, update, destroy
+        Route::apiResource('pedidos', PedidoController::class);
+
+        // Rutas de productos (auxiliares)
+        Route::get('products/{id}/stock-sucursales', [PedidoController::class, 'stockSucursales']);
+        Route::get('products/{id}/sugerencias-pedido', [PedidoController::class, 'sugerenciasPedido']);
+        
 });

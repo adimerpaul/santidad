@@ -15,6 +15,8 @@ import ProductosVencidosPage from 'pages/ProductosVencidosPage.vue'
 import ProductosRetiradosPage from 'pages/ProductosRetiradosPage.vue'
 import FacturasPage from 'src/pages/FacturasPage.vue'
 import TransferenciasPage from 'src/pages/TransferenciasPage.vue'
+import HistorialPedidos from 'pages/HistorialPedidos.vue'
+
 const routes = [
   {
     path: '/',
@@ -36,6 +38,8 @@ const routes = [
       { path: 'agencias', component: AgenciaPage, meta: { requiresAuth: true } },
       { path: 'productosRetirados', component: ProductosRetiradosPage, meta: { requiresAuth: true } },
       { path: 'subcategorias', component: () => import('pages/SubcategoryPage.vue'), meta: { requiresAuth: true } },
+      { path: 'pedidos', component: () => import('pages/PedidosPage.vue'), meta: { requiresAuth: true } },
+      { path: 'historial-pedidos', component: HistorialPedidos, meta: { requiresAuth: true } },
       { path: 'carousel', component: () => import('pages/Carousel/CarouselPage.vue'), meta: { requiresAuth: true } }
 
     ]
