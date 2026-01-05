@@ -15,8 +15,8 @@ class PedidoController extends Controller
     // Historial de pedidos con filtros
     public function historial(Request $request)
     {
-        // 1. Cargar relaciones, INCLUYENDO 'proveedor' para que se vea en el historial
-        $query = Pedido::with(['agencia', 'user', 'detalles.product', 'proveedor']) 
+        // 1. Cargar relaciones: Agregamos 'vendedor' a la lista
+        $query = Pedido::with(['agencia', 'user', 'detalles.product', 'proveedor', 'vendedor']) 
             ->orderBy('created_at', 'desc');
         
         // Aplicar filtros
@@ -36,7 +36,7 @@ class PedidoController extends Controller
             $query->where('agencia_id', $request->agencia_id);
         }
 
-        // Filtro por proveedor (Nuevo)
+        // Filtro por proveedor
         if ($request->filled('proveedor_id')) {
             $query->where('proveedor_id', $request->proveedor_id);
         }
@@ -75,13 +75,11 @@ class PedidoController extends Controller
         // 1. Validación
         $request->validate([
             'agencia_id' => 'required|integer', 
-            
-            // --- CORRIGE ESTA LÍNEA ---
-            // Antes tenías 'exists:providers,id' o 'exists:proveedores,id'
-            // DEBE SER 'exists:clients,id' porque tu tabla se llama 'clients'
             'proveedor_id' => 'required|exists:clients,id', 
-            // --------------------------
-
+            
+            // --- Validar vendedor (opcional) ---
+            'vendedor_id' => 'nullable|exists:vendedors,id', 
+            
             'fecha_pedido' => 'required|date',
             'detalles' => 'required|array|min:1', 
             'detalles.*.product_id' => 'required|exists:products,id',
@@ -96,7 +94,8 @@ class PedidoController extends Controller
             $pedido = Pedido::create([
                 'agencia_id' => $request->agencia_id,
                 'user_id' => $request->user_id ?? auth()->id(),
-                'proveedor_id' => $request->proveedor_id, // <--- AQUÍ GUARDAMOS EL PROVEEDOR
+                'proveedor_id' => $request->proveedor_id,
+                'vendedor_id' => $request->vendedor_id, // <--- Guardamos el vendedor aquí
                 'fecha_pedido' => $request->fecha_pedido,
                 'estado' => 'PENDIENTE',
                 'observacion' => $request->observacion
@@ -130,8 +129,8 @@ class PedidoController extends Controller
     // Detalles de un pedido específico
     public function detalles($id)
     {
-        // Incluimos 'proveedor' aquí también por si acaso
-        $pedido = Pedido::with(['detalles.product', 'proveedor'])->findOrFail($id);
+        // Incluimos 'vendedor' para verlo en el detalle
+        $pedido = Pedido::with(['detalles.product', 'proveedor', 'vendedor'])->findOrFail($id);
         
         // Recorremos detalles para buscar acciones previas (si las hubo)
         foreach ($pedido->detalles as $detalle) {
@@ -149,9 +148,7 @@ class PedidoController extends Controller
             }
         }
         
-        return response()->json([
-            'detalles' => $pedido->detalles
-        ]);
+        return response()->json($pedido);
     }
     
     // Stock del producto por sucursal

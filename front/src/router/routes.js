@@ -40,7 +40,8 @@ const routes = [
       { path: 'subcategorias', component: () => import('pages/SubcategoryPage.vue'), meta: { requiresAuth: true } },
       { path: 'pedidos', component: () => import('pages/PedidosPage.vue'), meta: { requiresAuth: true } },
       { path: 'historial-pedidos', component: HistorialPedidos, meta: { requiresAuth: true } },
-      { path: 'carousel', component: () => import('pages/Carousel/CarouselPage.vue'), meta: { requiresAuth: true } }
+      { path: 'carousel', component: () => import('pages/Carousel/CarouselPage.vue'), meta: { requiresAuth: true } },
+      { path: 'vendedores', component: () => import('pages/VendedoresPage.vue'), meta: { requiresAuth: true } }
 
     ]
   },

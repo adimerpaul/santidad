@@ -191,6 +191,15 @@
                 </q-tooltip>
               </q-item-section>
             </q-item>
+            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/vendedores" v-if="$store.user.id=='1'">
+              <q-item-section avatar><q-icon name="badge" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Vendedores</q-item-label>
+                <q-tooltip anchor="top middle" self="bottom middle">
+                  Administrar vendedores
+                </q-tooltip>
+              </q-item-section>
+            </q-item>
             <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/reportes" v-if="$store.user.id=='1'">
               <q-item-section avatar><q-icon name="o_print" /></q-item-section>
               <q-item-section>

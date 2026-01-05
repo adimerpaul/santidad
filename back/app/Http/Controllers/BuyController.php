@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Models\Pedido;
 
 use App\Models\Buy;
 use App\Http\Requests\StoreBuyRequest;
@@ -329,6 +330,26 @@ class BuyController extends Controller{
                 $product->costo = $buy['price']/1.3;
                 $product->save();
             }
+            // --- AGREGAR ESTO: ACTUALIZAR ESTADO DEL PEDIDO ---
+            if ($request->filled('pedido_id')) {
+                $pedido = Pedido::find($request->pedido_id);
+                // Solo actualizamos si existe y no está anulado
+                if ($pedido && $pedido->estado !== 'ANULADO') {
+                    $pedido->estado = 'COMPRADO';
+                    $pedido->save();
+
+                    // Opcional: Registrar la modificación para que quede constancia
+                    \App\Models\PedidoModificacion::create([
+                        'pedido_id' => $pedido->id,
+                        'user_id' => $request->user()->id,
+                        'accion' => 'COMPRADO',
+                        'estado_anterior' => 'APROBADO',
+                        'estado_nuevo' => 'COMPRADO',
+                        'observacion' => 'Compra realizada automáticamente desde módulo de Compras'
+                    ]);
+                }
+            }
+            // --------------------------------------------------
 
             // Si hay factura definida, preguntar si se quiere crear factura
             if ($request->filled('crear_factura') && $request->crear_factura) {

@@ -14,6 +14,19 @@
             <q-btn :loading="loading" icon="refresh" dense label="Actualizar" color="indigo" no-caps class="text-bold" @click="productsGet">
               <q-tooltip>Actualizar</q-tooltip>
             </q-btn>
+
+            <q-btn
+              class="q-ml-sm"
+              icon="inventory"
+              dense
+              label="Pedido Digital"
+              color="deep-orange"
+              no-caps
+              :loading="loadingPedidoDigital"
+              @click="cargarPedidoDigital"
+            >
+              <q-tooltip>Cargar productos APROBADOS (Comprar) de un pedido</q-tooltip>
+            </q-btn>
           </div>
 
           <div class="col-12 col-md-3 q-pa-xs">
@@ -385,6 +398,7 @@ export default {
       metodoPago: 'Efectivo',
       document: {},
       factura: '',
+      pedidoId: null,
       agencia_id: 0,
       current_page: 1,
       last_page: 1,
@@ -437,6 +451,7 @@ export default {
       dialogoFactura: false,
       datosCompra: null,
       loadingFactura: false,
+      loadingPedidoDigital: false,
       facturaData: {
         numero_factura: '',
         proveedor: '',
@@ -569,7 +584,8 @@ export default {
             agencia_id: this.agencia_id,
             proveedor_id: this.proveedor_id,
             agencia_comprador_id: this.$store.agencia_id,
-            crear_factura: true
+            crear_factura: true,
+            pedido_id: this.pedidoId
           }
 
           this.dialogoFactura = true
@@ -581,6 +597,7 @@ export default {
             agencia_id: this.agencia_id,
             proveedor_id: this.proveedor_id,
             agencia_comprador_id: this.$store.agencia_id,
+            pedido_id: this.pedidoId,
             crear_factura: false
           })
         }
@@ -593,6 +610,7 @@ export default {
 
         this.$alert.success('Compra realizada con éxito')
         this.$store.productosCompra = []
+        this.pedidoId = null
         this.loading = false
         this.productsGet()
         this.factura = ''
@@ -712,6 +730,7 @@ export default {
           p.cantidadPedida = 0
         })
         this.$store.productosCompra = []
+        this.pedidoId = null
         this.facturaData.monto_total = 0
       })
     },
@@ -806,6 +825,90 @@ export default {
       if (target.getDate() < hoy.getDate()) months -= 1
 
       return months >= 0 && months < 12
+    },
+    // --- AGREGAR ESTA FUNCIÓN QUE FALTA ---
+    cargarPedidoDigital () {
+      this.$q.dialog({
+        title: 'Cargar Pedido Digital',
+        message: 'Ingrese el ID del pedido aprobado',
+        prompt: {
+          model: '',
+          type: 'number',
+          isValid: val => !!(val && val > 0)
+        },
+        cancel: true,
+        persistent: true
+      }).onOk(val => {
+        this.importarPedidoDigital(val)
+      })
+    },
+    // --------------------------------------
+    async importarPedidoDigital (pedidoId) {
+      try {
+        this.loadingPedidoDigital = true
+
+        const { data } = await this.$axios.get(`pedidos/${pedidoId}/detalles`)
+        const detalles = data.detalles || data
+        this.pedidoId = pedidoId
+        // --- NUEVO: Cargar el Proveedor Automáticamente ---
+        if (data.proveedor_id) {
+          this.proveedor_id = data.proveedor_id
+          // El 'watch' de tu código se encargará de llenar el nombre y datos de factura
+        }
+        // -------------------------------------------------
+
+        if (!detalles || detalles.length === 0) {
+          this.$alert.error('El pedido no existe o no tiene productos.')
+          return
+        }
+
+        let productosAgregados = 0
+
+        detalles.forEach(item => {
+          if (item.accion_aplicada === 'COMPRAR' && item.cantidad_aprobada > 0) {
+            const productoInfo = item.product
+            if (productoInfo) {
+              const existente = this.$store.productosCompra.find(p => p.id === productoInfo.id)
+
+              if (existente) {
+                // CORRECCIÓN: Usar 'const' en lugar de 'let'
+                const cantidadActual = parseInt(existente.cantidadCompra) || 0
+                existente.cantidadCompra = cantidadActual + parseInt(item.cantidad_aprobada)
+              } else {
+                this.$store.productosCompra.push({
+                  id: productoInfo.id,
+                  nombre: productoInfo.nombre,
+                  imagen: productoInfo.imagen,
+                  lote: '',
+                  fechaVencimiento: date.formatDate(new Date(), 'YYYY-MM-DD'),
+                  cantidadCompra: item.cantidad_aprobada,
+                  _fechaVencimientoError: false,
+                  _tocoFecha: false,
+                  price: productoInfo.precio,
+                  cantidadReal: productoInfo.cantidad
+                })
+              }
+              productosAgregados++
+            }
+          }
+        })
+
+        this.calcularTotalFactura()
+
+        if (productosAgregados > 0) {
+          this.$alert.success(`Se cargaron ${productosAgregados} productos del Pedido #${pedidoId}.`)
+        } else {
+          this.$q.notify({
+            type: 'warning',
+            message: 'No hay productos con acción "COMPRAR" en ese pedido.'
+          })
+        }
+      } catch (e) {
+        console.error(e)
+        this.$alert.error(e.response?.data?.message || 'Error al cargar el pedido digital.')
+      } finally {
+        this.loadingPedidoDigital = false
+      }
     }
   },
   computed: {

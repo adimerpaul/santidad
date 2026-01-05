@@ -18,7 +18,8 @@ class Pedido extends Model
         'proveedor_id', 
         'fecha_pedido', 
         'estado', 
-        'observacion'
+        'observacion',
+        'vendedor_id'
     ];
 
     // Relaciones existentes...
@@ -42,5 +43,10 @@ class Pedido extends Model
     {
         // Esto buscará el id en la tabla 'clients' gracias al cambio del Paso 1
         return $this->belongsTo(Provider::class, 'proveedor_id');
+    }
+    // AGREGAR ESTA RELACIÓN
+    public function vendedor()
+    {
+        return $this->belongsTo(Vendedor::class);
     }
 }

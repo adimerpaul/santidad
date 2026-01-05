@@ -147,5 +147,14 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
         // Rutas de productos (auxiliares)
         Route::get('products/{id}/stock-sucursales', [PedidoController::class, 'stockSucursales']);
         Route::get('products/{id}/sugerencias-pedido', [PedidoController::class, 'sugerenciasPedido']);
+
+        // CRUD Completo de Vendedores
+    Route::get('vendedores', [App\Http\Controllers\VendedorController::class, 'index']); // Listar todos
+    Route::post('vendedores', [App\Http\Controllers\VendedorController::class, 'store']); // Crear
+    Route::put('vendedores/{id}', [App\Http\Controllers\VendedorController::class, 'update']); // Editar
+    Route::delete('vendedores/{id}', [App\Http\Controllers\VendedorController::class, 'destroy']); // Eliminar
+
+    // Ruta especial para el select del HistorialPedidos (WhatsApp)
+    Route::get('vendedores-por-proveedor/{id}', [App\Http\Controllers\VendedorController::class, 'getByProvider']);
         
 });

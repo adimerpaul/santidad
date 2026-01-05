@@ -6,24 +6,35 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-public function up()
-{
-    Schema::table('pedidos', function (Blueprint $table) {
-        // Usamos unsignedInteger porque tu tabla providers parece usar ese tipo
-        $table->unsignedInteger('proveedor_id')->nullable()->after('user_id');
-        
-        $table->foreign('proveedor_id')->references('id')->on('providers');
-    });
-}
+    public function up()
+    {
+        // PASO 1: "Limpieza automática"
+        // Si la columna existe mal creada (como int), la borramos para evitar errores.
+        if (Schema::hasColumn('pedidos', 'proveedor_id')) {
+            Schema::table('pedidos', function (Blueprint $table) {
+                $table->dropColumn('proveedor_id');
+            });
+        }
 
-public function down()
-{
-    Schema::table('pedidos', function (Blueprint $table) {
-        $table->dropForeign(['proveedor_id']);
-        $table->dropColumn('proveedor_id');
-    });
-}
+        // PASO 2: Crear la columna correcta y la relación
+        Schema::table('pedidos', function (Blueprint $table) {
+            // Creamos la columna como unsignedBigInteger (para que coincida con clients.id)
+            $table->unsignedBigInteger('proveedor_id')->nullable()->after('user_id');
+
+            // Creamos la relación (Foreign Key)
+            $table->foreign('proveedor_id')
+                  ->references('id')
+                  ->on('clients') // Conectamos con la tabla 'clients'
+                  ->onDelete('set null');
+        });
+    }
+
+    public function down()
+    {
+        Schema::table('pedidos', function (Blueprint $table) {
+            // Eliminar la relación y la columna si revertimos
+            $table->dropForeign(['proveedor_id']);
+            $table->dropColumn('proveedor_id');
+        });
+    }
 };

@@ -215,20 +215,24 @@
 
           <template v-slot:body-cell-acciones="props">
             <q-td :props="props">
-              <div class="row no-wrap q-gutter-xs justify-center">
-                <q-btn
-                  icon="visibility"
-                  color="info"
-                  dense
-                  round
-                  flat
-                  @click="verDetallePedido(props.row)"
-                >
-                  <q-tooltip>Ver detalles</q-tooltip>
-                </q-btn>
+              <div class="row no-wrap justify-center items-center">
 
-                <template v-if="esAdmin && (props.row.estado === 'APROBADO' || props.row.estado === 'APROBAR')">
+                <div style="width: 42px;" class="row justify-center">
                   <q-btn
+                    icon="visibility"
+                    color="info"
+                    dense
+                    round
+                    flat
+                    @click="verDetallePedido(props.row)"
+                  >
+                    <q-tooltip>Ver detalles</q-tooltip>
+                  </q-btn>
+                </div>
+
+                <div style="width: 42px;" class="row justify-center">
+                  <q-btn
+                    v-if="esAdmin && (props.row.estado === 'APROBADO' || props.row.estado === 'APROBAR')"
                     icon="shopping_cart"
                     color="teal"
                     dense
@@ -238,19 +242,22 @@
                   >
                     <q-tooltip>Marcar comprado</q-tooltip>
                   </q-btn>
-                </template>
+                </div>
 
-                <q-btn
-                  v-if="puedeAnular(props.row.estado)"
-                  icon="block"
-                  color="grey-7"
-                  dense
-                  round
-                  flat
-                  @click="abrirDialogoAccion('anular', props.row)"
-                >
-                  <q-tooltip>Anular</q-tooltip>
-                </q-btn>
+                <div style="width: 42px;" class="row justify-center">
+                  <q-btn
+                    v-if="puedeAnular(props.row.estado)"
+                    icon="block"
+                    color="grey-7"
+                    dense
+                    round
+                    flat
+                    @click="abrirDialogoAccion('anular', props.row)"
+                  >
+                    <q-tooltip>Anular</q-tooltip>
+                  </q-btn>
+                </div>
+
               </div>
             </q-td>
           </template>
@@ -364,7 +371,7 @@
                   </q-td>
                 </template>
 
-                <template v-slot:body-cell-cantidad_aprobada="props" v-if="esAdmin">
+               <template v-slot:body-cell-cantidad_aprobada="props">
                   <q-td :props="props">
                     <q-chip dense :color="props.row.cantidad_aprobada !== props.row.cantidad ? 'orange' : 'green-2'" :text-color="props.row.cantidad_aprobada !== props.row.cantidad ? 'white' : 'green-9'">
                       {{ props.row.cantidad_aprobada || props.row.cantidad }}
@@ -399,18 +406,18 @@
                   </q-td>
                 </template>
 
-                <template v-slot:body-cell-accion_aplicada="props" v-if="esAdmin">
-                  <q-td :props="props">
-                    <q-badge
-                      v-if="props.row.accion_aplicada"
-                      :color="getColorAccionAplicada(props.row.accion_aplicada)"
-                      class="q-pa-sm text-subtitle2"
-                    >
-                      {{ props.row.accion_aplicada }}
-                    </q-badge>
-                    <span v-else class="text-grey-5">--</span>
-                  </q-td>
-                </template>
+                <template v-slot:body-cell-accion_aplicada="props">
+              <q-td :props="props">
+                <q-badge
+                  v-if="props.row.accion_aplicada"
+                  :color="getColorAccionAplicada(props.row.accion_aplicada)"
+                  class="q-pa-sm text-subtitle2"
+                >
+                  {{ props.row.accion_aplicada }}
+                </q-badge>
+                <span v-else class="text-grey-5">--</span>
+              </q-td>
+            </template>
               </q-table>
             </q-tab-panel>
 
@@ -500,6 +507,48 @@
               <q-icon name="comment" />
             </template>
           </q-input>
+          <div class="q-pa-sm bg-green-1 q-mt-md rounded-borders" v-if="accionActual === 'aprobado'">
+            <div class="text-subtitle2 text-green-9 q-mb-xs">
+              <q-icon name="whatshot" /> Comunicación
+            </div>
+
+            <div class="row q-col-gutter-sm items-center">
+              <div class="col-12 col-md-5">
+                <q-checkbox
+                  v-model="enviarWhatsapp"
+                  label="Enviar WhatsApp"
+                  color="green"
+                  dense
+                />
+              </div>
+
+              <div class="col-12 col-md-7">
+                <q-select
+                  v-if="enviarWhatsapp"
+                  v-model="vendedorSeleccionado"
+                  :options="vendedores"
+                  option-label="nombre"
+                  label="Seleccionar Vendedor"
+                  dense
+                  outlined
+                  bg-color="white"
+                  :rules="[val => !!val || 'Requerido']"
+                >
+                  <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section>
+                        <q-item-label>{{ scope.opt.nombre }}</q-item-label>
+                        <q-item-label caption>📱 {{ scope.opt.celular }}</q-item-label>
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                  <template v-slot:no-option>
+                    <q-item><q-item-section class="text-grey text-caption">Sin vendedores</q-item-section></q-item>
+                  </template>
+                </q-select>
+              </div>
+            </div>
+          </div>
 
           <div v-if="detallesParaModificar.length > 0 && accionActual !== 'anular'" class="q-mt-md">
             <div class="text-subtitle2 text-weight-bold q-mb-sm">
@@ -565,6 +614,9 @@ export default {
       observacionAccion: '',
       detallesParaModificar: [],
       tab: 'productos',
+      enviarWhatsapp: true, // Tikeado por defecto
+      vendedores: [], // Lista de vendedores del proveedor actual
+      vendedorSeleccionado: null,
 
       // --- Variables de Proveedores ---
       proveedores: [],
@@ -636,22 +688,21 @@ export default {
         { name: 'cantidad', label: 'Cant. Solicitada', field: 'cantidad', align: 'center' }
       ]
 
-      if (this.esAdmin) {
-        const estado = this.pedidoSeleccionado.estado
+      const estado = this.pedidoSeleccionado.estado
 
-        if (estado === 'PENDIENTE') {
-          cols.push({ name: 'stock_sucursales', label: 'Stock por Sucursal', field: 'stock_sucursales', align: 'left' })
-          cols.push({
-            name: 'acciones_producto',
-            label: 'Acción y Cantidad',
-            field: 'acciones_producto',
-            align: 'left',
-            style: 'min-width: 250px'
-          })
-        } else {
-          cols.push({ name: 'cantidad_aprobada', label: 'Cant. Aprobada', field: 'cantidad_aprobada', align: 'center' })
-          cols.push({ name: 'accion_aplicada', label: 'Acción Realizada', field: 'accion_aplicada', align: 'center' })
-        }
+      // Columnas EXCLUSIVAS del Administrador cuando está PENDIENTE (Para editar)
+      if (this.esAdmin && estado === 'PENDIENTE') {
+        cols.push({ name: 'stock_sucursales', label: 'Stock por Sucursal', field: 'stock_sucursales', align: 'left' })
+        cols.push({
+          name: 'acciones_producto',
+          label: 'Acción y Cantidad',
+          field: 'acciones_producto',
+          align: 'left',
+          style: 'min-width: 250px'
+        })
+      } else if (estado !== 'PENDIENTE') {
+        cols.push({ name: 'cantidad_aprobada', label: 'Cant. Aprobada', field: 'cantidad_aprobada', align: 'center' })
+        cols.push({ name: 'accion_aplicada', label: 'Acción Realizada', field: 'accion_aplicada', align: 'center' })
       }
 
       return cols
@@ -829,12 +880,46 @@ export default {
       }
     },
 
-    abrirDialogoAccion (accion, pedido) {
-      this.accionActual = accion
-      this.pedidoSeleccionado = pedido
-      this.observacionAccion = ''
-      this.detallesParaModificar = []
-      this.dialogAccion = true
+    async abrirDialogoAccion (accion, row) {
+      this.accionSeleccionada = accion
+      this.pedidoSeleccionado = row
+      this.dialogoAccion = true
+
+      // NUEVO: Lógica para cargar vendedores
+      this.vendedores = []
+      this.vendedorSeleccionado = null
+      this.enviarWhatsapp = true
+
+      if (accion === 'APROBAR' && this.pedidoSeleccionado.proveedor_id) {
+        try {
+          // Asegúrate de que esta ruta existe en tu backend (VendedorController)
+          const { data } = await this.$axios.get(`vendedores-por-proveedor/${this.pedidoSeleccionado.proveedor_id}`)
+          this.vendedores = data
+
+          if (this.vendedores.length === 1) {
+            this.vendedorSeleccionado = this.vendedores[0]
+          }
+        } catch (e) {
+          console.error('Error cargando vendedores', e)
+        }
+      }
+
+      // Resto de tu lógica original (cargar detalles, etc.)
+      this.detalles = []
+      try {
+        const { data } = await this.$axios.get(`pedidos/${row.id}/detalles`)
+        // ... (resto del código que carga los productos en la tabla)
+        // Adaptar según cómo recibas la data en tu versión actual
+        const lista = data.detalles || data
+        this.detalles = lista.map(d => ({
+          ...d,
+          // Asegurar que las cantidades editables comiencen con el valor actual
+          cantidad_aprobada: d.cantidad_aprobada || d.cantidad,
+          ccion_aplicada: d.accion_aplicada || 'SIN_CAMBIOS'
+        }))
+      } catch (error) {
+        console.error(error)
+      }
     },
 
     async confirmarAccion () {
@@ -863,6 +948,11 @@ export default {
           position: 'top'
         })
 
+        // WHATSAPP AUTOMÁTICO
+        if (this.enviarWhatsapp && this.vendedorSeleccionado && (this.accionActual === 'aprobado' || this.accionActual === 'APROBADO')) {
+          this.enviarMensajeWhatsapp()
+        }
+
         this.dialogAccion = false
         this.dialogDetalle = false
         this.cargarPedidos()
@@ -876,7 +966,7 @@ export default {
       }
     },
 
-    aprobarConModificaciones () {
+    async aprobarConModificaciones () {
       const modificaciones = this.detallesPedido.map(det => ({
         pedido_detail_id: det.id,
         accion: det.accion_recomendada,
@@ -887,6 +977,25 @@ export default {
       this.detallesParaModificar = modificaciones
       this.accionActual = 'aprobado'
       this.observacionAccion = 'Aprobación de pedido'
+
+      // CARGAR VENDEDORES
+      this.vendedores = []
+      this.vendedorSeleccionado = null
+      this.enviarWhatsapp = true
+
+      if (this.pedidoSeleccionado.proveedor_id) {
+        try {
+          const { data } = await this.$axios.get(`vendedores-por-proveedor/${this.pedidoSeleccionado.proveedor_id}`)
+          this.vendedores = data
+
+          if (this.vendedores.length === 1) {
+            this.vendedorSeleccionado = this.vendedores[0]
+          }
+        } catch (e) {
+          console.error('Error cargando vendedores', e)
+        }
+      }
+
       this.dialogAccion = true
     },
 
@@ -969,6 +1078,54 @@ export default {
     },
     obtenerNombreProducto (detalle) {
       return detalle.producto_nombre || 'Producto'
+    },
+
+    enviarMensajeWhatsapp () {
+      if (!this.vendedorSeleccionado || !this.vendedorSeleccionado.celular) return
+
+      const pedido = this.pedidoSeleccionado
+      const sucursal = pedido.agencia ? pedido.agencia.nombre : 'Principal'
+      // Usamos tu función formatFecha si existe, sino usamos la fecha directa
+      const fecha = typeof this.formatFecha === 'function' ? this.formatFecha(pedido.fecha_pedido) : pedido.fecha_pedido
+      // 1. CABECERA ELEGANTE
+      let texto = `👋 *HOLA ${this.vendedorSeleccionado.nombre.toUpperCase()}*\n`
+      texto += 'Le envío una nueva orden de compra aprobada. 📝\n\n'
+      // 2. DATOS DEL PEDIDO (Bloque separado)
+      texto += '━━━━━━━━━━━━━━━━━━\n'
+      texto += '📌 *DATOS GENERALES*\n'
+      texto += `🏢 *Sucursal:* ${sucursal}\n`
+      texto += `📅 *Fecha:* ${fecha}\n`
+      texto += `📄 *Nro Pedido:* ${pedido.id}\n`
+      texto += '━━━━━━━━━━━━━━━━━━\n\n'
+
+      // 3. DETALLE DE PRODUCTOS
+      texto += '📦 *LISTA DE PRODUCTOS:*\n'
+
+      this.detallesPedido.forEach(d => {
+        const accion = d.accion_recomendada || d.accion_aplicada
+        const cantidad = d.cantidad_aprobada || d.cantidad
+
+        // Solo enviamos lo que tiene acción COMPRAR y cantidad > 0
+        if ((accion === 'COMPRAR' || !accion) && cantidad > 0) {
+          const nombreProd = d.product ? d.product.nombre.trim() : 'Producto desconocido'
+          // TRUCO DE DISEÑO:
+          // Ponemos la cantidad primero y en negrita para que destaque.
+          // Usamos un guion largo "—" para separar visualmente.
+          texto += `🔹 *${cantidad} u.* — ${nombreProd}\n`
+        }
+      })
+
+      // 4. CIERRE
+      texto += '\n━━━━━━━━━━━━━━━━━━\n'
+      texto += '✅ *Por favor confirmar recepción.*'
+
+      // Limpieza del número de celular
+      let celular = this.vendedorSeleccionado.celular.replace(/\D/g, '')
+      if (celular.length === 8) celular = '591' + celular // Prefijo Bolivia
+
+      // Abrir WhatsApp
+      const url = `https://wa.me/${celular}?text=${encodeURIComponent(texto)}`
+      window.open(url, '_blank')
     }
   }
 }

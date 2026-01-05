@@ -225,15 +225,42 @@
                           map-options
                           use-input
                           @filter="filterProveedores"
-                          :rules="[val => !!val || 'Debe seleccionar un proveedor']"
+
+                          @update:model-value="cargarVendedores"  :rules="[val => !!val || 'Debe seleccionar un proveedor']"
                           bg-color="white"
                 >
                   <template v-slot:prepend>
                     <q-icon name="local_shipping" />
                   </template>
+                  </q-select>
+              </div>
+               <div class="col-12">
+                <q-select outlined dense label="Vendedor (Opcional)"
+                          v-model="pedido.vendedor_id"
+                          :options="vendedores"
+                          option-value="id"
+                          option-label="nombre"
+                          emit-value
+                          map-options
+                          bg-color="white"
+                          :disable="!pedido.proveedor_id"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="badge" />
+                  </template>
                   <template v-slot:no-option>
                     <q-item>
-                      <q-item-section class="text-grey">Sin resultados</q-item-section>
+                      <q-item-section class="text-grey">
+                        {{ pedido.proveedor_id ? 'Sin vendedores registrados' : 'Seleccione proveedor primero' }}
+                      </q-item-section>
+                    </q-item>
+                  </template>
+                  <template v-slot:option="scope">
+                    <q-item v-bind="scope.itemProps">
+                      <q-item-section>
+                        <q-item-label>{{ scope.opt.nombre }}</q-item-label>
+                        <q-item-label caption>{{ scope.opt.celular }}</q-item-label>
+                      </q-item-section>
                     </q-item>
                   </template>
                 </q-select>
@@ -301,12 +328,14 @@ export default {
       pedido: {
         solicitante: '',
         observacion: '',
-        proveedor_id: null
+        proveedor_id: null,
+        vendedor_id: null
       },
 
       // NUEVO: Variables para proveedores
       proveedores: [],
       proveedoresAll: [],
+      vendedores: [],
 
       current_page: 1,
       last_page: 1,
@@ -389,6 +418,23 @@ export default {
         this.proveedores = this.proveedoresAll.filter(v => v.nombreRazonSocial.toLowerCase().indexOf(needle) > -1)
       })
     },
+    // Cargar vendedores al cambiar proveedor
+    cargarVendedores (proveedorId) {
+      this.pedido.vendedor_id = null
+      this.vendedores = []
+
+      if (!proveedorId) return
+
+      this.$axios.get(`vendedores-por-proveedor/${proveedorId}`).then(res => {
+        this.vendedores = res.data
+        // Si solo hay uno, seleccionarlo automático
+        if (this.vendedores.length === 1) {
+          this.pedido.vendedor_id = this.vendedores[0].id
+        }
+      }).catch(err => {
+        console.error(err)
+      })
+    },
     // -----------------------------
 
     // Cargar información del usuario y agencia
@@ -428,9 +474,7 @@ export default {
 
     // CLASES DINÁMICAS
     getProductCardClass (product) {
-      if (product.cantidad <= 0) {
-        return 'bg-grey-3 cursor-not-allowed'
-      }
+      // Se eliminó la condición que devolvía 'cursor-not-allowed'
       return 'bg-white cursor-pointer'
     },
 
@@ -448,17 +492,8 @@ export default {
       return producto ? producto.cantidadPedida : 0
     },
 
-    // AGREGAR AL PEDIDO
     clickAddPedido (product) {
-      if (product.cantidad <= 0) {
-        this.$q.notify({
-          color: 'negative',
-          message: 'Producto sin stock disponible',
-          icon: 'error',
-          position: 'top'
-        })
-        return
-      }
+      // SE ELIMINÓ LA RESTRICCIÓN DE STOCK 0
 
       const productoEnPedido = this.productosPedido.find(p => p.id === product.id)
 
@@ -562,6 +597,7 @@ export default {
 
         // NUEVO: Enviar el proveedor seleccionado
         proveedor_id: this.pedido.proveedor_id,
+        vendedor_id: this.pedido.vendedor_id,
 
         // Detalles del pedido
         detalles: this.productosPedido.map(p => ({
