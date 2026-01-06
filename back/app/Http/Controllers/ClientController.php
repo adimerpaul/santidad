@@ -36,7 +36,9 @@ class ClientController extends Controller{
     }
     public function providers(){
         return Client::where('clienteProveedor', 'Proveedor')
-            ->orderBy('nombreRazonSocial')->get();
+            ->orderBy('nombreRazonSocial')
+            ->with('vendedores')
+            ->get();
     }
     public function store(StoreClientRequest $request){ return Client::create($request->all()); }
     public function show(Client $client){ return $client; }

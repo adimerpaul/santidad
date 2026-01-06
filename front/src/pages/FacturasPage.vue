@@ -89,6 +89,13 @@
               option-value="nombreRazonSocial"
               option-label="nombreRazonSocial"
               emit-value
+              use-input
+              @filter="(val, update) => {
+                const needle = val.toLowerCase()
+                update(() => {
+                  this.proveedores = this.proveedoresAll.filter(v => v.nombreRazonSocial.toLowerCase().includes(needle))
+                })
+              }"
               map-options
             />
 <!--            <pre>{{proveedores}}</pre>-->
@@ -177,7 +184,14 @@
           <template v-slot:body-cell-saldo="props">
             <q-td class="text-right" :props="props">
               <span v-if="props.row.tipo_pago === 'Crédito'">
-                {{ formatCurrency(props.row.monto_total - props.row.pagado) }}
+<!--                {{ formatCurrency(props.row.monto_total - props.row.pagado) }}-->
+<!--                mostrar en cero si su saldo es mayor que cero-->
+                <span v-if="(props.row.monto_total - props.row.pagado) > 0">
+                  {{ formatCurrency(props.row.monto_total - props.row.pagado) }}
+                </span>
+                <span v-else>
+                  {{ formatCurrency(0) }}
+                </span>
               </span>
               <span v-else>-</span>
             </q-td>
@@ -196,7 +210,7 @@
 
           <template v-slot:body-cell-sucursal="props">
             <q-td :props="props">
-              {{ agencias.find(a => a.value === props.row.agencia_id)?.label || 'Desconocida' }}
+              {{ agencias.find(a => a.value === props.row.agencia_id)?.label || 'Almacen' }}
             </q-td>
           </template>
 
@@ -215,26 +229,65 @@
 
     <!-- Registro/Edición de Factura -->
     <q-dialog v-model="dialogoAbierto" persistent>
-      <q-card style="min-width: 500px; max-width: 700px;">
+      <q-card style="width: 800px; max-width: 700px;">
         <q-card-section>
           <div class="text-h6">{{ facturaSeleccionada ? 'Editar' : 'Registrar' }} Factura</div>
         </q-card-section>
 
         <q-card-section class="">
           <div class="row ">
-            <div class="col-6">
+            <div class="col-12 col-md-4">
               <q-input v-model="form.numero_factura" label="N° Factura *" outlined dense
                        :rules="[val => !!val || 'Campo requerido']" />
             </div>
-            <div class="col-6">
-              <q-input v-model="form.vendedor" label="Vendedor" outlined dense />
+            <div class="col-12 col-md-8">
+              <q-select
+                v-model="form.proveedor"
+                :options="proveedores"
+                label="Proveedor *"
+                outlined
+                dense
+                option-value="nombreRazonSocial"
+                option-label="nombreRazonSocial"
+                emit-value
+                map-options
+                clearable
+                :rules="[val => !!val || 'Campo requerido']"
+                use-input
+                input-debounce="300"
+                @filter="(val, update) => {
+                  const needle = val.toLowerCase()
+                  update(() => {
+                    this.proveedores = this.proveedoresAll.filter(v => v.nombreRazonSocial.toLowerCase().includes(needle))
+                  })
+                }"
+                @update:model-value="() => {
+                  const selected = proveedoresAll.find(p => p.nombreRazonSocial === form.proveedor)
+                  if (selected && selected.vendedores) {
+                    vendedores = selected.vendedores.map(v => v.nombre)
+                  } else {
+                    vendedores = []
+                  }
+                }"
+              />
+<!--              <pre>{{form.proveedor}}</pre>-->
+            </div>
+            <div class="col-12 col-md-12">
+<!--              <q-input v-model="form.vendedor" label="Vendedor" outlined dense />-->
+<!--              <pre>{{vendedores}}</pre>-->
+              <q-select
+                v-model="form.vendedor"
+                :options="vendedores"
+                label="Vendedor"
+                outlined
+                dense
+                clearable
+              />
             </div>
           </div>
+          <br>
 
-          <q-input v-model="form.proveedor" label="Proveedor *" outlined dense
-                   :rules="[val => !!val || 'Campo requerido']" />
-
-          <div class="row q-col-gutter-md">
+          <div class="row">
             <div class="col-6">
               <q-input v-model="form.fecha_compra" type="date" label="Fecha de compra *" outlined dense
                        :rules="[val => !!val || 'Campo requerido']" />
@@ -264,8 +317,22 @@
               <q-select v-model="form.estado" :options="['Pagado', 'Pendiente', 'Parcial']" label="Estado" outlined dense />
             </div>
             <div class="col-6">
-              <q-select v-model="form.agencia_id" :options="agencias" label="Sucursal *" outlined dense
-                        emit-value map-option :rules="[val => !!val || 'Campo requerido']" />
+<!--              <q-select v-model="form.agencia_id"-->
+<!--                        :options="agencias" label="Sucursal *" outlined dense-->
+<!--                        emit-value map-option :rules="[val => !!val || 'Campo requerido']"-->
+<!--              />-->
+              <q-select
+                v-model="form.agencia_id"
+                :options="agencias"
+                label="Elegir sucursal"
+                outlined
+                dense
+                emit-value
+                map-options
+                :rules="[val => val !== null || 'Campo requerido']"
+                @update:model-value="cargarFacturas"
+              />
+<!--              <pre>{{agencias}}</pre>-->
             </div>
           </div>
 
@@ -459,6 +526,7 @@ export default {
     return {
       proveedor_id: null,
       proveedores: [],
+      proveedoresAll: [],
       agencias: [
         { label: 'Almacén Central', value: 0 }
       ],
@@ -522,7 +590,8 @@ export default {
         pagado_total: 0,
         pendiente_total: 0,
         porcentaje_pagado: 0
-      }
+      },
+      vendedores: []
     }
   },
   computed: {
@@ -693,12 +762,12 @@ export default {
           return
         }
 
-        const saldoPendiente = this.facturaEnPago.monto_total - this.facturaEnPago.pagado
-        if (this.montoPago > saldoPendiente) {
-          this.$alert.error(`El monto no puede exceder el saldo pendiente (${this.formatCurrency(saldoPendiente)})`)
-          this.loadingPago = false
-          return
-        }
+        // const saldoPendiente = this.facturaEnPago.monto_total - this.facturaEnPago.pagado
+        // if (this.montoPago > saldoPendiente) {
+        //   this.$alert.error(`El monto no puede exceder el saldo pendiente (${this.formatCurrency(saldoPendiente)})`)
+        //   this.loadingPago = false
+        //   return
+        // }
 
         await this.$axios.post(`facturas/${this.facturaEnPago.id}/pagar`, {
           monto: this.montoPago,
@@ -794,6 +863,44 @@ export default {
     this.$axios.get('providers')
       .then(response => {
         this.proveedores = response.data
+        this.proveedoresAll = response.data
+        // {
+        //   "id": 15017,
+        //     "nombreRazonSocial": "LABORATORIO BAGÓ DE BOLIVIA S.A.",
+        //     "codigoTipoDocumentoIdentidad": "1",
+        //     "numeroDocumento": "1020503020",
+        //     "complemento": null,
+        //     "email": "oruro@bago.com.bo",
+        //     "telefono": "5255023",
+        //     "clienteProveedor": "Proveedor",
+        //     "deleted_at": null,
+        //     "created_at": "2024-02-05T11:21:58.000000Z",
+        //     "updated_at": "2024-03-18T10:00:59.000000Z",
+        //     "vendedores": [
+        //     {
+        //       "id": 1,
+        //       "nombre": "Adimer Paul Chambi Ajata",
+        //       "celular": "69603027",
+        //       "client_id": 15017,
+        //       "created_at": "2026-01-05T23:16:03.000000Z",
+        //       "updated_at": "2026-01-05T23:16:03.000000Z"
+        //     }
+        //   ]
+        // },
+        // {
+        //   "id": 15047,
+        //   "nombreRazonSocial": "LABORATORIO BONAFIX",
+        //   "codigoTipoDocumentoIdentidad": "1",
+        //   "numeroDocumento": "00000000000",
+        //   "complemento": null,
+        //   "email": null,
+        //   "telefono": "4 4313400",
+        //   "clienteProveedor": "Proveedor",
+        //   "deleted_at": null,
+        //   "created_at": "2024-02-05T12:01:47.000000Z",
+        //   "updated_at": "2024-02-05T12:48:48.000000Z",
+        //   "vendedores": []
+        // },
       })
       .catch(error => {
         console.error('Error cargando proveedores:', error)

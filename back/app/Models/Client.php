@@ -19,4 +19,7 @@ class Client extends Model
         "telefono",
         "clienteProveedor",
     ];
+    function vendedores(){
+        return $this->hasMany(Vendedor::class,'client_id','id');
+    }
 }

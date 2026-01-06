@@ -16,8 +16,8 @@ return new class extends Migration
             $table->string('numero_transaccion')->nullable();
             $table->date('fecha_compra');
             $table->decimal('monto_total', 10, 2);
-            $table->enum('tipo_pago', ['Contado', 'Crédito']);
-            $table->enum('metodo_pago', ['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta'])->nullable();
+            $table->string('tipo_pago')->nullable();
+            $table->string('metodo_pago')->nullable();
             $table->date('fecha_vencimiento')->nullable();
             $table->string('estado')->default('Pendiente');
             $table->decimal('pagado', 10, 2)->default(0);

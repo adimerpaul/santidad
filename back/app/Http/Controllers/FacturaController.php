@@ -154,7 +154,8 @@ class FacturaController extends Controller
     public function registrarPago(Request $request, Factura $factura)
     {
         $request->validate([
-            'monto' => 'required|numeric|min:0.01|max:' . $factura->saldo,
+//            'monto' => 'required|numeric|min:0.01|max:' . $factura->saldo, puede recibri un 1 bs mas o menos
+            'monto' => 'required|numeric|min:0.01|max:' . ($factura->saldo + 0.5),
             'metodo_pago' => 'nullable|string',
             'referencia' => 'nullable|string',
             'vendedor' => 'nullable|string',
@@ -178,32 +179,50 @@ class FacturaController extends Controller
     // Obtener resumen de facturas
     public function resumen(Request $request)
     {
-        $query = Factura::query();
+        $base = Factura::query();
 
         if ($request->filled('agencia_id')) {
-            $query->where('agencia_id', $request->agencia_id);
+            $base->where('agencia_id', $request->agencia_id);
         }
 
         if ($request->filled('fecha_desde')) {
-            $query->where('fecha_compra', '>=', $request->fecha_desde);
+            $base->whereDate('fecha_compra', '>=', $request->fecha_desde);
         }
 
         if ($request->filled('fecha_hasta')) {
-            $query->where('fecha_compra', '<=', $request->fecha_hasta);
+            $base->whereDate('fecha_compra', '<=', $request->fecha_hasta);
         }
 
-        $totalFacturas = $query->count();
-        $montoTotal = $query->sum('monto_total');
-        $pagadoTotal = $query->sum('pagado');
-        $pendienteTotal = $montoTotal - $pagadoTotal;
-        $porcentajePagado = $montoTotal > 0 ? round(($pagadoTotal / $montoTotal) * 100, 2) : 0;
+        $totalFacturas = (clone $base)->count();
+
+        // Importante: redondear a 2 decimales (evita residuos tipo 0.0000004)
+        $montoTotal  = round((float) (clone $base)->sum('monto_total'), 2);
+        $pagadoTotal = round((float) (clone $base)->sum('pagado'), 2);
+
+        $diff = round($montoTotal - $pagadoTotal, 2);
+
+        // Tolerancia: si la diferencia es pequeñita negativa, la consideramos 0
+        $tolerancia = 0.10; // 10 centavos (ajústalo: 0.05, 0.01, etc.)
+        if ($diff < 0 && abs($diff) <= $tolerancia) {
+            $diff = 0;
+        }
+
+        // Nunca negativo en resumen
+        $pendienteTotal = max(0, $diff);
+
+        $porcentajePagado = $montoTotal > 0
+            ? round((min($pagadoTotal, $montoTotal) / $montoTotal) * 100, 2) // porcentaje no > 100
+            : 0;
 
         return response()->json([
-            'total_facturas' => $totalFacturas,
-            'monto_total' => $montoTotal,
-            'pagado_total' => $pagadoTotal,
-            'pendiente_total' => $pendienteTotal,
-            'porcentaje_pagado' => $porcentajePagado
+            'total_facturas'     => $totalFacturas,
+            'monto_total'        => $montoTotal,
+            'pagado_total'       => $pagadoTotal,
+            'pendiente_total'    => $pendienteTotal,
+            'porcentaje_pagado'  => $porcentajePagado,
+            // opcional: mostrar sobrepago total
+            'sobrepago_total'    => max(0, round($pagadoTotal - $montoTotal, 2)),
         ]);
     }
+
 }
