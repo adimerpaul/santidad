@@ -71,9 +71,14 @@
               <q-card-section class="q-pa-none">
                 <div class="row cursor-pointer" v-if="products.length>0">
                   <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
-                    <q-card @click="clickAddSale(p)" class="q-pa-xs" flat bordered
-                            :class="getProductCardClass(p)">
-                      <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="100px">
+                  <q-card @click="clickAddSale(p)" class="q-pa-xs" flat bordered
+                          :class="getProductCardClass(p)">
+                    <q-img
+                      :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`"
+                      width="100%"
+                      height="100px"
+                      fit="contain"
+                    >
                         <q-badge color="red" floating style="padding: 10px 10px 5px 5px;margin: 0px" v-if="p.porcentaje">
                           {{p.porcentaje}}%
                         </q-badge>

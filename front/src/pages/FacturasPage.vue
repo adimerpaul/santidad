@@ -216,12 +216,22 @@
 
           <template v-slot:body-cell-acciones="props">
             <q-td align="center">
-              <q-btn dense flat icon="visibility" color="primary" @click="verDetalle(props.row)" />
+              <q-btn dense flat icon="visibility" color="primary" @click="verDetalle(props.row)">
+                <q-tooltip>Ver detalle</q-tooltip>
+              </q-btn>
+
               <q-btn dense flat icon="payments" color="orange" @click="abrirPago(props.row)"
-                     v-if="props.row.estado !== 'Pagado' && props.row.tipo_pago === 'Crédito'" />
-              <q-btn dense flat icon="edit" color="blue" @click="editarFactura(props.row)" />
-              <q-btn dense flat icon="delete" color="red" @click="eliminarFactura(props.row)" />
-            </q-td>
+                     v-if="props.row.estado !== 'Pagado' && props.row.tipo_pago === 'Crédito'">
+                <q-tooltip>Registrar pago</q-tooltip>
+              </q-btn>
+
+              <q-btn dense flat icon="edit" color="blue" @click="editarFactura(props.row)" v-if="esAdmin">
+                <q-tooltip>Editar factura</q-tooltip>
+              </q-btn>
+              <q-btn dense flat icon="delete" color="red" @click="eliminarFactura(props.row)" v-if="esAdmin">
+                <q-tooltip>Eliminar factura</q-tooltip>
+              </q-btn>
+              </q-td>
           </template>
         </q-table>
       </q-card-section>
@@ -289,8 +299,8 @@
 
           <div class="row">
             <div class="col-6">
-              <q-input v-model="form.fecha_compra" type="date" label="Fecha de compra *" outlined dense
-                       :rules="[val => !!val || 'Campo requerido']" />
+              <q-input v-model="form.fecha_compra" type="datetime-local" label="Fecha de compra *" outlined dense
+                 :rules="[val => !!val || 'Campo requerido']" />
             </div>
             <div class="col-6">
               <q-input v-model="form.monto_total" label="Monto total *" type="number" outlined dense
@@ -464,7 +474,7 @@
               <th>Método</th>
               <th>Vendedor</th>
               <th>Referencia</th>
-              <th>Observaciones</th>
+              <th>Usuario</th> <th>Observaciones</th>
             </tr>
             </thead>
             <tbody>
@@ -474,6 +484,13 @@
               <td>{{ pago.metodo_pago || '-' }}</td>
               <td>{{ pago.vendedor || '-' }}</td>
               <td>{{ pago.referencia || '-' }}</td>
+
+              <td>
+                <q-badge color="purple" outline v-if="pago.user">
+                  {{ pago.user.name }}
+                </q-badge>
+                <span v-else>-</span>
+              </td>
               <td>{{ pago.observaciones || '-' }}</td>
             </tr>
             </tbody>
@@ -573,7 +590,7 @@ export default {
         numero_factura: '',
         proveedor: '',
         vendedor: '',
-        fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DD'),
+        fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DDTHH:mm'),
         monto_total: '',
         tipo_pago: 'Contado',
         metodo_pago: 'Efectivo',
@@ -597,7 +614,14 @@ export default {
   computed: {
     userAgencia () {
       return this.$store.user?.agencia_id || 0
+    },
+    // --- NUEVO: Detectar si es Admin ---
+    esAdmin () {
+      // Retorna true si es el usuario ID 1 (Admin)
+      // Opcional: También puedes permitir a la agencia 1: || this.$store.user?.agencia_id === 1
+      return this.$store.user?.id === 1
     }
+    // -----------------------------------
   },
   methods: {
     formatCurrency (value) {
@@ -610,7 +634,7 @@ export default {
     },
     formatDate (dateString) {
       if (!dateString) return '-'
-      return date.formatDate(dateString, 'DD/MM/YYYY')
+      return date.formatDate(dateString, 'DD/MM/YYYY HH:mm')
     },
     estaPorVencer (fechaVencimiento) {
       if (!fechaVencimiento) return false
@@ -705,15 +729,20 @@ export default {
           return
         }
 
-        // let response
+        // let response// --- PREPARAR DATOS (Limpiar formato de fecha) ---
+        const datosEnviar = {
+          ...this.form,
+          // Reemplazar la T por espacio para la base de datos
+          fecha_compra: this.form.fecha_compra ? this.form.fecha_compra.replace('T', ' ') : null,
+          user_id: this.$store.user.id
+        }
+        // -----------------------------------------------
+
         if (this.facturaSeleccionada) {
-          await this.$axios.put(`facturas/${this.facturaSeleccionada.id}`, this.form)
+          await this.$axios.put(`facturas/${this.facturaSeleccionada.id}`, datosEnviar)
           this.$alert.success('Factura actualizada correctamente')
         } else {
-          await this.$axios.post('facturas', {
-            ...this.form,
-            user_id: this.$store.user.id
-          })
+          await this.$axios.post('facturas', datosEnviar)
           this.$alert.success('Factura registrada exitosamente')
         }
 
@@ -805,7 +834,7 @@ export default {
         numero_factura: '',
         proveedor: '',
         vendedor: '',
-        fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DD'),
+        echa_compra: date.formatDate(new Date(), 'YYYY-MM-DDTHH:mm'),
         monto_total: '',
         tipo_pago: 'Contado',
         metodo_pago: 'Efectivo',
@@ -824,16 +853,44 @@ export default {
     sucursalGet () {
       this.$axios.get('sucursales')
         .then(response => {
-          console.log('Sucursales cargadas:', response.data)
-          this.agencias = response.data.map(sucursal => ({
+          const listaSucursales = response.data.map(sucursal => ({
             label: sucursal.nombre,
             value: sucursal.id
           }))
-          this.agencias.unshift({ label: 'Almacén Central', value: 0 })
+
+          // 1. SI ES EL SUPER ADMIN (ID 1)
+          if (this.$store.user.id === 1) {
+            this.agencias = [
+              { label: 'Almacén Central', value: 0 },
+              ...listaSucursales
+            ]
+          } else if (this.userAgencia === 1) {
+            // 2. SI ES LA AGENCIA 1 (Ve su agencia + Almacén)
+            const miAgencia = listaSucursales.find(s => s.value === 1)
+
+            this.agencias = [
+              { label: 'Almacén Central', value: 0 },
+              miAgencia || { label: 'Mi Sucursal', value: 1 }
+            ]
+            this.agenciaSeleccionada = 1
+          } else {
+            // 3. CUALQUIER OTRA AGENCIA (Solo ve lo suyo)
+            const miSucursal = listaSucursales.find(s => s.value === this.userAgencia)
+            if (miSucursal) {
+              this.agencias = [miSucursal]
+              this.agenciaSeleccionada = miSucursal.value
+            } else {
+              if (this.userAgencia === 0 || this.userAgencia === null) {
+                this.agencias = [{ label: 'Almacén Central', value: 0 }]
+                this.agenciaSeleccionada = 0
+              } else {
+                this.agencias = []
+              }
+            }
+          }
         })
         .catch(error => {
           console.error('Error cargando sucursales:', error)
-          this.$alert.error('Error al cargar las sucursales')
         })
     },
     limpiarFiltros () {

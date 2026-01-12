@@ -26,40 +26,66 @@
         </q-toolbar-title>
         <div>
           <q-btn flat dense icon="notifications" color="primary">
-            <q-badge v-if="notificaciones.some(n => !n.leida)" color="red" floating>
-            {{ notificaciones.filter(n => !n.leida).length }}
-          </q-badge>
 
-            <!-- Agregar ref="menuNotificaciones" aquí -->
+            <q-badge v-if="conteoNoLeidas > 0" color="red" floating>
+              {{ conteoNoLeidas }}
+            </q-badge>
+
             <q-menu ref="menuNotificaciones">
-              <q-list style="min-width: 250px">
-                <q-item-label header>Notificaciones</q-item-label>
+              <q-list style="min-width: 320px">
+
+                <q-item-label header class="row justify-between items-center">
+                  <span>Notificaciones</span>
+                  <span class="text-caption text-grey">Pág. {{ pagination.current_page }}</span>
+                </q-item-label>
+
+                <q-separator />
+
                 <q-item
                   v-for="(notif, index) in notificaciones"
                   :key="index"
                   clickable
-               @click="abrirNotificacion(notif)"
+                  v-ripple
+                  @click="abrirNotificacion(notif)"
+                  style="border-bottom: 1px solid #f5f5f5"
                 >
-                  <!-- Chip "Nuevo" si no está leído -->
-                  <q-item-section avatar v-if="!notif.leida" style="min-width: 50px;">
-                    <q-chip dense color="green" text-color="white" label>
-                      Nuevo
-                    </q-chip>
+                  <q-item-section avatar style="min-width: 30px; padding-right:0">
+                    <q-icon name="circle" :color="!notif.leida ? 'green' : 'grey-3'" size="10px" />
                   </q-item-section>
 
-                  <!-- Mensaje y fecha -->
                   <q-item-section>
-                    <div>{{ notif.mensaje }}</div>
-                    <div style="font-size: 11px; color: gray; margin-top: 2px;">
+                    <div style="font-size: 13px; line-height: 1.2;">{{ notif.mensaje }}</div>
+                    <div class="text-caption text-grey-6" style="font-size: 11px;">
                       {{ formatDate(notif.created_at) }}
                     </div>
                   </q-item-section>
                 </q-item>
+
                 <q-item v-if="notificaciones.length === 0">
-                  <q-item-section class="text-grey">
-                    Sin notificaciones nuevas
+                  <q-item-section class="text-center text-grey q-pa-md">
+                    Sin notificaciones aquí
                   </q-item-section>
                 </q-item>
+
+                <q-separator />
+
+                <div class="row justify-between q-pa-sm bg-grey-1">
+                  <q-btn
+                    dense flat size="sm"
+                    icon="chevron_left"
+                    label="Anterior"
+                    :disable="pagination.current_page <= 1"
+                    @click.stop="cambiarPagina(pagination.current_page - 1)"
+                  />
+                  <q-btn
+                    dense flat size="sm"
+                    icon-right="chevron_right"
+                    label="Siguiente"
+                    :disable="pagination.current_page >= pagination.last_page"
+                    @click.stop="cambiarPagina(pagination.current_page + 1)"
+                  />
+                </div>
+
               </q-list>
             </q-menu>
           </q-btn>
@@ -312,8 +338,14 @@ export default {
     return {
       leftDrawerOpen: false,
       notificaciones: [],
-      prevNotificaciones: [],
+      conteoNoLeidas: 0,
+      prevNotificacionesIds: new Set(),
+      pagination: {
+        current_page: 1,
+        last_page: 1
+      },
       notificacionActiva: null,
+      prevNotificaciones: [],
       dialogoNotificacion: false,
       essentialLinks: [
         {
@@ -335,8 +367,9 @@ export default {
     }
   },
   mounted () {
-    this.getNotificaciones()
-    setInterval(this.getNotificaciones, 200000)
+    this.getNotificaciones(1)
+    // Revisar nuevas notificaciones cada 60 seg (solo buscando alertas nuevas)
+    setInterval(() => this.getNotificaciones(1, true), 60000)
   },
   methods: {
     logout () {
@@ -358,55 +391,57 @@ export default {
         })
       })
     },
-    getNotificaciones () {
+    // --- PEGAR ESTO EN METHODS ---
+
+    // Función optimizada para cargar por páginas
+    getNotificaciones (page = 1, isBackgroundCheck = false) {
       const agencia = this.$store.agencia_id
-      this.$axios.get(`/notificaciones/${agencia}`)
+      const paginaSolicitada = isBackgroundCheck ? 1 : page
+
+      this.$axios.get(`/notificaciones/${agencia}?page=${paginaSolicitada}`)
         .then(res => {
-          const nuevasNotificaciones = res.data
+          const data = res.data
 
-          // Normalizar leida y eliminar duplicados por ID
-          const mapNotifs = new Map()
-          nuevasNotificaciones.forEach(n => {
-            n.leida = n.leida === 1 || n.leida === true
-            mapNotifs.set(n.id, n)
-          })
-          const notifsArray = Array.from(mapNotifs.values())
+          // 1. Actualizamos el número rojo del badge
+          this.conteoNoLeidas = data.total_no_leidas
 
-          // Extraer IDs de notificaciones nuevas que no están en prevNotificaciones
-          const prevIds = new Set(this.prevNotificaciones.map(n => n.id))
-          const newNotifs = notifsArray.filter(n => !prevIds.has(n.id) && !n.leida)
+          // 2. Si estamos en página 1, verificamos si hay algo nuevo para lanzar alerta visual
+          if (paginaSolicitada === 1) {
+            const nuevosItems = data.listado.data
+            const hayNuevas = nuevosItems.some(n => !this.prevNotificacionesIds.has(n.id) && !n.leida)
 
-          // Solo mostrar alerta si hay nuevas notificaciones no leídas no notificadas antes
-          if (newNotifs.length > 0) {
-            this.$q.notify({
-              type: 'info',
-              color: 'primary',
-              icon: 'info',
-              message: '📦 ¡Tienes una nueva transferencia de productos!',
-              position: 'top-right',
-              timeout: 6000,
-              actions: [
-                {
-                  label: 'VER',
-                  color: 'white',
-                  handler: () => {
-                    if (this.$refs.menuNotificaciones) {
-                      this.$refs.menuNotificaciones.show()
-                    }
-                  }
-                }
-              ]
-            })
+            if (hayNuevas && this.prevNotificacionesIds.size > 0) {
+              this.$q.notify({
+                type: 'info',
+                color: 'primary',
+                icon: 'notifications_active',
+                message: '📦 ¡Tienes nuevas notificaciones!',
+                position: 'top-right'
+              })
+            }
+            nuevosItems.forEach(n => this.prevNotificacionesIds.add(n.id))
           }
 
-          // Actualizar los arrays de notificaciones y prevNotificaciones con los nuevos datos
-          this.notificaciones = notifsArray
-          this.prevNotificaciones = notifsArray
+          // 3. Si no es chequeo de fondo, actualizamos la lista visible
+          if (!isBackgroundCheck) {
+            this.notificaciones = data.listado.data
+            this.pagination = {
+              current_page: data.listado.current_page,
+              last_page: data.listado.last_page,
+              total: data.listado.total
+            }
+          }
         })
-        .catch(() => {
-          this.notificaciones = []
-          this.prevNotificaciones = []
+        .catch(err => {
+          console.error('Error notificaciones', err)
         })
+    },
+
+    // Función para los botones Anterior/Siguiente
+    cambiarPagina (page) {
+      if (page >= 1 && page <= this.pagination.last_page) {
+        this.getNotificaciones(page)
+      }
     },
 
     abrirNotificacion (notif) {

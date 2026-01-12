@@ -24,7 +24,7 @@ class PagoFactura extends Model
     ];
 
     protected $casts = [
-        'fecha_pago' => 'date',
+        'fecha_pago' => 'datetime',
         'monto' => 'decimal:2'
     ];
 

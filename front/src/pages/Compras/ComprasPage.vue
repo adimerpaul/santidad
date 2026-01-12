@@ -278,12 +278,21 @@
               />
             </div>
             <div class="col-6">
-              <q-input
-                v-model="facturaData.vendedor"
+              <q-select
+                v-model="facturaData.vendedor_id"
+                :options="vendedores"
                 label="Vendedor"
+                option-label="nombre"
+                option-value="id"
                 outlined
                 dense
-              />
+                emit-value
+                map-options
+              >
+                <template v-slot:no-option>
+                    <q-item><q-item-section class="text-grey">Sin vendedores</q-item-section></q-item>
+                </template>
+              </q-select>
             </div>
           </div>
 
@@ -300,7 +309,7 @@
             <div class="col-6">
               <q-input
                 v-model="facturaData.fecha_compra"
-                type="date"
+                type="datetime-local"
                 label="Fecha de Compra *"
                 outlined
                 dense
@@ -401,6 +410,7 @@ export default {
       pedidoId: null,
       agencia_id: 0,
       current_page: 1,
+      vendedores: [],
       last_page: 1,
       ruleNumber: [
         val => (val !== null && val !== '') || 'Por favor escriba su cantidad',
@@ -446,6 +456,7 @@ export default {
       ],
       proveedores: [],
       proveedoresAll: [],
+      vendedor_id: null,
       proveedor_id: 0,
       crearFactura: true,
       dialogoFactura: false,
@@ -456,7 +467,8 @@ export default {
         numero_factura: '',
         proveedor: '',
         vendedor: '',
-        fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DD'),
+        vendedor_id: null,
+        fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DDTHH:mm'),
         monto_total: 0,
         tipo_pago: 'Contado',
         metodo_pago: 'Efectivo',
@@ -630,6 +642,9 @@ export default {
         }
 
         this.loadingFactura = true
+        this.datosCompra.vendedor_id = this.facturaData.vendedor_id
+        // -----------------------------
+        // --- AGREGAR ESTO: Preparar datos para envío ---
 
         // 1. Primero crear la compra
         const compraResponse = await this.$axios.post('compraInsert', this.datosCompra)
@@ -642,6 +657,7 @@ export default {
         const facturaRequest = {
           ...this.facturaData,
           detalle_compras: compraResponse.data.buy_ids,
+          fecha_compra: this.facturaData.fecha_compra.replace('T', ' '),
           user_id: this.$store.user.id
         }
 
@@ -666,6 +682,7 @@ export default {
       this.dialogoFactura = false
       await this.procesarCompra({
         ...this.datosCompra,
+        vendedor_id: this.facturaData.vendedor_id,
         crear_factura: false
       })
     },
@@ -678,7 +695,7 @@ export default {
         numero_factura: '',
         proveedor: '',
         vendedor: '',
-        fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DD'),
+        fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DDTHH:mm'),
         monto_total: 0,
         tipo_pago: 'Contado',
         metodo_pago: 'Efectivo',
@@ -909,7 +926,25 @@ export default {
       } finally {
         this.loadingPedidoDigital = false
       }
+    },
+    cargarVendedores (proveedorId) {
+      // Limpiamos variables
+      this.vendedor_id = null
+      this.facturaData.vendedor_id = null
+      this.vendedores = []
+
+      if (!proveedorId) return
+
+      this.$axios.get(`vendedores-por-proveedor/${proveedorId}`).then(res => {
+        this.vendedores = res.data
+        // Si solo hay 1 vendedor, lo pre-seleccionamos para la factura
+        if (this.vendedores.length === 1) {
+          this.facturaData.vendedor_id = this.vendedores[0].id
+          this.vendedor_id = this.vendedores[0].id
+        }
+      }).catch(err => console.error(err))
     }
+    // -----------------------------------------------------------
   },
   computed: {
     cambio () {
@@ -953,6 +988,7 @@ export default {
   },
   watch: {
     proveedor_id (newVal) {
+      this.cargarVendedores(newVal)
       if (newVal && this.proveedores.length > 0) {
         const proveedor = this.proveedores.find(p => p.id === newVal)
         if (proveedor) {

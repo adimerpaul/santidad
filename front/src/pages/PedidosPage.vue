@@ -316,6 +316,7 @@
 </template>
 
 <script>
+import { date } from 'quasar'
 export default {
   name: 'PedidosPage',
   data () {
@@ -585,8 +586,8 @@ export default {
       this.loading = true
 
       // Obtener la fecha actual en formato YYYY-MM-DD
-      const today = new Date()
-      const fechaPedido = today.toISOString().split('T')[0]
+      // Obtener fecha y hora real (Formato: YYYY-MM-DD HH:mm:ss)
+      const fechaPedido = date.formatDate(Date.now(), 'YYYY-MM-DD HH:mm:ss')
 
       const data = {
         agencia_id: this.agencia_id,

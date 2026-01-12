@@ -30,7 +30,7 @@ class Factura extends Model
     ];
 
     protected $casts = [
-        'fecha_compra' => 'date',
+        'fecha_compra' => 'datetime',
         'fecha_vencimiento' => 'date',
         'monto_total' => 'decimal:2',
         'pagado' => 'decimal:2',
@@ -64,9 +64,18 @@ class Factura extends Model
     }
 
     // Métodos de ayuda
+
+    // 🟢 CORRECCIÓN 1: Saldo visual tolerante a centavos
     public function getSaldoAttribute()
     {
-        return $this->monto_total - $this->pagado;
+        $saldoReal = $this->monto_total - $this->pagado;
+
+        // Si la deuda (o el sobrante) es menor a 0.50, mostramos 0 visualmente
+        if (abs($saldoReal) <= 0.50) {
+            return 0;
+        }
+
+        return $saldoReal;
     }
 
     public function getEstadoColorAttribute()
@@ -79,11 +88,12 @@ class Factura extends Model
         };
     }
 
+    // 🟢 CORRECCIÓN 2: Lógica de cambio de estado al pagar
     public function registrarPago($monto, $metodo = null, $referencia = null, $vendedor = null, $observaciones = null)
     {
         $pago = new PagoFactura([
             'monto' => $monto,
-            'fecha_pago' => now()->toDateString(),
+            'fecha_pago' => now(),
             'vendedor' => $vendedor,
             'metodo_pago' => $metodo,
             'referencia' => $referencia,
@@ -93,11 +103,16 @@ class Factura extends Model
 
         $this->pagado += $monto;
 
-        // Actualizar estado
-        if ($this->pagado >= $this->monto_total) {
+        // Calculamos cuánto falta
+        $pendiente = $this->monto_total - $this->pagado;
+
+        // Si debe menos de 0.50 centavos (o pagó de más), se considera PAGADO
+        if ($pendiente <= 0.50) {
             $this->estado = 'Pagado';
         } elseif ($this->pagado > 0) {
             $this->estado = 'Parcial';
+        } else {
+            $this->estado = 'Pendiente';
         }
 
         $this->save();

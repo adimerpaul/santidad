@@ -32,6 +32,9 @@ class BuyController extends Controller{
         'proveedor' => function($query) {
             $query->select('id', 'nombreRazonSocial');
         },
+        'vendedor' => function($query) {
+                $query->select('id', 'nombre');
+            },
         'agencia' => function($query) {
             $query->select('id', 'nombre');
         },
@@ -254,6 +257,7 @@ class BuyController extends Controller{
         $buy->agencia_id= $request->user()->agencia_id;
         $buy->date= date("Y-m-d");
         $buy->time= date("H:i:s");
+        $buy->vendedor_id = $request->vendedor_id; // <--- AUMENTAR ESTO
         $buy->save();
 
         $product = Product::find($request->product_id);
@@ -295,6 +299,7 @@ class BuyController extends Controller{
                 $buyNew->date = date("Y-m-d");
                 $buyNew->time = date("H:i:s");
                 $buyNew->proveedor_id = $request->proveedor_id;
+                $buyNew->vendedor_id = $request->vendedor_id; // <--- AUMENTAR ESTO
                 $buyNew->save();
 
                 $buyIds[] = $buyNew->id; // Guardar ID para factura

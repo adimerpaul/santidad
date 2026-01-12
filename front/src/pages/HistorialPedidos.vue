@@ -881,18 +881,18 @@ export default {
     },
 
     async abrirDialogoAccion (accion, row) {
-      this.accionSeleccionada = accion
+      // CORRECCIÓN: Usar los nombres correctos definidos en data()
+      this.accionActual = accion // Antes decías: this.accionSeleccionada
       this.pedidoSeleccionado = row
-      this.dialogoAccion = true
+      this.dialogAccion = true // Antes decías: this.dialogoAccion
 
-      // NUEVO: Lógica para cargar vendedores
+      // Lógica de vendedores (solo si es APROBAR, no necesario para COMPRADO)
       this.vendedores = []
       this.vendedorSeleccionado = null
       this.enviarWhatsapp = true
 
       if (accion === 'APROBAR' && this.pedidoSeleccionado.proveedor_id) {
         try {
-          // Asegúrate de que esta ruta existe en tu backend (VendedorController)
           const { data } = await this.$axios.get(`vendedores-por-proveedor/${this.pedidoSeleccionado.proveedor_id}`)
           this.vendedores = data
 
@@ -904,18 +904,17 @@ export default {
         }
       }
 
-      // Resto de tu lógica original (cargar detalles, etc.)
-      this.detalles = []
+      // Cargar detalles para que no de error si intentas leerlos
+      this.detallesPedido = [] // Usar variable correcta detallesPedido en lugar de detalles
       try {
         const { data } = await this.$axios.get(`pedidos/${row.id}/detalles`)
-        // ... (resto del código que carga los productos en la tabla)
-        // Adaptar según cómo recibas la data en tu versión actual
         const lista = data.detalles || data
-        this.detalles = lista.map(d => ({
+
+        // CORRECCIÓN: Usar this.detallesPedido que es lo que usas en el template
+        this.detallesPedido = lista.map(d => ({
           ...d,
-          // Asegurar que las cantidades editables comiencen con el valor actual
           cantidad_aprobada: d.cantidad_aprobada || d.cantidad,
-          ccion_aplicada: d.accion_aplicada || 'SIN_CAMBIOS'
+          accion_aplicada: d.accion_aplicada || 'SIN_CAMBIOS'
         }))
       } catch (error) {
         console.error(error)
@@ -967,6 +966,7 @@ export default {
     },
 
     async aprobarConModificaciones () {
+      // 1. Preparar los detalles para modificar
       const modificaciones = this.detallesPedido.map(det => ({
         pedido_detail_id: det.id,
         accion: det.accion_recomendada,
@@ -978,7 +978,7 @@ export default {
       this.accionActual = 'aprobado'
       this.observacionAccion = 'Aprobación de pedido'
 
-      // CARGAR VENDEDORES
+      // 2. Cargar Vendedores y Recuperar el guardado
       this.vendedores = []
       this.vendedorSeleccionado = null
       this.enviarWhatsapp = true
@@ -988,7 +988,15 @@ export default {
           const { data } = await this.$axios.get(`vendedores-por-proveedor/${this.pedidoSeleccionado.proveedor_id}`)
           this.vendedores = data
 
-          if (this.vendedores.length === 1) {
+          if (this.pedidoSeleccionado.vendedor) {
+            const vendedorGuardado = this.vendedores.find(v => v.id === this.pedidoSeleccionado.vendedor.id)
+            if (vendedorGuardado) {
+              this.vendedorSeleccionado = vendedorGuardado
+            } else {
+              this.vendedorSeleccionado = this.pedidoSeleccionado.vendedor
+            }
+          } else if (this.vendedores.length === 1) {
+            // Comentario movido aquí adentro para no romper el código
             this.vendedorSeleccionado = this.vendedores[0]
           }
         } catch (e) {

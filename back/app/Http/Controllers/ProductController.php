@@ -379,6 +379,32 @@ class ProductController extends Controller
 
     public function moverProducto(Request $request)
     {
+        // -----------------------------------------------------
+        // 🛡️ BLOQUEO ANTI-DUPLICADOS (RACE CONDITION)
+        // -----------------------------------------------------
+        // 1. Calculamos el ID del destino para buscar en el historial
+        $destinoId = null;
+        if ($request->lugar != 'Almacen') {
+            // Buscamos la agencia por nombre, ya que el frontend manda el nombre
+            $agenciaDestino = Agencia::where('nombre', $request->lugar)->first();
+            if ($agenciaDestino) $destinoId = $agenciaDestino->id;
+        }
+
+        // 2. Buscamos si YA existe este movimiento en los últimos 5 segundos
+        $duplicado = TransferHistory::where('user_id', $request->user()->id)
+            ->where('producto_id', $request->id)
+            ->where('agencia_id_origen', $request->delSucursal) // ID del origen
+            ->where('agencia_id_destino', $destinoId)           // ID del destino
+            ->where('cantidad', $request->cantidad)
+            ->where('created_at', '>', now()->subSeconds(5))    // <--- LA CLAVE
+            ->first();
+
+        if ($duplicado) {
+            // Si ya existe, fingimos éxito devolviendo el producto sin hacer nada más
+            return Product::find($request->id);
+        }
+        // -----------------------------------------------------
+
         $product = Product::find($request->id);
         $delSucursal='cantidadSucursal'.$request->delSucursal;
         $agencias = Agencia::all();
@@ -408,6 +434,35 @@ class ProductController extends Controller
 
     public function transferenciasMultiples(Request $request)
     {
+        // -----------------------------------------------------
+        // 🛡️ BLOQUEO ANTI-DUPLICADOS (RACE CONDITION)
+        // -----------------------------------------------------
+        // Verificamos solo el PRIMER producto. Si ese ya se envió hace 5 segundos,
+        // asumimos que toda la lista es un duplicado (doble clic).
+        if (!empty($request->productos)) {
+            $primerProducto = $request->productos[0];
+            $agenciaOrigen = $request->agencia_origen_id;
+            $agenciaDestino = $request->agencia_destino_id;
+
+            // Ajuste: a veces el origen viene dentro del item como 'almacen'
+            if (isset($primerProducto['origen']) && $primerProducto['origen'] === 'almacen') {
+                $agenciaOrigen = null; // En la BD, Almacén suele ser NULL
+            }
+
+            $duplicado = TransferHistory::where('user_id', $request->user()->id)
+                ->where('agencia_id_origen', $agenciaOrigen)
+                ->where('agencia_id_destino', $agenciaDestino)
+                ->where('producto_id', $primerProducto['id'])
+                ->where('cantidad', $primerProducto['cantidad'])
+                ->where('created_at', '>', now()->subSeconds(5)) // <--- LA CLAVE
+                ->first();
+
+            if ($duplicado) {
+                return response()->json(['message' => 'Transferencia ya procesada (Duplicado evitado)']);
+            }
+        }
+        // -----------------------------------------------------
+
         $productos = $request->productos;
         $agencia_origen = $request->agencia_origen_id;
         $agencia_destino = $request->agencia_destino_id;
@@ -450,9 +505,9 @@ class ProductController extends Controller
         }
 
         $origen = Agencia::find($agencia_origen);
-        $origenNombre = $origen ? $origen->nombre : 'Sucursal desconocida';
+        $origenNombre = $origen ? $origen->nombre : 'Almacén Central';
 
-        $mensaje = "Has recibido una transferencia de productos desde la agencia: $origenNombre.";
+        $mensaje = "Has recibido una transferencia de productos desde: $origenNombre.";
 
         Notificacion::create([
             'agencia_id' => $agencia_destino,

@@ -28,6 +28,7 @@ class Buy extends Model
         'sucursal_id_baja',
         'description_baja',
         'agencia_comprador_id',
+        'vendedor_id',
     ];
     protected $appends = ['diasPorVencer'];
 
@@ -65,6 +66,10 @@ class Buy extends Model
     }
     public function buyDetail(){
         return $this->hasMany(BuyDetail::class);
+    }
+    public function vendedor()
+    {
+        return $this->belongsTo(Vendedor::class);
     }
     protected $hidden = ['created_at','updated_at'];
 }
