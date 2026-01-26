@@ -69,15 +69,22 @@
                 <div class="row cursor-pointer" v-if="products.length>0">
                   <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
                     <q-card @click="clickAddSale(p)" class="q-pa-xs" flat bordered>
-                      <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="100px">
-                        <q-badge color="red" floating style="padding: 10px 10px 5px 5px;margin: 0px" v-if="p.porcentaje">
-                          {{p.porcentaje}}%
-                        </q-badge>
-                        <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">
-                          {{p.nombre}}
-                        </div>
-                        <q-badge v-if="p.cantidadPedida>0" color="yellow-9" floating :label="p.cantidadPedida" style="padding: 5px"/>
-                      </q-img>
+                      <q-img
+                    :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`"
+                    width="100%"
+                    height="160px"
+                    fit="contain"
+                    class="bg-white q-pa-sm"
+                  >
+                  <q-badge color="red" floating style="padding: 5px 8px; margin: 0px" v-if="p.porcentaje">
+                      -{{p.porcentaje}}%
+                    </q-badge>
+
+                    <div class="absolute-bottom text-center text-subtitle2"
+                         style="padding: 4px 0px; line-height: 1.1; background: rgba(0,0,0,0.6);">
+                      {{$filters.capitalize(p.nombre)}}
+                    </div>
+                  </q-img>
                       <q-card-section class="q-pa-none q-ma-none">
                         <div class="text-center text-subtitle2">
                           {{ p.precio }}
@@ -278,21 +285,43 @@
               />
             </div>
             <div class="col-6">
-              <q-select
-                v-model="facturaData.vendedor_id"
-                :options="vendedores"
-                label="Vendedor"
-                option-label="nombre"
-                option-value="id"
-                outlined
-                dense
-                emit-value
-                map-options
-              >
-                <template v-slot:no-option>
-                    <q-item><q-item-section class="text-grey">Sin vendedores</q-item-section></q-item>
-                </template>
-              </q-select>
+              <div class="col-6">
+      <q-select
+        v-model="facturaData.vendedor_id"
+        :options="vendedores"
+        label="Vendedor"
+        option-label="nombre"
+        option-value="id"
+        outlined
+        dense
+        emit-value
+        map-options
+        bg-color="white"
+        :disable="!facturaData.proveedor_id"
+        @update:model-value="(val) => {
+          // --- ESTA ES LA CLAVE: BUSCAR Y GUARDAR EL NOMBRE ---
+          const vend = vendedores.find(v => v.id === val);
+          facturaData.vendedor = vend ? vend.nombre : '';
+        }"
+      >
+        <template v-slot:after>
+          <q-btn round dense flat icon="add_circle" color="green"
+                @click.stop="abrirDialogoVendedor"
+                :disable="!facturaData.proveedor_id">
+            <q-tooltip>Crear nuevo vendedor aquí</q-tooltip>
+          </q-btn>
+        </template>
+
+        <template v-slot:no-option>
+            <q-item>
+              <q-item-section class="text-grey">
+                {{ facturaData.proveedor_id ? 'Sin vendedores' : 'Seleccione proveedor primero' }}
+              </q-item-section>
+            </q-item>
+        </template>
+      </q-select>
+    </div>
+
             </div>
           </div>
 
@@ -389,6 +418,38 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <q-dialog v-model="dialogVendedor" persistent>
+      <q-card style="min-width: 350px">
+        <q-card-section class="row items-center">
+          <div class="text-h6">Nuevo Vendedor</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-form @submit.prevent="guardarNuevoVendedor">
+            <div class="row q-col-gutter-sm">
+              <div class="col-12">
+                <div class="text-caption text-grey">Proveedor asociado:</div>
+                <div class="text-bold">{{ nombreProveedorActual }}</div>
+              </div>
+              <div class="col-12">
+                <q-input outlined dense v-model="nuevoVendedor.nombre" label="Nombre Completo"
+                         :rules="[val => !!val || 'El nombre es obligatorio']" autofocus />
+              </div>
+              <div class="col-12">
+                <q-input outlined dense v-model="nuevoVendedor.celular" label="Celular" type="number"
+                         :rules="[val => !!val || 'El celular es obligatorio']" />
+              </div>
+            </div>
+            <div class="row justify-end q-mt-md">
+              <q-btn label="Cancelar" color="grey" flat v-close-popup class="q-mr-sm" />
+              <q-btn label="Guardar y Seleccionar" color="primary" type="submit" :loading="loadingVendedor" />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -463,6 +524,12 @@ export default {
       datosCompra: null,
       loadingFactura: false,
       loadingPedidoDigital: false,
+      dialogVendedor: false,
+      loadingVendedor: false,
+      nuevoVendedor: {
+        nombre: '',
+        celular: ''
+      },
       facturaData: {
         numero_factura: '',
         proveedor: '',
@@ -943,10 +1010,53 @@ export default {
           this.vendedor_id = this.vendedores[0].id
         }
       }).catch(err => console.error(err))
-    }
+    },
     // -----------------------------------------------------------
+    abrirDialogoVendedor () {
+      // Validamos usando el dato que ya tienes en el formulario de factura
+      if (!this.facturaData.proveedor_id) {
+        this.$q.notify({
+          color: 'warning',
+          message: 'Primero verifica que haya un proveedor seleccionado en la compra',
+          icon: 'warning'
+        })
+        return
+      }
+      this.nuevoVendedor = { nombre: '', celular: '' }
+      this.dialogVendedor = true
+    },
+    guardarNuevoVendedor () {
+      this.loadingVendedor = true
+      const payload = { ...this.nuevoVendedor, client_id: this.facturaData.proveedor_id }
+
+      this.$axios.post('vendedores', payload).then(res => {
+        const vendedorCreado = res.data
+        this.vendedores.push(vendedorCreado)
+
+        // Asignar ID
+        this.facturaData.vendedor_id = vendedorCreado.id
+        // --- AGREGAR ESTO TAMBIÉN ---
+        this.facturaData.vendedor = vendedorCreado.nombre
+
+        this.$alert.success('Vendedor creado y seleccionado')
+        this.dialogVendedor = false
+      })
+        .catch(err => {
+          // AQUI ESTA EL ARREGLO: Usamos 'err' para que el linter no se queje
+          console.error('Error creando vendedor:', err)
+          this.$alert.error(err.response?.data?.message || 'Error al crear vendedor')
+        })
+        .finally(() => {
+          this.loadingVendedor = false
+        })
+    }
   },
   computed: {
+    nombreProveedorActual () {
+      if (!this.facturaData.proveedor_id) return ''
+      const prov = this.proveedoresAll.find(p => p.id === this.facturaData.proveedor_id)
+      return prov ? prov.nombreRazonSocial : ''
+    },
     cambio () {
       if (this.aporte === false) {
         const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)

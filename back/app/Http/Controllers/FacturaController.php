@@ -47,13 +47,10 @@ class FacturaController extends Controller
                     $query->whereNull('agencia_id');
                 }
             } else {
-                // Filtrar por una agencia específica
-                // (La seguridad de arriba ya bloqueó si intentas ver una ajena)
                 $query->where('agencia_id', $request->agencia_id);
             }
         }
 
-        // ... (MANTENER AQUÍ EL RESTO DE TUS FILTROS: proveedor, numero, etc.) ...
         if ($request->filled('proveedor')) {
             $query->where('proveedor', 'like', '%' . $request->proveedor . '%');
         }
@@ -110,14 +107,14 @@ class FacturaController extends Controller
             $factura = Factura::create([
                 'numero_factura' => $request->numero_factura,
                 'proveedor' => $request->proveedor,
-                'vendedor' => $request->vendedor,
+                'vendedor' => $request->vendedor, // Nombre del vendedor (texto)
                 'fecha_compra' => $request->fecha_compra,
                 'monto_total' => $request->monto_total,
                 'tipo_pago' => $request->tipo_pago,
                 'metodo_pago' => $request->metodo_pago,
                 'fecha_vencimiento' => $request->fecha_vencimiento,
                 'estado' => $request->tipo_pago === 'Contado' ? 'Pagado' : 'Pendiente',
-                'agencia_id' => $request->agencia_id, // Filtrado por seguridad arriba
+                'agencia_id' => $request->agencia_id,
                 'proveedor_id' => $request->proveedor_id,
                 'observaciones' => $request->observaciones,
                 'detalle_compras' => $request->detalle_compras,
@@ -135,14 +132,27 @@ class FacturaController extends Controller
                 );
             }
 
-            // Vincular compras (productos) a la factura
+            // =================================================================
+            // ✅ CORRECCIÓN CLAVE AQUÍ PARA GUARDAR EL VENDEDOR EN LAS COMPRAS
+            // =================================================================
             if ($request->filled('detalle_compras')) {
+                // Preparamos los datos a actualizar en la tabla 'buys'
+                $datosUpdate = ['factura_id' => $factura->id];
+
+                // Si viene un vendedor_id, lo agregamos a la actualización
+                if ($request->filled('vendedor_id')) {
+                    $datosUpdate['vendedor_id'] = $request->vendedor_id;
+                }
+
+                // Actualizamos todas las compras seleccionadas
                 Buy::whereIn('id', $request->detalle_compras)
-                    ->update(['factura_id' => $factura->id]);
+                    ->update($datosUpdate);
             }
+            // =================================================================
 
             DB::commit();
-            return response()->json($factura->load(['agencia', 'user', 'pagos']), 201);
+            // Cargamos 'buys.vendedor' para que el frontend lo reciba de inmediato si es necesario
+            return response()->json($factura->load(['agencia', 'user', 'pagos', 'buys.vendedor']), 201);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Error al crear factura: ' . $e->getMessage()], 500);
@@ -161,7 +171,15 @@ class FacturaController extends Controller
              return response()->json(['message' => 'No tiene permiso para ver esta factura'], 403);
         }
 
-        return response()->json($factura->load(['agencia', 'user', 'proveedorRelacion', 'pagos.user', 'buys.product']));
+        // Aquí ya tenías 'buys.vendedor', esto está correcto.
+        return response()->json($factura->load([
+            'agencia', 
+            'user', 
+            'proveedorRelacion', 
+            'pagos.user', 
+            'buys.product', 
+            'buys.vendedor' // Esto permite ver el vendedor en el detalle
+        ]));
     }
 
     /**
@@ -171,11 +189,6 @@ class FacturaController extends Controller
     {
         $user = auth()->user();
 
-        // 🔒 SEGURIDAD: Solo Admin (ID 1) puede editar libremente.
-        // Opcional: Si quieres que el usuario edite lo suyo, usa:
-        // if ($user->id != 1 && $factura->agencia_id != $user->agencia_id)
-        
-        // Si RESTRINGES SOLO AL ADMIN (ID 1):
         if ($user->id != 1) {
              return response()->json(['message' => 'Solo el administrador puede editar facturas'], 403);
         }
@@ -189,6 +202,10 @@ class FacturaController extends Controller
         ]);
 
         $factura->update($request->all());
+        
+        // (Opcional) Si al editar también quieres actualizar el vendedor en las compras,
+        // deberías agregar lógica similar al store aquí si fuera necesario.
+
         return response()->json($factura->load(['agencia', 'user', 'pagos']));
     }
 
@@ -199,7 +216,6 @@ class FacturaController extends Controller
     {
         $user = auth()->user();
 
-        // 🔒 SEGURIDAD: Solo el Admin (ID 1) puede eliminar
         if ($user->id != 1) {
              return response()->json(['message' => 'Solo el administrador puede eliminar facturas'], 403);
         }
@@ -208,6 +224,7 @@ class FacturaController extends Controller
             return response()->json(['message' => 'No se puede eliminar una factura con pagos registrados'], 400);
         }
 
+        // Al eliminar, quitamos el ID de factura de las compras, pero mantenemos el producto
         Buy::where('factura_id', $factura->id)->update(['factura_id' => null]);
 
         $factura->delete();
@@ -221,7 +238,6 @@ class FacturaController extends Controller
     {
         $user = auth()->user();
 
-        // 🔒 SEGURIDAD: Verifica pertenencia
         if ($user->id != 1 && $factura->agencia_id != $user->agencia_id) {
              return response()->json(['message' => 'No autorizado para registrar pagos en esta factura'], 403);
         }
@@ -256,7 +272,7 @@ class FacturaController extends Controller
         $user = $request->user();
         $base = Factura::query();
 
-        // 1. SEGURIDAD (Igual que antes)
+        // 1. SEGURIDAD
         if ($user->id != 1) {
             if ($user->agencia_id == 1) {
                 $base->where(function($q) use ($user) {
@@ -267,7 +283,7 @@ class FacturaController extends Controller
             }
         }
 
-        // 2. FILTROS (Igual que antes)
+        // 2. FILTROS
         if ($request->filled('agencia_id')) {
             if ($request->agencia_id == 0) $base->whereNull('agencia_id');
             else $base->where('agencia_id', $request->agencia_id);
@@ -280,19 +296,16 @@ class FacturaController extends Controller
         $montoTotal  = round((float) (clone $base)->sum('monto_total'), 2);
         $pagadoTotal = round((float) (clone $base)->sum('pagado'), 2);
 
-        // Diferencia real matemática
         $diff = round($montoTotal - $pagadoTotal, 2);
-        $tolerancia = 0.50; // 50 centavos de margen
+        $tolerancia = 0.50; 
 
         // A. Corrección de DEUDA
-        // Si debe algo ($diff > 0) pero es poquito (<= 0.50), decimos que NO DEBE NADA.
         if ($diff > 0 && $diff <= $tolerancia) {
             $diff = 0; 
         }
         $pendienteTotal = max(0, $diff);
 
         // B. Corrección de SOBREPAGO
-        // Si pagó de más ($diff < 0) pero es poquito, decimos que NO HAY SOBREPAGO.
         $sobrepagoRaw = $pagadoTotal - $montoTotal;
         $sobrepagoTotal = 0;
         if ($sobrepagoRaw > 0) {
@@ -303,14 +316,12 @@ class FacturaController extends Controller
             }
         }
 
-        // C. CÁLCULO DEL PORCENTAJE (Aquí está tu respuesta)
+        // C. CÁLCULO DEL PORCENTAJE
         if ($montoTotal > 0) {
-            // Si el pendiente es 0 (ya sea porque pagó todo O porque se lo perdonamos por la tolerancia)
             if ($pendienteTotal == 0) {
-                $porcentajePagado = 100; // <--- ESTO FUERZA EL 100%
+                $porcentajePagado = 100;
             } else {
                 $porcentajePagado = round(($pagadoTotal / $montoTotal) * 100, 2);
-                // Por si acaso el redondeo lo sube a 100.01
                 $porcentajePagado = min(100, $porcentajePagado);
             }
         } else {

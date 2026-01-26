@@ -5,7 +5,7 @@
         <div class="row">
           <div class="col-12 col-md-6 bg-white q-pa-xs">
             <q-input outlined v-model="search" label="Buscar producto" dense clearable
-                     @update:model-value="productsGet" debounce="500">
+                     @update:model-value="current_page=1; productsGet()" debounce="500">
               <template v-slot:prepend>
                 <q-icon name="search" class="cursor-pointer" />
               </template>
@@ -19,58 +19,106 @@
             </q-btn>
           </div>
 
-          <div class="col-12 col-md-3 q-pa-xs">
+          <div class="col-12 col-md-2 q-pa-xs">
             <q-select class="bg-white" emit-value map-options dense outlined
                       v-model="category" option-value="id" option-label="name" :options="categories"
-                      @update:model-value="productsGet">
+                      @update:model-value="current_page=1; productsGet()" label="Categoría">
             </q-select>
           </div>
-          <div class="col-12 col-md-3 q-pa-xs">
+
+          <div class="col-12 col-md-2 q-pa-xs">
             <q-select class="bg-white" emit-value map-options dense outlined
                       v-model="subcategoria" option-value="id" option-label="name" :options="subcategories"
-                      @update:model-value="productsGet" label="Subcategoría">
+                      @update:model-value="current_page=1; productsGet()" label="Subcategoría">
             </q-select>
           </div>
+
           <div class="col-12 col-md-3 q-pa-xs">
+            <q-select class="bg-white" dense outlined
+                      v-model="proveedorFiltro"
+                      :options="proveedores"
+                      option-value="id"
+                      option-label="nombreRazonSocial"
+                      emit-value
+                      map-options
+                      clearable
+                      use-input
+                      @filter="filterProveedores"
+                      @update:model-value="current_page=1; productsGet()"
+                      label="Filtrar por Proveedor">
+                <template v-slot:no-option>
+                  <q-item>
+                    <q-item-section class="text-grey">Sin resultados</q-item-section>
+                  </q-item>
+                </template>
+            </q-select>
+          </div>
+
+          <div class="col-12 col-md-2 q-pa-xs">
             <q-select class="bg-white" label="Ordenar" dense outlined v-model="order"
                       :options="orders" map-options emit-value
                       option-value="value" option-label="label"
                       @update:model-value="productsGet"/>
           </div>
+
           <div class="col-12 col-md-3 q-pa-xs">
             <q-input dense outlined readonly :model-value="agenciaNombre" label="Sucursal" bg-color="white"/>
-          </div>
-
-          <div class="col-12 flex flex-center">
-            <q-pagination v-model="current_page" :max="last_page" :max-pages="6"
-                          boundary-numbers @update:model-value="productsGet"/>
           </div>
 
           <div class="col-12">
             <q-card>
               <q-card-section class="q-pa-none">
+
+                <div class="row justify-center q-py-sm" v-if="last_page > 1">
+                  <q-pagination
+                    v-model="current_page"
+                    :max="last_page"
+                    :max-pages="6"
+                    boundary-numbers
+                    direction-links
+                    color="indigo"
+                    active-color="indigo"
+                    active-text-color="white"
+                    @update:model-value="productsGet"
+                    dense
+                  />
+                </div>
                 <div class="row cursor-pointer" v-if="products.length>0">
                   <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
                     <q-card @click="clickAddPedido(p)" class="q-pa-xs" flat bordered
                             :class="getProductCardClass(p)">
-                      <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`"
-                             width="100%" height="100px">
-                        <q-badge color="red" floating style="padding: 10px 10px 5px 5px;margin: 0px" v-if="p.porcentaje">
-                          {{p.porcentaje}}%
-                        </q-badge>
-                        <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">
-                          {{$filters.capitalize(p.nombre)}}
-                        </div>
-                        <q-badge v-if="getCantidadEnPedido(p.id) > 0" color="yellow-9"
-                                 floating :label="getCantidadEnPedido(p.id)" style="padding: 5px"/>
-                      </q-img>
+                      <q-img
+                    :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`"
+                    width="100%"
+                    height="160px"
+                    fit="contain"
+                    class="bg-white q-pa-sm"
+                  >
+                  <q-badge color="red" floating style="padding: 5px 8px; margin: 0px" v-if="p.porcentaje">
+                      -{{p.porcentaje}}%
+                    </q-badge>
+
+                    <div class="absolute-bottom text-center text-subtitle2"
+                         style="padding: 4px 0px; line-height: 1.1; background: rgba(0,0,0,0.6);">
+                      {{$filters.capitalize(p.nombre)}}
+                    </div>
+                  </q-img>
+
                       <q-card-section class="q-pa-none q-ma-none">
                         <div class="text-center text-subtitle2">
                           {{ p.precio }} Bs
                         </div>
-                        <div :class="getStockTextClass(p)">
-                          {{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}
+
+                        <div class="row items-center justify-center q-gutter-x-xs full-width">
+                            <div :class="getStockTextClass(p)">
+                                {{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}
+                            </div>
+                            <q-btn dense flat round icon="visibility" color="indigo" size="xs"
+                                   @click.stop="verStockGlobal(p)">
+                                <q-tooltip>Ver stock en todas las sucursales</q-tooltip>
+                            </q-btn>
                         </div>
+
                         <div v-if="agencia_id == 1 && p.cantidadAlmacen !== undefined"
                              class="text-center text-caption text-lead">
                           Stock Almacén: {{ p.cantidadAlmacen }}
@@ -79,7 +127,22 @@
                     </q-card>
                   </div>
                 </div>
-                <q-card v-else>
+
+                <div class="row justify-center q-mt-md q-pb-md" v-if="last_page > 1">
+                  <q-pagination
+                    v-model="current_page"
+                    :max="last_page"
+                    :max-pages="6"
+                    boundary-numbers
+                    direction-links
+                    color="indigo"
+                    active-color="indigo"
+                    active-text-color="white"
+                    @update:model-value="productsGet"
+                  />
+                </div>
+
+                <q-card v-else-if="!loading && products.length===0">
                   <q-card-section>
                     <div class="row">
                       <div class="col-12 flex flex-center">
@@ -225,16 +288,17 @@
                           map-options
                           use-input
                           @filter="filterProveedores"
-
-                          @update:model-value="cargarVendedores"  :rules="[val => !!val || 'Debe seleccionar un proveedor']"
+                          @update:model-value="cargarVendedores"
+                          :rules="[val => !!val || 'Debe seleccionar un proveedor']"
                           bg-color="white"
                 >
                   <template v-slot:prepend>
                     <q-icon name="local_shipping" />
                   </template>
-                  </q-select>
+                </q-select>
               </div>
-               <div class="col-12">
+
+              <div class="col-12">
                 <q-select outlined dense label="Vendedor (Opcional)"
                           v-model="pedido.vendedor_id"
                           :options="vendedores"
@@ -248,6 +312,15 @@
                   <template v-slot:prepend>
                     <q-icon name="badge" />
                   </template>
+
+                  <template v-slot:append>
+                    <q-btn round dense flat icon="add_circle" color="green"
+                           @click.stop="abrirDialogoVendedor"
+                           :disable="!pedido.proveedor_id">
+                      <q-tooltip>Crear nuevo vendedor aquí</q-tooltip>
+                    </q-btn>
+                  </template>
+
                   <template v-slot:no-option>
                     <q-item>
                       <q-item-section class="text-grey">
@@ -312,6 +385,83 @@
         </q-form>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="dialogVendedor" persistent>
+      <q-card style="min-width: 350px">
+        <q-card-section class="row items-center">
+          <div class="text-h6">Nuevo Vendedor</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <q-form @submit.prevent="guardarNuevoVendedor">
+            <div class="row q-col-gutter-sm">
+              <div class="col-12">
+                <div class="text-caption text-grey">Proveedor asociado:</div>
+                <div class="text-bold">{{ nombreProveedorActual }}</div>
+              </div>
+              <div class="col-12">
+                <q-input outlined dense v-model="nuevoVendedor.nombre" label="Nombre Completo"
+                         :rules="[val => !!val || 'El nombre es obligatorio']" autofocus />
+              </div>
+              <div class="col-12">
+                <q-input outlined dense v-model="nuevoVendedor.celular" label="Celular" type="number"
+                         :rules="[val => !!val || 'El celular es obligatorio']" />
+              </div>
+            </div>
+            <div class="row justify-end q-mt-md">
+              <q-btn label="Cancelar" color="grey" flat v-close-popup class="q-mr-sm" />
+              <q-btn label="Guardar y Seleccionar" color="primary" type="submit" :loading="loadingVendedor" />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="dialogStock">
+      <q-card style="min-width: 350px; max-width: 90vw;">
+        <q-card-section class="bg-indigo text-white row items-center">
+          <div class="text-h6 ellipsis">{{ productStockSelected.nombre }}</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section>
+          <div class="text-subtitle2 q-mb-sm text-center text-grey-8">Disponibilidad en Sucursales</div>
+          <q-list bordered separator dense>
+            <q-item>
+              <q-item-section avatar>
+                <q-icon name="warehouse" color="brown" />
+              </q-item-section>
+              <q-item-section>Almacén Central</q-item-section>
+              <q-item-section side>
+                <q-badge :color="productStockSelected.cantidadAlmacen > 0 ? 'green' : 'red'">
+                  {{ productStockSelected.cantidadAlmacen || 0 }}
+                </q-badge>
+              </q-item-section>
+            </q-item>
+
+            <q-item v-for="agencia in agencias" :key="agencia.id">
+              <q-item-section avatar>
+                <q-icon name="store" color="indigo" />
+              </q-item-section>
+              <q-item-section>{{ agencia.nombre }}</q-item-section>
+              <q-item-section side>
+                <q-badge :color="(productStockSelected['cantidadSucursal'+agencia.id] || 0) > 0 ? 'blue' : 'grey'">
+                  {{ productStockSelected['cantidadSucursal'+agencia.id] || 0 }}
+                </q-badge>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Cerrar" color="indigo" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
@@ -324,8 +474,12 @@ export default {
       agencia_id: parseInt(localStorage.getItem('agencia_id')),
       agenciaNombre: '',
       pedidoDialog: false,
+      proveedorFiltro: null,
 
-      // NUEVO: Añadido proveedor_id al objeto pedido
+      // Variables para ver stock global
+      dialogStock: false,
+      productStockSelected: {},
+
       pedido: {
         solicitante: '',
         observacion: '',
@@ -333,7 +487,15 @@ export default {
         vendedor_id: null
       },
 
-      // NUEVO: Variables para proveedores
+      // VARIABLES PARA EL VENDEDOR
+      dialogVendedor: false,
+      loadingVendedor: false,
+      nuevoVendedor: {
+        nombre: '',
+        celular: ''
+      },
+
+      // Variables para proveedores
       proveedores: [],
       proveedoresAll: [],
       vendedores: [],
@@ -348,7 +510,7 @@ export default {
       loading: false,
       products: [],
       totalProducts: 0,
-      agencias: [],
+      agencias: [], // Lista de agencias para el dialogo de stock
       productosPedido: [], // Carrito de pedidos
       category: 0,
       categories: [
@@ -384,6 +546,11 @@ export default {
         total += parseInt(p.cantidadPedida || 0)
       })
       return total
+    },
+    nombreProveedorActual () {
+      if (!this.pedido.proveedor_id) return ''
+      const prov = this.proveedoresAll.find(p => p.id === this.pedido.proveedor_id)
+      return prov ? prov.nombreRazonSocial : ''
     }
   },
   async mounted () {
@@ -395,10 +562,16 @@ export default {
     this.categoriesGet()
     this.subcategoriesGet()
 
-    // NUEVO: Cargar proveedores
+    // Cargar proveedores
     this.proveedoresGet()
   },
   methods: {
+    // Método para ver stock global
+    verStockGlobal (product) {
+      this.productStockSelected = product
+      this.dialogStock = true
+    },
+
     // --- LÓGICA DE PROVEEDORES ---
     proveedoresGet () {
       this.$axios.get('providers').then(res => {
@@ -475,7 +648,6 @@ export default {
 
     // CLASES DINÁMICAS
     getProductCardClass (product) {
-      // Se eliminó la condición que devolvía 'cursor-not-allowed'
       return 'bg-white cursor-pointer'
     },
 
@@ -494,8 +666,6 @@ export default {
     },
 
     clickAddPedido (product) {
-      // SE ELIMINÓ LA RESTRICCIÓN DE STOCK 0
-
       const productoEnPedido = this.productosPedido.find(p => p.id === product.id)
 
       if (productoEnPedido) {
@@ -585,7 +755,6 @@ export default {
 
       this.loading = true
 
-      // Obtener la fecha actual en formato YYYY-MM-DD
       // Obtener fecha y hora real (Formato: YYYY-MM-DD HH:mm:ss)
       const fechaPedido = date.formatDate(Date.now(), 'YYYY-MM-DD HH:mm:ss')
 
@@ -646,7 +815,7 @@ export default {
     productsGet () {
       this.loading = true
       this.products = []
-      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}&subcategory=${this.subcategoria}`).then(res => {
+      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}&subcategory=${this.subcategoria}&proveedor=${this.proveedorFiltro || 0}`).then(res => {
         this.loading = false
         this.totalProducts = res.data.products.total
         this.last_page = res.data.products.last_page
@@ -659,6 +828,48 @@ export default {
       }).catch(err => {
         this.loading = false
         console.log(err)
+      })
+    },
+
+    // MÉTODOS DEL VENDEDOR RÁPIDO
+    abrirDialogoVendedor () {
+      if (!this.pedido.proveedor_id) {
+        this.$q.notify({
+          color: 'warning',
+          message: 'Primero debes seleccionar un Proveedor',
+          icon: 'warning'
+        })
+        return
+      }
+      // Limpiar formulario
+      this.nuevoVendedor = { nombre: '', celular: '' }
+      this.dialogVendedor = true
+    },
+
+    guardarNuevoVendedor () {
+      this.loadingVendedor = true
+
+      const payload = {
+        ...this.nuevoVendedor,
+        client_id: this.pedido.proveedor_id // Usamos el ID del proveedor seleccionado
+      }
+
+      this.$axios.post('vendedores', payload).then(res => {
+        const vendedorCreado = res.data
+
+        // 1. Agregarlo a la lista local de vendedores para que aparezca en el select
+        this.vendedores.push(vendedorCreado)
+
+        // 2. Preseleccionarlo automáticamente
+        this.pedido.vendedor_id = vendedorCreado.id
+
+        this.$alert.success('Vendedor creado y seleccionado')
+        this.dialogVendedor = false
+      }).catch(err => {
+        console.error(err)
+        this.$alert.error(err.response?.data?.message || 'Error al crear vendedor')
+      }).finally(() => {
+        this.loadingVendedor = false
       })
     }
   }

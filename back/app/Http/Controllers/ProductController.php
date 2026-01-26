@@ -263,26 +263,29 @@ class ProductController extends Controller
         // 1) Sanitización y defaults
         $search         = strtoupper((string) $request->input('search', ''));
         $searchLike     = $search === '' ? '%' : '%' . str_replace(' ', '%', $search) . '%';
-        $orderInput     = strtolower((string) $request->input('order', 'id desc')); // ej: "cantidad desc"
+        $orderInput     = strtolower((string) $request->input('order', 'id desc')); 
         $category_id    = (int) $request->input('category', 0);
         $sub_category_id= (int) $request->input('subcategory', 0);
         $agencia_id     = (int) $request->input('agencia', 0);
-        $paginate       = (int) $request->input('paginate', 30);
-        $paginate       = max(10, min($paginate, 100)); // límites sanos
+        
+        // --- NUEVO: Capturamos el proveedor ---
+        $proveedor_id   = (int) $request->input('proveedor', 0);
+        // --------------------------------------
 
-        // 2) Resolver columna de cantidad por agencia de forma SEGURA
+        $paginate       = (int) $request->input('paginate', 30);
+        $paginate       = max(10, min($paginate, 100)); 
+
+        // 2) Resolver columna de cantidad por agencia
         $sucursalColumn = $agencia_id > 0 ? "cantidadSucursal{$agencia_id}" : "cantidadAlmacen";
-        // Whitelist de columnas de cantidad permitidas (por si usas varias agencias)
         $cantidadColumnsWhitelist = array_merge(
             ['cantidadAlmacen'],
-            array_map(fn($n) => "cantidadSucursal{$n}", range(1, 50)) // ajusta rango según tu esquema
+            array_map(fn($n) => "cantidadSucursal{$n}", range(1, 50))
         );
         if (!in_array($sucursalColumn, $cantidadColumnsWhitelist, true)) {
             $sucursalColumn = 'cantidadAlmacen';
         }
 
-        // 3) Resolver orden seguro (columna + dirección)
-        //    Permitimos: id, precio, cantidad (usa $sucursalColumn), nombre
+        // 3) Resolver orden seguro
         $allowedBase = ['id', 'precio', 'cantidad', 'nombre'];
         $parts = preg_split('/\s+/', trim($orderInput));
         $base  = $parts[0] ?? 'id';
@@ -316,10 +319,22 @@ class ProductController extends Controller
         if ($sub_category_id !== 0) {
             $query->where('subcategory_id', $sub_category_id);
         }
-        // Nota: este where evita columnas inválidas y mantiene el plan de index
         if ($agencia_id !== 0) {
             $query->where($sucursalColumn, '>=', 0);
         }
+
+        // --- LÓGICA DE FILTRO POR ÚLTIMO PROVEEDOR ---
+        if ($proveedor_id !== 0) {
+            // Buscamos products donde la subconsulta (la última compra) tenga este proveedor_id
+            $query->whereRaw('
+                (SELECT proveedor_id 
+                 FROM buys 
+                 WHERE buys.product_id = products.id 
+                 ORDER BY created_at DESC, id DESC 
+                 LIMIT 1) = ?
+            ', [$proveedor_id]);
+        }
+        // ---------------------------------------------
 
         // 5) Orden seguro
         $query->orderBy($orderColumn, $dir);
@@ -327,23 +342,28 @@ class ProductController extends Controller
         // 6) Paginación
         $products = $query->paginate($paginate);
 
-        // 7) Costo total correcto según agencia/almacén
-        //    SUM(costo * cantidadElegida)
+        // 7) Costo total correcto (Aplicando los mismos filtros)
         $costoTotalRow = Product::query()
             ->when($category_id !== 0, fn($q) => $q->where('category_id', $category_id))
             ->when($sub_category_id !== 0, fn($q) => $q->where('subcategory_id', $sub_category_id))
+            // Aplicamos el mismo filtro de proveedor al total
+            ->when($proveedor_id !== 0, fn($q) => $q->whereRaw('
+                (SELECT proveedor_id 
+                 FROM buys 
+                 WHERE buys.product_id = products.id 
+                 ORDER BY created_at DESC, id DESC 
+                 LIMIT 1) = ?
+            ', [$proveedor_id]))
             ->where('nombre', 'like', $searchLike)
             ->selectRaw("SUM(costo * {$sucursalColumn}) as costo_total")
             ->first();
 
         $costoTotal = (float) ($costoTotalRow->costo_total ?? 0);
 
-        // 8) Post-proceso de imagen (fallback) — opcional:
-        $products->getCollection()->transform(function ($product) use ($sucursalColumn, $agencia_id) {
-            // cantidad visible para el front
+        // 8) Post-proceso de imagen
+        $products->getCollection()->transform(function ($product) use ($sucursalColumn) {
             $product->cantidad = $product->{$sucursalColumn} ?? 0;
 
-            // fallback de imagen (evita file_exists por cada item si es caro)
             if (empty($product->imagen) || !is_file(public_path('images/' . $product->imagen))) {
                 $product->imagen = 'productDefault.jpg';
             }
@@ -353,7 +373,7 @@ class ProductController extends Controller
         return response()->json([
             'products'   => $products,
             'costoTotal' => $costoTotal,
-            'order'      => "{$orderColumn} {$dir}",   // útil para depurar en el front (no loguea en stderr)
+            'order'      => "{$orderColumn} {$dir}",
         ]);
     }
     public function store(StoreProductRequest $request)

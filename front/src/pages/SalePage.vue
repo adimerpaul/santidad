@@ -74,24 +74,21 @@
                   <q-card @click="clickAddSale(p)" class="q-pa-xs" flat bordered
                           :class="getProductCardClass(p)">
                     <q-img
-                      :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`"
-                      width="100%"
-                      height="100px"
-                      fit="contain"
-                    >
-                        <q-badge color="red" floating style="padding: 10px 10px 5px 5px;margin: 0px" v-if="p.porcentaje">
-                          {{p.porcentaje}}%
-                        </q-badge>
-                        <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">
-                          {{$filters.capitalize(p.nombre)}}
-                        </div>
-                        <q-badge v-if="p.cantidadPedida>0" color="yellow-9" floating :label="p.cantidadPedida" style="padding: 5px"/>
+                    :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`"
+                    width="100%"
+                    height="160px"
+                    fit="contain"
+                    class="bg-white q-pa-sm"
+                  >
+                  <q-badge color="red" floating style="padding: 5px 8px; margin: 0px" v-if="p.porcentaje">
+                      -{{p.porcentaje}}%
+                    </q-badge>
 
-                        <!-- Badge de sin stock -->
-                        <q-badge v-if="p.cantidadReal <= 0" color="red" floating style="padding: 5px; margin: 5px">
-                          SIN STOCK
-                        </q-badge>
-                      </q-img>
+                    <div class="absolute-bottom text-center text-subtitle2"
+                         style="padding: 4px 0px; line-height: 1.1; background: rgba(0,0,0,0.6);">
+                      {{$filters.capitalize(p.nombre)}}
+                    </div>
+                  </q-img>
                       <q-card-section class="q-pa-none q-ma-none">
                         <div class="text-center text-subtitle2">
                           {{ p.precio }}

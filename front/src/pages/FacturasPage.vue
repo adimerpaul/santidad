@@ -274,10 +274,13 @@
                 @update:model-value="() => {
                   const selected = proveedoresAll.find(p => p.nombreRazonSocial === form.proveedor)
                   if (selected && selected.vendedores) {
-                    vendedores = selected.vendedores.map(v => v.nombre)
+                    vendedores = selected.vendedores // <--- CAMBIO: Guardar el array de objetos, no solo nombres
                   } else {
                     vendedores = []
                   }
+                  // Limpiar vendedor si cambia proveedor
+                  form.vendedor = ''
+                  form.vendedor_id = null
                 }"
               />
 <!--              <pre>{{form.proveedor}}</pre>-->
@@ -286,12 +289,21 @@
 <!--              <q-input v-model="form.vendedor" label="Vendedor" outlined dense />-->
 <!--              <pre>{{vendedores}}</pre>-->
               <q-select
-                v-model="form.vendedor"
+                v-model="form.vendedor_id"
                 :options="vendedores"
                 label="Vendedor"
                 outlined
                 dense
                 clearable
+                option-label="nombre"
+                option-value="id"
+                emit-value
+                map-options
+                @update:model-value="(val) => {
+                   // Buscar el nombre basado en el ID seleccionado para guardarlo en form.vendedor (string)
+                   const vend = vendedores.find(v => v.id === val);
+                   form.vendedor = vend ? vend.nombre : '';
+                }"
               />
             </div>
           </div>
@@ -507,7 +519,7 @@
             <tr>
               <th>Producto</th>
               <th>Lote</th>
-              <th>Cantidad</th>
+              <th>Vendedor</th> <th>Cantidad</th>
               <th>Precio Unit.</th>
               <th>Subtotal</th>
               <th>Vencimiento</th>
@@ -517,6 +529,7 @@
             <tr v-for="(compra, index) in detalleFactura.buys" :key="index">
               <td>{{ compra.product?.nombre || 'Producto no encontrado' }}</td>
               <td>{{ compra.lote }}</td>
+              <td>{{ compra.vendedor?.nombre || '-' }}</td>
               <td>{{ compra.quantity }}</td>
               <td>{{ formatCurrency(compra.price/1.3) }}</td>
               <td>{{ formatCurrency(compra.quantity * compra.price/1.3) }}</td>
@@ -571,6 +584,8 @@ export default {
       facturaSeleccionada: null,
       facturaEnPago: null,
       detalleFactura: null,
+      vendedor_id: null, // <--- AGREGA ESTO
+      fecha_compra: date.formatDate(new Date(), 'YYYY-MM-DDTHH:mm'),
       montoPago: 0,
       metodoPagoSeleccionado: 'Efectivo',
       referenciaPago: '',
