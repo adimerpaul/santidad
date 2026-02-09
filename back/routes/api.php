@@ -29,6 +29,7 @@ use App\Http\Controllers\PedidoController;
 
 // --- Notificaciones (públicas si así lo quieres) ---
 Route::get('/notificaciones/{agencia}', [NotificacionController::class, 'index']);
+Route::get('/notificaciones-enviadas/{agencia}', [NotificacionController::class, 'enviadas']);
 Route::put('/notificaciones/{id}/leer', [NotificacionController::class, 'marcarComoLeida']);
 
 Route::get('distribuidoras-list', [ProductController::class, 'getDistribuidoras']);

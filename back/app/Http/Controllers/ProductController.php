@@ -531,6 +531,7 @@ class ProductController extends Controller
 
         Notificacion::create([
             'agencia_id' => $agencia_destino,
+            'agencia_origen_id' => $origen ? $origen->id : null,
             'mensaje' => $mensaje,
             'detalle' => json_encode($productos),
             'leida' => false

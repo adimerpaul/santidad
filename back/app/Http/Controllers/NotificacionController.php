@@ -33,4 +33,23 @@ class NotificacionController extends Controller
         $notif->save();
         return response()->json(['message' => 'Notificación marcada como leída']);
     }
+    public function enviadas(Request $request, $agencia_id)
+    {
+        $query = Notificacion::query();
+
+        if (empty($agencia_id) || $agencia_id == 0 || $agencia_id === 'null') {
+            $query->whereNull('agencia_origen_id');
+        } else {
+            $query->where('agencia_origen_id', $agencia_id);
+        }
+
+        // MODIFICACIÓN AQUÍ: Agregamos ->with('agencia')
+        $notificaciones = $query->with('agencia') 
+                                ->orderBy('created_at', 'desc')
+                                ->paginate(15);
+
+        return response()->json([
+            'listado' => $notificaciones
+        ]);
+    }
 }

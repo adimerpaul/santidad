@@ -31,59 +31,75 @@
               {{ conteoNoLeidas }}
             </q-badge>
 
-            <q-menu ref="menuNotificaciones">
-              <q-list style="min-width: 320px">
+            <q-menu ref="menuNotificaciones" @show="getNotificacionesEnviadas(1)">
+              <q-list style="min-width: 340px; max-width: 340px">
 
-                <q-item-label header class="row justify-between items-center">
-                  <span>Notificaciones</span>
-                  <span class="text-caption text-grey">Pág. {{ pagination.current_page }}</span>
+                <q-item-label header class="q-pa-sm bg-grey-1">
+                  <q-btn-toggle
+                    v-model="tabNotificaciones"
+                    spread no-caps dense
+                    toggle-color="primary"
+                    color="white" text-color="grey-8"
+                    :options="[
+                      {label: 'Recibidas', value: 'recibidas'},
+                      {label: 'Enviadas', value: 'enviadas'}
+                    ]"
+                  />
                 </q-item-label>
-
                 <q-separator />
 
-                <q-item
-                  v-for="(notif, index) in notificaciones"
-                  :key="index"
-                  clickable
-                  v-ripple
-                  @click="abrirNotificacion(notif)"
-                  style="border-bottom: 1px solid #f5f5f5"
-                >
-                  <q-item-section avatar style="min-width: 30px; padding-right:0">
-                    <q-icon name="circle" :color="!notif.leida ? 'green' : 'grey-3'" size="10px" />
-                  </q-item-section>
+                <div v-if="tabNotificaciones === 'recibidas'">
+                  <div v-if="notificaciones.length > 0">
+                    <q-item
+                      v-for="(notif, i) in notificaciones" :key="'in-'+i"
+                      clickable v-ripple
+                      @click="abrirNotificacion(notif, 'recibida')"
+                      class="q-py-sm"
+                    >
+                      <q-item-section avatar style="min-width: 20px; padding-right: 10px;">
+                        <q-icon name="circle" :color="!notif.leida ? 'green' : 'grey-3'" size="10px" />
+                      </q-item-section>
+                      <q-item-section>
+                        <div style="font-size: 13px; line-height: 1.3;">{{ notif.mensaje }}</div>
+                        <div class="text-caption text-grey-6">{{ formatDate(notif.created_at) }}</div>
+                      </q-item-section>
+                    </q-item>
+                  </div>
+                  <div v-else class="q-pa-md text-center text-grey">Sin notificaciones recibidas</div>
+                  <div class="row justify-between q-pa-sm bg-grey-1">
+                    <q-btn flat dense size="sm" icon="chevron_left" :disable="pagination.current_page <= 1" @click.stop="cambiarPagina(pagination.current_page - 1)" />
+                    <span class="text-caption q-pt-xs">Pág {{ pagination.current_page }}</span>
+                    <q-btn flat dense size="sm" icon="chevron_right" :disable="pagination.current_page >= pagination.last_page" @click.stop="cambiarPagina(pagination.current_page + 1)" />
+                  </div>
+                </div>
 
-                  <q-item-section>
-                    <div style="font-size: 13px; line-height: 1.2;">{{ notif.mensaje }}</div>
-                    <div class="text-caption text-grey-6" style="font-size: 11px;">
-                      {{ formatDate(notif.created_at) }}
-                    </div>
-                  </q-item-section>
-                </q-item>
+                <div v-else>
+                  <div v-if="notificacionesEnviadas.length > 0">
+                    <q-item
+                      v-for="(notif, i) in notificacionesEnviadas" :key="'out-'+i"
+                      clickable v-ripple
+                      @click="abrirNotificacion(notif, 'enviada')"
+                      class="q-py-sm"
+                    >
+                      <q-item-section avatar style="min-width: 20px; padding-right: 10px;">
+                        <q-icon name="arrow_outward" color="blue-grey" size="16px" />
+                      </q-item-section>
+                      <q-item-section>
+                        <div style="font-size: 13px; line-height: 1.3;">
+                          <span class="text-grey-7">Para: </span>
+                          <b>{{ notif.agencia ? notif.agencia.nombre : 'Destino desconocido' }}</b>
+                        </div>
+                        <div class="text-caption text-grey-6">{{ formatDate(notif.created_at) }}</div>
+                      </q-item-section>
+                    </q-item>
+                  </div>
+                  <div v-else class="q-pa-md text-center text-grey">No has enviado nada aún</div>
 
-                <q-item v-if="notificaciones.length === 0">
-                  <q-item-section class="text-center text-grey q-pa-md">
-                    Sin notificaciones aquí
-                  </q-item-section>
-                </q-item>
-
-                <q-separator />
-
-                <div class="row justify-between q-pa-sm bg-grey-1">
-                  <q-btn
-                    dense flat size="sm"
-                    icon="chevron_left"
-                    label="Anterior"
-                    :disable="pagination.current_page <= 1"
-                    @click.stop="cambiarPagina(pagination.current_page - 1)"
-                  />
-                  <q-btn
-                    dense flat size="sm"
-                    icon-right="chevron_right"
-                    label="Siguiente"
-                    :disable="pagination.current_page >= pagination.last_page"
-                    @click.stop="cambiarPagina(pagination.current_page + 1)"
-                  />
+                  <div class="row justify-between q-pa-sm bg-grey-1">
+                    <q-btn flat dense size="sm" icon="chevron_left" :disable="paginationEnviadas.current_page <= 1" @click.stop="getNotificacionesEnviadas(paginationEnviadas.current_page - 1)" />
+                    <span class="text-caption q-pt-xs">Pág {{ paginationEnviadas.current_page }}</span>
+                    <q-btn flat dense size="sm" icon="chevron_right" :disable="paginationEnviadas.current_page >= paginationEnviadas.last_page" @click.stop="getNotificacionesEnviadas(paginationEnviadas.current_page + 1)" />
+                  </div>
                 </div>
 
               </q-list>
@@ -338,6 +354,12 @@ export default {
     return {
       leftDrawerOpen: false,
       notificaciones: [],
+      tabNotificaciones: 'recibidas', // Para controlar la pestaña activa
+      notificacionesEnviadas: [], // Array para las enviadas
+      paginationEnviadas: { // Paginación independiente para enviadas
+        current_page: 1,
+        last_page: 1
+      },
       conteoNoLeidas: 0,
       prevNotificacionesIds: new Set(),
       pagination: {
@@ -444,84 +466,6 @@ export default {
       }
     },
 
-    abrirNotificacion (notif) {
-      this.notificacionActiva = notif
-
-      // Formateo con fecha y hora: "5 de mayo del 2025, 14:30"
-      const formatDate = iso => {
-        const d = new Date(iso)
-        const day = d.getDate()
-        const month = d.toLocaleDateString('es-ES', { month: 'long' })
-        const year = d.getFullYear()
-        const hours = String(d.getHours()).padStart(2, '0')
-        const mins = String(d.getMinutes()).padStart(2, '0')
-        return `${day} de ${month} del ${year}, ${hours}:${mins}`
-      }
-
-      let mensaje = `
-        <div style="font-size:16px;margin-bottom:8px;">
-          <b>${notif.mensaje}</b>
-        </div>
-        <div style="color:#777;font-size:12px;margin-bottom:12px;">
-          Fecha: ${formatDate(notif.created_at)}
-        </div>
-      `
-      try {
-        const productos = JSON.parse(notif.detalle)
-
-        if (productos.length > 0) {
-          // Encabezado de productos
-          mensaje += '<div style="margin-bottom: 10px;"><b>Productos recibidos:</b></div>'
-
-          // Tabla para alinear la información
-          mensaje += '<div style="max-height: 300px; overflow-y: auto;"><table style="width: 100%; border-collapse: collapse;">'
-
-          productos.forEach(p => {
-            mensaje += `
-              <tr style="border-bottom: 1px solid #eaeaea;">
-                <td style="padding: 8px 0;">
-                  <span style="display: flex; align-items: start;">
-                    <span style="margin-right: 8px;">•</span>
-                    <span>
-                      <b>${p.nombre}</b> – ${p.cantidad} unidad${p.cantidad > 1 ? 'es' : ''}
-                      ${p.fechaVencimiento
-                        ? `<div style="color: #777; font-size: 12px; margin-top: 2px;">(Vence: ${p.fechaVencimiento})</div>`
-                        : ''}
-                    </span>
-                  </span>
-                </td>
-              </tr>
-            `
-          })
-
-          mensaje += '</table></div>'
-        } else {
-          mensaje += '<div style="color: #777;">Sin detalle de productos.</div>'
-        }
-      } catch (e) {
-        mensaje += '<div style="color: #c00;">Error al mostrar detalle.</div>'
-      }
-
-      this.$q.dialog({
-        html: true,
-        title: '📦 Transferencia recibida',
-        message: mensaje,
-        ok: {
-          label: 'Cerrar',
-          color: 'primary'
-        }
-      }).onOk(() => {
-        this.$axios.put(`/notificaciones/${notif.id}/leer`)
-          .then(() => {
-            const index = this.notificaciones.findIndex(n => n.id === notif.id)
-            if (index !== -1) {
-              this.notificaciones[index].leida = 1
-              this.notificaciones = [...this.notificaciones]
-            }
-          })
-      })
-    },
-
     // Nueva función para formatear fecha, para usar en template (lista)
     formatDate (iso) {
       const d = new Date(iso)
@@ -531,6 +475,87 @@ export default {
       const hours = String(d.getHours()).padStart(2, '0')
       const mins = String(d.getMinutes()).padStart(2, '0')
       return `${day} de ${month} del ${year}, ${hours}:${mins}`
+    },
+    // ... tus otros métodos ...
+
+    // NUEVO MÉTODO PARA OBTENER ENVIADAS
+    // PEGA ESTAS FUNCIONES DENTRO DE methods: { ... }
+
+    // 1. Obtener lista de ENVIADAS
+    getNotificacionesEnviadas (page = 1) {
+      const agencia = this.$store.agencia_id
+      this.$axios.get(`/notificaciones-enviadas/${agencia}?page=${page}`)
+        .then(res => {
+          const data = res.data
+          this.notificacionesEnviadas = data.listado.data
+          this.paginationEnviadas = {
+            current_page: data.listado.current_page,
+            last_page: data.listado.last_page,
+            total: data.listado.total
+          }
+        })
+        .catch(err => console.error('Error enviadas', err))
+    },
+
+    // 2. Función inteligente para mostrar detalle (Corrige el texto "Recibido")
+    abrirNotificacion (notif, tipo = 'recibida') {
+      this.notificacionActiva = notif
+
+      // Título y Texto dinámicos
+      const titulo = tipo === 'recibida' ? '📦 Transferencia recibida' : '📤 Transferencia enviada'
+      let textoPrincipal = ''
+      if (tipo === 'recibida') {
+        textoPrincipal = `<b>${notif.mensaje}</b>` // Muestra el mensaje original de la BD
+      } else {
+        // Si es ENVIADA, creamos nuestro propio mensaje usando la relación 'agencia'
+        const destinoName = notif.agencia ? notif.agencia.nombre : 'Destino desconocido'
+        textoPrincipal = `Has enviado productos a: <br><b style="font-size: 14px; color: #1976D2">${destinoName}</b>`
+      }
+
+      const formatDate = iso => {
+        const d = new Date(iso)
+        return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+      }
+
+      let mensaje = `
+        <div style="font-size:15px;margin-bottom:8px;">${textoPrincipal}</div>
+        <div style="color:#777;font-size:12px;margin-bottom:12px;">Fecha: ${formatDate(notif.created_at)}</div>
+      `
+
+      // Tabla de productos
+      try {
+        const productos = JSON.parse(notif.detalle)
+        if (productos.length > 0) {
+          mensaje += '<div style="margin-bottom: 5px;"><b>Detalle:</b></div>'
+          mensaje += '<div style="max-height: 250px; overflow-y: auto; border: 1px solid #eee; border-radius: 4px;">'
+          mensaje += '<table style="width: 100%; border-collapse: collapse;">'
+          productos.forEach(p => {
+            mensaje += `
+              <tr style="border-bottom: 1px solid #f0f0f0;">
+                <td style="padding: 8px;">
+                  <b>${p.nombre}</b> <br>
+                  <span style="color: #555; font-size: 12px;">${p.cantidad} unid. ${p.fechaVencimiento ? `(Vence: ${p.fechaVencimiento})` : ''}</span>
+                </td>
+              </tr>`
+          })
+          mensaje += '</table></div>'
+        }
+      } catch (e) { mensaje += '<div class="text-red">Error cargando detalle</div>' }
+
+      this.$q.dialog({
+        html: true,
+        title: titulo,
+        message: mensaje,
+        ok: { label: 'Cerrar', flat: true, color: 'primary' }
+      }).onOk(() => {
+        // Solo marcamos como leída si es recibida
+        if (tipo === 'recibida' && !notif.leida) {
+          this.$axios.put(`/notificaciones/${notif.id}/leer`).then(() => {
+            const idx = this.notificaciones.findIndex(n => n.id === notif.id)
+            if (idx !== -1) this.notificaciones[idx].leida = 1
+          })
+        }
+      })
     }
   }
 }
