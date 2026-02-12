@@ -553,6 +553,10 @@ export default {
           this.$axios.put(`/notificaciones/${notif.id}/leer`).then(() => {
             const idx = this.notificaciones.findIndex(n => n.id === notif.id)
             if (idx !== -1) this.notificaciones[idx].leida = 1
+            // --- NUEVO: Reducir el contador inmediatamente ---
+            if (this.conteoNoLeidas > 0) {
+              this.conteoNoLeidas--
+            }
           })
         }
       })

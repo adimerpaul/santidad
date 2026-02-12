@@ -356,18 +356,17 @@
                 </template>
 
                 <template v-slot:body-cell-stock_sucursales="props" v-if="esAdmin">
-                  <q-td :props="props">
-                    <div v-if="props.row.stock_sucursales?.length" class="q-gutter-xs">
-                      <q-badge
-                        v-for="stock in props.row.stock_sucursales"
-                        :key="stock.agencia_id"
-                        color="blue-2"
-                        text-color="blue-9"
-                      >
-                        {{ stock.agencia_nombre }}: {{ stock.stock }}
-                      </q-badge>
-                    </div>
-                    <div v-else class="text-grey">Sin datos</div>
+                  <q-td :props="props" class="text-center">
+                    <q-btn
+                      dense
+                      flat
+                      round
+                      icon="visibility"
+                      color="indigo"
+                      @click="verStockGlobal(props.row)"
+                    >
+                      <q-tooltip>Ver stock en sucursales</q-tooltip>
+                    </q-btn>
                   </q-td>
                 </template>
 
@@ -594,6 +593,48 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+        <q-dialog v-model="dialogStock">
+  <q-card style="min-width: 350px; max-width: 90vw;">
+    <q-card-section class="bg-indigo text-white row items-center">
+      <div class="text-h6 ellipsis">{{ productStockSelected.nombre }}</div>
+      <q-space />
+      <q-btn icon="close" flat round dense v-close-popup />
+    </q-card-section>
+
+    <q-card-section>
+      <div class="text-subtitle2 q-mb-sm text-center text-grey-8">Disponibilidad en Sucursales</div>
+      <q-list bordered separator dense>
+        <q-item>
+          <q-item-section avatar>
+            <q-icon name="warehouse" color="brown" />
+          </q-item-section>
+          <q-item-section>Almacén Central</q-item-section>
+          <q-item-section side>
+            <q-badge :color="productStockSelected.cantidadAlmacen > 0 ? 'green' : 'red'">
+              {{ productStockSelected.cantidadAlmacen || 0 }}
+            </q-badge>
+          </q-item-section>
+        </q-item>
+
+        <q-item v-for="agencia in agencias" :key="agencia.id">
+          <q-item-section avatar>
+            <q-icon name="store" color="indigo" />
+          </q-item-section>
+          <q-item-section>{{ agencia.nombre }}</q-item-section>
+          <q-item-section side>
+            <q-badge :color="(productStockSelected['cantidadSucursal'+agencia.id] || 0) > 0 ? 'blue' : 'grey'">
+              {{ productStockSelected['cantidadSucursal'+agencia.id] || 0 }}
+            </q-badge>
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-card-section>
+
+    <q-card-actions align="right">
+      <q-btn flat label="Cerrar" color="indigo" v-close-popup />
+    </q-card-actions>
+  </q-card>
+</q-dialog>
   </q-page>
 </template>
 
@@ -609,6 +650,8 @@ export default {
       detallesPedido: [],
       historialModificaciones: [],
       dialogDetalle: false,
+      dialogStock: false,
+      pproductStockSelected: {},
       dialogAccion: false,
       accionActual: '',
       observacionAccion: '',
@@ -758,10 +801,11 @@ export default {
     }
   },
 
-  mounted () {
+  async mounted () {
     this.inicializarFechas()
+    await this.cargarAgencias() // ← Agregar esta línea
     this.cargarAgenciasFiltro()
-    this.proveedoresGet() // Cargar la lista al iniciar
+    this.proveedoresGet()
     this.cargarPedidos()
   },
 
@@ -848,7 +892,8 @@ export default {
             ...d,
             accion_aplicada: accionGuardada,
             cantidad_aprobada: d.cantidad_aprobada !== undefined ? d.cantidad_aprobada : d.cantidad,
-            accion_recomendada: accionGuardada || 'COMPRAR',
+            // CAMBIO: Forzamos 'COMPRAR' para que siempre sea el valor por defecto en el select
+            accion_recomendada: 'COMPRAR',
             stock_sucursales: []
           }
         })
@@ -865,11 +910,28 @@ export default {
       const promesas = this.detallesPedido.map(async (detalle) => {
         try {
           const resStock = await this.$axios.get(`products/${detalle.product_id}/stock-sucursales`)
-          detalle.stock_sucursales = resStock.data
+
+          // 🔥 TRANSFORMACIÓN: Convertir array a propiedades
+          const stockArray = resStock.data
+
+          // Agregar las propiedades directamente al producto
+          stockArray.forEach(sucursal => {
+            if (sucursal.agencia_id === 1) {
+              // Si es almacén (ID 1)
+              detalle.product.cantidadAlmacen = sucursal.stock
+            } else {
+              // Si es una sucursal
+              detalle.product['cantidadSucursal' + sucursal.agencia_id] = sucursal.stock
+            }
+          })
+
+          // Guardar también el array original por si lo necesitas
+          detalle.stock_sucursales = stockArray
         } catch (error) {
-          // Silencio
+          console.error('Error cargando stock:', error)
         }
       })
+
       await Promise.all(promesas)
 
       try {
@@ -1006,7 +1068,23 @@ export default {
 
       this.dialogAccion = true
     },
-
+    async cargarStockProducto (productId) {
+      try {
+        const { data } = await this.$axios.get(`products/${productId}/stock-sucursales`)
+        this.productoStockSeleccionado.stock_sucursales = data
+      } catch (error) {
+        console.error('Error cargando stock:', error)
+        this.productoStockSeleccionado.stock_sucursales = []
+      }
+    },
+    async cargarAgencias () {
+      try {
+        const res = await this.$axios.get('agencias')
+        this.agencias = res.data
+      } catch (error) {
+        console.error('Error cargando agencias:', error)
+      }
+    },
     aplicarFiltros () {
       this.pagination.page = 1
       this.cargarPedidos()
@@ -1134,6 +1212,11 @@ export default {
       // Abrir WhatsApp
       const url = `https://wa.me/${celular}?text=${encodeURIComponent(texto)}`
       window.open(url, '_blank')
+    },
+    // Método CORREGIDO para HistorialPedidos
+    verStockGlobal (detalle) {
+      this.productStockSelected = detalle.product // ← Usar el mismo nombre
+      this.dialogStock = true
     }
   }
 }

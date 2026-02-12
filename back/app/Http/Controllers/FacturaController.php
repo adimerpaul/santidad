@@ -126,7 +126,7 @@ class FacturaController extends Controller
                 $factura->registrarPago(
                     $request->monto_total,
                     $request->metodo_pago,
-                    $request->referencia_pago,
+                    $request->numero_transaccion,
                     $request->vendedor,
                     'Pago automático por compra al contado'
                 );

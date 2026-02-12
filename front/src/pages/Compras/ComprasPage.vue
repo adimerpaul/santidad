@@ -77,7 +77,7 @@
                     class="bg-white q-pa-sm"
                   >
                   <q-badge color="red" floating style="padding: 5px 8px; margin: 0px" v-if="p.porcentaje">
-                      -{{p.porcentaje}}%
+                      {{p.porcentaje}}%
                     </q-badge>
 
                     <div class="absolute-bottom text-center text-subtitle2"

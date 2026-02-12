@@ -74,21 +74,33 @@
                   <q-card @click="clickAddSale(p)" class="q-pa-xs" flat bordered
                           :class="getProductCardClass(p)">
                     <q-img
-                    :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`"
-                    width="100%"
-                    height="160px"
-                    fit="contain"
-                    class="bg-white q-pa-sm"
-                  >
-                  <q-badge color="red" floating style="padding: 5px 8px; margin: 0px" v-if="p.porcentaje">
-                      -{{p.porcentaje}}%
-                    </q-badge>
+                        :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`"
+                        width="100%"
+                        height="160px"
+                        fit="contain"
+                        class="bg-white q-pa-sm"
+                        :style="p.cantidadReal <= 0 ? 'filter: grayscale(100%); opacity: 0.8;' : ''"
+                      >
+                        <q-badge color="red" floating style="padding: 5px 8px; margin: 0px" v-if="p.porcentaje">
+                          {{p.porcentaje}}%
+                        </q-badge>
 
-                    <div class="absolute-bottom text-center text-subtitle2"
-                         style="padding: 4px 0px; line-height: 1.1; background: rgba(0,0,0,0.6);">
-                      {{$filters.capitalize(p.nombre)}}
-                    </div>
-                  </q-img>
+                        <div v-if="p.cantidadReal <= 0" class="absolute-full flex flex-center" style="background: rgba(255, 255, 255, 0.2);">
+                          <q-badge
+                            color="red-10"
+                            text-color="white"
+                            class="text-bold shadow-5 q-pa-xs"
+                            style="font-size: 14px; transform: rotate(-12deg); border: 2px solid white; padding: 4px 8px;"
+                          >
+                            <q-icon name="do_not_disturb_on" class="q-mr-xs"/> AGOTADO
+                          </q-badge>
+                        </div>
+
+                        <div class="absolute-bottom text-center text-subtitle2"
+                            style="padding: 4px 0px; line-height: 1.1; background: rgba(0,0,0,0.6);">
+                          {{$filters.capitalize(p.nombre)}}
+                        </div>
+                      </q-img>
                       <q-card-section class="q-pa-none q-ma-none">
                         <div class="text-center text-subtitle2">
                           {{ p.precio }}

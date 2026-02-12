@@ -144,7 +144,8 @@
           bordered
           dense
           :loading="loading"
-          :pagination="pagination"
+          v-model:pagination="pagination"
+          :rows-per-page-options="[10, 25, 50, 100]"
           @request="onRequest"
         >
           <template v-slot:body-cell-numero_factura="props">
@@ -674,7 +675,15 @@ export default {
       }
     },
     onRequest (props) {
-      this.pagination = props.pagination
+      const { page, rowsPerPage, sortBy, descending } = props.pagination
+
+      // 1. Actualizamos TU objeto pagination con los nuevos valores de la tabla
+      this.pagination.page = page
+      this.pagination.rowsPerPage = rowsPerPage
+      this.pagination.sortBy = sortBy
+      this.pagination.descending = descending
+
+      // 2. Pedimos los datos al servidor con la nueva paginación
       this.cargarFacturas()
     },
     async cargarFacturas () {
@@ -682,9 +691,9 @@ export default {
       try {
         const params = {
           page: this.pagination.page,
-          per_page: this.pagination.rowsPerPage,
+          per_page: this.pagination.rowsPerPage, // Enviamos 10, 50 o 100
           sort_by: this.pagination.sortBy,
-          descending: this.pagination.descending,
+          descending: this.pagination.descending ? 1 : 0,
           agencia_id: this.agenciaSeleccionada,
           proveedor: this.filtroProveedor,
           numero_factura: this.filtroNumero,
@@ -693,10 +702,15 @@ export default {
         }
 
         const response = await this.$axios.get('facturas', { params })
+
+        // 1. Asignamos los datos (filas)
         this.facturas = response.data.data
-        this.pagination.rowsNumber = response.data.total
-        this.pagination.page = response.data.current_page
-        this.pagination.rowsPerPage = response.data.per_page
+
+        // 2. ACTUALIZAMOS LA PAGINACIÓN con la respuesta del servidor
+        // Convertimos a Number por seguridad
+        this.pagination.rowsNumber = Number(response.data.total)
+        this.pagination.rowsPerPage = Number(response.data.per_page)
+        this.pagination.page = Number(response.data.current_page)
 
         // Cargar resumen
         await this.cargarResumen()
