@@ -391,7 +391,7 @@ export default {
   mounted () {
     this.getNotificaciones(1)
     // Revisar nuevas notificaciones cada 60 seg (solo buscando alertas nuevas)
-    setInterval(() => this.getNotificaciones(1, true), 60000)
+    setInterval(() => this.getNotificaciones(1, true), 120000)
   },
   methods: {
     logout () {
@@ -416,37 +416,57 @@ export default {
     // --- PEGAR ESTO EN METHODS ---
 
     // Función optimizada para cargar por páginas
+    // Función optimizada para cargar por páginas y notificar novedades
+    // Función optimizada para cargar por páginas y alertar en tiempo real
     getNotificaciones (page = 1, isBackgroundCheck = false) {
       const agencia = this.$store.agencia_id
       const paginaSolicitada = isBackgroundCheck ? 1 : page
 
-      this.$axios.get(`/notificaciones/${agencia}?page=${paginaSolicitada}`)
+      // 🕒 NUEVO: Generamos una marca de tiempo única (Cache Buster)
+      const timeStamp = new Date().getTime()
+
+      // 🔥 NUEVO: Añadimos &_t=12345678... a la URL para obligar a descargar los datos frescos siempre
+      this.$axios.get(`/notificaciones/${agencia}?page=${paginaSolicitada}&_t=${timeStamp}`)
         .then(res => {
           const data = res.data
+          const nuevosItems = data.listado.data
 
-          // 1. Actualizamos el número rojo del badge
+          // 1. Siempre actualizamos el número rojo EXACTO
           this.conteoNoLeidas = data.total_no_leidas
 
-          // 2. Si estamos en página 1, verificamos si hay algo nuevo para lanzar alerta visual
+          // 2. Si pedimos la página 1, SIEMPRE actualizamos la lista visible
+          // (incluso si es en segundo plano). Así, al abrir la campana, los datos están listos sin F5.
           if (paginaSolicitada === 1) {
-            const nuevosItems = data.listado.data
-            const hayNuevas = nuevosItems.some(n => !this.prevNotificacionesIds.has(n.id) && !n.leida)
-
-            if (hayNuevas && this.prevNotificacionesIds.size > 0) {
-              this.$q.notify({
-                type: 'info',
-                color: 'primary',
-                icon: 'notifications_active',
-                message: '📦 ¡Tienes nuevas notificaciones!',
-                position: 'top-right'
-              })
+            this.notificaciones = nuevosItems
+            this.pagination = {
+              current_page: data.listado.current_page,
+              last_page: data.listado.last_page,
+              total: data.listado.total
             }
-            nuevosItems.forEach(n => this.prevNotificacionesIds.add(n.id))
-          }
 
-          // 3. Si no es chequeo de fondo, actualizamos la lista visible
-          if (!isBackgroundCheck) {
-            this.notificaciones = data.listado.data
+            // 3. DETECTOR DE ALERTAS: Solo lanza el aviso visual si ya cargó antes (size > 0)
+            if (isBackgroundCheck && this.prevNotificacionesIds.size > 0) {
+              // Filtramos las que NO estén en nuestra memoria Y que NO estén leídas
+              const alertasNuevas = nuevosItems.filter(n => !this.prevNotificacionesIds.has(n.id) && (n.leida === 0 || n.leida === false))
+
+              if (alertasNuevas.length > 0) {
+                this.$q.notify({
+                  type: 'info',
+                  color: 'primary',
+                  icon: 'notifications_active',
+                  message: `📦 ¡Tienes ${alertasNuevas.length} transferencia(s) nueva(s)!`,
+                  position: 'top-right'
+                })
+              }
+            }
+
+            // 4. Guardamos los IDs actuales en la memoria para compararlos en los próximos 10 segundos
+            nuevosItems.forEach(n => {
+              this.prevNotificacionesIds.add(n.id)
+            })
+          } else {
+            // Si el usuario navegó a la pág 2 o 3 manualmente
+            this.notificaciones = nuevosItems
             this.pagination = {
               current_page: data.listado.current_page,
               last_page: data.listado.last_page,

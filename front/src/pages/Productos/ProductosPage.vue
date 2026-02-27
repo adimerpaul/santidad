@@ -127,7 +127,7 @@
                       {{p.porcentaje}}%
                     </q-badge>
                     <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">
-                      {{$filters.capitalize(p.nombre)}}
+                      {{p.nombre}}
                     </div>
                   </q-img>
                   <q-card-section class="q-pa-none q-ma-none">

@@ -98,7 +98,7 @@
 
                         <div class="absolute-bottom text-center text-subtitle2"
                             style="padding: 4px 0px; line-height: 1.1; background: rgba(0,0,0,0.6);">
-                          {{$filters.capitalize(p.nombre)}}
+                          {{p.nombre}}
                         </div>
                       </q-img>
                       <q-card-section class="q-pa-none q-ma-none">

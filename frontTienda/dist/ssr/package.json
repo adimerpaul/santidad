@@ -1,0 +1,30 @@
+{
+  "name": "fronttienda",
+  "version": "0.0.1",
+  "description": "Santidad Divina",
+  "author": "adimerpaul <adimer101@gmail.com>",
+  "private": true,
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@quasar/extras": "1.16.5",
+    "axios": "1.4.0",
+    "pinia": "2.1.6",
+    "quasar": "2.12.3",
+    "swiper": "11.2.10",
+    "vue": "3.3.4",
+    "vue-router": "4.2.4",
+    "compression": "^1.7.4",
+    "express": "^4.17.3",
+    "serialize-javascript": "^6.0.0"
+  },
+  "engines": {
+    "node": "^18 || ^16 || ^14.19",
+    "npm": ">= 6.13.4",
+    "yarn": ">= 1.21.1"
+  },
+  "quasar": {
+    "ssr": true
+  }
+}

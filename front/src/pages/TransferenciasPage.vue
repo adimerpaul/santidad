@@ -69,26 +69,48 @@
                           dense
                           flat
                           no-caps
-                          class="bg-green-2 text-green-9 text-bold"
-                          label="Agregar de Almacén"
+                          :class="p.cantidadAlmacen > 0 ? 'bg-green-2 text-green-9 text-bold' : 'bg-red-2 text-red-9 text-bold'"
+                          :label="p.cantidadAlmacen > 0 ? 'Agregar de Almacén' : 'Almacén sin Stock'"
                           @click="clickAddTransferAlmacen(p)"
+                          :disable="p.cantidadAlmacen <= 0"
                         />
                         <div class="text-caption text-grey">Stock almacén: {{ p.cantidadAlmacen }}</div>
                       </div>
+
                       <q-img
                         :src="p.imagen.includes('http') ? p.imagen : `${$url}../images/${p.imagen}`"
                         width="100%"
-                        height="100px"
+                        height="160px"
+                        fit="contain"
+                        class="bg-white q-pa-sm"
                         @click="clickAddTransfer(p)"
+                        :style="p.cantidad <= 0 ? 'filter: grayscale(100%); opacity: 0.8; cursor: not-allowed;' : 'cursor: pointer;'"
                       >
-                        <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px; line-height: 1;">
+                        <q-badge color="red" floating style="padding: 5px 8px; margin: 0px" v-if="p.porcentaje">
+                          {{ p.porcentaje }}%
+                        </q-badge>
+
+                        <div v-if="p.cantidad <= 0" class="absolute-full flex flex-center" style="background: rgba(255, 255, 255, 0.2);">
+                          <q-badge
+                            color="red-10"
+                            text-color="white"
+                            class="text-bold shadow-5 q-pa-xs"
+                            style="font-size: 14px; transform: rotate(-12deg); border: 2px solid white; padding: 4px 8px;"
+                          >
+                            <q-icon name="do_not_disturb_on" class="q-mr-xs"/> AGOTADO
+                          </q-badge>
+                        </div>
+
+                        <div class="absolute-bottom text-center text-subtitle2"
+                            style="padding: 4px 0px; line-height: 1.1; background: rgba(0,0,0,0.6);">
                           {{ p.nombre }}
                         </div>
                       </q-img>
+
                       <q-card-section class="q-pa-none q-ma-none">
                         <div class="text-center text-subtitle2">{{ p.precio }} Bs</div>
                         <div :class="p.cantidad <= 0 ? 'text-center text-bold text-red' : 'text-center text-bold'">
-                          {{ p.cantidad }} disponibles
+                          {{ p.cantidad }} {{ $q.screen.lt.md ? 'Dis' : 'Disponible' }}
                         </div>
                       </q-card-section>
                     </q-card>

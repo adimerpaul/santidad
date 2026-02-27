@@ -13,7 +13,7 @@
           class="hero-swiper"
         >
           <SwiperSlide v-for="(c,i) in carousels" :key="i">
-            <img :src="`${$url}../images/${c.image}`" alt="" />
+            <img :src="`${$url}../images/${c.image}`" alt="ferta Farmacia Santidad Divina" />
           </SwiperSlide>
         </Swiper>
       </div>
@@ -176,13 +176,13 @@
           navigation pagination
         >
           <SwiperSlide v-for="(b, i) in carouselsMedio" :key="'ban-'+i">
-            <img :src="`${$url}../images/${b.image}`" alt="Banner" class="banner-imagen" />
+            <img :src="`${$url}../images/${b.image}`" alt="Promociones Especiales Farmacia" class="banner-imagen" />
             <div class="banner-overlay"></div>
           </SwiperSlide>
         </Swiper>
       </template>
       <template v-else>
-        <img src="/images/banner.jpg" alt="Banner" class="banner-imagen" />
+        <img src="/images/banner.jpg" alt="Descuentos en Medicamentos" class="banner-imagen" />
         <div class="banner-overlay"></div>
       </template>
     </div>
@@ -288,6 +288,7 @@
 </template>
 
 <script>
+import { useMeta } from 'quasar'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Autoplay, Navigation, Pagination } from 'swiper/modules'
 import 'swiper/css'
@@ -297,6 +298,17 @@ import 'swiper/css/pagination'
 export default {
   name: 'IndexPage',
   components: { Swiper, SwiperSlide },
+  setup () {
+    useMeta({
+      title: 'Inicio',
+      titleTemplate: title => `${title} - Farmacias Santidad Divina`,
+      meta: {
+        description: { name: 'description', content: 'Bienvenido a Farmacias Santidad Divina. Explora nuestro catálogo de medicamentos, ofertas especiales y sucursales.' },
+        keywords: { name: 'keywords', content: 'farmacia inicio, comprar medicamentos, ofertas farmacia' },
+        equiv: { 'http-equiv': 'Content-Type', content: 'text/html; charset=UTF-8' }
+      }
+    })
+  },
   data () {
     return {
       slide: 0,

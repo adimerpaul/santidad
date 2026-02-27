@@ -454,92 +454,84 @@ class ProductController extends Controller
 
     public function transferenciasMultiples(Request $request)
     {
-        // -----------------------------------------------------
-        // 🛡️ BLOQUEO ANTI-DUPLICADOS (RACE CONDITION)
-        // -----------------------------------------------------
-        // Verificamos solo el PRIMER producto. Si ese ya se envió hace 5 segundos,
-        // asumimos que toda la lista es un duplicado (doble clic).
-        if (!empty($request->productos)) {
-            $primerProducto = $request->productos[0];
-            $agenciaOrigen = $request->agencia_origen_id;
-            $agenciaDestino = $request->agencia_destino_id;
-
-            // Ajuste: a veces el origen viene dentro del item como 'almacen'
-            if (isset($primerProducto['origen']) && $primerProducto['origen'] === 'almacen') {
-                $agenciaOrigen = null; // En la BD, Almacén suele ser NULL
-            }
-
-            $duplicado = TransferHistory::where('user_id', $request->user()->id)
-                ->where('agencia_id_origen', $agenciaOrigen)
-                ->where('agencia_id_destino', $agenciaDestino)
-                ->where('producto_id', $primerProducto['id'])
-                ->where('cantidad', $primerProducto['cantidad'])
-                ->where('created_at', '>', now()->subSeconds(5)) // <--- LA CLAVE
-                ->first();
-
-            if ($duplicado) {
-                return response()->json(['message' => 'Transferencia ya procesada (Duplicado evitado)']);
-            }
-        }
-        // -----------------------------------------------------
-
         $productos = $request->productos;
+        
+        if (empty($productos)) {
+            return response()->json(['message' => 'No hay productos para transferir'], 400);
+        }
+
         $agencia_origen = $request->agencia_origen_id;
         $agencia_destino = $request->agencia_destino_id;
 
-        foreach ($productos as $item) {
-            $producto = Product::find($item['id']);
-            $cantidad = $item['cantidad'];
-            $fecha = $item['fechaVencimiento'] ?? null;
-            $origen = $item['origen'] ?? 'sucursal';
+        try {
+            // ✅ SOLUCIÓN: Envolver todo el proceso en DB::transaction()
+            DB::transaction(function () use ($productos, $agencia_origen, $agencia_destino, $request) {
+                
+                foreach ($productos as $item) {
+                    $producto = Product::find($item['id']);
+                    if (!$producto) {
+                        throw new \Exception("El producto no existe.");
+                    }
 
-            if ($origen === 'almacen') {
-                if ($producto->cantidadAlmacen < $cantidad) {
-                    return response()->json([
-                        'message' => "No hay suficiente stock en almacén para el producto: " . $producto->nombre
-                    ], 400);
+                    $cantidad = $item['cantidad'];
+                    $fecha = $item['fechaVencimiento'] ?? null;
+                    $origen = $item['origen'] ?? 'sucursal';
+
+                    if ($origen === 'almacen') {
+                        // Verificamos stock en almacén
+                        if ($producto->cantidadAlmacen < $cantidad) {
+                            // 🚨 Al lanzar la excepción, Laravel cancela TODO el foreach automáticamente
+                            throw new \Exception("No hay suficiente stock en almacén para: " . $producto->nombre);
+                        }
+                        
+                        $producto->cantidadAlmacen -= $cantidad;
+                        $campo_destino = 'cantidadSucursal' . $agencia_destino;
+                        $producto->$campo_destino += $cantidad;
+                        
+                        $this->transferHistoryCreate(null, $agencia_destino, $producto->id, $cantidad, $fecha, $request);
+                    
+                    } else {
+                        $campo_origen = 'cantidadSucursal' . $agencia_origen;
+                        $campo_destino = 'cantidadSucursal' . $agencia_destino;
+                        
+                        // Verificamos stock en sucursal
+                        if ($producto->$campo_origen < $cantidad) {
+                            // 🚨 Al lanzar la excepción, Laravel cancela TODO el foreach automáticamente
+                            throw new \Exception("No hay suficiente stock en la sucursal origen para: " . $producto->nombre);
+                        }
+                        
+                        $producto->$campo_origen -= $cantidad;
+                        $producto->$campo_destino += $cantidad;
+                        
+                        $this->transferHistoryCreate($agencia_origen, $agencia_destino, $producto->id, $cantidad, $fecha, $request);
+                    }
+                    
+                    // Guardamos el producto. Si más adelante otro producto falla, esto se revertirá.
+                    $producto->save();
                 }
 
-                $producto->cantidadAlmacen -= $cantidad;
-                $campo_destino = 'cantidadSucursal' . $agencia_destino;
-                $producto->$campo_destino += $cantidad;
+                // 🔔 Si el ciclo terminó sin excepciones, creamos la notificación final
+                $origenModel = Agencia::find($agencia_origen);
+                $origenNombre = $origenModel ? $origenModel->nombre : 'Almacén Central';
 
-                $this->transferHistoryCreate(null, $agencia_destino, $producto->id, $cantidad, $fecha, $request);
-            } else {
-                $campo_origen = 'cantidadSucursal' . $agencia_origen;
-                $campo_destino = 'cantidadSucursal' . $agencia_destino;
+                Notificacion::create([
+                    'agencia_id' => $agencia_destino,
+                    'agencia_origen_id' => $origenModel ? $origenModel->id : null,
+                    'mensaje' => "Has recibido una transferencia de productos desde: $origenNombre.",
+                    'detalle' => json_encode($productos),
+                    'leida' => false
+                ]);
+            });
 
-                if ($producto->$campo_origen < $cantidad) {
-                    return response()->json([
-                        'message' => "No hay suficiente stock en la sucursal origen para el producto: " . $producto->nombre
-                    ], 400);
-                }
+            // Si salimos de DB::transaction sin errores, respondemos éxito al frontend
+            return response()->json(['message' => 'Transferencia múltiple exitosa']);
 
-                $producto->$campo_origen -= $cantidad;
-                $producto->$campo_destino += $cantidad;
-
-                $this->transferHistoryCreate($agencia_origen, $agencia_destino, $producto->id, $cantidad, $fecha, $request);
-            }
-
-            $producto->save();
+        } catch (\Exception $e) {
+            // ❌ Capturamos el error (Ej: "No hay suficiente stock...") y lo enviamos al frontend
+            // Laravel ya deshizo cualquier cambio en la base de datos en este punto.
+            return response()->json(['message' => $e->getMessage()], 400);
         }
-
-        $origen = Agencia::find($agencia_origen);
-        $origenNombre = $origen ? $origen->nombre : 'Almacén Central';
-
-        $mensaje = "Has recibido una transferencia de productos desde: $origenNombre.";
-
-        Notificacion::create([
-            'agencia_id' => $agencia_destino,
-            'agencia_origen_id' => $origen ? $origen->id : null,
-            'mensaje' => $mensaje,
-            'detalle' => json_encode($productos),
-            'leida' => false
-        ]);
-
-        return response()->json(['message' => 'Transferencia múltiple exitosa']);
     }
-
     public  function agregarSucursal(Request $request)
     {
         $product = Product::find($request->id);
