@@ -218,21 +218,6 @@
       </div>
     </div>
 
-    <!-- ===== Sticky CTA móvil ===== -->
-    <div class="sticky-cta glass soft-shadow" v-if="!loading">
-      <div class="sticky-price">
-        <div class="label">Total</div>
-        <div class="value">Bs. {{ total }}</div>
-      </div>
-      <div class="sticky-actions">
-        <div class="sticky-stepper">
-          <q-btn round dense icon="remove" color="primary" @click="decCantidad" :disable="cantidad <= 1" />
-          <div class="sticky-qty">{{ cantidad }}</div>
-          <q-btn round dense icon="add" color="primary" @click="incCantidad" :disable="availableStock <= 0 || cantidad >= availableStock" />
-        </div>
-        <q-btn class="grad-btn" icon="add_shopping_cart" label="Añadir" no-caps @click="addCarrito(product, cantidad)" :disable="availableStock === 0" />
-      </div>
-    </div>
   </q-page>
 </template>
 
@@ -274,22 +259,10 @@ export default {
   // Meta base (se sobreescribe imperativamente luego)
   setup () {
     const route = useRoute()
-    const baseTitle = 'Santidad Divina | Farmacia Santidad Divina'
     const canonical = new URL(route.path || '/', SITE).toString()
 
     useMeta({
-      title: baseTitle,
-      meta: {
-        description: { name: 'description', content: 'Compra este producto en Farmacia Santidad Divina. Entrega rápida y precios solidarios.' },
-        robots: { name: 'robots', content: 'index, follow, max-image-preview:large' },
-        'og:type': { property: 'og:type', content: 'product' },
-        'og:title': { property: 'og:title', content: baseTitle },
-        'og:description': { property: 'og:description', content: 'Compra este producto en Farmacia Santidad Divina. Entrega rápida y precios solidarios.' },
-        'og:site_name': { property: 'og:site_name', content: 'Farmacia Santidad Divina' },
-        'og:locale': { property: 'og:locale', content: 'es_BO' },
-        'og:url': { property: 'og:url', content: canonical },
-        'twitter:card': { name: 'twitter:card', content: 'summary_large_image' }
-      },
+      title: 'Farmacia Santidad Divina',
       link: { canonical: { rel: 'canonical', href: canonical } }
     })
 
@@ -408,6 +381,19 @@ export default {
       }
       link.setAttribute('href', href)
     },
+    // ===== NUEVO: preload de imagen LCP =====
+    ensurePreloadImg (href) {
+      // Elimina preload anterior si existía (al navegar entre productos)
+      const old = document.head.querySelector('link[rel="preload"][as="image"][data-product-img]')
+      if (old) old.remove()
+      if (!href) return
+      const link = document.createElement('link')
+      link.setAttribute('rel', 'preload')
+      link.setAttribute('as', 'image')
+      link.setAttribute('href', href)
+      link.setAttribute('data-product-img', '1')
+      document.head.appendChild(link)
+    },
     setJsonLd (id, obj) {
       let s = document.getElementById(id)
       if (!s) {
@@ -424,63 +410,151 @@ export default {
       const desc = this.seoDescFrom(p)
       const img = this.abs(p?.imagen)
       const canonical = new URL(this.$route.path || '/', SITE).toString()
+      const price = String(p?.precio ?? '')
+      const inStock = (Number(this.availableStock) > 0)
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock'
+      const inStockFb = (Number(this.availableStock) > 0) ? 'in stock' : 'out of stock'
 
       // <title>
       document.title = title
 
       // Meta básicos
       this.ensureMetaName('description', desc)
-      this.ensureMetaName('keywords', ['farmacia', 'medicamento', 'salud', 'Bolivia', p?.nombre, p?.marca, p?.composicion].filter(Boolean).join(', '))
       this.ensureMetaName('robots', 'index, follow, max-image-preview:large')
       this.ensureMetaName('author', 'Farmacia Santidad Divina')
       this.ensureMetaName('publisher', 'Farmacia Santidad Divina')
 
-      // Open Graph
+      // Open Graph base
       this.ensureMetaProp('og:site_name', 'Farmacia Santidad Divina')
       this.ensureMetaProp('og:locale', 'es_BO')
       this.ensureMetaProp('og:type', 'product')
       this.ensureMetaProp('og:title', title)
       this.ensureMetaProp('og:description', desc)
-      this.ensureMetaProp('og:image', img)
-      this.ensureMetaProp('og:image:secure_url', img)
       this.ensureMetaProp('og:url', canonical)
 
-      // Twitter
+      // Open Graph imagen con dimensiones explícitas (mejora WhatsApp / Facebook)
+      this.ensureMetaProp('og:image', img)
+      this.ensureMetaProp('og:image:secure_url', img)
+      this.ensureMetaProp('og:image:type', 'image/jpeg')
+      this.ensureMetaProp('og:image:width', '800')
+      this.ensureMetaProp('og:image:height', '600')
+      this.ensureMetaProp('og:image:alt', p?.nombre || 'Producto')
+
+      // Open Graph producto — precio y disponibilidad visible en Facebook/Instagram
+      this.ensureMetaProp('product:price:amount', price)
+      this.ensureMetaProp('product:price:currency', 'BOB')
+      this.ensureMetaProp('product:availability', inStockFb)
+      this.ensureMetaProp('product:brand', p?.marca || 'Farmacia Santidad Divina')
+      if (p?.sku) {
+        this.ensureMetaProp('product:retailer_item_id', String(p.sku))
+      }
+
+      // Twitter / X
       this.ensureMetaName('twitter:card', 'summary_large_image')
       this.ensureMetaName('twitter:title', title)
       this.ensureMetaName('twitter:description', desc)
       this.ensureMetaName('twitter:image', img)
+      this.ensureMetaName('twitter:image:alt', p?.nombre || 'Producto')
 
       // Canonical
       this.ensureCanonical(canonical)
 
+      // Preload imagen LCP (mejora Core Web Vitals)
+      this.ensurePreloadImg(img)
+
       // JSON-LD Product
-      this.setJsonLd('ld-product', {
+      const ldProduct = {
         '@context': 'https://schema.org',
         '@type': 'Product',
         name: p?.nombre || 'Producto',
         description: desc,
         image: [img],
-        sku: p?.sku || undefined,
-        brand: p?.marca ? { '@type': 'Brand', name: p.marca } : undefined,
         offers: {
           '@type': 'Offer',
           priceCurrency: 'BOB',
-          price: String(p?.precio ?? ''),
-          availability: (Number(p?.stock) || 0) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-          url: canonical
+          price: price,
+          availability: inStock,
+          url: canonical,
+          seller: {
+            '@type': 'Organization',
+            name: 'Farmacia Santidad Divina'
+          }
         }
-      })
+      }
+      if (p?.sku) ldProduct.sku = String(p.sku)
+      if (p?.marca) {
+        ldProduct.brand = { '@type': 'Brand', name: p.marca }
+      }
 
-      // JSON-LD Breadcrumbs
+      this.setJsonLd('ld-product', ldProduct)
+
+      // JSON-LD BreadcrumbList corregido (posiciones 1 → 2 → 3 sin salto)
+      const breadcrumbItems = [
+        { '@type': 'ListItem', position: 1, name: 'Inicio', item: SITE }
+      ]
+      if (p?.categoria || p?.subcategoria) {
+        breadcrumbItems.push({
+          '@type': 'ListItem',
+          position: 2,
+          name: p.subcategoria || p.categoria || 'Categoría',
+          item: SITE
+        })
+        breadcrumbItems.push({
+          '@type': 'ListItem',
+          position: 3,
+          name: p?.nombre || 'Producto',
+          item: canonical
+        })
+      } else {
+        breadcrumbItems.push({
+          '@type': 'ListItem',
+          position: 2,
+          name: p?.nombre || 'Producto',
+          item: canonical
+        })
+      }
+
       this.setJsonLd('ld-breadcrumbs', {
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Inicio', item: SITE },
-          { '@type': 'ListItem', position: 3, name: p?.nombre || 'Producto', item: canonical }
-        ]
+        itemListElement: breadcrumbItems
       })
+
+      // JSON-LD Pharmacy / LocalBusiness (sucursales)
+      if (this.sucursales && this.sucursales.length > 0) {
+        const departments = this.sucursales.map(s => ({
+          '@type': 'Pharmacy',
+          name: s.nombre || 'Farmacia Santidad Divina',
+          address: {
+            '@type': 'PostalAddress',
+            streetAddress: s.direccion || '',
+            addressLocality: 'Oruro',
+            addressRegion: 'Oruro',
+            addressCountry: 'BO'
+          }
+        }))
+
+        this.setJsonLd('ld-localbusiness', {
+          '@context': 'https://schema.org',
+          '@type': 'Pharmacy',
+          name: 'Farmacia Santidad Divina',
+          url: SITE,
+          logo: `${SITE}/images/logo.png`,
+          image: `${SITE}/images/logo.png`,
+          telephone: '+59172319869',
+          address: {
+            '@type': 'PostalAddress',
+            addressLocality: 'Oruro',
+            addressRegion: 'Oruro',
+            addressCountry: 'BO'
+          },
+          department: departments,
+          sameAs: [
+            'https://wa.me/59172319869'
+          ]
+        })
+      }
     },
     // ==== /SEO helpers ====
 
@@ -779,7 +853,13 @@ export default {
       if (String(p.id) === String(this.id)) return
       this.$router.push('/detalle-producto/' + p.id + '/' + this.slugify(p.nombre))
     },
-    slugify (text) { return String(text).replace(/ |\/|\./g, '-').replace(/,/g, '') },
+    slugify (text) {
+      return String(text)
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+    },
 
     // ===== Cantidad =====
     onCantidadBlur () {
@@ -939,22 +1019,6 @@ export default {
 /* ===== Skeleton ===== */
 .skeleton-media{ height:300px; border-radius:16px; }
 
-/* ===== Sticky CTA móvil ===== */
-.sticky-cta{
-  position: fixed; left: 50%; transform: translateX(-50%);
-  bottom: 14px; width: min(92vw, 1100px);
-  display: none; align-items:center; justify-content:space-between;
-  padding:10px 12px; border-radius:16px; z-index: 999;
-}
-.sticky-price .label{ font-size:12px; color:#64748b; font-weight:700; }
-.sticky-price .value{ font-size:18px; font-weight:900; color:#0F172A; }
-.sticky-actions{ display:flex; align-items:center; gap:10px; }
-.sticky-stepper{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:999px; background:rgba(255,255,255,.7); }
-.sticky-qty{ min-width:28px; text-align:center; font-weight:800; }
-
 .big-cta{ height: 44px; font-weight: 800; letter-spacing: .2px; }
 
-@media (max-width: 768px){
-  .sticky-cta{ display:flex; }
-}
 </style>

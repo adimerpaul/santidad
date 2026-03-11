@@ -69,22 +69,49 @@
                 <div class="row cursor-pointer" v-if="products.length>0">
                   <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
                     <q-card @click="clickAddSale(p)" class="q-pa-xs" flat bordered>
-                      <q-img
-                    :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`"
-                    width="100%"
-                    height="160px"
-                    fit="contain"
-                    class="bg-white q-pa-sm"
-                  >
-                  <q-badge color="red" floating style="padding: 5px 8px; margin: 0px" v-if="p.porcentaje">
-                      {{p.porcentaje}}%
-                    </q-badge>
+                    <q-img
+                        :src="p.imagen.includes('http') ? p.imagen : `${$url}../images/${p.imagen}`"
+                        width="100%"
+                        height="160px"
+                        fit="contain"
+                        class="bg-white q-pa-sm"
+                        style="transition: all 0.2s ease;"
+                        :style="$store.productosCompra.find(item => item.id === p.id) ? 'border: 3px solid #21ba45;' : ''"
+                      >
+                        <q-badge color="red" floating style="padding: 5px 8px; margin: 0px; z-index: 15;" v-if="p.porcentaje">
+                          {{p.porcentaje}}%
+                        </q-badge>
 
-                    <div class="absolute-bottom text-center text-subtitle2"
-                         style="padding: 4px 0px; line-height: 1.1; background: rgba(0,0,0,0.6);">
-                      {{p.nombre}}
-                    </div>
-                  </q-img>
+                        <q-badge
+                          color="positive"
+                          text-color="white"
+                          v-if="$store.productosCompra.find(item => item.id === p.id)"
+                          style="position: absolute; top: 24px; right: -4px; padding: 5px 8px; margin: 0px; font-weight: bold; font-size: 12px; z-index: 15;"
+                          class="shadow-2"
+                        >
+                          {{ $store.productosCompra.find(item => item.id === p.id)?.cantidadCompra }}
+                        </q-badge>
+
+                        <q-badge
+                          color="black"
+                          text-color="white"
+                          v-if="p.cantidad <= 0"
+                          style="position: absolute; top: -4px; left: -4px; padding: 5px 8px; margin: 0px; font-weight: bold; font-size: 11px; z-index: 15;"
+                        >
+                          SIN STOCK
+                        </q-badge>
+
+                        <div
+                          v-if="$store.productosCompra.find(item => item.id === p.id)"
+                          class="absolute-full"
+                          style="background: rgba(33, 186, 69, 0.10); z-index: 5;"
+                        ></div>
+
+                        <div class="absolute-bottom text-center text-subtitle2"
+                            style="padding: 4px 0px; line-height: 1.1; background: rgba(0,0,0,0.6); z-index: 10;">
+                          {{p.nombre}}
+                        </div>
+                      </q-img>
                       <q-card-section class="q-pa-none q-ma-none">
                         <div class="text-center text-subtitle2">
                           {{ p.precio }}

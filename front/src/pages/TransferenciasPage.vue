@@ -76,36 +76,65 @@
                         />
                         <div class="text-caption text-grey">Stock almacén: {{ p.cantidadAlmacen }}</div>
                       </div>
-
-                      <q-img
-                        :src="p.imagen.includes('http') ? p.imagen : `${$url}../images/${p.imagen}`"
-                        width="100%"
-                        height="160px"
-                        fit="contain"
-                        class="bg-white q-pa-sm"
-                        @click="clickAddTransfer(p)"
-                        :style="p.cantidad <= 0 ? 'filter: grayscale(100%); opacity: 0.8; cursor: not-allowed;' : 'cursor: pointer;'"
-                      >
-                        <q-badge color="red" floating style="padding: 5px 8px; margin: 0px" v-if="p.porcentaje">
-                          {{ p.porcentaje }}%
-                        </q-badge>
-
-                        <div v-if="p.cantidad <= 0" class="absolute-full flex flex-center" style="background: rgba(255, 255, 255, 0.2);">
-                          <q-badge
-                            color="red-10"
-                            text-color="white"
-                            class="text-bold shadow-5 q-pa-xs"
-                            style="font-size: 14px; transform: rotate(-12deg); border: 2px solid white; padding: 4px 8px;"
-                          >
-                            <q-icon name="do_not_disturb_on" class="q-mr-xs"/> AGOTADO
+                          <q-img
+                          :src="p.imagen.includes('http') ? p.imagen : `${$url}../images/${p.imagen}`"
+                          width="100%"
+                          height="160px"
+                          fit="contain"
+                          class="bg-white q-pa-sm"
+                          @click="clickAddTransfer(p)"
+                          style="transition: all 0.2s ease;"
+                          :style="
+                            carrito.find(item => item.id === p.id)
+                              ? (carrito.find(item => item.id === p.id).origen === 'almacen'
+                                  ? 'border: 3px solid #1976d2; cursor: pointer;'
+                                  : 'border: 3px solid #21ba45; cursor: pointer;')
+                              : (p.cantidad <= 0 ? 'cursor: not-allowed;' : 'cursor: pointer;')
+                          "
+                        >
+                          <q-badge color="red" floating style="padding: 5px 8px; margin: 0px; z-index: 15;" v-if="p.porcentaje">
+                            {{ p.porcentaje }}%
                           </q-badge>
-                        </div>
 
-                        <div class="absolute-bottom text-center text-subtitle2"
-                            style="padding: 4px 0px; line-height: 1.1; background: rgba(0,0,0,0.6);">
-                          {{ p.nombre }}
-                        </div>
-                      </q-img>
+                          <q-badge
+                            :color="carrito.find(item => item.id === p.id)?.origen === 'almacen' ? 'primary' : 'positive'"
+                            text-color="white"
+                            v-if="carrito.find(item => item.id === p.id)"
+                            style="position: absolute; top: 24px; right: -4px; padding: 5px 8px; margin: 0px; font-weight: bold; font-size: 12px; z-index: 15;"
+                            class="shadow-2"
+                          >
+                            <q-icon
+                              :name="carrito.find(item => item.id === p.id)?.origen === 'almacen' ? 'warehouse' : 'storefront'"
+                              size="12px"
+                              class="q-mr-xs"
+                            />
+                            {{ carrito.find(item => item.id === p.id)?.cantidad }}
+                          </q-badge>
+
+                          <q-badge
+                            color="black"
+                            text-color="white"
+                            v-if="p.cantidad <= 0"
+                            style="position: absolute; top: -4px; left: -4px; padding: 5px 8px; margin: 0px; font-weight: bold; font-size: 11px; z-index: 15;"
+                          >
+                            SIN STOCK
+                          </q-badge>
+
+                          <div
+                            v-if="carrito.find(item => item.id === p.id)"
+                            class="absolute-full"
+                            :style="
+                              carrito.find(item => item.id === p.id)?.origen === 'almacen'
+                                ? 'background: rgba(25, 118, 210, 0.15); z-index: 5;'
+                                : 'background: rgba(33, 186, 69, 0.10); z-index: 5;'
+                            "
+                          ></div>
+
+                          <div class="absolute-bottom text-center text-subtitle2"
+                              style="padding: 4px 0px; line-height: 1.1; background: rgba(0,0,0,0.6); z-index: 10;">
+                            {{ p.nombre }}
+                          </div>
+                        </q-img>
 
                       <q-card-section class="q-pa-none q-ma-none">
                         <div class="text-center text-subtitle2">{{ p.precio }} Bs</div>
