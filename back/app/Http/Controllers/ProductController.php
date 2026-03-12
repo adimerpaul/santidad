@@ -544,18 +544,43 @@ class ProductController extends Controller
     }
 
     public function update(UpdateProductRequest $request, Product $product)
-    {
-        $request->merge(['nombre' => strtoupper($request->nombre)]);
-        $request->merge(['paisOrigen' => strtoupper($request->paisOrigen)]);
-        $request->merge(['marca' => strtoupper($request->marca)]);
-        $request->merge(['distribuidora' => strtoupper($request->distribuidora)]);
-        $request->merge(['cantidad' => $request->cantidad]);
+{
+    // 1. Preparamos los datos básicos
+    $data = $request->all();
+    $data['nombre'] = strtoupper($request->nombre);
+    $data['paisOrigen'] = strtoupper($request->paisOrigen);
+    $data['marca'] = strtoupper($request->marca);
+    $data['distribuidora'] = strtoupper($request->distribuidora);
 
-        // 🔧 Normaliza activo/en_oferta (si viene activo=INACTIVO, en_oferta debe ir false)
-        $this->normalizeActivoAndOferta($request);
-
-        return $product->update($request->all());
+    // 2. SOLUCIÓN AL ERROR DE STOCK:
+    // El frontend manda en 'cantidad' el stock de la sucursal (por el index).
+    // Para no arruinar el total global, recalculamos la suma real:
+    
+    // Empezamos con lo que haya en Almacén (si viene en el request o lo que ya tenía el producto)
+    $totalReal = (float)$request->input('cantidadAlmacen', $product->cantidadAlmacen);
+    
+    // Sumamos dinámicamente todas las sucursales (del 1 al 10 o las que tengas)
+    // Esto asegura que 'cantidad' siempre sea la suma de sus partes y nunca 0 por error.
+    for ($i = 1; $i <= 10; $i++) {
+        $columna = "cantidadSucursal$i";
+        if ($request->has($columna)) {
+            $totalReal += (float)$request->input($columna);
+        } else {
+            // Si el request no trae la sucursal, mantenemos lo que ya había en la DB
+            $totalReal += (float)$product->$columna;
+        }
     }
+
+    // Sobreescribimos el valor de 'cantidad' con la suma VERDADERA
+    $data['cantidad'] = $totalReal;
+
+    // 3. Seguimos con tu lógica normal
+    $this->normalizeActivoAndOferta($request);
+
+    $product->update($data);
+    
+    return $product;
+}
 
     public function destroy(Product $product)
     {

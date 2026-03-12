@@ -159,7 +159,15 @@
                          :class="`bg-${props.row.tipoVenta=='Ingreso'?'green':'red'}-2`" dense flat
                          style="padding: 0px; margin: 0px; border-radius: 0px;position: absolute;top: 5px;left: 0px;"/>
                   <div style="padding-left: 15px">
-                    <div class="text-grey q-ml-xs" style="width: 400px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.concepto }}</div>
+                    <div class="text-grey q-ml-xs" style="width: 400px; line-height: 0.9;">
+                      <span v-for="(item, i) in props.row.concepto.split(',')" :key="i">
+                        <span class="text-weight-bold text-primary" style="font-size: 11px;">
+                          {{ item.trim().match(/^\d+/)?.[0] }}x
+                        </span>
+                        <span style="font-size: 12px;" class="text-grey-8">{{ item.trim().replace(/^\d+/, '') }}</span>
+                        <span v-if="i < props.row.concepto.split(',').length - 1" class="text-grey-3"> | </span>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </q-td>
