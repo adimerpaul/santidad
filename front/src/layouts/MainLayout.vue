@@ -1,7 +1,7 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
-    <q-header class="bg-white text-black">
-      <q-toolbar>
+  <q-layout view="lHh Lpr lFf" class="bg-grey-2">
+    <q-header class="bg-blue-grey-10 text-grey-2">
+      <q-toolbar class="q-px-sm q-py-xs">
         <q-btn
           flat
           dense
@@ -10,353 +10,211 @@
           aria-label="Menu"
           @click="leftDrawerOpen = !leftDrawerOpen"
         />
-        <q-toolbar-title style="line-height: 0.7;padding: 0;margin: 0">
-          <div class="text-bold" style="line-height: 0.7;padding: 0;margin: 0">
-            {{ $store.user.name }} <br>
-            <q-chip
-              dense
-              size="10px"
-              v-if="$store.user.agencia"
-              class="bg-primary text-white text-subtitle2 text-bold"
-            >
-            {{$store.user.agencia.nombre}}
-          </q-chip>
-            <span class="text-caption">{{ $version }}</span>
+
+        <q-toolbar-title class="q-ml-sm">
+          <div class="row items-center no-wrap q-col-gutter-sm">
+            <div class="col-auto">
+              <q-avatar size="38px" color="blue-grey-8" text-color="white" icon="local_pharmacy" />
+            </div>
+            <div class="col">
+              <div class="text-weight-bold text-body2 ellipsis">
+                {{ $store.user.name || 'Panel administrativo' }}
+              </div>
+              <div class="row items-center q-gutter-xs">
+                <q-chip
+                  v-if="$store.user.agencia"
+                  dense
+                  square
+                  size="11px"
+                  color="blue-grey-7"
+                  text-color="white"
+                  icon="apartment"
+                >
+                  {{ $store.user.agencia.nombre }}
+                </q-chip>
+                <span class="text-caption text-grey-5">v{{ $version }}</span>
+              </div>
+            </div>
           </div>
         </q-toolbar-title>
-        <div>
-          <q-btn flat dense icon="notifications" color="primary">
 
-            <q-badge v-if="conteoNoLeidas > 0" color="red" floating>
-              {{ conteoNoLeidas }}
-            </q-badge>
+        <q-btn flat dense round icon="notifications_none" color="grey-3">
+          <q-badge v-if="conteoNoLeidas > 0" color="red" floating>
+            {{ conteoNoLeidas }}
+          </q-badge>
 
-            <q-menu ref="menuNotificaciones" @show="getNotificacionesEnviadas(1)">
-              <q-list style="min-width: 340px; max-width: 340px">
+          <q-menu ref="menuNotificaciones" @show="getNotificacionesEnviadas(1)">
+            <q-list style="min-width: 340px; max-width: 340px">
+              <q-item-label header class="q-pa-sm bg-grey-1">
+                <q-btn-toggle
+                  v-model="tabNotificaciones"
+                  spread
+                  no-caps
+                  dense
+                  toggle-color="primary"
+                  color="white"
+                  text-color="grey-8"
+                  :options="[
+                    { label: 'Recibidas', value: 'recibidas' },
+                    { label: 'Enviadas', value: 'enviadas' }
+                  ]"
+                />
+              </q-item-label>
+              <q-separator />
 
-                <q-item-label header class="q-pa-sm bg-grey-1">
-                  <q-btn-toggle
-                    v-model="tabNotificaciones"
-                    spread no-caps dense
-                    toggle-color="primary"
-                    color="white" text-color="grey-8"
-                    :options="[
-                      {label: 'Recibidas', value: 'recibidas'},
-                      {label: 'Enviadas', value: 'enviadas'}
-                    ]"
-                  />
-                </q-item-label>
-                <q-separator />
-
-                <div v-if="tabNotificaciones === 'recibidas'">
-                  <div v-if="notificaciones.length > 0">
-                    <q-item
-                      v-for="(notif, i) in notificaciones" :key="'in-'+i"
-                      clickable v-ripple
-                      @click="abrirNotificacion(notif, 'recibida')"
-                      class="q-py-sm"
-                    >
-                      <q-item-section avatar style="min-width: 20px; padding-right: 10px;">
-                        <q-icon name="circle" :color="!notif.leida ? 'green' : 'grey-3'" size="10px" />
-                      </q-item-section>
-                      <q-item-section>
-                        <div style="font-size: 13px; line-height: 1.3;">{{ notif.mensaje }}</div>
-                        <div class="text-caption text-grey-6">{{ formatDate(notif.created_at) }}</div>
-                      </q-item-section>
-                    </q-item>
-                  </div>
-                  <div v-else class="q-pa-md text-center text-grey">Sin notificaciones recibidas</div>
-                  <div class="row justify-between q-pa-sm bg-grey-1">
-                    <q-btn flat dense size="sm" icon="chevron_left" :disable="pagination.current_page <= 1" @click.stop="cambiarPagina(pagination.current_page - 1)" />
-                    <span class="text-caption q-pt-xs">Pág {{ pagination.current_page }}</span>
-                    <q-btn flat dense size="sm" icon="chevron_right" :disable="pagination.current_page >= pagination.last_page" @click.stop="cambiarPagina(pagination.current_page + 1)" />
-                  </div>
+              <div v-if="tabNotificaciones === 'recibidas'">
+                <div v-if="notificaciones.length > 0">
+                  <q-item
+                    v-for="(notif, i) in notificaciones"
+                    :key="'in-' + i"
+                    clickable
+                    v-ripple
+                    class="q-py-sm"
+                    @click="abrirNotificacion(notif, 'recibida')"
+                  >
+                    <q-item-section avatar style="min-width: 20px; padding-right: 10px;">
+                      <q-icon name="circle" :color="!notif.leida ? 'green' : 'grey-3'" size="10px" />
+                    </q-item-section>
+                    <q-item-section>
+                      <div style="font-size: 13px; line-height: 1.3;">{{ notif.mensaje }}</div>
+                      <div class="text-caption text-grey-6">{{ formatDate(notif.created_at) }}</div>
+                    </q-item-section>
+                  </q-item>
                 </div>
-
-                <div v-else>
-                  <div v-if="notificacionesEnviadas.length > 0">
-                    <q-item
-                      v-for="(notif, i) in notificacionesEnviadas" :key="'out-'+i"
-                      clickable v-ripple
-                      @click="abrirNotificacion(notif, 'enviada')"
-                      class="q-py-sm"
-                    >
-                      <q-item-section avatar style="min-width: 20px; padding-right: 10px;">
-                        <q-icon name="arrow_outward" color="blue-grey" size="16px" />
-                      </q-item-section>
-                      <q-item-section>
-                        <div style="font-size: 13px; line-height: 1.3;">
-                          <span class="text-grey-7">Para: </span>
-                          <b>{{ notif.agencia ? notif.agencia.nombre : 'Destino desconocido' }}</b>
-                        </div>
-                        <div class="text-caption text-grey-6">{{ formatDate(notif.created_at) }}</div>
-                      </q-item-section>
-                    </q-item>
-                  </div>
-                  <div v-else class="q-pa-md text-center text-grey">No has enviado nada aún</div>
-
-                  <div class="row justify-between q-pa-sm bg-grey-1">
-                    <q-btn flat dense size="sm" icon="chevron_left" :disable="paginationEnviadas.current_page <= 1" @click.stop="getNotificacionesEnviadas(paginationEnviadas.current_page - 1)" />
-                    <span class="text-caption q-pt-xs">Pág {{ paginationEnviadas.current_page }}</span>
-                    <q-btn flat dense size="sm" icon="chevron_right" :disable="paginationEnviadas.current_page >= paginationEnviadas.last_page" @click.stop="getNotificacionesEnviadas(paginationEnviadas.current_page + 1)" />
-                  </div>
+                <div v-else class="q-pa-md text-center text-grey">Sin notificaciones recibidas</div>
+                <div class="row justify-between q-pa-sm bg-grey-1">
+                  <q-btn flat dense size="sm" icon="chevron_left" :disable="pagination.current_page <= 1" @click.stop="cambiarPagina(pagination.current_page - 1)" />
+                  <span class="text-caption q-pt-xs">Pág {{ pagination.current_page }}</span>
+                  <q-btn flat dense size="sm" icon="chevron_right" :disable="pagination.current_page >= pagination.last_page" @click.stop="cambiarPagina(pagination.current_page + 1)" />
                 </div>
+              </div>
 
-              </q-list>
-            </q-menu>
-          </q-btn>
+              <div v-else>
+                <div v-if="notificacionesEnviadas.length > 0">
+                  <q-item
+                    v-for="(notif, i) in notificacionesEnviadas"
+                    :key="'out-' + i"
+                    clickable
+                    v-ripple
+                    class="q-py-sm"
+                    @click="abrirNotificacion(notif, 'enviada')"
+                  >
+                    <q-item-section avatar style="min-width: 20px; padding-right: 10px;">
+                      <q-icon name="north_east" color="blue-grey" size="16px" />
+                    </q-item-section>
+                    <q-item-section>
+                      <div style="font-size: 13px; line-height: 1.3;">
+                        <span class="text-grey-7">Para: </span>
+                        <b>{{ notif.agencia ? notif.agencia.nombre : 'Destino desconocido' }}</b>
+                      </div>
+                      <div class="text-caption text-grey-6">{{ formatDate(notif.created_at) }}</div>
+                    </q-item-section>
+                  </q-item>
+                </div>
+                <div v-else class="q-pa-md text-center text-grey">No has enviado nada aún</div>
 
-          <q-btn
-            dense
-            round
-            icon="logout"
-            color="red"
-            aria-label="Logout"
-            @click="logout()"
-          />
-        </div>
+                <div class="row justify-between q-pa-sm bg-grey-1">
+                  <q-btn flat dense size="sm" icon="chevron_left" :disable="paginationEnviadas.current_page <= 1" @click.stop="getNotificacionesEnviadas(paginationEnviadas.current_page - 1)" />
+                  <span class="text-caption q-pt-xs">Pág {{ paginationEnviadas.current_page }}</span>
+                  <q-btn flat dense size="sm" icon="chevron_right" :disable="paginationEnviadas.current_page >= paginationEnviadas.last_page" @click.stop="getNotificacionesEnviadas(paginationEnviadas.current_page + 1)" />
+                </div>
+              </div>
+            </q-list>
+          </q-menu>
+        </q-btn>
       </q-toolbar>
     </q-header>
 
     <q-drawer
       v-model="leftDrawerOpen"
       show-if-above
-      :width="200"
+      bordered
+      :width="228"
+      class="bg-grey-3 text-grey-10"
     >
-<!--      :breakpoint="400"-->
-      <q-layout>
-        <q-header class="bg-white">
-          <q-list bordered padding class="text-black" dense>
-            <q-item-label header class="text-bold">
-              Menu principal
-            </q-item-label>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/">
-              <q-item-section avatar><q-icon name="o_store" /></q-item-section>
-              <q-item-section>
-                <q-item-label>
-                  Movimientos
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    Movimientos de caja
-                  </q-tooltip>
-                </q-item-label>
+      <div class="column fit no-wrap">
+        <div class="q-pa-sm bg-grey-4">
+          <div class="row items-center no-wrap q-col-gutter-sm">
+            <div class="col-auto">
+              <q-avatar size="38px" color="primary" text-color="white" icon="medication" />
+            </div>
+            <div class="col">
+              <div class="text-body2 text-weight-bold ellipsis">Farmacia Santidad Divina</div>
+              <div class="text-caption text-grey-7 ellipsis">
+                {{ $store.user.agencia ? $store.user.agencia.nombre : 'Sin agencia' }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <q-scroll-area class="col">
+          <div class="q-pa-xs">
+            <div
+              v-for="section in menuSections"
+              :key="section.title"
+              class="q-mb-xs"
+            >
+              <div class="text-caption text-uppercase text-grey-7 text-weight-bold q-px-sm q-py-xs menu-section-title">
+                {{ section.title }}
+              </div>
+              <q-list dense class="rounded-borders bg-grey-2 q-pa-xs">
+                <q-item
+                  v-for="item in section.items"
+                  :key="item.to"
+                  clickable
+                  v-ripple
+                  :to="item.to"
+                  exact
+                  active-class="menu-item-active"
+                  class="menu-item q-my-xs"
+                >
+                  <q-item-section avatar class="menu-avatar-section">
+                    <q-icon :name="item.icon" size="18px" />
+                  </q-item-section>
+                  <q-item-section>
+                    <q-item-label class="text-weight-medium menu-label">{{ item.label }}</q-item-label>
+                    <q-item-label caption class="text-grey-7 menu-caption">{{ item.caption }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </div>
+          </div>
+        </q-scroll-area>
+
+        <div class="q-pa-xs bg-grey-4">
+          <q-list dense class="rounded-borders bg-grey-2 q-pa-xs">
+            <q-item clickable v-ripple class="menu-item" @click="logout()">
+              <q-item-section avatar class="menu-avatar-section">
+                <q-icon name="logout" color="negative" size="18px" />
               </q-item-section>
-            </q-item>
-<!--            <q-expansion-item expand-separator icon="o_engineering" label="Siat" v-if="$store.user.id=='1'">-->
-<!--              <q-expansion-item dense exact :header-inset-level="0.3" expand-separator icon="o_psychology" label="Cuis" default-opened to="/cuis" hide-expand-icon  />-->
-<!--              <q-expansion-item dense exact :header-inset-level="0.3" expand-separator icon="o_business_center" label="sincronizacion" default-opened to="/sincronizacion" hide-expand-icon  />-->
-<!--              <q-expansion-item dense exact :header-inset-level="0.3" expand-separator icon="link" label="Cufd" default-opened to="/cufd" hide-expand-icon  />-->
-<!--              <q-expansion-item dense exact :header-inset-level="0.3" expand-separator icon="list" label="Evento significativo" default-opened to="/eventoSignificativo" hide-expand-icon  />-->
-<!--            </q-expansion-item>-->
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/sale">
-              <q-item-section avatar><q-icon name="o_shopping_cart" /></q-item-section>
               <q-item-section>
-                <q-item-label>
-                  Venta
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    Venta de productos
-                  </q-tooltip>
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/compras">
-              <q-item-section avatar><q-icon name="o_storefront" /></q-item-section>
-              <q-item-section>
-                <q-item-label>
-                  Compras
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    Compra de productos
-                  </q-tooltip>
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/pedidos">
-              <q-item-section avatar>
-                <q-icon name="o_assignment" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>
-                  Pedidos
-                  <q-tooltip anchor="top middle" self="bottom middle">
-                    Realizar pedido a central
-                  </q-tooltip>
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple to="/historial-pedidos">
-            <q-item-section avatar>
-              <q-icon name="history" />
-            </q-item-section>
-            <q-item-section>
-              Historial de Pedidos
-            </q-item-section>
-          </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productos" >
-              <q-item-section avatar><q-icon name="o_local_mall" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Productos</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Administrar productos
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item to="/transferencias" clickable v-ripple>
-            <q-item-section avatar>
-              <q-icon name="swap_horiz" />
-            </q-item-section>
-            <q-item-section>Transferencias</q-item-section>
-          </q-item>
-            <!-- NUEVO: Opción Facturas -->
-          <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/facturas">
-            <q-item-section avatar><q-icon name="receipt_long" /></q-item-section>
-            <q-item-section>
-              <q-item-label>Facturas</q-item-label>
-              <q-tooltip anchor="top middle" self="bottom middle">
-                Control de facturas
-              </q-tooltip>
-            </q-item-section>
-          </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/clientes" v-if="$store.user.id=='1'">
-              <q-item-section avatar><q-icon name="o_face" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Clientes</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Administrar clientes
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/proveedores" v-if="$store.user.id=='1'">
-              <q-item-section avatar><q-icon name="o_assignment_ind" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Proveedores</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Administrar proveedores
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/vendedores" v-if="$store.user.id=='1'">
-              <q-item-section avatar><q-icon name="badge" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Vendedores</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Administrar vendedores
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/reportes" v-if="$store.user.id=='1'">
-              <q-item-section avatar><q-icon name="o_print" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Reportes</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Consultar reportes
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/users" v-if="$store.user.id=='1'">
-              <q-item-section avatar><q-icon name="o_manage_accounts" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Usuarios</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Administrar usuarios
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/unidades" v-if="$store.user.id=='1'">
-              <q-item-section avatar><q-icon name="o_vaccines" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Unidades</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Administrar unidades
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/agencias" v-if="$store.user.id=='1'">
-              <q-item-section avatar><q-icon name="o_apartment" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Agencias</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Administrar agencias
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/subcategorias" v-if="$store.user.id=='1'">
-              <q-item-section avatar><q-icon name="o_category" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Subcategorias</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Administrar subcategorias
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosPorVencer">
-              <q-item-section avatar><q-icon name="o_warning" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Productos por vencer</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Productos por vencer
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosVencidos" v-if="$store.user.id=='1'">
-              <q-item-section avatar><q-icon name="priority_high" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Productos vencidos</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Productos vencidos
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/productosRetirados" v-if="$store.user.id=='1'">
-              <q-item-section avatar><q-icon name="o_delete_sweep" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Productos retirados</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Productos retirados
-                </q-tooltip>
-              </q-item-section>
-            </q-item>
-            <q-item clickable v-ripple exact active-class="bg-primary text-white" to="/carousel" v-if="$store.user.id=='1'">
-              <q-item-section avatar><q-icon name="o_image" /></q-item-section>
-              <q-item-section>
-                <q-item-label>Carousel</q-item-label>
-                <q-tooltip anchor="top middle" self="bottom middle">
-                  Administrar carousel
-                </q-tooltip>
+                <q-item-label class="text-weight-medium menu-label">Cerrar sesión</q-item-label>
+                <q-item-label caption class="text-grey-7 menu-caption">Salir del sistema</q-item-label>
               </q-item-section>
             </q-item>
           </q-list>
-        </q-header>
-        <q-footer class="bg-white">
-          <q-list bordered padding dense class="rounded-borders text-red">
-            <q-item clickable v-ripple @click="logout()">
-              <q-item-section avatar>
-                <q-icon name="o_logout" />
-              </q-item-section>
-              <q-item-section> Cerrar sesión</q-item-section>
-            </q-item>
-          </q-list>
-        </q-footer>
-      </q-layout>
+        </div>
+      </div>
     </q-drawer>
 
     <q-page-container>
       <router-view />
     </q-page-container>
-    <!-- Div para impresión -->
-    <div id="myElement" style="display: none;"></div>
+
+    <div id="myElement" style="display: none;" />
   </q-layout>
 </template>
 
 <script>
 export default {
   name: 'MainLayout',
-  components: {},
   data () {
     return {
       leftDrawerOpen: false,
       notificaciones: [],
-      tabNotificaciones: 'recibidas', // Para controlar la pestaña activa
-      notificacionesEnviadas: [], // Array para las enviadas
-      paginationEnviadas: { // Paginación independiente para enviadas
+      tabNotificaciones: 'recibidas',
+      notificacionesEnviadas: [],
+      paginationEnviadas: {
         current_page: 1,
         last_page: 1
       },
@@ -367,30 +225,57 @@ export default {
         last_page: 1
       },
       notificacionActiva: null,
-      prevNotificaciones: [],
-      dialogoNotificacion: false,
-      essentialLinks: [
-        {
-          title: 'Home',
-          icon: 'home',
-          to: '/'
-        },
-        {
-          title: 'About',
-          icon: 'info',
-          to: '/about'
-        },
-        {
-          title: 'Contact',
-          icon: 'phone',
-          to: '/contact'
-        }
+      prevNotificaciones: []
+    }
+  },
+  computed: {
+    isAdmin () {
+      return String(this.$store.user.id) === '1'
+    },
+    menuSections () {
+      const operacion = [
+        { to: '/', label: 'Movimientos', caption: 'Resumen operativo y caja', icon: 'space_dashboard' },
+        { to: '/sale', label: 'Venta', caption: 'Registro de ventas', icon: 'point_of_sale' },
+        { to: '/compras', label: 'Compras', caption: 'Ingreso de mercadería', icon: 'shopping_bag' },
+        { to: '/pedidos', label: 'Pedidos', caption: 'Solicitudes a central', icon: 'assignment' },
+        { to: '/historial-pedidos', label: 'Historial de pedidos', caption: 'Seguimiento de pedidos', icon: 'history' },
+        { to: '/transferencias', label: 'Transferencias', caption: 'Movimientos entre agencias', icon: 'swap_horiz' },
+        { to: '/facturas', label: 'Facturas', caption: 'Control de facturación', icon: 'receipt_long' }
       ]
+
+      const inventario = [
+        { to: '/productos', label: 'Productos', caption: 'Catálogo principal', icon: 'inventory_2' },
+        { to: '/subcategorias', label: 'Subcategorías', caption: 'Clasificación de productos', icon: 'category' },
+        { to: '/unidades', label: 'Unidades', caption: 'Presentaciones y medidas', icon: 'straighten' },
+        { to: '/productosPorVencer', label: 'Por vencer', caption: 'Alertas de vencimiento', icon: 'warning_amber' },
+        { to: '/productosVencidos', label: 'Vencidos', caption: 'Control de bajas', icon: 'report_gmailerrorred' },
+        { to: '/productosRetirados', label: 'Retirados', caption: 'Productos fuera de circulación', icon: 'remove_shopping_cart' }
+      ]
+
+      const gestion = [
+        { to: '/clientes', label: 'Clientes', caption: 'Base de clientes', icon: 'groups' },
+        { to: '/proveedores', label: 'Proveedores', caption: 'Relación de compras', icon: 'local_shipping' },
+        { to: '/vendedores', label: 'Vendedores', caption: 'Equipo comercial', icon: 'badge' },
+        { to: '/users', label: 'Usuarios', caption: 'Accesos del sistema', icon: 'manage_accounts' },
+        { to: '/agencias', label: 'Agencias', caption: 'Sucursales y sedes', icon: 'apartment' },
+        { to: '/reportes', label: 'Reportes', caption: 'Consultas y análisis', icon: 'insert_chart' },
+        { to: '/carousel', label: 'Carousel', caption: 'Contenido visual', icon: 'view_carousel' }
+      ]
+
+      const sections = [
+        { title: 'Operación', items: operacion },
+        { title: 'Inventario', items: this.isAdmin ? inventario : inventario.filter(item => item.to === '/productos' || item.to === '/productosPorVencer') }
+      ]
+
+      if (this.isAdmin) {
+        sections.push({ title: 'Gestión', items: gestion })
+      }
+
+      return sections
     }
   },
   mounted () {
     this.getNotificaciones(1)
-    // Revisar nuevas notificaciones cada 60 seg (solo buscando alertas nuevas)
     setInterval(() => this.getNotificaciones(1, true), 120000)
   },
   methods: {
@@ -413,29 +298,18 @@ export default {
         })
       })
     },
-    // --- PEGAR ESTO EN METHODS ---
-
-    // Función optimizada para cargar por páginas
-    // Función optimizada para cargar por páginas y notificar novedades
-    // Función optimizada para cargar por páginas y alertar en tiempo real
     getNotificaciones (page = 1, isBackgroundCheck = false) {
       const agencia = this.$store.agencia_id
       const paginaSolicitada = isBackgroundCheck ? 1 : page
-
-      // 🕒 NUEVO: Generamos una marca de tiempo única (Cache Buster)
       const timeStamp = new Date().getTime()
 
-      // 🔥 NUEVO: Añadimos &_t=12345678... a la URL para obligar a descargar los datos frescos siempre
       this.$axios.get(`/notificaciones/${agencia}?page=${paginaSolicitada}&_t=${timeStamp}`)
         .then(res => {
           const data = res.data
           const nuevosItems = data.listado.data
 
-          // 1. Siempre actualizamos el número rojo EXACTO
           this.conteoNoLeidas = data.total_no_leidas
 
-          // 2. Si pedimos la página 1, SIEMPRE actualizamos la lista visible
-          // (incluso si es en segundo plano). Así, al abrir la campana, los datos están listos sin F5.
           if (paginaSolicitada === 1) {
             this.notificaciones = nuevosItems
             this.pagination = {
@@ -444,9 +318,7 @@ export default {
               total: data.listado.total
             }
 
-            // 3. DETECTOR DE ALERTAS: Solo lanza el aviso visual si ya cargó antes (size > 0)
             if (isBackgroundCheck && this.prevNotificacionesIds.size > 0) {
-              // Filtramos las que NO estén en nuestra memoria Y que NO estén leídas
               const alertasNuevas = nuevosItems.filter(n => !this.prevNotificacionesIds.has(n.id) && (n.leida === 0 || n.leida === false))
 
               if (alertasNuevas.length > 0) {
@@ -454,18 +326,16 @@ export default {
                   type: 'info',
                   color: 'primary',
                   icon: 'notifications_active',
-                  message: `📦 ¡Tienes ${alertasNuevas.length} transferencia(s) nueva(s)!`,
+                  message: `Tienes ${alertasNuevas.length} transferencia(s) nueva(s).`,
                   position: 'top-right'
                 })
               }
             }
 
-            // 4. Guardamos los IDs actuales en la memoria para compararlos en los próximos 10 segundos
             nuevosItems.forEach(n => {
               this.prevNotificacionesIds.add(n.id)
             })
           } else {
-            // Si el usuario navegó a la pág 2 o 3 manualmente
             this.notificaciones = nuevosItems
             this.pagination = {
               current_page: data.listado.current_page,
@@ -478,15 +348,11 @@ export default {
           console.error('Error notificaciones', err)
         })
     },
-
-    // Función para los botones Anterior/Siguiente
     cambiarPagina (page) {
       if (page >= 1 && page <= this.pagination.last_page) {
         this.getNotificaciones(page)
       }
     },
-
-    // Nueva función para formatear fecha, para usar en template (lista)
     formatDate (iso) {
       const d = new Date(iso)
       const day = d.getDate()
@@ -496,12 +362,6 @@ export default {
       const mins = String(d.getMinutes()).padStart(2, '0')
       return `${day} de ${month} del ${year}, ${hours}:${mins}`
     },
-    // ... tus otros métodos ...
-
-    // NUEVO MÉTODO PARA OBTENER ENVIADAS
-    // PEGA ESTAS FUNCIONES DENTRO DE methods: { ... }
-
-    // 1. Obtener lista de ENVIADAS
     getNotificacionesEnviadas (page = 1) {
       const agencia = this.$store.agencia_id
       this.$axios.get(`/notificaciones-enviadas/${agencia}?page=${page}`)
@@ -516,33 +376,29 @@ export default {
         })
         .catch(err => console.error('Error enviadas', err))
     },
-
-    // 2. Función inteligente para mostrar detalle (Corrige el texto "Recibido")
     abrirNotificacion (notif, tipo = 'recibida') {
       this.notificacionActiva = notif
 
-      // Título y Texto dinámicos
-      const titulo = tipo === 'recibida' ? '📦 Transferencia recibida' : '📤 Transferencia enviada'
+      const titulo = tipo === 'recibida' ? 'Transferencia recibida' : 'Transferencia enviada'
       let textoPrincipal = ''
+
       if (tipo === 'recibida') {
-        textoPrincipal = `<b>${notif.mensaje}</b>` // Muestra el mensaje original de la BD
+        textoPrincipal = `<b>${notif.mensaje}</b>`
       } else {
-        // Si es ENVIADA, creamos nuestro propio mensaje usando la relación 'agencia'
         const destinoName = notif.agencia ? notif.agencia.nombre : 'Destino desconocido'
         textoPrincipal = `Has enviado productos a: <br><b style="font-size: 14px; color: #1976D2">${destinoName}</b>`
       }
 
-      const formatDate = iso => {
+      const formatDialogDate = iso => {
         const d = new Date(iso)
         return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
       }
 
       let mensaje = `
         <div style="font-size:15px;margin-bottom:8px;">${textoPrincipal}</div>
-        <div style="color:#777;font-size:12px;margin-bottom:12px;">Fecha: ${formatDate(notif.created_at)}</div>
+        <div style="color:#777;font-size:12px;margin-bottom:12px;">Fecha: ${formatDialogDate(notif.created_at)}</div>
       `
 
-      // Tabla de productos
       try {
         const productos = JSON.parse(notif.detalle)
         if (productos.length > 0) {
@@ -560,7 +416,9 @@ export default {
           })
           mensaje += '</table></div>'
         }
-      } catch (e) { mensaje += '<div class="text-red">Error cargando detalle</div>' }
+      } catch (e) {
+        mensaje += '<div class="text-red">Error cargando detalle</div>'
+      }
 
       this.$q.dialog({
         html: true,
@@ -568,12 +426,10 @@ export default {
         message: mensaje,
         ok: { label: 'Cerrar', flat: true, color: 'primary' }
       }).onOk(() => {
-        // Solo marcamos como leída si es recibida
         if (tipo === 'recibida' && !notif.leida) {
           this.$axios.put(`/notificaciones/${notif.id}/leer`).then(() => {
             const idx = this.notificaciones.findIndex(n => n.id === notif.id)
             if (idx !== -1) this.notificaciones[idx].leida = 1
-            // --- NUEVO: Reducir el contador inmediatamente ---
             if (this.conteoNoLeidas > 0) {
               this.conteoNoLeidas--
             }
@@ -584,3 +440,39 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.menu-item {
+  border-radius: 10px;
+  min-height: 42px;
+  padding: 6px 8px;
+}
+
+.menu-item-active {
+  background: var(--q-primary);
+  color: white;
+}
+
+.menu-item-active .text-grey-7 {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.menu-avatar-section {
+  min-width: 30px;
+}
+
+.menu-label {
+  font-size: 12.5px;
+  line-height: 1.1;
+}
+
+.menu-caption {
+  font-size: 10.5px;
+  line-height: 1.1;
+}
+
+.menu-section-title {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+</style>
