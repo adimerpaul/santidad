@@ -33,3 +33,4 @@ yarn-error.log*
 
 # Ignore Gradle build output directory
 build
+AGENTS.md
