@@ -20,6 +20,7 @@ use App\Http\Controllers\TransferHistoryController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PedidoController;
+use App\Http\Controllers\SiatController;
 
 /*
 |--------------------------------------------------------------------------
@@ -157,5 +158,11 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
     // Ruta especial para el select del HistorialPedidos (WhatsApp)
     Route::get('vendedores-por-proveedor/{id}', [App\Http\Controllers\VendedorController::class, 'getByProvider']);
+
+    Route::get('siat/dashboard', [SiatController::class, 'dashboard']);
+    Route::get('siat/cuis', [SiatController::class, 'cuisIndex']);
+    Route::get('siat/cufds', [SiatController::class, 'cufdIndex']);
+    Route::post('siat/cuis/generar', [SiatController::class, 'generarCuis']);
+    Route::post('siat/cufds/generar', [SiatController::class, 'generarCufd']);
         
 });

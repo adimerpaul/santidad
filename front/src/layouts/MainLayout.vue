@@ -259,6 +259,7 @@ export default {
         { to: '/users', label: 'Usuarios', caption: 'Accesos del sistema', icon: 'manage_accounts' },
         { to: '/agencias', label: 'Agencias', caption: 'Sucursales y sedes', icon: 'apartment' },
         { to: '/reportes', label: 'Reportes', caption: 'Consultas y análisis', icon: 'insert_chart' },
+        { to: '/siat', label: 'SIAT', caption: 'CUIS y CUFD', icon: 'verified' },
         { to: '/carousel', label: 'Carousel', caption: 'Contenido visual', icon: 'view_carousel' }
       ]
 

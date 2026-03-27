@@ -16,6 +16,7 @@ import ProductosRetiradosPage from 'pages/ProductosRetiradosPage.vue'
 import FacturasPage from 'src/pages/FacturasPage.vue'
 import TransferenciasPage from 'src/pages/TransferenciasPage.vue'
 import HistorialPedidos from 'pages/HistorialPedidos.vue'
+import SiatPage from 'src/pages/SiatPage.vue'
 
 const routes = [
   {
@@ -41,7 +42,8 @@ const routes = [
       { path: 'pedidos', component: () => import('pages/PedidosPage.vue'), meta: { requiresAuth: true } },
       { path: 'historial-pedidos', component: HistorialPedidos, meta: { requiresAuth: true } },
       { path: 'carousel', component: () => import('pages/Carousel/CarouselPage.vue'), meta: { requiresAuth: true } },
-      { path: 'vendedores', component: () => import('pages/VendedoresPage.vue'), meta: { requiresAuth: true } }
+      { path: 'vendedores', component: () => import('pages/VendedoresPage.vue'), meta: { requiresAuth: true } },
+      { path: 'siat', component: SiatPage, meta: { requiresAuth: true } }
 
     ]
   },
