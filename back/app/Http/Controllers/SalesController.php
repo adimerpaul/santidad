@@ -73,6 +73,10 @@ class SalesController extends Controller{
     public function store(StoreSalesRequest $request){
         DB::beginTransaction();
         $agencia_id = $request->agencia_id;
+//        if ($request->client['numeroDocumento'] == 0){
+//            DB::rollBack();
+//            return response()->json(['message' => 'El número de documento no puede ser 0'], 400);
+//        }
         $client=$this->insertUpdateClient($request);
 
         foreach ($request->products as $product){

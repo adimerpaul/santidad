@@ -729,8 +729,7 @@ export default {
           p.cantidadPedida = 0
         })
         this.totalProducts = 0
-        Imprimir.nota(res.data).then(r => {
-        })
+        Imprimir.factura(res.data).then(r => {})
       }).catch(err => {
         this.loading = false
         this.$alert.error(err.response.data.message)
