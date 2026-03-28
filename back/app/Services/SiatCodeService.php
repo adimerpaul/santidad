@@ -24,6 +24,15 @@ class SiatCodeService
         return $this->normalize($result);
     }
 
+    public function anulacionFactura(array $payload): array
+    {
+        $result = $this->client('ServicioFacturacionCompraVenta')->anulacionFactura([
+            'SolicitudServicioAnulacionFactura' => $payload,
+        ]);
+
+        return $this->normalize($result);
+    }
+
     public function solicitarCufd(array $payload): array
     {
         $result = $this->client('FacturacionCodigos')->cufd([

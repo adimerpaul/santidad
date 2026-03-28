@@ -23,6 +23,53 @@ class SalesController extends Controller{
     }
     public function salesAnular($id, Request $request){
         $sale = Sales::find($id);
+
+        if ($sale->siatEnviado && !$sale->siatAnulado && $sale->cuf) {
+            $cufd = $sale->cufd_id
+                ? Cufd::find($sale->cufd_id)
+                : Cufd::where('codigo', $sale->cufd)->latest('id')->first();
+
+            $cuis = Cuis::where('codigoSucursal', (int) ($sale->codigoSucursal ?? 0))
+                ->where('codigoPuntoVenta', (int) ($sale->codigoPuntoVenta ?? 0))
+                ->latest('id')
+                ->first();
+
+            if (!$cufd || !$cuis) {
+                return response()->json(['message' => 'No existe CUIS/CUFD para anular la factura en SIAT'], 422);
+            }
+
+            $payload = [
+                'codigoAmbiente' => (int) config('siat.codigo_ambiente'),
+                'codigoDocumentoSector' => 1,
+                'codigoEmision' => 1,
+                'codigoModalidad' => (int) config('siat.codigo_modalidad'),
+                'codigoPuntoVenta' => (int) ($sale->codigoPuntoVenta ?? 0),
+                'codigoSistema' => (string) config('siat.codigo_sistema'),
+                'codigoSucursal' => (int) ($sale->codigoSucursal ?? 0),
+                'cufd' => $cufd->codigo,
+                'cuis' => $cuis->codigo,
+                'nit' => (int) config('siat.nit'),
+                'tipoFacturaDocumento' => 1,
+                'codigoMotivo' => 1,
+                'cuf' => $sale->cuf,
+            ];
+
+            $result = $this->siatCodeService->anulacionFactura($payload);
+            $transaccion = data_get($result, 'RespuestaServicioFacturacion.transaccion')
+                ?? data_get($result, 'transaccion');
+
+            if (!$transaccion) {
+                return response()->json([
+                    'message' => data_get($result, 'RespuestaServicioFacturacion.mensajesList.0.descripcion')
+                        ?? data_get($result, 'mensajesList.0.descripcion')
+                        ?? 'SIAT rechazo la anulacion de la factura',
+                    'response' => $result,
+                ], 422);
+            }
+
+            $sale->siatAnulado = true;
+        }
+
         $sale->estado = 'ANULADO';
         $sale->save();
         $details = Detail::whereSaleId($id)->get();

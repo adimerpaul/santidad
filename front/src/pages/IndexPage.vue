@@ -136,9 +136,15 @@
                     </q-btn>
                   </q-item>
                   <q-item clickable v-close-popup class="text-center">
-                    <q-btn dense label="Imprimir" color="green-4" size="10px" class="full-width"
-                           no-caps no-wrap icon="print" @click="reimprimirNota(props.row)">
-                      <q-tooltip>Imprimir nota</q-tooltip>
+                    <q-btn dense label="Reimprimir" color="green-4" size="10px" class="full-width"
+                           no-caps no-wrap icon="print" @click="reimprimirDocumento(props.row)">
+                      <q-tooltip>Reimprimir documento</q-tooltip>
+                    </q-btn>
+                  </q-item>
+                  <q-item clickable v-close-popup class="text-center" v-if="props.row.venta === 'F' && props.row.cuf">
+                    <q-btn dense label="Imprimir impuestos" color="blue-6" size="10px" class="full-width"
+                           no-caps no-wrap icon="qr_code_2" @click="imprimirImpuestos(props.row)">
+                      <q-tooltip>Abrir consulta QR de impuestos</q-tooltip>
                     </q-btn>
                   </q-item>
                   <q-item clickable v-close-popup class="text-center">
@@ -149,8 +155,19 @@
                   </q-item>
                 </q-btn-dropdown>
 
-                <div v-else>
+                <div v-else class="row q-gutter-xs items-center">
                   <q-btn dense label="Anulado" color="grey-4" size="10px" no-caps no-wrap icon="o_highlight_off" />
+                  <q-btn
+                    v-if="props.row.venta === 'F' && props.row.cuf"
+                    dense
+                    label="Impuestos"
+                    color="blue-6"
+                    size="10px"
+                    no-caps
+                    no-wrap
+                    icon="qr_code_2"
+                    @click="imprimirImpuestos(props.row)"
+                  />
                 </div>
               </q-td>
               <q-td key="concepto" :props="props" class="">
@@ -314,6 +331,7 @@
 // import { date } from 'quasar'
 import moment from 'moment'
 import { Imprimir } from 'src/addons/Imprimir'
+import { useCounterStore } from 'stores/example-store'
 
 export default {
   data () {
@@ -393,10 +411,24 @@ export default {
         this.$alert.error(err.response.data.message)
       })
     },
-    reimprimirNota (sale) {
-      Imprimir.nota(sale).then(r => {
+    reimprimirDocumento (sale) {
+      const printAction = sale.venta === 'F' ? Imprimir.factura(sale) : Imprimir.nota(sale)
+      printAction.then(r => {
         // console.log(r)
       })
+    },
+    imprimirImpuestos (sale) {
+      const env = useCounterStore().env || {}
+      const baseUrl = (env.url2 || '').replace(/\/$/, '')
+      const nit = env.nit
+
+      if (!baseUrl || !nit || !sale.cuf || !sale.numeroFactura) {
+        this.$alert.error('Faltan datos para abrir la impresión de impuestos')
+        return
+      }
+
+      const url = `${baseUrl}/consulta/QR?nit=${nit}&cuf=${sale.cuf}&numero=${sale.numeroFactura}&t=2`
+      window.open(url, '_blank')
     },
     modificarNota (sale) {
       this.saleDialogUpdate = true
