@@ -15,6 +15,15 @@ class SiatCodeService
         return $this->normalize($result);
     }
 
+    public function recepcionFactura(array $payload): array
+    {
+        $result = $this->client()->recepcionFactura([
+            'SolicitudServicioRecepcionFactura' => $payload,
+        ]);
+
+        return $this->normalize($result);
+    }
+
     public function solicitarCufd(array $payload): array
     {
         $result = $this->client()->cufd([

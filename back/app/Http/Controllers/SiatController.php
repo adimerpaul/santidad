@@ -162,8 +162,7 @@ class SiatController extends Controller
                     'codigo' => $normalized['codigo'],
                     'codigoControl' => $normalized['codigoControl'] ?? null,
                     'direccion' => config('app.url'),
-//                    'fechaVigencia' => $normalized['fechaVigencia'] ?? null, que se hasta la 23:59:59
-                    'fechaVigencia' => now()->setTimeFromTimeString($normalized['fechaVigencia'])->endOfDay(),
+                    'fechaVigencia' => now()->endOfDay(),
                     'fechaCreacion' => now(),
                     'codigoPuntoVenta' => $payload['codigoPuntoVenta'],
                     'codigoSucursal' => $payload['codigoSucursal'],

@@ -3,17 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
+use App\Models\Cufd;
 use App\Models\Detail;
 use App\Models\Product;
 use App\Models\Sales;
 use App\Http\Requests\StoreSalesRequest;
 use App\Http\Requests\UpdateSalesRequest;
+use App\Services\SiatCodeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 
 class SalesController extends Controller{
+    public function __construct(private readonly SiatCodeService $siatCodeService)
+    {
+    }
     public function salesAnular($id, Request $request){
         $sale = Sales::find($id);
         $sale->estado = 'ANULADO';
@@ -77,6 +82,15 @@ class SalesController extends Controller{
 //            DB::rollBack();
 //            return response()->json(['message' => 'El número de documento no puede ser 0'], 400);
 //        }
+//        si es diferente de cero cuf preguntar el por cufd
+        error_log('cliente numeroDocumento: '.$request->client['numeroDocumento']);
+        if ($request->client['numeroDocumento'] != '0'){
+            $ultimoCufd = Cufd::where('fechaVigencia', '>', date('Y-m-d H:i:s'))->first();
+            if (!$ultimoCufd) {
+                DB::rollBack();
+                return response()->json(['message' => 'El cliente tiene que tener un CUFD registrado para poder realizar la venta'], 400);
+            }
+        }
         $client=$this->insertUpdateClient($request);
 
         foreach ($request->products as $product){
@@ -170,9 +184,45 @@ class SalesController extends Controller{
         $sales->concepto = substr($concepto,0,-1);
         $sales->descuento_producto = $descuento_producto;
         $sales->save();
+        $this->recepcionFactura($sales);
         DB::commit();
         return Sales::with(['details.product','client'])->find($sales->id);
 
+    }
+    function recepcionFactura(Sales $sales){
+        $client = $sales->client;
+        if ($client->numeroDocumento == '0'){
+            return null;
+        }
+        $cuiUltimo = Cui::where('fechaVigencia', '>', date('Y-m-d H:i:s'))->first();
+        $cufdUltimo = Cufd::where('fechaVigencia', '>', date('Y-m-d H:i:s'))->first();
+//            "codigoAmbiente"=>$codigoAmbiente,
+//            "codigoDocumentoSector"=>$codigoDocumentoSector,
+//            "codigoEmision"=>$codigoEmision,
+//            "codigoModalidad"=>$codigoModalidad,
+//            "codigoPuntoVenta"=>$codigoPuntoVenta,
+//            "codigoSistema"=>$codigoSistema,
+//            "codigoSucursal"=>$codigoSucursal,
+//            "cufd"=>$cufd,
+//            "cuis"=>$cuis,
+//            "nit"=>$nit,
+//            "tipoFacturaDocumento"=>$tipoFacturaDocumento,
+//            "archivo"=>$archivo,
+//            "fechaEnvio"=>$fechaEnvio,
+//            "hashArchivo"=>$hashArchivo,
+        $payload = [
+            'codigoAmbiente' => (int) config('siat.codigo_ambiente'),
+            'codigoDocumentoSector' => 1, // factura
+            'codigoEmision' => 1, // emisión normal
+            'codigoModalidad' => (int) config('siat.codigo_modalidad'),
+            'codigoPuntoVenta' => 0,
+            'codigoSistema' => (string) config('siat.codigo_sistema'),
+            'codigoSucursal' => 0,
+            'cufd' => $cufdUltimo ? $cufdUltimo->codigo : null,
+            'cuis' => $cuiUltimo ? $cuiUltimo->codigo : null,
+            'nit' => (int) config('siat.nit'),
+            'tipoFacturaDocumento' => 1, // factura electrónica
+        ];
     }
     public function salesGasto(StoreSalesRequest $request){
         if ($request->concepto == ''){
