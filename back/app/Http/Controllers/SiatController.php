@@ -26,7 +26,7 @@ class SiatController extends Controller
                 'codigo_sistema' => config('siat.codigo_sistema'),
                 'codigo_modalidad' => config('siat.codigo_modalidad'),
                 'codigo_ambiente' => config('siat.codigo_ambiente'),
-                'wsdl_codigos' => config('siat.wsdl_codigos'),
+                'url_rest' => config('siat.url_rest'),
                 'token_masked' => $this->maskToken(config('siat.token')),
             ],
             'cuis' => $latestCuis,

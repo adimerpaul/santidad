@@ -8,7 +8,7 @@ class SiatCodeService
 {
     public function solicitarCuis(array $payload): array
     {
-        $result = $this->client()->cuis([
+        $result = $this->client('FacturacionCodigos')->cuis([
             'SolicitudCuis' => $payload,
         ]);
 
@@ -17,7 +17,7 @@ class SiatCodeService
 
     public function recepcionFactura(array $payload): array
     {
-        $result = $this->client()->recepcionFactura([
+        $result = $this->client('ServicioFacturacionCompraVenta')->recepcionFactura([
             'SolicitudServicioRecepcionFactura' => $payload,
         ]);
 
@@ -26,16 +26,19 @@ class SiatCodeService
 
     public function solicitarCufd(array $payload): array
     {
-        $result = $this->client()->cufd([
+        $result = $this->client('FacturacionCodigos')->cufd([
             'SolicitudCufd' => $payload,
         ]);
 
         return $this->normalize($result);
     }
 
-    private function client(): SoapClient
+    private function client(string $service): SoapClient
     {
-        return new SoapClient(config('siat.wsdl_codigos'), [
+        $baseUrl = rtrim((string) config('siat.url_rest'), '/');
+        $wsdl = $baseUrl . '/' . $service . '?WSDL';
+
+        return new SoapClient($wsdl, [
             'stream_context' => stream_context_create([
                 'http' => [
                     'header' => 'apikey: TokenApi ' . config('siat.token'),
