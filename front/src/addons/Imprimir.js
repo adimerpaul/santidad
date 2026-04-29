@@ -60,7 +60,7 @@ Oruro</div>
       <td class='conte2'>${parseFloat(factura.montoTotal).toFixed(2)}</td></tr>
       </table>
       <br>
-      <div>Son ${a} ${((parseFloat(factura.montoTotal) - Math.floor(parseFloat(factura.montoTotal))) * 100).toFixed(2)} /100 Bolivianos</div><hr>
+      <div>Son ${a} ${((parseFloat(factura.montoTotal) - Math.floor(parseFloat(factura.montoTotal))) * 100).toFixed(0)} /100 Bolivianos</div><hr>
       <div class='titulo2' style='font-size: 9px'>
       ESTA FACTURA CONTRIBUYE AL DESARROLLO DEL PAÍS,<br>
       EL USO ILÍCITO SERÁ SANCIONADO PENALMENTE DE<br>

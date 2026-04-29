@@ -128,72 +128,71 @@
     <q-drawer
       v-model="leftDrawerOpen"
       show-if-above
-      bordered
       :width="228"
-      class="bg-grey-3 text-grey-10"
+      :breakpoint="500"
+      class="drawer-shell text-white"
     >
-      <div class="column fit no-wrap">
-        <div class="q-pa-sm bg-grey-4">
-          <div class="row items-center no-wrap q-col-gutter-sm">
-            <div class="col-auto">
-              <q-avatar size="38px" color="primary" text-color="white" icon="medication" />
-            </div>
-            <div class="col">
-              <div class="text-body2 text-weight-bold ellipsis">Farmacia Santidad Divina</div>
-              <div class="text-caption text-grey-7 ellipsis">
-                {{ $store.user.agencia ? $store.user.agencia.nombre : 'Sin agencia' }}
-              </div>
-            </div>
+      <div class="drawer-content">
+        <div class="drawer-profile">
+          <div class="drawer-profile__avatar">
+            <q-icon name="medication" size="26px" />
+          </div>
+          <div class="drawer-profile__info">
+            <div class="drawer-profile__name">{{ $store.user.name || 'Usuario' }}</div>
+            <div class="drawer-profile__sub">{{ $store.user.agencia ? $store.user.agencia.nombre : 'Santidad Divina' }}</div>
           </div>
         </div>
 
-        <q-scroll-area class="col">
-          <div class="q-pa-xs">
-            <div
-              v-for="section in menuSections"
-              :key="section.title"
-              class="q-mb-xs"
+        <div class="drawer-section-label">Navegación</div>
+
+        <q-list dense class="drawer-list">
+          <template v-for="section in menuSections" :key="section.title">
+            <q-expansion-item
+              dense
+              dense-toggle
+              expand-separator
+              default-opened
+              :icon="section.icon"
+              :label="section.title"
+              :header-class="sectionIsActive(section) ? 'drawer-group drawer-group--active' : 'drawer-group'"
             >
-              <div class="text-caption text-uppercase text-grey-7 text-weight-bold q-px-sm q-py-xs menu-section-title">
-                {{ section.title }}
-              </div>
-              <q-list dense class="rounded-borders bg-grey-2 q-pa-xs">
+              <q-list dense class="q-px-xs q-pb-xs">
                 <q-item
                   v-for="item in section.items"
                   :key="item.to"
                   clickable
-                  v-ripple
                   :to="item.to"
                   exact
-                  active-class="menu-item-active"
-                  class="menu-item q-my-xs"
+                  class="drawer-link"
+                  :active="linkIsActive(item)"
+                  active-class="drawer-link--active"
                 >
-                  <q-item-section avatar class="menu-avatar-section">
-                    <q-icon :name="item.icon" size="18px" />
+                  <q-item-section avatar class="drawer-link__avatar">
+                    <q-icon
+                      :name="item.icon"
+                      size="17px"
+                      :class="linkIsActive(item) ? 'text-white' : 'text-blue-grey-2'"
+                    />
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label class="text-weight-medium menu-label">{{ item.label }}</q-item-label>
-                    <q-item-label caption class="text-grey-7 menu-caption">{{ item.caption }}</q-item-label>
+                    <q-item-label class="drawer-link__label" :class="linkIsActive(item) ? 'text-white text-weight-bold' : 'text-blue-grey-1'">
+                      {{ item.label }}
+                    </q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
-            </div>
-          </div>
-        </q-scroll-area>
+            </q-expansion-item>
+          </template>
+        </q-list>
 
-        <div class="q-pa-xs bg-grey-4">
-          <q-list dense class="rounded-borders bg-grey-2 q-pa-xs">
-            <q-item clickable v-ripple class="menu-item" @click="logout()">
-              <q-item-section avatar class="menu-avatar-section">
-                <q-icon name="logout" color="negative" size="18px" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="text-weight-medium menu-label">Cerrar sesión</q-item-label>
-                <q-item-label caption class="text-grey-7 menu-caption">Salir del sistema</q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </div>
+        <q-item clickable class="drawer-logout" @click="logout">
+          <q-item-section avatar>
+            <q-icon name="exit_to_app" size="18px" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="drawer-link__label">Salir</q-item-label>
+          </q-item-section>
+        </q-item>
       </div>
     </q-drawer>
 
@@ -234,42 +233,42 @@ export default {
     },
     menuSections () {
       const operacion = [
-        { to: '/', label: 'Movimientos', caption: 'Resumen operativo y caja', icon: 'space_dashboard' },
-        { to: '/sale', label: 'Venta', caption: 'Registro de ventas', icon: 'point_of_sale' },
-        { to: '/compras', label: 'Compras', caption: 'Ingreso de mercadería', icon: 'shopping_bag' },
-        { to: '/pedidos', label: 'Pedidos', caption: 'Solicitudes a central', icon: 'assignment' },
-        { to: '/historial-pedidos', label: 'Historial de pedidos', caption: 'Seguimiento de pedidos', icon: 'history' },
-        { to: '/transferencias', label: 'Transferencias', caption: 'Movimientos entre agencias', icon: 'swap_horiz' },
-        { to: '/facturas', label: 'Facturas', caption: 'Control de facturación', icon: 'receipt_long' }
+        { to: '/', label: 'Movimientos', icon: 'space_dashboard' },
+        { to: '/sale', label: 'Venta', icon: 'point_of_sale' },
+        { to: '/compras', label: 'Compras', icon: 'shopping_bag' },
+        { to: '/pedidos', label: 'Pedidos', icon: 'assignment' },
+        { to: '/historial-pedidos', label: 'Historial de pedidos', icon: 'history' },
+        { to: '/transferencias', label: 'Transferencias', icon: 'swap_horiz' },
+        { to: '/facturas', label: 'Facturas', icon: 'receipt_long' }
       ]
 
       const inventario = [
-        { to: '/productos', label: 'Productos', caption: 'Catálogo principal', icon: 'inventory_2' },
-        { to: '/subcategorias', label: 'Subcategorías', caption: 'Clasificación de productos', icon: 'category' },
-        { to: '/unidades', label: 'Unidades', caption: 'Presentaciones y medidas', icon: 'straighten' },
-        { to: '/productosPorVencer', label: 'Por vencer', caption: 'Alertas de vencimiento', icon: 'warning_amber' },
-        { to: '/productosVencidos', label: 'Vencidos', caption: 'Control de bajas', icon: 'report_gmailerrorred' },
-        { to: '/productosRetirados', label: 'Retirados', caption: 'Productos fuera de circulación', icon: 'remove_shopping_cart' }
+        { to: '/productos', label: 'Productos', icon: 'inventory_2' },
+        { to: '/subcategorias', label: 'Subcategorías', icon: 'category' },
+        { to: '/unidades', label: 'Unidades', icon: 'straighten' },
+        { to: '/productosPorVencer', label: 'Por vencer', icon: 'warning_amber' },
+        { to: '/productosVencidos', label: 'Vencidos', icon: 'report_gmailerrorred' },
+        { to: '/productosRetirados', label: 'Retirados', icon: 'remove_shopping_cart' }
       ]
 
       const gestion = [
-        { to: '/clientes', label: 'Clientes', caption: 'Base de clientes', icon: 'groups' },
-        { to: '/proveedores', label: 'Proveedores', caption: 'Relación de compras', icon: 'local_shipping' },
-        { to: '/vendedores', label: 'Vendedores', caption: 'Equipo comercial', icon: 'badge' },
-        { to: '/users', label: 'Usuarios', caption: 'Accesos del sistema', icon: 'manage_accounts' },
-        { to: '/agencias', label: 'Agencias', caption: 'Sucursales y sedes', icon: 'apartment' },
-        { to: '/reportes', label: 'Reportes', caption: 'Consultas y análisis', icon: 'insert_chart' },
-        { to: '/siat', label: 'SIAT', caption: 'CUIS y CUFD', icon: 'verified' },
-        { to: '/carousel', label: 'Carousel', caption: 'Contenido visual', icon: 'view_carousel' }
+        { to: '/clientes', label: 'Clientes', icon: 'groups' },
+        { to: '/proveedores', label: 'Proveedores', icon: 'local_shipping' },
+        { to: '/vendedores', label: 'Vendedores', icon: 'badge' },
+        { to: '/users', label: 'Usuarios', icon: 'manage_accounts' },
+        { to: '/agencias', label: 'Agencias', icon: 'apartment' },
+        { to: '/reportes', label: 'Reportes', icon: 'insert_chart' },
+        { to: '/siat', label: 'SIAT', icon: 'verified' },
+        { to: '/carousel', label: 'Carousel', icon: 'view_carousel' }
       ]
 
       const sections = [
-        { title: 'Operación', items: operacion },
-        { title: 'Inventario', items: this.isAdmin ? inventario : inventario.filter(item => item.to === '/productos' || item.to === '/productosPorVencer') }
+        { title: 'Operación', icon: 'point_of_sale', items: operacion },
+        { title: 'Inventario', icon: 'inventory_2', items: this.isAdmin ? inventario : inventario.filter(item => item.to === '/productos' || item.to === '/productosPorVencer') }
       ]
 
       if (this.isAdmin) {
-        sections.push({ title: 'Gestión', items: gestion })
+        sections.push({ title: 'Gestión', icon: 'manage_accounts', items: gestion })
       }
 
       return sections
@@ -280,6 +279,12 @@ export default {
     setInterval(() => this.getNotificaciones(1, true), 120000)
   },
   methods: {
+    linkIsActive (item) {
+      return this.$route.path === item.to
+    },
+    sectionIsActive (section) {
+      return section.items.some(item => this.linkIsActive(item))
+    },
     logout () {
       this.$q.dialog({
         message: '¿Quieres cerrar sesión?',
@@ -442,38 +447,127 @@ export default {
 }
 </script>
 
-<style scoped>
-.menu-item {
-  border-radius: 10px;
-  min-height: 42px;
-  padding: 6px 8px;
+<style>
+.drawer-shell {
+  background: linear-gradient(180deg, #0f4c81 0%, #0a3558 100%) !important;
 }
 
-.menu-item-active {
-  background: var(--q-primary);
-  color: white;
+.drawer-content {
+  min-height: 100%;
+  padding: 12px 10px 16px;
+  display: flex;
+  flex-direction: column;
 }
 
-.menu-item-active .text-grey-7 {
-  color: rgba(255, 255, 255, 0.82) !important;
+.drawer-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.13);
 }
 
-.menu-avatar-section {
+.drawer-profile__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.18);
+  flex-shrink: 0;
+}
+
+.drawer-profile__info {
+  min-width: 0;
+}
+
+.drawer-profile__name {
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-profile__sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-section-label {
+  padding: 0 8px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.drawer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* q-expansion-item header: se aplica via :header-class, necesita !important */
+.drawer-group {
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  font-size: 12.5px !important;
+  min-height: 36px !important;
+}
+
+.drawer-group--active {
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* separador de q-expansion-item */
+.drawer-group + .q-expansion-item__content {
+  padding: 0;
+}
+
+.drawer-link {
+  min-height: 34px !important;
+  border-radius: 9px !important;
+  margin: 1px 0;
+  color: rgba(176, 210, 255, 0.85) !important;
+}
+
+.drawer-link__avatar {
   min-width: 30px;
 }
 
-.menu-label {
+.drawer-link__label {
   font-size: 12.5px;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
-.menu-caption {
-  font-size: 10.5px;
-  line-height: 1.1;
+/* active-class aplicado por Vue Router */
+.drawer-link--active {
+  background-color: #1565C0 !important;
+  border-radius: 9px !important;
+  color: white !important;
 }
 
-.menu-section-title {
-  font-size: 10px;
-  letter-spacing: 0.08em;
+.drawer-link--active .q-icon {
+  color: white !important;
+}
+
+.drawer-logout {
+  margin-top: auto;
+  padding-top: 10px;
+  border-radius: 12px !important;
+  background: rgba(244, 67, 54, 0.18) !important;
+  color: #ffd5d2 !important;
+  min-height: 38px !important;
 }
 </style>
