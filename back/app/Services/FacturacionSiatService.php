@@ -6,6 +6,7 @@ use App\Models\Client;
 use App\Models\Cufd;
 use App\Models\Cuis;
 use App\Models\Sales;
+use App\Models\SiatEnvio;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 
@@ -284,28 +285,45 @@ class FacturacionSiatService
         $inicio = $fechaEmision->copy()->subSecond()->format('Y-m-d\TH:i:s.000');
         $fin    = $fechaEmision->copy()->addSecond()->format('Y-m-d\TH:i:s.999');
 
-        $eventResult = $this->siatCodeService->registroEventoSignificativo([
-            'codigoAmbiente'          => (int) config('siat.codigo_ambiente'),
-            'codigoMotivoEvento'      => 1,
-            'codigoPuntoVenta'        => $codigoPuntoVenta,
-            'codigoSistema'           => (string) config('siat.codigo_sistema'),
-            'codigoSucursal'          => $codigoSucursal,
-            'cufd'                    => $cufd->codigo,
-            'cufdEvento'              => $cufd->codigo,
-            'cuis'                    => $cuis->codigo,
-            'descripcion'             => 'Envio de factura generada fuera de linea',
-            'fechaHoraFinEvento'      => $fin,
-            'fechaHoraInicioEvento'   => $inicio,
-            'nit'                     => (int) config('siat.nit'),
-        ]);
+        // Buscar registro de envío existente para reutilizar el código de evento
+        $envio = SiatEnvio::firstOrCreate(
+            ['sale_id' => $sale->id],
+            ['estado'  => 'pendiente']
+        );
 
-        error_log("SIAT paquete [{$sale->id}] evento: " . json_encode($eventResult));
+        if ($envio->codigo_evento) {
+            // Ya tenemos el evento registrado en SIAT — lo reutilizamos
+            $codigoEvento = $envio->codigo_evento;
+            error_log("SIAT paquete [{$sale->id}] reutilizando evento existente: {$codigoEvento}");
+        } else {
+            // Registrar evento nuevo en SIAT
+            $eventResult = $this->siatCodeService->registroEventoSignificativo([
+                'codigoAmbiente'        => (int) config('siat.codigo_ambiente'),
+                'codigoMotivoEvento'    => 1,
+                'codigoPuntoVenta'      => $codigoPuntoVenta,
+                'codigoSistema'         => (string) config('siat.codigo_sistema'),
+                'codigoSucursal'        => $codigoSucursal,
+                'cufd'                  => $cufd->codigo,
+                'cufdEvento'            => $cufd->codigo,
+                'cuis'                  => $cuis->codigo,
+                'descripcion'           => 'Envio de factura generada fuera de linea',
+                'fechaHoraFinEvento'    => $fin,
+                'fechaHoraInicioEvento' => $inicio,
+                'nit'                   => (int) config('siat.nit'),
+            ]);
 
-        $codigoEvento = data_get($eventResult, 'RespuestaListaEventos.codigoRecepcionEventoSignificativo')
-            ?? data_get($eventResult, 'codigoRecepcionEventoSignificativo');
+            error_log("SIAT paquete [{$sale->id}] evento: " . json_encode($eventResult));
 
-        if (!$codigoEvento) {
-            throw new \RuntimeException('SIAT no devolvió código de evento: ' . json_encode($eventResult));
+            $codigoEvento = data_get($eventResult, 'RespuestaListaEventos.codigoRecepcionEventoSignificativo')
+                ?? data_get($eventResult, 'codigoRecepcionEventoSignificativo');
+
+            if (!$codigoEvento) {
+                $envio->update(['estado' => 'error', 'ultimo_mensaje' => json_encode($eventResult)]);
+                throw new \RuntimeException('SIAT no devolvió código de evento: ' . json_encode($eventResult));
+            }
+
+            // Guardar el código de evento para no volver a crearlo en reintentos
+            $envio->update(['codigo_evento' => $codigoEvento]);
         }
 
         // Construir tar.gz con el XML de la factura
@@ -357,11 +375,12 @@ class FacturacionSiatService
                 $mensajesSiat = data_get($recepcionResult, 'RespuestaServicioFacturacion.mensajesList')
                     ?? data_get($recepcionResult, 'mensajesList')
                     ?? [];
-                throw new \RuntimeException(
-                    'SIAT no devolvió código de recepción. ' .
-                    (is_array($mensajesSiat) ? json_encode($mensajesSiat) : (string) $mensajesSiat)
-                );
+                $detalleMensaje = is_array($mensajesSiat) ? json_encode($mensajesSiat) : (string) $mensajesSiat;
+                $envio->update(['estado' => 'error', 'ultimo_mensaje' => $detalleMensaje]);
+                throw new \RuntimeException('SIAT no devolvió código de recepción. ' . $detalleMensaje);
             }
+
+            $envio->update(['codigo_recepcion' => $codigoRecepcion, 'estado' => 'enviado']);
 
             // Polling de validación (máx. 10 intentos con 1 s de pausa)
             $validado    = false;
@@ -404,12 +423,15 @@ class FacturacionSiatService
                     ?? data_get($ultimaRespuesta, 'mensajesList')
                     ?? [];
                 $detalle = is_array($mensajesSiat) ? json_encode($mensajesSiat) : (string) $mensajesSiat;
+                $envio->update(['estado' => 'error', 'ultimo_mensaje' => $detalle]);
                 throw new \RuntimeException("SIAT no validó el paquete tras {$maxIntentos} intentos. Última respuesta: {$detalle}");
             }
 
-            $sale->siatEnviado                         = true;
-            $sale->codigoRecepcion                     = $codigoRecepcion;
-            $sale->codigoRecepcionEventoSignificativo  = $codigoEvento;
+            $envio->update(['estado' => 'validado']);
+
+            $sale->siatEnviado                        = true;
+            $sale->codigoRecepcion                    = $codigoRecepcion;
+            $sale->codigoRecepcionEventoSignificativo = $codigoEvento;
             $sale->save();
 
         } finally {

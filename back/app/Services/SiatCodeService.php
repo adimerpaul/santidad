@@ -17,7 +17,7 @@ class SiatCodeService
 
     public function recepcionFactura(array $payload): array
     {
-        $result = $this->client('ServicioFacturacionCompraVenta')->recepcionFactura([
+        $result = $this->client('ServicioFacturacionCompraVentaXXX')->recepcionFactura([
             'SolicitudServicioRecepcionFactura' => $payload,
         ]);
 
