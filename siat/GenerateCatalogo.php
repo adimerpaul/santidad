@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/datos_generales.php';
 
-$siat = obtenerDatosSiat(1);
+$siat = obtenerDatosSiat(0);
 $codigoPuntoVenta = $siat['codigoPuntoVenta'];
 $cuis = $siat['cuis'];
 $nit = $siat['nit'];
@@ -38,7 +38,7 @@ for ($i=0; $i < $contador; $i++) {
     ];
     $result= $client->sincronizarActividades($data);
 //    error_log(json_encode($result));
-    var_dump($result);
+//    var_dump($result);
 //    exit();
 
     $result= $client->sincronizarFechaHora($data);
@@ -48,14 +48,14 @@ for ($i=0; $i < $contador; $i++) {
 //    var_dump($result);
 
     $result= $client->sincronizarListaLeyendasFactura($data);
-//    var_dump($result);
+    var_dump($result);
 
     $result= $client->sincronizarListaMensajesServicios($data);
 //    var_dump($result);
 
     $result= $client->sincronizarListaProductosServicios($data);
 //    error_log(json_encode($result));
-    var_dump($result);
+//    var_dump($result);
 
     $result= $client->sincronizarParametricaEventosSignificativos($data);
 //    var_dump($result);
