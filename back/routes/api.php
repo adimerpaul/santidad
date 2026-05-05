@@ -161,46 +161,46 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     // Ruta especial para el select del HistorialPedidos (WhatsApp)
     Route::get('vendedores-por-proveedor/{id}', [App\Http\Controllers\VendedorController::class, 'getByProvider']);
 
-    Route::get('test-email', function () {
-        $to      = 'adimer101@gmail.com';
-        $config  = [
-            'driver'     => config('mail.default'),
-            'host'       => config('mail.mailers.smtp.host'),
-            'port'       => config('mail.mailers.smtp.port'),
-            'encryption' => config('mail.mailers.smtp.encryption'),
-            'username'   => config('mail.mailers.smtp.username'),
-            'from'       => config('mail.from.address'),
-            'from_name'  => config('mail.from.name'),
-        ];
-
-        try {
-            \Illuminate\Support\Facades\Mail::raw(
-                'Correo de prueba desde ' . config('app.url') . ' — ' . now(),
-                function ($m) use ($to) {
-                    $m->to($to)->subject('Test Email — ' . config('app.name'));
-                }
-            );
-
-            return response()->json([
-                'ok'     => true,
-                'config' => $config,
-                'msg'    => "Correo enviado a {$to}",
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'ok'      => false,
-                'config'  => $config,
-                'error'   => $e->getMessage(),
-                'class'   => get_class($e),
-                'file'    => $e->getFile() . ':' . $e->getLine(),
-            ], 500);
-        }
-    });
 
     Route::get('siat/dashboard', [SiatController::class, 'dashboard']);
     Route::get('siat/cuis', [SiatController::class, 'cuisIndex']);
     Route::get('siat/cufds', [SiatController::class, 'cufdIndex']);
     Route::post('siat/cuis/generar', [SiatController::class, 'generarCuis']);
     Route::post('siat/cufds/generar', [SiatController::class, 'generarCufd']);
-        
+
+});
+Route::get('test-email', function () {
+    $to      = 'adimer101@gmail.com';
+    $config  = [
+        'driver'     => config('mail.default'),
+        'host'       => config('mail.mailers.smtp.host'),
+        'port'       => config('mail.mailers.smtp.port'),
+        'encryption' => config('mail.mailers.smtp.encryption'),
+        'username'   => config('mail.mailers.smtp.username'),
+        'from'       => config('mail.from.address'),
+        'from_name'  => config('mail.from.name'),
+    ];
+
+    try {
+        \Illuminate\Support\Facades\Mail::raw(
+            'Correo de prueba desde ' . config('app.url') . ' — ' . now(),
+            function ($m) use ($to) {
+                $m->to($to)->subject('Test Email — ' . config('app.name'));
+            }
+        );
+
+        return response()->json([
+            'ok'     => true,
+            'config' => $config,
+            'msg'    => "Correo enviado a {$to}",
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'ok'      => false,
+            'config'  => $config,
+            'error'   => $e->getMessage(),
+            'class'   => get_class($e),
+            'file'    => $e->getFile() . ':' . $e->getLine(),
+        ], 500);
+    }
 });
