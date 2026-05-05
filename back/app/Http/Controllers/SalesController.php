@@ -492,7 +492,7 @@ class SalesController extends Controller
 
         if ($query->exists()) {
             $client                              = $query->first();
-            $client->nombreRazonSocial           = strtoupper($request->client['nombreRazonSocial']);
+            $client->nombreRazonSocial           = $request->client['nombreRazonSocial'];
             $client->codigoTipoDocumentoIdentidad = $request->client['codigoTipoDocumentoIdentidad'];
             $client->email                       = $request->client['email'];
             $client->save();
@@ -500,7 +500,7 @@ class SalesController extends Controller
         }
 
         $client                              = new Client();
-        $client->nombreRazonSocial           = strtoupper($request->client['nombreRazonSocial']);
+        $client->nombreRazonSocial           = $request->client['nombreRazonSocial'];
         $client->codigoTipoDocumentoIdentidad = $request->client['codigoTipoDocumentoIdentidad'];
         $client->numeroDocumento             = $request->client['numeroDocumento'];
         $client->complemento                 = strtoupper($complemento);

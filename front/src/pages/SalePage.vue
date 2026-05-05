@@ -326,10 +326,10 @@
                 <q-input outlined dense label="NIT/CARNET" @keyup="searchClient" required v-model="client.numeroDocumento"   />
               </div>
               <div class="col-6 col-md-3">
-                <q-input outlined dense label="Complemento"  @keyup="searchClient" v-model="client.complemento" style="text-transform: uppercase"/>
+                <q-input outlined dense label="Complemento" @keyup="searchClientComplemento" v-model="client.complemento" style="text-transform: uppercase"/>
               </div>
               <div class="col-12 col-md-6">
-                <q-input outlined dense label="Nombre Razon Social" required v-model="client.nombreRazonSocial" style="text-transform: uppercase" />
+                <q-input outlined dense label="Nombre Razon Social" required v-model="client.nombreRazonSocial" />
               </div>
               <div class="col-12 col-md-6">
                 <q-select v-model="document" outlined dense :options="documents" />
@@ -758,6 +758,16 @@ export default {
       if (this.client.numeroDocumento === '0') {
         this.clientSearch()
       } else if (this.client.numeroDocumento.length >= 5) {
+        this.clientSearch()
+      }
+    },
+
+    searchClientComplemento () {
+      // Solo busca con el complemento actual — no lo borra ni resetea el documento
+      this.client.nombreRazonSocial = ''
+      this.client.email = ''
+      this.client.id = undefined
+      if (this.client.numeroDocumento.length >= 1) {
         this.clientSearch()
       }
     },
