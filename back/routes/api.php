@@ -168,39 +168,105 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('siat/cuis/generar', [SiatController::class, 'generarCuis']);
     Route::post('siat/cufds/generar', [SiatController::class, 'generarCufd']);
 
-});
-Route::get('test-email', function () {
-    $to      = 'adimer101@gmail.com';
-    $config  = [
-        'driver'     => config('mail.default'),
-        'host'       => config('mail.mailers.smtp.host'),
-        'port'       => config('mail.mailers.smtp.port'),
-        'encryption' => config('mail.mailers.smtp.encryption'),
-        'username'   => config('mail.mailers.smtp.username'),
-        'from'       => config('mail.from.address'),
-        'from_name'  => config('mail.from.name'),
-    ];
+    Route::get('test-email', function () {
+        $to  = 'adimer101@gmail.com';
+        $out = [];
 
-    try {
-        \Illuminate\Support\Facades\Mail::raw(
-            'Correo de prueba desde ' . config('app.url') . ' — ' . now(),
-            function ($m) use ($to) {
-                $m->to($to)->subject('Test Email — ' . config('app.name'));
+        // ── 1. Configuración de correo ──────────────────────────────────────
+        $out['1_mail_config'] = [
+            'driver'     => config('mail.default'),
+            'host'       => config('mail.mailers.smtp.host'),
+            'port'       => config('mail.mailers.smtp.port'),
+            'encryption' => config('mail.mailers.smtp.encryption'),
+            'username'   => config('mail.mailers.smtp.username'),
+            'from'       => config('mail.from.address'),
+            'from_name'  => config('mail.from.name'),
+        ];
+
+        // ── 2. Directorios de storage ────────────────────────────────────────
+        $storageDir = storage_path('app/siat/sales');
+        $out['2_storage'] = [
+            'path'     => $storageDir,
+            'exists'   => is_dir($storageDir),
+            'writable' => is_writable($storageDir),
+        ];
+
+        // ── 3. Extensiones PHP necesarias ────────────────────────────────────
+        $out['3_extensiones'] = [
+            'gd'      => extension_loaded('gd'),
+            'imagick' => extension_loaded('imagick'),
+            'dom'     => extension_loaded('dom'),
+            'zip'     => extension_loaded('zip'),
+            'phar'    => extension_loaded('phar'),
+            'openssl' => extension_loaded('openssl'),
+        ];
+
+        // ── 4. Test DomPDF ───────────────────────────────────────────────────
+        try {
+            $pdf = new \Dompdf\Dompdf();
+            $pdf->loadHtml('<p>test</p>');
+            $pdf->render();
+            $out['4_dompdf'] = 'ok';
+        } catch (\Throwable $e) {
+            $out['4_dompdf'] = 'ERROR: ' . $e->getMessage();
+        }
+
+        // ── 5. Test QR code ──────────────────────────────────────────────────
+        try {
+            \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(100)->generate('test');
+            $out['5_qrcode'] = 'ok';
+        } catch (\Throwable $e) {
+            $out['5_qrcode'] = 'ERROR: ' . $e->getMessage();
+        }
+
+        // ── 6. Última venta con XML almacenado ───────────────────────────────
+        $ultimaVenta = \App\Models\Sales::where('venta', 'F')->latest('id')->first();
+        $ventaConXml = null;
+        if ($ultimaVenta) {
+            $xmlPath = storage_path("app/siat/sales/{$ultimaVenta->id}.xml");
+            $out['6_ultima_venta_F'] = [
+                'id'          => $ultimaVenta->id,
+                'xml_path'    => $xmlPath,
+                'xml_existe'  => file_exists($xmlPath),
+                'siatEnviado' => (bool) $ultimaVenta->siatEnviado,
+                'client_email'=> $ultimaVenta->client?->email ?? '(sin email)',
+            ];
+            if (file_exists($xmlPath)) {
+                $ventaConXml = $ultimaVenta;
             }
-        );
+        } else {
+            $out['6_ultima_venta_F'] = 'No hay ventas con tipo F';
+        }
 
-        return response()->json([
-            'ok'     => true,
-            'config' => $config,
-            'msg'    => "Correo enviado a {$to}",
-        ]);
-    } catch (\Throwable $e) {
-        return response()->json([
-            'ok'      => false,
-            'config'  => $config,
-            'error'   => $e->getMessage(),
-            'class'   => get_class($e),
-            'file'    => $e->getFile() . ':' . $e->getLine(),
-        ], 500);
-    }
+        // ── 7. Envío de FacturaVentaMail (el mismo que usa la venta real) ────
+        try {
+            if ($ventaConXml) {
+                \Illuminate\Support\Facades\Mail::to($to)->send(
+                    new \App\Mail\FacturaVentaMail([
+                        'sale_id' => $ventaConXml->id,
+                        'online'  => (bool) $ventaConXml->siatEnviado,
+                    ])
+                );
+                $out['7_factura_mail'] = "ok — FacturaVentaMail enviado (venta #{$ventaConXml->id})";
+            } else {
+                \Illuminate\Support\Facades\Mail::raw(
+                    'Test simple (sin XML) — ' . now(),
+                    fn ($m) => $m->to($to)->subject('Test simple — ' . config('app.name'))
+                );
+                $out['7_factura_mail'] = 'ok — correo simple enviado (no hay XML disponible)';
+            }
+        } catch (\Throwable $e) {
+            $out['7_factura_mail'] = [
+                'error' => $e->getMessage(),
+                'class' => get_class($e),
+                'file'  => $e->getFile() . ':' . $e->getLine(),
+            ];
+        }
+
+        $todoOk = !str_contains(json_encode($out), 'ERROR')
+               && !isset($out['7_factura_mail']['error']);
+
+        return response()->json(['ok' => $todoOk, 'diagnostico' => $out], $todoOk ? 200 : 500);
+    });
+
 });

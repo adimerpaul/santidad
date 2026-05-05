@@ -24,12 +24,16 @@ class FacturaVentaMail extends Mailable
         $pdfPath = storage_path("app/siat/sales/{$saleId}.pdf");
 
         if (file_exists($xmlPath)) {
-            $html = $this->generatePdfHtml($xmlPath, $online);
-            $dompdf = new Dompdf();
-            $dompdf->loadHtml($html);
-            $dompdf->setPaper('letter');
-            $dompdf->render();
-            file_put_contents($pdfPath, $dompdf->output());
+            try {
+                $html = $this->generatePdfHtml($xmlPath, $online);
+                $dompdf = new Dompdf();
+                $dompdf->loadHtml($html);
+                $dompdf->setPaper('letter');
+                $dompdf->render();
+                file_put_contents($pdfPath, $dompdf->output());
+            } catch (\Throwable $e) {
+                error_log("FacturaVentaMail: error generando PDF para venta {$saleId}: " . $e->getMessage());
+            }
         }
 
         $mail = $this
