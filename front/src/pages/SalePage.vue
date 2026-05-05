@@ -323,10 +323,10 @@
           <q-card-section>
             <div class="row">
               <div class="col-6 col-md-3">
-                <q-input outlined dense label="NIT/CARNET" @keyup="searchClient" required v-model="client.numeroDocumento"   />
+                <q-input outlined dense label="NIT/CARNET" @keyup="searchClient" required v-model="client.numeroDocumento" :loading="loadingClientSearch" />
               </div>
               <div class="col-6 col-md-3">
-                <q-input outlined dense label="Complemento" @keyup="searchClientComplemento" v-model="client.complemento" style="text-transform: uppercase"/>
+                <q-input outlined dense label="Complemento" @keyup="searchClientComplemento" v-model="client.complemento" style="text-transform: uppercase" :loading="loadingClientSearch" />
               </div>
               <div class="col-12 col-md-6">
                 <q-input outlined dense label="Nombre Razon Social" required v-model="client.nombreRazonSocial" />
@@ -472,6 +472,7 @@ export default {
       current_page: 1,
       last_page: 1,
       loadingPedidoOnline: false,
+      loadingClientSearch: false,
       ruleNumber: [
         val => (val !== null && val !== '') || 'Por favor escriba su cantidad',
         val => (val >= 0 && val < 10000) || 'Por favor escriba una cantidad real'
@@ -738,6 +739,7 @@ export default {
 
     clientSearch () {
       this.$axios.post('searchClient', this.client).then(res => {
+        this.loadingClientSearch = false
         if (res.data.nombreRazonSocial !== undefined) {
           this.client.nombreRazonSocial = res.data.nombreRazonSocial
           this.client.email = res.data.email
@@ -746,6 +748,8 @@ export default {
           documento.label = documento.descripcion
           this.document = documento
         }
+      }).catch(() => {
+        this.loadingClientSearch = false
       })
     },
 
@@ -755,20 +759,21 @@ export default {
       this.client.complemento = ''
       this.client.email = ''
       this.client.id = undefined
-      if (this.client.numeroDocumento === '0') {
-        this.clientSearch()
-      } else if (this.client.numeroDocumento.length >= 5) {
-        this.clientSearch()
+      clearTimeout(this._searchTimer)
+      if (this.client.numeroDocumento === '0' || this.client.numeroDocumento.length >= 5) {
+        this.loadingClientSearch = true
+        this._searchTimer = setTimeout(() => { this.clientSearch() }, 400)
       }
     },
 
     searchClientComplemento () {
-      // Solo busca con el complemento actual — no lo borra ni resetea el documento
       this.client.nombreRazonSocial = ''
       this.client.email = ''
       this.client.id = undefined
+      clearTimeout(this._searchTimer)
       if (this.client.numeroDocumento.length >= 1) {
-        this.clientSearch()
+        this.loadingClientSearch = true
+        this._searchTimer = setTimeout(() => { this.clientSearch() }, 400)
       }
     },
 
