@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\FacturaEstadoMail;
 use App\Mail\FacturaVentaMail;
 use App\Models\Buy;
 use App\Models\Client;
@@ -220,6 +221,43 @@ class SalesController extends Controller
                 $product->save();
             }
         }
+
+        $this->enviarCorreoEstado($sale, 'anulacion');
+    }
+
+    // ─────────────────────────── Revertir anulación ───────────────────────────
+
+    public function salesRevertir($id)
+    {
+        $sale = Sales::find($id);
+
+        if (!$sale) {
+            return response()->json(['message' => 'Venta no encontrada'], 404);
+        }
+
+        if ($sale->estado !== 'ANULADO') {
+            return response()->json(['message' => 'La venta no está anulada'], 422);
+        }
+
+        try {
+            $this->facturacionService->revertirAnulacion($sale);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $sale->estado = 'ACTIVO';
+        $sale->save();
+
+        if ($sale->tipoVenta === 'Ingreso') {
+            foreach (Detail::whereSaleId($id)->get() as $detail) {
+                $product            = Product::find($detail->product_id);
+                $product->cantidad -= $detail->cantidad;
+                $this->ajustarStockSucursal($product, $sale->agencia_id, -$detail->cantidad);
+                $product->save();
+            }
+        }
+
+        $this->enviarCorreoEstado($sale, 'reversion');
     }
 
     // ─────────────────────────── Gastos ───────────────────────────
@@ -390,6 +428,19 @@ class SalesController extends Controller
             }
         } catch (\Throwable $e) {
             error_log('Error enviando correo factura: ' . $e->getMessage());
+        }
+    }
+
+    private function enviarCorreoEstado(Sales $sale, string $tipo): void
+    {
+        try {
+            $sale->loadMissing('client');
+            $email = $sale->client?->email;
+            if ($email) {
+                Mail::to($email)->send(new FacturaEstadoMail($sale, $tipo));
+            }
+        } catch (\Throwable $e) {
+            error_log("Error enviando correo {$tipo}: " . $e->getMessage());
         }
     }
 

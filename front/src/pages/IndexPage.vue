@@ -168,6 +168,19 @@
                     icon="qr_code_2"
                     @click="imprimirImpuestos(props.row)"
                   />
+                  <q-btn
+                    v-if="props.row.venta === 'F' && props.row.cuf"
+                    dense
+                    label="Revertir"
+                    color="orange-7"
+                    size="10px"
+                    no-caps
+                    no-wrap
+                    icon="o_undo"
+                    @click="saleRevertir(props.row.id)"
+                  >
+                    <q-tooltip>Revertir anulación en SIAT</q-tooltip>
+                  </q-btn>
                 </div>
               </q-td>
               <q-td key="concepto" :props="props" class="">
@@ -452,6 +465,24 @@ export default {
         })
       }).onCancel(() => {
       }).onDismiss(() => {
+      })
+    },
+    saleRevertir (id) {
+      this.$q.dialog({
+        title: 'Revertir anulación',
+        message: '¿Estás seguro de revertir la anulación de esta venta en SIAT?',
+        cancel: true,
+        persistent: true
+      }).onOk(() => {
+        this.loading = true
+        this.$axios.get(`salesRevertir/${id}`).then(res => {
+          this.loading = false
+          this.salesGet()
+          this.$alert.success('Anulación revertida correctamente')
+        }).catch(err => {
+          this.loading = false
+          this.$alert.error(err.response.data.message)
+        })
       })
     },
     proveedorGet () {

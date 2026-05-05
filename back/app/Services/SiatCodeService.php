@@ -17,7 +17,7 @@ class SiatCodeService
 
     public function recepcionFactura(array $payload): array
     {
-        $result = $this->client('ServicioFacturacionCompraVentaXXX')->recepcionFactura([
+        $result = $this->client('ServicioFacturacionCompraVenta')->recepcionFactura([
             'SolicitudServicioRecepcionFactura' => $payload,
         ]);
 
@@ -28,6 +28,15 @@ class SiatCodeService
     {
         $result = $this->client('ServicioFacturacionCompraVenta')->anulacionFactura([
             'SolicitudServicioAnulacionFactura' => $payload,
+        ]);
+
+        return $this->normalize($result);
+    }
+
+    public function reversionAnulacion(array $payload): array
+    {
+        $result = $this->client('ServicioFacturacionCompraVenta')->reversionAnulacionFactura([
+            'SolicitudServicioReversionAnulacionFactura' => $payload,
         ]);
 
         return $this->normalize($result);

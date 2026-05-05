@@ -114,6 +114,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
     Route::resource('/sales', SalesController::class);
     Route::get('/salesAnular/{id}', [SalesController::class,'salesAnular']);
+    Route::get('/salesRevertir/{id}', [SalesController::class,'salesRevertir']);
 
     Route::resource('/buys', BuyController::class);
     Route::get('/indexVencidos', [BuyController::class,'indexVencidos']);

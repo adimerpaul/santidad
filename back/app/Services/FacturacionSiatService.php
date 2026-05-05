@@ -195,6 +195,59 @@ class FacturacionSiatService
         $sale->save();
     }
 
+    /**
+     * Revierte la anulación de una factura en SIAT. Lanza excepción si el servicio rechaza.
+     */
+    public function revertirAnulacion(Sales $sale): void
+    {
+        if (!$sale->siatAnulado || !$sale->cuf) {
+            throw new \RuntimeException('La factura no está anulada en SIAT o no tiene CUF');
+        }
+
+        $cufd = $sale->cufd_id
+            ? Cufd::find($sale->cufd_id)
+            : Cufd::where('codigo', $sale->cufd)->latest('id')->first();
+
+        $cuis = Cuis::where('codigoSucursal', (int) ($sale->codigoSucursal ?? 0))
+            ->where('codigoPuntoVenta', (int) ($sale->codigoPuntoVenta ?? 0))
+            ->latest('id')
+            ->first();
+
+        if (!$cufd || !$cuis) {
+            throw new \RuntimeException('No existe CUIS/CUFD para revertir la anulación en SIAT');
+        }
+
+        $payload = [
+            'codigoAmbiente'        => (int) config('siat.codigo_ambiente'),
+            'codigoDocumentoSector' => 1,
+            'codigoEmision'         => 1,
+            'codigoModalidad'       => (int) config('siat.codigo_modalidad'),
+            'codigoPuntoVenta'      => (int) ($sale->codigoPuntoVenta ?? 0),
+            'codigoSistema'         => (string) config('siat.codigo_sistema'),
+            'codigoSucursal'        => (int) ($sale->codigoSucursal ?? 0),
+            'cufd'                  => $cufd->codigo,
+            'cuis'                  => $cuis->codigo,
+            'nit'                   => (int) config('siat.nit'),
+            'tipoFacturaDocumento'  => 1,
+            'cuf'                   => $sale->cuf,
+        ];
+
+        $result      = $this->siatCodeService->reversionAnulacion($payload);
+        $transaccion = data_get($result, 'RespuestaServicioFacturacion.transaccion')
+            ?? data_get($result, 'transaccion');
+
+        if (!$transaccion) {
+            throw new \RuntimeException(
+                data_get($result, 'RespuestaServicioFacturacion.mensajesList.0.descripcion')
+                ?? data_get($result, 'mensajesList.0.descripcion')
+                ?? 'SIAT rechazó la reversión de la anulación'
+            );
+        }
+
+        $sale->siatAnulado = false;
+        $sale->save();
+    }
+
     // ─────────────────────────── XML ───────────────────────────
 
     private function buildSiatXml(

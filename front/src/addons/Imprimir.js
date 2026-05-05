@@ -66,9 +66,10 @@ Oruro</div>
       EL USO ILÍCITO SERÁ SANCIONADO PENALMENTE DE<br>
       ACUERDO A LEY<br><br>
       ${factura.leyenda} <br><br>
-      "Este documento es la Representación Gráfica de un<br>
-      Documento Fiscal Digital emitido en una modalidad de<br>
-      facturación en línea"</div><br>
+      ${factura.siatEnviado
+        ? '"Este documento es la Representación Gráfica de un Documento Fiscal Digital emitido en una modalidad de facturación en línea"'
+        : '"Este documento es la Representación Gráfica de un Documento Fiscal Digital emitido fuera de línea, verifique su envío con su proveedor o en la página web www.impuestos.gob.bo"'
+      }</div><br>
       <div style='display: flex;justify-content: center;'> <img  src="${url}" ></div></div>
       </div>
 </body>
