@@ -109,11 +109,7 @@ class FacturaVentaMail extends Mailable
         $comp   = (string) $xml->cabecera->complemento;
         $doc    = ($comp !== '') ? "{$numDoc}-{$comp}" : $numDoc;
 
-        // Marca de agua y texto pie de página
-        $watermark = $online
-            ? ''
-            : '<div class="watermark">SIN VALOR LEGAL</div>';
-
+        // Texto pie de página
         $pieleyenda = $online
             ? '"Este documento es la Representación Gráfica de un Documento Fiscal Digital emitido en una modalidad de facturación en línea"'
             : '"Este documento es la Representación Gráfica de un Documento Fiscal Digital emitido fuera de línea, verifique su envío con su proveedor o en la página web www.impuestos.gob.bo"';
@@ -138,16 +134,10 @@ class FacturaVentaMail extends Mailable
 .bg-gray { background-color: #e2e8f0; }
 .blue { color: #2b6cb0; }
 .orange { color: #c05621; }
-.watermark {
-    position: fixed; top: 35%; left: 5%;
-    font-size: 70px; color: rgba(180,180,180,0.35);
-    transform: rotate(-30deg);
-    font-weight: bold; z-index: -1;
-}
+
 </style>
 </head>
 <body>
-{$watermark}
 <table width="100%" class="collapse">
     <tr>
         <td width="40%" valign="top">
