@@ -225,6 +225,40 @@
               <q-td key="user" :props="props">
                 <p>{{ props.row.user?.name }}</p>
               </q-td>
+              <q-td key="siat" :props="props" auto-width>
+                <template v-if="props.row.venta === 'F'">
+                  <q-chip
+                    v-if="props.row.siatEnviado"
+                    dense flat
+                    color="green-2"
+                    text-color="green-9"
+                    icon="check_circle"
+                    label="Enviado"
+                    size="10px"
+                  />
+                  <template v-else-if="props.row.estado !== 'ANULADO'">
+                    <q-chip
+                      dense flat
+                      color="orange-2"
+                      text-color="orange-9"
+                      icon="cloud_off"
+                      label="Pendiente"
+                      size="10px"
+                    />
+                    <q-btn
+                      dense flat
+                      icon="cloud_upload"
+                      color="orange-8"
+                      size="10px"
+                      no-caps
+                      :loading="loadingPaquete[props.row.id]"
+                      @click="enviarPaquete(props.row)"
+                    >
+                      <q-tooltip>Enviar a SIAT por paquete</q-tooltip>
+                    </q-btn>
+                  </template>
+                </template>
+              </q-td>
             </q-tr>
           </template>
         </q-table>
@@ -355,6 +389,7 @@ export default {
       dateIni: moment().startOf('day').format('YYYY-MM-DDTHH:mm'),
       dateFin: moment().add(2, 'minutes').format('YYYY-MM-DDTHH:mm'),
       loading: false,
+      loadingPaquete: {},
       dialogSale: false,
       sale: {},
       sales: [],
@@ -369,7 +404,8 @@ export default {
         { name: 'proveedorcliente', label: 'Proveedor / cliente', align: 'left', field: 'proveedor / cliente', sortable: true },
         { name: 'fechayhora', label: 'Fecha y hora', align: 'left', field: 'fechayhora', sortable: true },
         { name: 'egresoingreso', label: 'Egreso / ingreso', align: 'left', field: 'egreso / ingreso', sortable: true },
-        { name: 'user', label: 'Usuario', align: 'left', field: (row) => row.user.name, sortable: true }
+        { name: 'user', label: 'Usuario', align: 'left', field: (row) => row.user.name, sortable: true },
+        { name: 'siat', label: 'SIAT', align: 'center', field: 'siatEnviado' }
       ],
       proveedores: [],
       proveedor: { nombreRazonSocial: '', numeroDocumento: '', telefono: '', clienteProveedor: 'Proveedor' },
@@ -465,6 +501,24 @@ export default {
         })
       }).onCancel(() => {
       }).onDismiss(() => {
+      })
+    },
+    enviarPaquete (sale) {
+      this.$q.dialog({
+        title: 'Enviar a SIAT por paquete',
+        message: `¿Enviar la factura N° ${sale.numeroFactura} a SIAT?`,
+        cancel: true,
+        persistent: true
+      }).onOk(() => {
+        this.$set ? this.$set(this.loadingPaquete, sale.id, true) : (this.loadingPaquete[sale.id] = true)
+        this.$axios.post(`salesEnviarPaquete/${sale.id}`).then(() => {
+          this.loadingPaquete[sale.id] = false
+          this.salesGet()
+          this.$alert.success('Factura enviada y validada en SIAT correctamente')
+        }).catch(err => {
+          this.loadingPaquete[sale.id] = false
+          this.$alert.error(err.response?.data?.message || 'Error al enviar paquete')
+        })
       })
     },
     saleRevertir (id) {

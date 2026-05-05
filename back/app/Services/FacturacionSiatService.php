@@ -248,6 +248,178 @@ class FacturacionSiatService
         $sale->save();
     }
 
+    /**
+     * Envía una factura offline a SIAT como paquete (recepcionPaqueteFactura).
+     * Flujo: registrar evento significativo → empaquetar XML → enviar → validar.
+     */
+    public function enviarPaquete(Sales $sale): void
+    {
+        if ($sale->siatEnviado) {
+            throw new \RuntimeException('La factura ya fue enviada a SIAT');
+        }
+
+        $xmlPath = storage_path("app/siat/sales/{$sale->id}.xml");
+        if (!file_exists($xmlPath)) {
+            throw new \RuntimeException('No se encontró el XML de la factura para empaquetar');
+        }
+
+        $cufd = $sale->cufd_id
+            ? Cufd::find($sale->cufd_id)
+            : Cufd::where('codigo', $sale->cufd)->latest('id')->first();
+
+        $cuis = Cuis::where('codigoSucursal', (int) ($sale->codigoSucursal ?? 0))
+            ->where('codigoPuntoVenta', (int) ($sale->codigoPuntoVenta ?? 0))
+            ->latest('id')
+            ->first();
+
+        if (!$cufd || !$cuis) {
+            throw new \RuntimeException('No existe CUIS/CUFD para enviar el paquete');
+        }
+
+        $codigoSucursal   = (int) ($sale->codigoSucursal   ?? 0);
+        $codigoPuntoVenta = (int) ($sale->codigoPuntoVenta ?? 0);
+
+        // Ventana de evento: 1 segundo antes y 1 segundo después de la emisión
+        $fechaEmision = Carbon::parse($sale->fechaEmision, 'America/La_Paz');
+        $inicio = $fechaEmision->copy()->subSecond()->format('Y-m-d\TH:i:s.000');
+        $fin    = $fechaEmision->copy()->addSecond()->format('Y-m-d\TH:i:s.999');
+
+        $eventResult = $this->siatCodeService->registroEventoSignificativo([
+            'codigoAmbiente'          => (int) config('siat.codigo_ambiente'),
+            'codigoMotivoEvento'      => 1,
+            'codigoPuntoVenta'        => $codigoPuntoVenta,
+            'codigoSistema'           => (string) config('siat.codigo_sistema'),
+            'codigoSucursal'          => $codigoSucursal,
+            'cufd'                    => $cufd->codigo,
+            'cufdEvento'              => $cufd->codigo,
+            'cuis'                    => $cuis->codigo,
+            'descripcion'             => 'Envio de factura generada fuera de linea',
+            'fechaHoraFinEvento'      => $fin,
+            'fechaHoraInicioEvento'   => $inicio,
+            'nit'                     => (int) config('siat.nit'),
+        ]);
+
+        error_log("SIAT paquete [{$sale->id}] evento: " . json_encode($eventResult));
+
+        $codigoEvento = data_get($eventResult, 'RespuestaListaEventos.codigoRecepcionEventoSignificativo')
+            ?? data_get($eventResult, 'codigoRecepcionEventoSignificativo');
+
+        if (!$codigoEvento) {
+            throw new \RuntimeException('SIAT no devolvió código de evento: ' . json_encode($eventResult));
+        }
+
+        // Construir tar.gz con el XML de la factura
+        $tempDir = storage_path("app/siat/temp/{$sale->id}");
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+        $xmlTemp = "{$tempDir}/{$sale->id}.xml";
+        $tarPath = "{$tempDir}/paquete.tar";
+
+        try {
+            copy($xmlPath, $xmlTemp);
+
+            $phar = new \PharData($tarPath);
+            $phar->addFile($xmlTemp, "{$sale->id}.xml");
+            $phar->compress(\Phar::GZ);
+
+            $gzPath    = $tarPath . '.gz';
+            $gzContent = file_get_contents($gzPath);
+            $hash      = hash('sha256', $gzContent);
+            $fechaEnvio = Carbon::now('America/La_Paz')->format('Y-m-d\TH:i:s.000');
+
+            $packagePayload = [
+                'codigoAmbiente'        => (int) config('siat.codigo_ambiente'),
+                'codigoDocumentoSector' => 1,
+                'codigoEmision'         => 2,
+                'codigoModalidad'       => (int) config('siat.codigo_modalidad'),
+                'codigoPuntoVenta'      => $codigoPuntoVenta,
+                'codigoSistema'         => (string) config('siat.codigo_sistema'),
+                'codigoSucursal'        => $codigoSucursal,
+                'cufd'                  => $cufd->codigo,
+                'cuis'                  => $cuis->codigo,
+                'nit'                   => (int) config('siat.nit'),
+                'tipoFacturaDocumento'  => 1,
+                'archivo'               => $gzContent,
+                'fechaEnvio'            => $fechaEnvio,
+                'hashArchivo'           => $hash,
+                'cantidadFacturas'      => 1,
+                'codigoEvento'          => (int) $codigoEvento,
+            ];
+
+            $recepcionResult = $this->siatCodeService->recepcionPaqueteFactura($packagePayload);
+            error_log("SIAT paquete [{$sale->id}] recepcion: " . json_encode($recepcionResult));
+
+            $codigoRecepcion = data_get($recepcionResult, 'RespuestaServicioFacturacion.codigoRecepcion')
+                ?? data_get($recepcionResult, 'codigoRecepcion');
+
+            if (!$codigoRecepcion) {
+                $mensajesSiat = data_get($recepcionResult, 'RespuestaServicioFacturacion.mensajesList')
+                    ?? data_get($recepcionResult, 'mensajesList')
+                    ?? [];
+                throw new \RuntimeException(
+                    'SIAT no devolvió código de recepción. ' .
+                    (is_array($mensajesSiat) ? json_encode($mensajesSiat) : (string) $mensajesSiat)
+                );
+            }
+
+            // Polling de validación (máx. 10 intentos con 1 s de pausa)
+            $validado    = false;
+            $intentos    = 0;
+            $maxIntentos = 10;
+            $ultimaRespuesta = [];
+
+            $validationPayload = [
+                'codigoAmbiente'        => (int) config('siat.codigo_ambiente'),
+                'codigoDocumentoSector' => 1,
+                'codigoEmision'         => 2,
+                'codigoModalidad'       => (int) config('siat.codigo_modalidad'),
+                'codigoPuntoVenta'      => $codigoPuntoVenta,
+                'codigoSistema'         => (string) config('siat.codigo_sistema'),
+                'codigoSucursal'        => $codigoSucursal,
+                'cufd'                  => $cufd->codigo,
+                'cuis'                  => $cuis->codigo,
+                'nit'                   => (int) config('siat.nit'),
+                'tipoFacturaDocumento'  => 1,
+                'codigoRecepcion'       => $codigoRecepcion,
+            ];
+
+            while (!$validado && $intentos < $maxIntentos) {
+                sleep(1);
+                $valResult       = $this->siatCodeService->validacionRecepcionPaqueteFactura($validationPayload);
+                $ultimaRespuesta = $valResult;
+                error_log("SIAT paquete [{$sale->id}] validacion intento {$intentos}: " . json_encode($valResult));
+
+                $descripcion = data_get($valResult, 'RespuestaServicioFacturacion.codigoDescripcion')
+                    ?? data_get($valResult, 'codigoDescripcion');
+
+                if ($descripcion === 'VALIDADA') {
+                    $validado = true;
+                }
+                $intentos++;
+            }
+
+            if (!$validado) {
+                $mensajesSiat = data_get($ultimaRespuesta, 'RespuestaServicioFacturacion.mensajesList')
+                    ?? data_get($ultimaRespuesta, 'mensajesList')
+                    ?? [];
+                $detalle = is_array($mensajesSiat) ? json_encode($mensajesSiat) : (string) $mensajesSiat;
+                throw new \RuntimeException("SIAT no validó el paquete tras {$maxIntentos} intentos. Última respuesta: {$detalle}");
+            }
+
+            $sale->siatEnviado                         = true;
+            $sale->codigoRecepcion                     = $codigoRecepcion;
+            $sale->codigoRecepcionEventoSignificativo  = $codigoEvento;
+            $sale->save();
+
+        } finally {
+            @unlink($xmlTemp);
+            @unlink($tarPath);
+            @unlink($tarPath . '.gz');
+            @rmdir($tempDir);
+        }
+    }
+
     // ─────────────────────────── XML ───────────────────────────
 
     private function buildSiatXml(

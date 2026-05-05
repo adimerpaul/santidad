@@ -260,6 +260,33 @@ class SalesController extends Controller
         $this->enviarCorreoEstado($sale, 'reversion');
     }
 
+    // ─────────────────────────── Envío por paquete ───────────────────────────
+
+    public function salesEnviarPaquete($id)
+    {
+        $sale = Sales::find($id);
+
+        if (!$sale) {
+            return response()->json(['message' => 'Venta no encontrada'], 404);
+        }
+
+        if ($sale->siatEnviado) {
+            return response()->json(['message' => 'La factura ya fue enviada a SIAT'], 422);
+        }
+
+        if ($sale->estado === 'ANULADO') {
+            return response()->json(['message' => 'No se puede enviar una factura anulada'], 422);
+        }
+
+        try {
+            $this->facturacionService->enviarPaquete($sale);
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Factura enviada y validada correctamente en SIAT']);
+    }
+
     // ─────────────────────────── Gastos ───────────────────────────
 
     public function salesGasto(StoreSalesRequest $request)

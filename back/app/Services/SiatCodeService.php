@@ -51,6 +51,33 @@ class SiatCodeService
         return $this->normalize($result);
     }
 
+    public function registroEventoSignificativo(array $payload): array
+    {
+        $result = $this->client('FacturacionOperaciones')->registroEventoSignificativo([
+            'SolicitudEventoSignificativo' => $payload,
+        ]);
+
+        return $this->normalize($result);
+    }
+
+    public function recepcionPaqueteFactura(array $payload): array
+    {
+        $result = $this->client('ServicioFacturacionCompraVenta')->recepcionPaqueteFactura([
+            'SolicitudServicioRecepcionPaquete' => $payload,
+        ]);
+
+        return $this->normalize($result);
+    }
+
+    public function validacionRecepcionPaqueteFactura(array $payload): array
+    {
+        $result = $this->client('ServicioFacturacionCompraVenta')->validacionRecepcionPaqueteFactura([
+            'SolicitudServicioValidacionRecepcionPaquete' => $payload,
+        ]);
+
+        return $this->normalize($result);
+    }
+
     private function client(string $service): SoapClient
     {
         $baseUrl = rtrim((string) config('siat.url_rest'), '/');
