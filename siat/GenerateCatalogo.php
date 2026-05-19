@@ -48,7 +48,7 @@ for ($i=0; $i < $contador; $i++) {
 //    var_dump($result);
 
     $result= $client->sincronizarListaLeyendasFactura($data);
-    var_dump($result);
+//    var_dump($result);
 
     $result= $client->sincronizarListaMensajesServicios($data);
 //    var_dump($result);
@@ -93,5 +93,5 @@ for ($i=0; $i < $contador; $i++) {
 
     $result= $client->sincronizarParametricaUnidadMedida($data);
 //    var_dump($result);
-//    error_log(json_encode($result));
+    error_log(json_encode($result));
 }

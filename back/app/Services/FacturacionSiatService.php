@@ -478,7 +478,7 @@ class FacturacionSiatService
         <codigoProducto>{$codigoProducto}</codigoProducto>
         <descripcion>{$descripcion}</descripcion>
         <cantidad>{$cantidad}</cantidad>
-        <unidadMedida>1</unidadMedida>
+        <unidadMedida>58</unidadMedida>
         <precioUnitario>{$precioUnitario}</precioUnitario>
         <montoDescuento>0</montoDescuento>
         <subTotal>{$subTotal}</subTotal>
