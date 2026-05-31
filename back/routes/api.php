@@ -143,6 +143,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
         Route::post('pedidos/accion', [PedidoController::class, 'accion']);
         Route::get('pedidos/{id}/detalles', [PedidoController::class, 'detalles']);
         Route::get('pedidos/{id}/modificaciones', [PedidoController::class, 'modificaciones']);
+        Route::post('pedidos/{id}/modificar-sucursal', [PedidoController::class, 'modificarPorSucursal']);
 
         // 2. SEGUNDO: Las rutas de recursos (generales)
         // Esto crea: index, store, show, update, destroy

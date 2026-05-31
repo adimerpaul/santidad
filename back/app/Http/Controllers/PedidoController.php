@@ -134,22 +134,35 @@ class PedidoController extends Controller
         
         // Recorremos detalles para buscar acciones previas (si las hubo)
         foreach ($pedido->detalles as $detalle) {
-            $modificacionDetalle = DB::table('pedido_modificacion_detalles')
+            // Última modificación: para saber la acción aplicada y cantidad aprobada
+            $ultimaModificacion = DB::table('pedido_modificacion_detalles')
                 ->where('pedido_detail_id', $detalle->id)
                 ->orderBy('id', 'desc')
                 ->first();
 
-            if ($modificacionDetalle) {
-                $detalle->accion_aplicada = $modificacionDetalle->accion;
-                $detalle->cantidad_aprobada = $modificacionDetalle->cantidad_nueva;
+            // Primera modificación: para saber la cantidad original antes de cualquier cambio
+            $primeraModificacion = DB::table('pedido_modificacion_detalles')
+                ->where('pedido_detail_id', $detalle->id)
+                ->orderBy('id', 'asc')
+                ->first();
+
+            if ($ultimaModificacion) {
+                $detalle->accion_aplicada = $ultimaModificacion->accion;
+                $detalle->cantidad_aprobada = $ultimaModificacion->cantidad_nueva;
             } else {
                 $detalle->accion_aplicada = null;
                 $detalle->cantidad_aprobada = $detalle->cantidad;
             }
+
+            // cantidad_original = lo que se pidió antes de cualquier modificación
+            $detalle->cantidad_original = $primeraModificacion
+                ? $primeraModificacion->cantidad_anterior
+                : $detalle->cantidad;
         }
         
         return response()->json($pedido);
     }
+
     
     // Stock del producto por sucursal
     public function stockSucursales($productId)
@@ -225,6 +238,7 @@ class PedidoController extends Controller
                         'producto_nombre' => $det->pedidoDetail->product->nombre ?? 'Producto desconocido',
                         'cantidad_anterior' => $det->cantidad_anterior,
                         'cantidad_nueva' => $det->cantidad_nueva,
+                        'accion' => $det->accion,
                     ];
                 })
             ];
@@ -316,4 +330,117 @@ class PedidoController extends Controller
             ], 500);
         }
     }
-}
+
+    // Modificación de pedido por sucursal (solo en PENDIENTE)
+    public function modificarPorSucursal(Request $request, $id)
+    {
+        $request->validate([
+            'observacion'                              => 'nullable|string|max:500',
+            'productos_modificados'                    => 'nullable|array',
+            'productos_modificados.*.pedido_detail_id' => 'required|integer|exists:pedido_details,id',
+            'productos_modificados.*.cantidad_nueva'   => 'required|integer|min:1',
+            'productos_eliminados'                     => 'nullable|array',
+            'productos_eliminados.*'                   => 'integer|exists:pedido_details,id',
+            'productos_nuevos'                         => 'nullable|array',
+            'productos_nuevos.*.product_id'            => 'required|integer|exists:products,id',
+            'productos_nuevos.*.cantidad'              => 'required|integer|min:1',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $pedido = Pedido::findOrFail($id);
+
+            // Solo se puede editar si está PENDIENTE
+            if ($pedido->estado !== 'PENDIENTE') {
+                return response()->json(['message' => 'Solo se pueden modificar pedidos en estado PENDIENTE'], 422);
+            }
+
+            // Solo la sucursal dueña o el admin pueden modificar
+            $user = auth()->user();
+            if ($user->id != 1 && $pedido->agencia_id != $user->agencia_id) {
+                return response()->json(['message' => 'No autorizado'], 403);
+            }
+
+            // Registrar cabecera de modificación
+            $modificacion = PedidoModificacion::create([
+                'pedido_id'       => $pedido->id,
+                'user_id'         => $user->id,
+                'accion'          => 'MODIFICADO_SUCURSAL',
+                'estado_anterior' => $pedido->estado,
+                'estado_nuevo'    => $pedido->estado,
+                'observacion'     => $request->observacion ?? 'Modificación desde sucursal',
+            ]);
+
+            // 1. Modificar cantidades
+            foreach ($request->productos_modificados ?? [] as $mod) {
+                $detalle = PedidoDetail::find($mod['pedido_detail_id']);
+                if (!$detalle || $detalle->pedido_id != $pedido->id) continue;
+
+                DB::table('pedido_modificacion_detalles')->insert([
+                    'modificacion_id'   => $modificacion->id,
+                    'pedido_detail_id'  => $detalle->id,
+                    'cantidad_anterior' => $detalle->cantidad,
+                    'cantidad_nueva'    => $mod['cantidad_nueva'],
+                    'accion'            => 'CANTIDAD_MODIFICADA',
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
+                ]);
+
+                $detalle->cantidad = $mod['cantidad_nueva'];
+                $detalle->save();
+            }
+
+            // 2. Eliminar productos
+            foreach ($request->productos_eliminados ?? [] as $detailId) {
+                $detalle = PedidoDetail::find($detailId);
+                if (!$detalle || $detalle->pedido_id != $pedido->id) continue;
+
+                DB::table('pedido_modificacion_detalles')->insert([
+                    'modificacion_id'   => $modificacion->id,
+                    'pedido_detail_id'  => $detalle->id,
+                    'cantidad_anterior' => $detalle->cantidad,
+                    'cantidad_nueva'    => 0,
+                    'accion'            => 'PRODUCTO_ELIMINADO',
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
+                ]);
+
+                $detalle->delete();
+            }
+
+            // 3. Agregar nuevos productos
+            foreach ($request->productos_nuevos ?? [] as $nuevo) {
+                $nuevoDetalle = PedidoDetail::create([
+                    'pedido_id'  => $pedido->id,
+                    'product_id' => $nuevo['product_id'],
+                    'cantidad'   => $nuevo['cantidad'],
+                ]);
+
+                DB::table('pedido_modificacion_detalles')->insert([
+                    'modificacion_id'   => $modificacion->id,
+                    'pedido_detail_id'  => $nuevoDetalle->id,
+                    'cantidad_anterior' => 0,
+                    'cantidad_nueva'    => $nuevo['cantidad'],
+                    'accion'            => 'PRODUCTO_AGREGADO',
+                    'created_at'        => now(),
+                    'updated_at'        => now(),
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Pedido actualizado correctamente',
+                'pedido'  => $pedido->fresh(['detalles.product']),
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Error al modificar el pedido',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+}

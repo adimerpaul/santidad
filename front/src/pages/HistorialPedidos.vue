@@ -320,15 +320,199 @@
 
           <q-tabs v-model="tab" dense class="text-grey" active-color="primary" indicator-color="primary" align="left">
             <q-tab name="productos" icon="inventory_2" label="Productos" />
-            <q-tab name="historial" icon="history" label="Historial" v-if="esAdmin" />
+            <q-tab name="historial" icon="history" label="Historial de modificaciones" />
           </q-tabs>
 
           <q-separator />
 
           <q-tab-panels v-model="tab" animated class="bg-transparent">
             <q-tab-panel name="productos" class="q-pa-none q-mt-md">
-              <div class="text-h6 q-mb-md">Productos solicitados</div>
+              <div class="row items-center q-mb-md">
+                <div class="text-h6">Productos solicitados</div>
+                <q-space />
+                <!-- Botón editar para sucursales en pedido PENDIENTE -->
+                <q-btn
+                  v-if="!esAdmin && pedidoSeleccionado.estado === 'PENDIENTE' && !modoEdicionSucursal"
+                  label="Editar Pedido"
+                  color="warning"
+                  icon="edit"
+                  unelevated
+                  dense
+                  @click="activarModoEdicion"
+                />
+                <div v-if="modoEdicionSucursal" class="row q-gutter-sm">
+                  <q-btn label="Cancelar" color="grey" flat icon="close" @click="cancelarModoEdicion" />
+                  <q-btn label="Guardar Cambios" color="positive" unelevated icon="save" @click="guardarModificacionSucursal" :loading="guardandoCambios" />
+                </div>
+              </div>
+
+              <!-- Tabla en modo edición sucursal -->
+              <div v-if="modoEdicionSucursal">
+                <q-table
+                  :rows="detallesEdicion"
+                  :columns="columnsEdicionSucursal"
+                  row-key="id"
+                  dense
+                  flat
+                  bordered
+                  :pagination="{ rowsPerPage: 0 }"
+                  hide-pagination
+                >
+                  <template v-slot:body-cell-imagen="props">
+                    <q-td :props="props">
+                      <q-img :src="getUrlImagen(props.row.product?.imagen)" width="40px" height="40px" class="rounded-borders">
+                        <template v-slot:error>
+                          <div class="absolute-full flex flex-center bg-grey-3"><q-icon name="image_not_supported" size="sm" /></div>
+                        </template>
+                      </q-img>
+                    </q-td>
+                  </template>
+
+                  <template v-slot:body-cell-cantidad_editable="props">
+                    <q-td :props="props">
+                      <q-input
+                        v-model.number="props.row.cantidad_editable"
+                        type="number"
+                        dense
+                        outlined
+                        style="width: 90px"
+                        min="1"
+                      />
+                    </q-td>
+                  </template>
+
+                  <template v-slot:body-cell-eliminar="props">
+                    <q-td :props="props" class="text-center">
+                      <q-btn
+                        dense flat round
+                        icon="delete"
+                        color="negative"
+                        @click="eliminarProductoEdicion(props.row)"
+                      >
+                        <q-tooltip>Eliminar producto</q-tooltip>
+                      </q-btn>
+                    </q-td>
+                  </template>
+                </q-table>
+
+                <!-- Sección para agregar nuevo producto -->
+                <q-card flat bordered class="q-mt-md">
+                  <q-card-section>
+                    <div class="text-subtitle2 text-weight-bold q-mb-sm">
+                      <q-icon name="add_circle" color="positive" class="q-mr-xs" /> Agregar Producto
+                    </div>
+
+                    <!-- Skeleton moderno mientras cargan los productos -->
+                    <div v-if="cargandoProductos" class="row q-col-gutter-sm items-center">
+                      <div class="col-12 col-sm-6">
+                        <div class="row items-center q-gutter-sm q-pa-sm bg-grey-1 rounded-borders">
+                          <q-spinner-dots color="primary" size="20px" />
+                          <span class="text-grey-6 text-caption">Cargando productos...</span>
+                        </div>
+                        <q-skeleton type="QInput" class="q-mt-xs" />
+                      </div>
+                      <div class="col-6 col-sm-3">
+                        <q-skeleton type="QInput" />
+                      </div>
+                      <div class="col-6 col-sm-3">
+                        <q-skeleton type="QBtn" />
+                      </div>
+                    </div>
+
+                    <!-- UI real cuando ya cargaron los productos -->
+                    <div v-else class="row q-col-gutter-sm items-center">
+                      <div class="col-12 col-sm-6">
+                        <q-select
+                          v-model="nuevoProductoSeleccionado"
+                          :options="productosDisponibles"
+                          option-label="nombre"
+                          label="Buscar producto"
+                          dense
+                          outlined
+                          use-input
+                          input-debounce="300"
+                          @filter="filtrarProductosDisponibles"
+                          clearable
+                        >
+                          <template v-slot:option="scope">
+                            <q-item v-bind="scope.itemProps">
+                              <q-item-section avatar>
+                                <q-img
+                                  :src="getUrlImagen(scope.opt.imagen)"
+                                  width="36px"
+                                  height="36px"
+                                  class="rounded-borders"
+                                >
+                                  <template v-slot:error>
+                                    <div class="absolute-full flex flex-center bg-grey-3">
+                                      <q-icon name="image_not_supported" size="xs" />
+                                    </div>
+                                  </template>
+                                </q-img>
+                              </q-item-section>
+                              <q-item-section>
+                                <q-item-label>{{ scope.opt.nombre }}</q-item-label>
+                                <q-item-label caption v-if="scope.opt.categoria">{{ scope.opt.categoria }}</q-item-label>
+                              </q-item-section>
+                            </q-item>
+                          </template>
+                          <template v-slot:no-option>
+                            <q-item><q-item-section class="text-grey">Sin resultados</q-item-section></q-item>
+                          </template>
+                          <template v-slot:selected-item="scope">
+                            <div class="row items-center no-wrap q-gutter-xs">
+                              <q-img
+                                :src="getUrlImagen(scope.opt.imagen)"
+                                width="24px"
+                                height="24px"
+                                class="rounded-borders"
+                              />
+                              <span>{{ scope.opt.nombre }}</span>
+                            </div>
+                          </template>
+                        </q-select>
+
+                      </div>
+                      <div class="col-6 col-sm-3">
+                        <q-input
+                          v-model.number="nuevaCantidad"
+                          label="Cantidad"
+                          type="number"
+                          min="1"
+                          dense
+                          outlined
+                        />
+                      </div>
+                      <div class="col-6 col-sm-3">
+                        <q-btn
+                          label="Agregar"
+                          color="positive"
+                          icon="add"
+                          unelevated
+                          class="full-width"
+                          @click="agregarProductoEdicion"
+                          :disable="!nuevoProductoSeleccionado || !nuevaCantidad"
+                        />
+                      </div>
+                    </div>
+                  </q-card-section>
+                </q-card>
+
+                <!-- Observación de la modificación -->
+                <q-input
+                  v-model="observacionModificacion"
+                  label="Observación (opcional)"
+                  type="textarea"
+                  rows="2"
+                  outlined
+                  dense
+                  class="q-mt-md"
+                />
+              </div>
+
+              <!-- Tabla normal (modo lectura) -->
               <q-table
+                v-else
                 :rows="detallesPedido"
                 :columns="columnsDetalles"
                 row-key="id"
@@ -370,9 +554,45 @@
                   </q-td>
                 </template>
 
+                <!-- Cant. Solicitada (original antes de modificaciones) -->
+                <template v-slot:body-cell-cantidad_original="props">
+                  <q-td :props="props" class="text-center">
+                    <div class="row justify-center items-center no-wrap q-gutter-xs">
+                      <q-chip
+                        dense
+                        :color="props.row.cantidad_original !== props.row.cantidad ? 'grey-3' : 'blue-1'"
+                        :text-color="props.row.cantidad_original !== props.row.cantidad ? 'grey-7' : 'blue-9'"
+                        :class="props.row.cantidad_original !== props.row.cantidad ? 'text-strike' : ''"
+                      >
+                        {{ props.row.cantidad_original }}
+                      </q-chip>
+                      <q-icon
+                        v-if="props.row.cantidad_original !== props.row.cantidad"
+                        name="arrow_forward"
+                        size="xs"
+                        color="orange-7"
+                      />
+                    </div>
+                  </q-td>
+                </template>
+
+                <!-- Cant. Actual (después de modificaciones de sucursal) -->
+                <template v-slot:body-cell-cantidad="props">
+                  <q-td :props="props" class="text-center">
+                    <q-chip
+                      dense
+                      :color="props.row.cantidad_original !== props.row.cantidad ? 'orange-2' : 'blue-1'"
+                      :text-color="props.row.cantidad_original !== props.row.cantidad ? 'orange-9' : 'blue-9'"
+                    >
+                      <q-icon v-if="props.row.cantidad_original !== props.row.cantidad" name="edit" size="10px" class="q-mr-xs" />
+                      {{ props.row.cantidad }}
+                    </q-chip>
+                  </q-td>
+                </template>
+
                <template v-slot:body-cell-cantidad_aprobada="props">
                   <q-td :props="props">
-                    <q-chip dense :color="props.row.cantidad_aprobada !== props.row.cantidad ? 'orange' : 'green-2'" :text-color="props.row.cantidad_aprobada !== props.row.cantidad ? 'white' : 'green-9'">
+                    <q-chip dense :color="props.row.cantidad_aprobada !== props.row.cantidad_original ? 'orange' : 'green-2'" :text-color="props.row.cantidad_aprobada !== props.row.cantidad_original ? 'white' : 'green-9'">
                       {{ props.row.cantidad_aprobada || props.row.cantidad }}
                     </q-chip>
                   </q-td>
@@ -420,7 +640,7 @@
               </q-table>
             </q-tab-panel>
 
-            <q-tab-panel name="historial" class="q-pa-none q-mt-md" v-if="esAdmin">
+            <q-tab-panel name="historial" class="q-pa-none q-mt-md">
               <div class="text-h6 q-mb-md">Historial de modificaciones</div>
 
               <q-timeline v-if="historialModificaciones.length" color="secondary">
@@ -440,7 +660,18 @@
                       <strong>Cambios:</strong>
                       <ul class="q-pl-md">
                         <li v-for="det in mod.detalles" :key="det.id">
-                          {{ obtenerNombreProducto(det) }}: {{ det.cantidad_anterior }} → {{ det.cantidad_nueva }}
+                          <template v-if="det.accion === 'PRODUCTO_AGREGADO'">
+                            <q-badge color="positive" label="AGREGADO" class="q-mr-xs" />
+                            {{ obtenerNombreProducto(det) }}: {{ det.cantidad_nueva }} und
+                          </template>
+                          <template v-else-if="det.accion === 'PRODUCTO_ELIMINADO'">
+                            <q-badge color="negative" label="ELIMINADO" class="q-mr-xs" />
+                            {{ obtenerNombreProducto(det) }}
+                          </template>
+                          <template v-else>
+                            <q-badge color="orange" label="CANTIDAD" class="q-mr-xs" />
+                            {{ obtenerNombreProducto(det) }}: {{ det.cantidad_anterior }} → {{ det.cantidad_nueva }}
+                          </template>
                         </li>
                       </ul>
                     </div>
@@ -476,6 +707,11 @@
             icon="check_circle"
             @click="aprobarConModificaciones"
           />
+        </q-card-actions>
+
+        <!-- Footer para sucursales en modo LECTURA (no edición) -->
+        <q-card-actions align="right" class="q-pa-md" v-if="!esAdmin && !modoEdicionSucursal">
+          <q-btn label="Cerrar" color="grey" flat v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -666,6 +902,18 @@ export default {
       proveedoresAll: [],
       // -------------------------------
 
+      // --- Variables modo edición sucursal ---
+      modoEdicionSucursal: false,
+      detallesEdicion: [], // Copia editable de detallesPedido
+      productosDisponibles: [], // Lista filtrada para el q-select
+      productosDisponiblesAll: [], // Lista completa (para filtrado)
+      nuevoProductoSeleccionado: null,
+      nuevaCantidad: 1,
+      observacionModificacion: '',
+      guardandoCambios: false,
+      cargandoProductos: false,
+      // ----------------------------------------
+
       filters: {
         fecha_inicio: null,
         fecha_fin: null,
@@ -728,7 +976,8 @@ export default {
       const cols = [
         { name: 'imagen', label: '', field: 'imagen', align: 'center', style: 'width: 70px' },
         { name: 'producto', label: 'Producto', field: row => row.product?.nombre || 'N/A', align: 'left' },
-        { name: 'cantidad', label: 'Cant. Solicitada', field: 'cantidad', align: 'center' }
+        { name: 'cantidad_original', label: 'Cant. Solicitada', field: 'cantidad_original', align: 'center' },
+        { name: 'cantidad', label: 'Cant. Actual', field: 'cantidad', align: 'center' }
       ]
 
       const estado = this.pedidoSeleccionado.estado
@@ -798,6 +1047,16 @@ export default {
 
     esAccionCritica () {
       return ['anular'].includes(this.accionActual)
+    },
+
+    columnsEdicionSucursal () {
+      return [
+        { name: 'imagen', label: '', field: 'imagen', align: 'center', style: 'width: 60px' },
+        { name: 'producto', label: 'Producto', field: row => row.product?.nombre || 'N/A', align: 'left' },
+        { name: 'cantidad', label: 'Cant. Original', field: 'cantidad', align: 'center', style: 'width: 120px' },
+        { name: 'cantidad_editable', label: 'Nueva Cantidad', field: 'cantidad_editable', align: 'center', style: 'width: 130px' },
+        { name: 'eliminar', label: 'Eliminar', field: 'eliminar', align: 'center', style: 'width: 80px' }
+      ]
     }
   },
 
@@ -892,14 +1151,24 @@ export default {
             ...d,
             accion_aplicada: accionGuardada,
             cantidad_aprobada: d.cantidad_aprobada !== undefined ? d.cantidad_aprobada : d.cantidad,
+            cantidad_original: d.cantidad_original !== undefined ? d.cantidad_original : d.cantidad,
             // CAMBIO: Forzamos 'COMPRAR' para que siempre sea el valor por defecto en el select
             accion_recomendada: 'COMPRAR',
             stock_sucursales: []
           }
         })
 
+        // Cargar info adicional para TODOS (historial) y stock solo para admin
         if (this.esAdmin) {
           await this.cargarInfoAdicional()
+        } else {
+          // Sucursales: cargar historial de modificaciones
+          try {
+            const resHist = await this.$axios.get(`pedidos/${pedido.id}/modificaciones`)
+            this.historialModificaciones = resHist.data
+          } catch (e) {
+            this.historialModificaciones = []
+          }
         }
       } catch (error) {
         console.error('Error', error)
@@ -1145,10 +1414,26 @@ export default {
     },
 
     getIconoModificacion (accion) {
-      return 'info'
+      const iconos = {
+        MODIFICADO_SUCURSAL: 'edit_note',
+        APROBADO: 'check_circle',
+        ANULADO: 'cancel',
+        APROBAR: 'check_circle',
+        ANULAR: 'cancel',
+        COMPRADO: 'shopping_cart'
+      }
+      return iconos[accion] || 'info'
     },
     getColorModificacion (accion) {
-      return 'primary'
+      const colores = {
+        MODIFICADO_SUCURSAL: 'orange',
+        APROBADO: 'positive',
+        APROBAR: 'positive',
+        ANULADO: 'negative',
+        ANULAR: 'negative',
+        COMPRADO: 'teal'
+      }
+      return colores[accion] || 'primary'
     },
     getUrlImagen (imagen) {
       if (!imagen) return '/img/no-image.png'
@@ -1217,6 +1502,179 @@ export default {
     verStockGlobal (detalle) {
       this.productStockSelected = detalle.product // ← Usar el mismo nombre
       this.dialogStock = true
+    },
+
+    // =====================================================
+    // MÉTODOS MODO EDICIÓN SUCURSAL
+    // =====================================================
+
+    async activarModoEdicion () {
+      // Mostrar la UI de edición INMEDIATAMENTE
+      this.detallesEdicion = this.detallesPedido.map(d => ({
+        ...d,
+        cantidad_editable: d.cantidad
+      }))
+      this.nuevoProductoSeleccionado = null
+      this.nuevaCantidad = 1
+      this.observacionModificacion = ''
+      this.modoEdicionSucursal = true
+      // Cargar productos en segundo plano (no bloquea la UI)
+      this.cargarProductosParaAgregar()
+    },
+
+    cancelarModoEdicion () {
+      this.modoEdicionSucursal = false
+      this.detallesEdicion = []
+      this.nuevoProductoSeleccionado = null
+      this.nuevaCantidad = 1
+      this.observacionModificacion = ''
+    },
+
+    async cargarProductosParaAgregar () {
+      this.cargandoProductos = true
+      try {
+        const res = await this.$axios.get('productsAll')
+        this.productosDisponiblesAll = res.data
+        this.productosDisponibles = res.data
+      } catch (error) {
+        console.error('Error cargando productos:', error)
+        this.productosDisponiblesAll = []
+        this.productosDisponibles = []
+      } finally {
+        this.cargandoProductos = false
+      }
+    },
+
+    filtrarProductosDisponibles (val, update) {
+      if (val === '') {
+        update(() => { this.productosDisponibles = this.productosDisponiblesAll })
+        return
+      }
+      const needle = val.toLowerCase()
+      update(() => {
+        this.productosDisponibles = this.productosDisponiblesAll.filter(
+          p => p.nombre.toLowerCase().includes(needle)
+        )
+      })
+    },
+
+    eliminarProductoEdicion (row) {
+      const idx = this.detallesEdicion.findIndex(d => d.id === row.id)
+      if (idx !== -1) this.detallesEdicion.splice(idx, 1)
+    },
+
+    agregarProductoEdicion () {
+      if (!this.nuevoProductoSeleccionado || !this.nuevaCantidad) return
+
+      // Evitar duplicados: si el producto ya está en la lista, aumentar cantidad
+      const existente = this.detallesEdicion.find(
+        d => d.product_id === this.nuevoProductoSeleccionado.id
+      )
+      if (existente) {
+        existente.cantidad_editable = (existente.cantidad_editable || existente.cantidad) + this.nuevaCantidad
+        this.nuevoProductoSeleccionado = null
+        this.nuevaCantidad = 1
+        return
+      }
+
+      // Agregar como entrada temporal (id negativo para diferenciar de originales)
+      this.detallesEdicion.push({
+        id: -(Date.now()),
+        esNuevo: true,
+        pedido_id: this.pedidoSeleccionado.id,
+        product_id: this.nuevoProductoSeleccionado.id,
+        product: { ...this.nuevoProductoSeleccionado },
+        cantidad: 0,
+        cantidad_editable: this.nuevaCantidad
+      })
+      this.nuevoProductoSeleccionado = null
+      this.nuevaCantidad = 1
+    },
+
+    async guardarModificacionSucursal () {
+      // Calcular diferencias
+      const idsOriginales = new Set(this.detallesPedido.map(d => d.id))
+      const idsEdicion = new Set(this.detallesEdicion.filter(d => !d.esNuevo).map(d => d.id))
+
+      // Productos eliminados: estaban originalmente pero ya no están en la edición
+      const productosEliminados = this.detallesPedido
+        .filter(d => !idsEdicion.has(d.id))
+        .map(d => d.id)
+
+      // Productos con cantidad modificada (no nuevos, ya existían)
+      const productosModificados = this.detallesEdicion
+        .filter(d => !d.esNuevo && idsOriginales.has(d.id))
+        .filter(d => {
+          const original = this.detallesPedido.find(o => o.id === d.id)
+          return original && d.cantidad_editable !== original.cantidad
+        })
+        .map(d => ({
+          pedido_detail_id: d.id,
+          cantidad_nueva: d.cantidad_editable
+        }))
+
+      // Productos nuevos
+      const productosNuevos = this.detallesEdicion
+        .filter(d => d.esNuevo)
+        .map(d => ({
+          product_id: d.product_id,
+          cantidad: d.cantidad_editable
+        }))
+
+      // Validar que hay algo que guardar
+      if (!productosModificados.length && !productosEliminados.length && !productosNuevos.length) {
+        this.$q.notify({ color: 'info', message: 'No hay cambios para guardar', icon: 'info', position: 'top' })
+        return
+      }
+
+      this.guardandoCambios = true
+      try {
+        await this.$axios.post(`pedidos/${this.pedidoSeleccionado.id}/modificar-sucursal`, {
+          observacion: this.observacionModificacion || 'Modificación desde sucursal',
+          productos_modificados: productosModificados,
+          productos_eliminados: productosEliminados,
+          productos_nuevos: productosNuevos
+        })
+
+        this.$q.notify({
+          color: 'positive',
+          message: 'Pedido actualizado correctamente',
+          icon: 'check_circle',
+          position: 'top'
+        })
+
+        this.modoEdicionSucursal = false
+
+        // Recargar detalles del pedido
+        const res = await this.$axios.get(`pedidos/${this.pedidoSeleccionado.id}/detalles`)
+        this.detallesPedido = res.data.detalles.map(d => ({
+          ...d,
+          accion_aplicada: d.accion_aplicada || null,
+          cantidad_aprobada: d.cantidad_aprobada !== undefined ? d.cantidad_aprobada : d.cantidad,
+          accion_recomendada: 'COMPRAR',
+          stock_sucursales: []
+        }))
+
+        // Recargar historial
+        try {
+          const resHist = await this.$axios.get(`pedidos/${this.pedidoSeleccionado.id}/modificaciones`)
+          this.historialModificaciones = resHist.data
+        } catch (e) {
+          this.historialModificaciones = []
+        }
+
+        // Actualizar la lista principal
+        this.cargarPedidos()
+      } catch (error) {
+        this.$q.notify({
+          color: 'negative',
+          message: error.response?.data?.message || 'Error al guardar los cambios',
+          icon: 'error',
+          position: 'top'
+        })
+      } finally {
+        this.guardandoCambios = false
+      }
     }
   }
 }

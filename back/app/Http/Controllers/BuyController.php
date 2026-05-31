@@ -276,6 +276,12 @@ class BuyController extends Controller{
             ) {
                 return response()->json(['message' => 'Falta un campo fechaVencimiento, cantidadCompra, price, lote'], 400);
             }
+            if ($buy['cantidadCompra'] <= 0) {
+                return response()->json(['message' => 'La cantidad de compra no puede ser negativa ni 0'], 400);
+            }
+            if ($buy['price'] < 0) {
+                return response()->json(['message' => 'El precio de compra no puede ser negativo'], 400);
+            }
         }
 
         DB::beginTransaction();

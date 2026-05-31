@@ -27,6 +27,17 @@ class VendedorController extends Controller
             'client_id' => 'required|exists:clients,id'
         ]);
 
+        if (strlen((string) $request->celular) !== 8) {
+            return response()->json(['message' => 'debe ser un numero valido de 8 numeros'], 400);
+        }
+
+        $existe = \App\Models\Vendedor::where('celular', $request->celular)->first();
+        if ($existe) {
+            if ($request->user()->id != 1) {
+                return response()->json(['message' => 'Numero ya existente, contactarse con administracion'], 400);
+            }
+        }
+
         return Vendedor::create($request->all());
     }
 
@@ -39,6 +50,17 @@ class VendedorController extends Controller
             'celular' => 'required',
             'client_id' => 'required|exists:clients,id'
         ]);
+
+        if (strlen((string) $request->celular) !== 8) {
+            return response()->json(['message' => 'debe ser un numero valido de 8 numeros'], 400);
+        }
+
+        $existe = \App\Models\Vendedor::where('celular', $request->celular)->where('id', '!=', $id)->first();
+        if ($existe) {
+            if ($request->user()->id != 1) {
+                return response()->json(['message' => 'no se puede, contactese con el administrador, y solo el admi puede hacerlo'], 400);
+            }
+        }
 
         $vendedor->update($request->all());
         return $vendedor;

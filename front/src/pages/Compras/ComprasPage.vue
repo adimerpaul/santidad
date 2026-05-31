@@ -157,6 +157,9 @@
             <div class="row">
               <div class="col-6 text-h6 q-pt-xs q-pl-lg bg-orange">
                 Canasta Compras ({{ $store.productosCompra.length }})
+                <q-badge v-if="$store.pedidoId" color="dark" text-color="warning" class="q-ml-sm text-subtitle2">
+                  Pedido Digital #{{ $store.pedidoId }}
+                </q-badge>
               </div>
               <div class="col-6 text-right">
                 <q-btn class="text-subtitle1 text-blue-10 text-bold" style="text-decoration: underline;"
@@ -224,8 +227,12 @@
                         </div>
                         <br>
 
-                        <input v-model="props.row.cantidadCompra" type="number" placeholder="Cantidad" style="width: 170px;"/><br>
-                        <input v-model="props.row.price" type="number" step="0.01" placeholder="Precio" style="width: 170px;"/><br>
+                        <input v-model="props.row.cantidadCompra" type="number" min="1" placeholder="Cantidad" style="width: 170px;"
+                               :class="{'invalid-date': props.row._cantidadError}"
+                               @input="props.row._cantidadError=false"/><br>
+                        <input v-model="props.row.price" type="number" step="0.01" min="0" placeholder="Precio" style="width: 170px;"
+                               :class="{'invalid-date': props.row._precioError}"
+                               @input="props.row._precioError=false"/><br>
 
                         <div><b>Subtotal:</b> {{(props.row.price*props.row.cantidadCompra).toFixed(2)}} Bs</div>
 
@@ -466,7 +473,10 @@
               </div>
               <div class="col-12">
                 <q-input outlined dense v-model="nuevoVendedor.celular" label="Celular" type="number"
-                         :rules="[val => !!val || 'El celular es obligatorio']" />
+                         :rules="[
+                           val => !!val || 'El celular es obligatorio',
+                           val => String(val).trim().length === 8 || 'Debe ser un número válido de 8 números'
+                         ]" />
               </div>
             </div>
             <div class="row justify-end q-mt-md">
@@ -495,7 +505,6 @@ export default {
       metodoPago: 'Efectivo',
       document: {},
       factura: '',
-      pedidoId: null,
       agencia_id: 0,
       current_page: 1,
       vendedores: [],
@@ -615,12 +624,27 @@ export default {
       // Validar que todos los productos tengan datos completos
       for (const p of this.$store.productosCompra) {
         p._fechaVencimientoError = false
+        p._cantidadError = false
+        p._precioError = false
         if (
           p.lote === '' || p.fechaVencimiento === '' || p.cantidadCompra === '' || p.price === '' ||
           p.lote === null || p.fechaVencimiento === null || p.cantidadCompra === null || p.price === null
         ) {
           if (!p.fechaVencimiento) p._fechaVencimientoError = true
+          if (!p.cantidadCompra) p._cantidadError = true
+          if (p.price === '' || p.price === null) p._precioError = true
           this.$alert.error('Debes ingresar el lote, la fecha de vencimiento y la cantidad de compra para todos los productos.')
+          return false
+        }
+
+        if (parseFloat(p.cantidadCompra) <= 0) {
+          p._cantidadError = true
+          this.$alert.error(`La cantidad de compra de "${p.nombre}" debe ser mayor a 0.`)
+          return false
+        }
+        if (parseFloat(p.price) < 0) {
+          p._precioError = true
+          this.$alert.error(`El precio de "${p.nombre}" no puede ser negativo.`)
           return false
         }
         if (!/^\d{4}-\d{2}-\d{2}$/.test(p.fechaVencimiento)) {
@@ -691,7 +715,7 @@ export default {
             proveedor_id: this.proveedor_id,
             agencia_comprador_id: this.$store.agencia_id,
             crear_factura: true,
-            pedido_id: this.pedidoId
+            pedido_id: this.$store.pedidoId
           }
 
           this.dialogoFactura = true
@@ -703,7 +727,7 @@ export default {
             agencia_id: this.agencia_id,
             proveedor_id: this.proveedor_id,
             agencia_comprador_id: this.$store.agencia_id,
-            pedido_id: this.pedidoId,
+            pedido_id: this.$store.pedidoId,
             crear_factura: false
           })
         }
@@ -716,7 +740,7 @@ export default {
 
         this.$alert.success('Compra realizada con éxito')
         this.$store.productosCompra = []
-        this.pedidoId = null
+        this.$store.pedidoId = null
         this.loading = false
         this.productsGet()
         this.factura = ''
@@ -761,6 +785,7 @@ export default {
         // Limpiar todo
         this.dialogoFactura = false
         this.$store.productosCompra = []
+        this.$store.pedidoId = null
         this.loadingFactura = false
         this.productsGet()
         this.factura = ''
@@ -839,7 +864,7 @@ export default {
           p.cantidadPedida = 0
         })
         this.$store.productosCompra = []
-        this.pedidoId = null
+        this.$store.pedidoId = null
         this.facturaData.monto_total = 0
       })
     },
@@ -853,6 +878,8 @@ export default {
         fechaVencimiento: date.formatDate(new Date(), 'YYYY-MM-DD'),
         cantidadCompra: '',
         _fechaVencimientoError: false,
+        _cantidadError: false,
+        _precioError: false,
         _tocoFecha: false,
         price: product.precioVenta,
         cantidadReal: product.cantidad
@@ -958,7 +985,7 @@ export default {
 
         const { data } = await this.$axios.get(`pedidos/${pedidoId}/detalles`)
         const detalles = data.detalles || data
-        this.pedidoId = pedidoId
+        this.$store.pedidoId = pedidoId
         // --- NUEVO: Cargar el Proveedor Automáticamente ---
         if (data.proveedor_id) {
           this.proveedor_id = data.proveedor_id
@@ -992,6 +1019,8 @@ export default {
                   fechaVencimiento: date.formatDate(new Date(), 'YYYY-MM-DD'),
                   cantidadCompra: item.cantidad_aprobada,
                   _fechaVencimientoError: false,
+                  _cantidadError: false,
+                  _precioError: false,
                   _tocoFecha: false,
                   price: productoInfo.precio,
                   cantidadReal: productoInfo.cantidad
@@ -1149,7 +1178,8 @@ export default {
   .q-field__label { top: 6px !important; }
 }
 
-input[type="date"].invalid-date {
+input[type="date"].invalid-date,
+input[type="number"].invalid-date {
   background-color: #fa4a4a !important;
   border: 1px solid #000000 !important;
   transition: background-color 0.2s ease, border-color 0.2s ease;

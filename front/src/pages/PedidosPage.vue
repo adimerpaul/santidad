@@ -407,7 +407,10 @@
               </div>
               <div class="col-12">
                 <q-input outlined dense v-model="nuevoVendedor.celular" label="Celular" type="number"
-                         :rules="[val => !!val || 'El celular es obligatorio']" />
+                         :rules="[
+                           val => !!val || 'El celular es obligatorio',
+                           val => String(val).trim().length === 8 || 'Debe ser un número válido de 8 números'
+                         ]" />
               </div>
             </div>
             <div class="row justify-end q-mt-md">

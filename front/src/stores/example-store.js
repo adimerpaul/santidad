@@ -9,7 +9,8 @@ export const useCounterStore = defineStore('counter', {
     agencia_id: parseInt(localStorage.getItem('agencia_id')),
     loading: false,
     productosVenta: [],
-    productosCompra: []
+    productosCompra: [],
+    pedidoId: null
   }),
   getters: {
     doubleCount: (state) => state.counter * 2
