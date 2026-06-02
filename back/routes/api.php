@@ -70,8 +70,17 @@ Route::get('/subcategories/{subcategory}', [SubcategoryController::class, 'show'
 Route::get('/productsSale', [ProductController::class,'productsSale'])
     ->middleware('throttle:120,1');
 
+Route::get('/publicidad-actual', [App\Http\Controllers\PublicidadController::class, 'publicidadActual']);
+
+// Rutas para vinculación de Google Drive (OAuth)
+Route::get('/drive/login', [App\Http\Controllers\GoogleDriveAuthController::class, 'login']);
+Route::get('/drive/callback', [App\Http\Controllers\GoogleDriveAuthController::class, 'callback']);
+
 // --- PROTEGIDAS ---
 Route::group(['middleware' => 'auth:sanctum'], function () {
+
+    Route::apiResource('publicidad', App\Http\Controllers\PublicidadController::class);
+    Route::post('publicidad/{id}/toggle', [App\Http\Controllers\PublicidadController::class, 'toggleActive']);
 
     Route::post('/me', [UserController::class,'me']);
     Route::post('/logout', [UserController::class,'logout']);

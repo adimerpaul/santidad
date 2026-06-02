@@ -122,6 +122,8 @@
             </q-list>
           </q-menu>
         </q-btn>
+
+        <q-btn flat dense round icon="logout" color="red-5" @click="logout" />
       </q-toolbar>
     </q-header>
 
@@ -259,7 +261,8 @@ export default {
         { to: '/agencias', label: 'Agencias', icon: 'apartment' },
         { to: '/reportes', label: 'Reportes', icon: 'insert_chart' },
         { to: '/siat', label: 'SIAT', icon: 'verified' },
-        { to: '/carousel', label: 'Carousel', icon: 'view_carousel' }
+        { to: '/carousel', label: 'Carousel', icon: 'view_carousel' },
+        { to: '/publicidad', label: 'Publicidad TV', icon: 'tv' }
       ]
 
       const sections = [
