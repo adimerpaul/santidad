@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/datos_generales.php';
 
-$siat = obtenerDatosSiat(1);
+$siat = obtenerDatosSiat(0);
 $codigoPuntoVenta = $siat['codigoPuntoVenta'];
 $cuis = $siat['cuis'];
 $nit = $siat['nit'];
@@ -15,7 +15,7 @@ $modalidad = $siat['codigoModalidad'];
 $contador = 1;
 
 for ($i=0; $i < $contador; $i++) {
-    $client = new \SoapClient("https://pilotosiatservicios.impuestos.gob.bo/v2/FacturacionCodigos?WSDL",  [
+    $client = new \SoapClient("https://siatrest.impuestos.gob.bo/v2/FacturacionCodigos?WSDL",  [
         'stream_context' => stream_context_create([
             'http' => [
                 'header' => "apikey: TokenApi " . $token,

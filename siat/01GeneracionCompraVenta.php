@@ -19,7 +19,7 @@ $codigoDocumentoSector=1;
 $codigoEmision=1;
 $codigoModalidad = $siat['codigoModalidad'];
 
-$cantidad=125;
+$cantidad=1;
 
 $codigoSistema = $siat['codigoSistema'];
 $codigoSucursal = $siat['codigoSucursal'];
@@ -49,6 +49,7 @@ for ($i=1;$i<=$cantidad;$i++){
     $cuf = new CUF();
     $cuf = $cuf->obtenerCUF($nit, date("YmdHis$miliSegundo"), $codigoSucursal, $codigoModalidad, $temision, $cdf, $tds, $nf, $codigoPuntoVenta);
     $cuf=$cuf.$codigoControl;
+    error_log("Cuf: ".$cuf);
     /*
     $data ="<?xml version='1.0' encoding='UTF-8' standalone='yes'?>
 <facturaElectronicaCompraVenta xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:noNamespaceSchemaLocation='facturaElectronicaCompraVenta.xsd'>
@@ -178,7 +179,7 @@ for ($i=1;$i<=$cantidad;$i++){
     $archivo=getFileGzip("archivos/".$nameFile.'.xml'.'.gz');
     $hashArchivo=hash('sha256', $archivo);
 
-    $client = new \SoapClient("https://pilotosiatservicios.impuestos.gob.bo/v2/ServicioFacturacionCompraVenta?WSDL",  [
+    $client = new \SoapClient("https://siatrest.impuestos.gob.bo/v2/ServicioFacturacionCompraVenta?WSDL",  [
         'stream_context' => stream_context_create([
             'http' => [
                 'header' => "apikey: TokenApi " . $token,
@@ -230,23 +231,23 @@ for ($i=1;$i<=$cantidad;$i++){
     ]);
     var_dump($result);
 //    exit();
-    $result= $client->reversionAnulacionFactura([
-        "SolicitudServicioReversionAnulacionFactura"=>[
-            "codigoAmbiente"=>$codigoAmbiente,
-            "codigoDocumentoSector"=>$codigoDocumentoSector,
-            "codigoEmision"=>$codigoEmision,
-            "codigoModalidad"=>$codigoModalidad,
-            "codigoPuntoVenta"=>$codigoPuntoVenta,
-            "codigoSistema"=>$codigoSistema,
-            "codigoSucursal"=>$codigoSucursal,
-            "cufd"=>$cufd,
-            "cuis"=>$cuis,
-            "nit"=>$nit,
-            "tipoFacturaDocumento"=>$tipoFacturaDocumento,
-            "cuf"=>$cuf,
-        ]
-    ]);
-    var_dump($result);
+//    $result= $client->reversionAnulacionFactura([
+//        "SolicitudServicioReversionAnulacionFactura"=>[
+//            "codigoAmbiente"=>$codigoAmbiente,
+//            "codigoDocumentoSector"=>$codigoDocumentoSector,
+//            "codigoEmision"=>$codigoEmision,
+//            "codigoModalidad"=>$codigoModalidad,
+//            "codigoPuntoVenta"=>$codigoPuntoVenta,
+//            "codigoSistema"=>$codigoSistema,
+//            "codigoSucursal"=>$codigoSucursal,
+//            "cufd"=>$cufd,
+//            "cuis"=>$cuis,
+//            "nit"=>$nit,
+//            "tipoFacturaDocumento"=>$tipoFacturaDocumento,
+//            "cuf"=>$cuf,
+//        ]
+//    ]);
+//    var_dump($result);
 //    exit();
 }
 
