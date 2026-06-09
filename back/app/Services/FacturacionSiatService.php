@@ -21,7 +21,7 @@ class FacturacionSiatService
      */
     public function procesar(Sales $sales): bool
     {
-        $sales->loadMissing(['details.product', 'client', 'user', 'agencia']);
+        $sales->loadMissing(['details.product', 'client', 'user.agencia', 'agencia']);
         $client = $sales->client;
 
         if (!$client || $client->numeroDocumento === '0') {
@@ -29,27 +29,27 @@ class FacturacionSiatService
         }
 
         try {
+            $codigoSucursal   = (int) ($sales->agencia?->sucursal ?? $sales->user?->agencia?->sucursal ?? 0);
+            $codigoPuntoVenta = 0;
+
             $cuiUltimo = Cuis::where('fechaVigencia', '>', date('Y-m-d H:i:s'))
-                ->where('codigoSucursal', 0)
-                ->where('codigoPuntoVenta', 0)
+                ->where('codigoSucursal', $codigoSucursal)
+                ->where('codigoPuntoVenta', $codigoPuntoVenta)
                 ->latest('id')
                 ->first();
 
             $cufdUltimo = Cufd::where('fechaVigencia', '>', date('Y-m-d H:i:s'))
-                ->where('codigoSucursal', 0)
-                ->where('codigoPuntoVenta', 0)
+                ->where('codigoSucursal', $codigoSucursal)
+                ->where('codigoPuntoVenta', $codigoPuntoVenta)
                 ->latest('id')
                 ->first();
 
             if (!$cuiUltimo || !$cufdUltimo) {
-                error_log("SIAT: Sin CUIS/CUFD vigente para venta #{$sales->id}");
+                error_log("SIAT: Sin CUIS/CUFD vigente para sucursal {$codigoSucursal}, venta #{$sales->id}");
                 $sales->siatEnviado = false;
                 $sales->save();
                 return false;
             }
-
-            $codigoSucursal   = 0;
-            $codigoPuntoVenta = 0;
 
             $fechaEmision = Carbon::now('America/La_Paz');
             $mili         = str_pad((string) ((int) floor(((int) $fechaEmision->format('u')) / 1000)), 3, '0', STR_PAD_LEFT);
