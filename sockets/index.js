@@ -33,5 +33,5 @@ io.on('connection', (socket) => {
 
 const PORT = 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Socket server listening on port ${PORT}`);
+  console.log(`Socket server listening on port http://localhost:${PORT}`);
 });

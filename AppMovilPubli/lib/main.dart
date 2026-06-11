@@ -10,9 +10,13 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
+const String _env = String.fromEnvironment('ENV', defaultValue: 'development');
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: _env == 'production' ? '.env.production' : '.env');
   if (!kIsWeb) {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     WakelockPlus.enable();
@@ -45,9 +49,8 @@ class PublicidadPlayer extends StatefulWidget {
 }
 
 class _PublicidadPlayerState extends State<PublicidadPlayer> {
-  // CONFIGURACIÓN (Cambiar según entorno)
-  final String apiBaseUrl = 'http://192.168.100.2:8000/api'; // Actualizado con tu IP
-  final String socketUrl = 'http://192.168.100.2:3000';    // Actualizado con tu IP
+  final String apiBaseUrl = dotenv.env['API_BASE_URL']!;
+  final String socketUrl = dotenv.env['SOCKET_URL']!;
 
   VideoPlayerController? _controller;
   List<dynamic> _playlist = [];
