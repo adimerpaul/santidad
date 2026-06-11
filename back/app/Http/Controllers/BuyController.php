@@ -113,40 +113,40 @@ class BuyController extends Controller{
     public function indexVencidos(Request $request)
     {
         $search = $request->search;
-//        error_log($search);
         $order = $request->order ?? null;
-
         $agencia_id = $request->agencia_id;
-
+        $user = $request->user();
 
         $buys = Buy::with(['product' => function($query) {
-            $query->select('id', 'nombre','cantidad');
+            $query->select('id', 'nombre','cantidad','cantidadAlmacen','cantidadSucursal1','cantidadSucursal2','cantidadSucursal3','cantidadSucursal4','cantidadSucursal5','cantidadSucursal6','cantidadSucursal7','cantidadSucursal8','cantidadSucursal9','cantidadSucursal10');
         }, 'user' => function($query) {
             $query->select('id', 'name');
         }])
             ->with('proveedor','agencia','userBaja')
             ->where('dateExpiry', '<', Carbon::now());
+
         if ($search != null && $search != '') {
-            $buys = $buys
-                ->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")')
-                ->orWhereHas('product', function($query) use ($search) {
-                    $query->where('nombre', 'like', '%'.$search.'%');
-//                    FLUOXETINA LCH 20 MG COMP.
-                });
-            if ($agencia_id != null && $agencia_id != '') {
-                $buys = $buys->where('agencia_id', $agencia_id);
-            }
-        } else {
-            if ($order == 'Dias para Vencer') {
-                $buys = $buys->orderBy('dateExpiry', 'asc')->where('dateExpiry', '<', Carbon::now());
-            } elseif ($order == 'Fecha de Vencimiento') {
-                $buys = $buys->orderBy('dateExpiry', 'asc');
-            } elseif ($order == 'Fecha de Compra') {
-                $buys = $buys->orderBy('date', 'asc');
-            }
-            if ($agencia_id != null && $agencia_id != '') {
-                $buys = $buys->where('agencia_id', $agencia_id);
-            }
+            $buys = $buys->where(function($q) use ($search) {
+                $q->where('lote', 'like', "%$search%")
+                  ->orWhere('factura', 'like', "%$search%")
+                  ->orWhereHas('product', function($query) use ($search) {
+                      $query->where('nombre', 'like', "%$search%");
+                  });
+            });
+        }
+
+        if ($user->id !== 1) {
+            $buys->where('agencia_id', $user->agencia_id);
+        } elseif ($request->filled('agencia_id')) {
+            $buys->where('agencia_id', $agencia_id);
+        }
+
+        if ($order == 'Dias para Vencer') {
+            $buys->orderBy('dateExpiry', 'asc');
+        } elseif ($order == 'Fecha de Vencimiento') {
+            $buys->orderBy('dateExpiry', 'asc');
+        } elseif ($order == 'Fecha de Compra') {
+            $buys->orderBy('date', 'asc');
         }
 
         return response()->json($buys->paginate(100));
@@ -158,6 +158,7 @@ class BuyController extends Controller{
         $order = $request->order ?? null;
         $fecha_inicio = $request->fecha_inicio;
         $fecha_fin = $request->fecha_fin;
+        $user = $request->user();
 
         $buys = Buy::with('proveedor','agencia','userBaja','product','user','buyDetail.user','buyDetail.product')
             ->where('user_baja_id','!=',0)
@@ -168,6 +169,10 @@ class BuyController extends Controller{
             });
 //            ->where('fecha_baja', '>=', $fecha_inicio)
 //            ->where('fecha_baja', '<=', $fecha_fin);
+
+        if ($user->id !== 1) {
+            $buys->where('agencia_id', $user->agencia_id);
+        }
 
         if ($search != null && $search != '') {
             $buys = $buys->whereRaw(' (lote like "%'.$search.'%" or dateExpiry like "%'.$search.'%" or factura like "%'.$search.'%")');

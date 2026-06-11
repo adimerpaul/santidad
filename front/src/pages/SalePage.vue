@@ -540,7 +540,7 @@ export default {
           productos.push({
             nombre: product.nombre,
             cantidadSolicitada: product.cantidadVenta,
-            stockDisponible: stockDisponible
+            stockDisponible
           })
         }
       })
@@ -620,7 +620,7 @@ export default {
           productosSinStock.push({
             nombre: product.nombre,
             cantidadSolicitada: product.cantidadVenta,
-            stockDisponible: stockDisponible
+            stockDisponible
           })
         }
       })
@@ -944,18 +944,18 @@ export default {
 
     agenciasGet () {
       this.agencias = [{ nombre: 'Selecciona una agencia', id: 0 }]
-      this.$axios.get('agencias').then(response => {
-        this.agencias = this.agencias.concat(response.data)
+      this.$store.fetchAgencias(this.$axios).then(data => {
+        this.agencias = this.agencias.concat(data)
       }).catch(error => {
-        this.$alert.error(error.response.data.message)
+        this.$alert.error(error.response?.data?.message || 'Error al cargar agencias')
       })
     },
 
     categoriesGet () {
       this.categories = [{ name: 'Ver todas las categorias', id: 0 }]
-      this.$axios.get('categories').then(response => {
-        this.categories = this.categories.concat(response.data)
-        this.categoriesTable = response.data
+      this.$store.fetchCategories(this.$axios).then(data => {
+        this.categories = this.categories.concat(data)
+        this.categoriesTable = data
       }).catch(error => {
         console.log(error)
       })

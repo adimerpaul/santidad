@@ -1078,11 +1078,14 @@ export default {
     },
 
     // --- CARGAR PROVEEDORES (IGUAL QUE EN OTRAS PÁGINAS) ---
-    proveedoresGet () {
-      this.$axios.get('providers').then(res => {
-        this.proveedores = res.data
-        this.proveedoresAll = res.data
-      }).catch(err => console.error('Error proveedores', err))
+    async proveedoresGet () {
+      try {
+        const data = await this.$store.fetchProviders(this.$axios)
+        this.proveedores = data
+        this.proveedoresAll = data
+      } catch (err) {
+        console.error('Error proveedores', err)
+      }
     },
 
     filterProveedores (val, update, abort) {
@@ -1348,8 +1351,8 @@ export default {
     },
     async cargarAgencias () {
       try {
-        const res = await this.$axios.get('agencias')
-        this.agencias = res.data
+        const data = await this.$store.fetchAgencias(this.$axios)
+        this.agencias = data
       } catch (error) {
         console.error('Error cargando agencias:', error)
       }
@@ -1531,31 +1534,31 @@ export default {
     },
 
     async cargarProductosParaAgregar () {
-      this.cargandoProductos = true
-      try {
-        const res = await this.$axios.get('productsAll')
-        this.productosDisponiblesAll = res.data
-        this.productosDisponibles = res.data
-      } catch (error) {
-        console.error('Error cargando productos:', error)
-        this.productosDisponiblesAll = []
-        this.productosDisponibles = []
-      } finally {
-        this.cargandoProductos = false
-      }
+      // Ya no cargamos todo de golpe para mejorar velocidad
+      this.productosDisponiblesAll = []
+      this.productosDisponibles = []
     },
 
-    filtrarProductosDisponibles (val, update) {
-      if (val === '') {
-        update(() => { this.productosDisponibles = this.productosDisponiblesAll })
+    async filtrarProductosDisponibles (val, update, abort) {
+      if (val.length < 2) {
+        update(() => {
+          this.productosDisponibles = []
+        })
         return
       }
-      const needle = val.toLowerCase()
-      update(() => {
-        this.productosDisponibles = this.productosDisponiblesAll.filter(
-          p => p.nombre.toLowerCase().includes(needle)
-        )
-      })
+
+      try {
+        const res = await this.$axios.get(`products/suggest?q=${val}`)
+        update(() => {
+          this.productosDisponibles = res.data.map(p => ({
+            ...p,
+            nombre: p.title // El suggest devuelve 'title', lo mapeamos a 'nombre'
+          }))
+        })
+      } catch (error) {
+        console.error('Error filtrando productos:', error)
+        abort()
+      }
     },
 
     eliminarProductoEdicion (row) {

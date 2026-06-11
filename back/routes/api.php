@@ -132,6 +132,17 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/darBaja', [BuyController::class,'darBaja']);
     Route::post('/compraInsert', [BuyController::class,'compraInsert']);
 
+    // Withdrawal Reports (Informes de Bajas)
+    Route::get('/withdrawal-reports/all-items', [App\Http\Controllers\WithdrawalReportController::class, 'allItems']);
+    Route::get('/withdrawal-reports/search-products', [App\Http\Controllers\WithdrawalReportController::class, 'searchProducts']);
+    Route::post('/withdrawal-reports/{id}/close', [App\Http\Controllers\WithdrawalReportController::class, 'close']);
+    Route::post('/withdrawal-reports/{id}/send', [App\Http\Controllers\WithdrawalReportController::class, 'send']);
+    Route::post('/withdrawal-reports/{id}/reopen', [App\Http\Controllers\WithdrawalReportController::class, 'reopen']);
+    Route::post('/withdrawal-reports/{id}/items', [App\Http\Controllers\WithdrawalReportController::class, 'addItem']);
+    Route::put('/withdrawal-reports/{id}/items/{itemId}', [App\Http\Controllers\WithdrawalReportController::class, 'updateItem']);
+    Route::delete('/withdrawal-reports/{id}/items/{itemId}', [App\Http\Controllers\WithdrawalReportController::class, 'removeItem']);
+    Route::resource('/withdrawal-reports', App\Http\Controllers\WithdrawalReportController::class);
+
     Route::post('/salesGasto', [SalesController::class,'salesGasto']);
     Route::post('/searchClient', [ClientController::class,'searchClient']);
     Route::get('/betweenDates/{fechaInicio}/{fechaFin}', [SalesController::class,'betweenDates']);

@@ -250,6 +250,7 @@ export default {
         { to: '/unidades', label: 'Unidades', icon: 'straighten' },
         { to: '/productosPorVencer', label: 'Por vencer', icon: 'warning_amber' },
         { to: '/productosVencidos', label: 'Vencidos', icon: 'report_gmailerrorred' },
+        { to: '/informesBajas', label: 'Informes de bajas', icon: 'description' },
         { to: '/productosRetirados', label: 'Retirados', icon: 'remove_shopping_cart' }
       ]
 
@@ -267,7 +268,7 @@ export default {
 
       const sections = [
         { title: 'Operación', icon: 'point_of_sale', items: operacion },
-        { title: 'Inventario', icon: 'inventory_2', items: this.isAdmin ? inventario : inventario.filter(item => item.to === '/productos' || item.to === '/productosPorVencer') }
+        { title: 'Inventario', icon: 'inventory_2', items: this.isAdmin ? inventario : inventario.filter(item => item.to === '/productos' || item.to === '/productosPorVencer' || item.to === '/informesBajas') }
       ]
 
       if (this.isAdmin) {

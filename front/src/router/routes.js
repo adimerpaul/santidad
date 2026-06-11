@@ -18,6 +18,8 @@ import TransferenciasPage from 'src/pages/TransferenciasPage.vue'
 import HistorialPedidos from 'pages/HistorialPedidos.vue'
 import SiatPage from 'src/pages/SiatPage.vue'
 import PublicidadPage from 'src/pages/PublicidadPage.vue'
+import BajasPage from 'pages/BajasPage.vue'
+import BajaDetailPage from 'pages/BajaDetailPage.vue'
 
 const routes = [
   {
@@ -39,6 +41,8 @@ const routes = [
       { path: 'productosVencidos', component: ProductosVencidosPage, meta: { requiresAuth: true } },
       { path: 'agencias', component: AgenciaPage, meta: { requiresAuth: true } },
       { path: 'productosRetirados', component: ProductosRetiradosPage, meta: { requiresAuth: true } },
+      { path: 'informesBajas', component: BajasPage, meta: { requiresAuth: true } },
+      { path: 'informesBajas/:id', component: BajaDetailPage, meta: { requiresAuth: true } },
       { path: 'subcategorias', component: () => import('pages/SubcategoryPage.vue'), meta: { requiresAuth: true } },
       { path: 'pedidos', component: () => import('pages/PedidosPage.vue'), meta: { requiresAuth: true } },
       { path: 'historial-pedidos', component: HistorialPedidos, meta: { requiresAuth: true } },

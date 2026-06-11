@@ -325,7 +325,7 @@ class ProductController extends Controller
 
         // --- LÓGICA DE FILTRO POR ÚLTIMO PROVEEDOR ---
         if ($proveedor_id !== 0) {
-            // Buscamos products donde la subconsulta (la última compra) tenga este proveedor_id
+            // Buscamos products where la subconsulta (la última compra) tenga este proveedor_id
             $query->whereRaw('
                 (SELECT proveedor_id 
                  FROM buys 
@@ -617,7 +617,8 @@ class ProductController extends Controller
         $inStock   = (int) $request->input('in_stock', 0) === 1;
 
         $safeUpper   = mb_strtoupper($term, 'UTF-8');
-        $likeContain = "%{$safeUpper}%";
+        $searchLike  = '%' . str_replace(' ', '%', $safeUpper) . '%';
+        $likeContain = $searchLike;
         $likeStart   = "{$safeUpper}%";
 
         $select = ['id', 'nombre', 'imagen', 'precio'];
