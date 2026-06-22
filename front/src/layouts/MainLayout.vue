@@ -281,6 +281,9 @@ export default {
   mounted () {
     this.getNotificaciones(1)
     setInterval(() => this.getNotificaciones(1, true), 120000)
+
+    // Intento de auto-abrir la pantalla cliente si no está activa
+    this.checkAndOpenClientDisplay()
   },
   methods: {
     linkIsActive (item) {
@@ -446,6 +449,45 @@ export default {
           })
         }
       })
+    },
+    checkAndOpenClientDisplay () {
+      const lastActive = localStorage.getItem('clienteDisplayWindowActive')
+      const isAlreadyOpen = lastActive && (Date.now() - parseInt(lastActive)) < 5000
+      if (!isAlreadyOpen) {
+        const agenciaId = localStorage.getItem('agencia_id')
+        if (agenciaId) {
+          this.openClientDisplay(agenciaId)
+        }
+      }
+    },
+    async openClientDisplay (agenciaId) {
+      let left = window.screen.availWidth
+      let top = 0
+      let width = 1920
+      let height = 1080
+
+      try {
+        if ('getScreenDetails' in window) {
+          const screenDetails = await window.getScreenDetails()
+          const screens = screenDetails.screens
+          const secondScreen = screens.find(s => !s.isPrimary) || screens.find(s => s !== screenDetails.currentScreen)
+
+          if (secondScreen) {
+            left = secondScreen.availLeft
+            top = secondScreen.availTop
+            width = secondScreen.availWidth
+            height = secondScreen.availHeight
+          }
+        }
+      } catch (e) {
+        console.log('Usando posición por defecto para pantalla extendida')
+      }
+
+      window.open(
+        `/cliente-display?agencia_id=${agenciaId}`,
+        'clienteDisplay',
+        `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes`
+      )
     }
   }
 }

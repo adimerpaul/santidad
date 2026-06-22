@@ -127,6 +127,7 @@ export default {
           this.$axios.defaults.headers.common.Authorization = `Bearer ${response.data.token}`
           localStorage.setItem('tokenSantidad', response.data.token)
           localStorage.setItem('agencia_id', response.data.user.agencia_id)
+          this.openClientDisplay(response.data.user.agencia_id)
           this.$router.push('/')
         })
         .catch(error => {
@@ -141,6 +142,35 @@ export default {
         .finally(() => {
           this.loading = false
         })
+    },
+    async openClientDisplay (agenciaId) {
+      let left = window.screen.availWidth
+      let top = 0
+      let width = 1920
+      let height = 1080
+
+      try {
+        if ('getScreenDetails' in window) {
+          const screenDetails = await window.getScreenDetails()
+          const screens = screenDetails.screens
+          const secondScreen = screens.find(s => !s.isPrimary) || screens.find(s => s !== screenDetails.currentScreen)
+
+          if (secondScreen) {
+            left = secondScreen.availLeft
+            top = secondScreen.availTop
+            width = secondScreen.availWidth
+            height = secondScreen.availHeight
+          }
+        }
+      } catch (e) {
+        console.log('Usando posición por defecto para pantalla extendida')
+      }
+
+      window.open(
+        `/cliente-display?agencia_id=${agenciaId}`,
+        'clienteDisplay',
+        `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes`
+      )
     }
   }
 }

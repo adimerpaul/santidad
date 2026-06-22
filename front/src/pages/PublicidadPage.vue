@@ -1,56 +1,63 @@
 <template>
   <q-page class="q-pa-md">
     <div class="row items-center q-mb-md">
-      <div class="text-h6">Gestion de Publicidad TV</div>
+      <div class="text-h6">Gestión de Publicidad TV</div>
       <q-space />
       <q-btn label="Subir Publicidad" icon="upload" color="primary" @click="showUploadDialog = true" />
     </div>
 
-    <q-table
-      :rows="publicidades"
-      :columns="columns"
-      row-key="id"
-      :loading="loading"
-      flat
-      bordered
-    >
-      <template v-slot:body-cell-preview="props">
-        <q-td :props="props">
-          <q-btn
+    <div class="row q-col-gutter-md">
+      <!-- Tabla de administración -->
+      <div class="col-12">
+        <q-card flat bordered class="q-pa-sm">
+          <q-table
+            :rows="publicidades"
+            :columns="columns"
+            row-key="id"
+            :loading="loading"
             flat
-            round
-            color="primary"
-            icon="visibility"
-            @click="openDriveLink(props.row.file_id)"
           >
-            <q-tooltip>Ver en Google Drive</q-tooltip>
-          </q-btn>
-        </q-td>
-      </template>
-      <template v-slot:body-cell-active="props">
-        <q-td :props="props">
-          <q-toggle
-            v-model="props.row.active"
-            :true-value="1"
-            :false-value="0"
-            @update:model-value="toggleActive(props.row)"
-          />
-        </q-td>
-      </template>
-      <template v-slot:body-cell-type="props">
-        <q-td :props="props">
-          <q-chip :color="props.row.type === 'video' ? 'blue' : 'green'" text-color="white" size="sm">
-            {{ props.row.type }}
-          </q-chip>
-        </q-td>
-      </template>
-      <template v-slot:body-cell-actions="props">
-        <q-td :props="props" class="q-gutter-xs">
-          <q-btn icon="delete" color="negative" flat round size="sm" @click="deletePublicidad(props.row)" />
-        </q-td>
-      </template>
-    </q-table>
+            <template v-slot:body-cell-preview="props">
+              <q-td :props="props">
+                <q-btn
+                  flat
+                  round
+                  color="primary"
+                  icon="visibility"
+                  @click="openDriveLink(props.row.file_id)"
+                >
+                  <q-tooltip>Ver en Google Drive</q-tooltip>
+                </q-btn>
+              </q-td>
+            </template>
+            <template v-slot:body-cell-active="props">
+              <q-td :props="props">
+                <q-toggle
+                  v-model="props.row.active"
+                  :true-value="1"
+                  :false-value="0"
+                  @update:model-value="toggleActive(props.row)"
+                />
+              </q-td>
+            </template>
+            <template v-slot:body-cell-type="props">
+              <q-td :props="props">
+                <q-chip :color="props.row.type === 'video' ? 'blue' : 'green'" text-color="white" size="sm">
+                  {{ props.row.type }}
+                </q-chip>
+              </q-td>
+            </template>
+            <template v-slot:body-cell-actions="props">
+              <q-td :props="props" class="q-gutter-xs">
+                <q-btn icon="delete" color="negative" flat round size="sm" @click="deletePublicidad(props.row)" />
+              </q-td>
+            </template>
+          </q-table>
+        </q-card>
+      </div>
+    </div>
 
+    <!-- Diálogo de subida -->
     <q-dialog v-model="showUploadDialog" persistent>
       <q-card style="min-width: 350px">
         <q-card-section>
@@ -158,7 +165,7 @@ export default {
   },
   computed: {
     agenciasOptions () {
-      const options = [{ label: 'TODAS LAS SUCURSALES', value: null }]
+      const options = [{ label: 'TODAS LAS SUCURSALES (GLOBAL)', value: null }]
       this.agencias.forEach(a => {
         options.push({ label: a.nombre, value: a.id })
       })
@@ -279,6 +286,10 @@ export default {
           })
       })
     }
+
   }
 }
 </script>
+
+<style scoped>
+</style>

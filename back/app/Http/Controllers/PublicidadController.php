@@ -83,6 +83,19 @@ class PublicidadController extends Controller
             ]);
             $driveService->permissions->create($driveFile->id, $permission);
 
+            // Guardar copia local en public/uploads/publicidad/
+            try {
+                $localDir = public_path('uploads/publicidad');
+                if (!File::exists($localDir)) {
+                    File::makeDirectory($localDir, 0755, true);
+                }
+                $extension = $type == 'video' ? 'mp4' : 'jpg';
+                $fileName = 'publicidad_' . $driveFile->id . '.' . $extension;
+                File::put($localDir . '/' . $fileName, $content);
+            } catch (\Exception $localEx) {
+                Log::error('Error guardando copia local en store(): ' . $localEx->getMessage());
+            }
+
             $publicidad = Publicidad::create([
                 'name' => $name,
                 'file_id' => $driveFile->id,
@@ -123,10 +136,86 @@ class PublicidadController extends Controller
             if ($publicidades->isEmpty()) {
                 return response()->json(['message' => 'No hay publicidad activa'], 200);
             }
+
+            // Asegurar que las copias locales existan, y si no, descargarlas de Drive
+            try {
+                $localDir = public_path('uploads/publicidad');
+                if (!File::exists($localDir)) {
+                    File::makeDirectory($localDir, 0755, true);
+                }
+
+                $driveService = null;
+
+                foreach ($publicidades as $pub) {
+                    $extension = $pub->type == 'video' ? 'mp4' : 'jpg';
+                    $fileName = 'publicidad_' . $pub->file_id . '.' . $extension;
+                    $localPath = $localDir . '/' . $fileName;
+
+                    if (!File::exists($localPath)) {
+                        Log::info('Descargando copia local para publicidad ID ' . $pub->id);
+                        if (!$driveService) {
+                            $driveService = $this->getDriveService();
+                        }
+                        if ($driveService) {
+                            try {
+                                $response = $driveService->files->get($pub->file_id, ['alt' => 'media']);
+                                $content = $response->getBody()->getContents();
+                                File::put($localPath, $content);
+                            } catch (\Exception $ex) {
+                                Log::error('Error descargando de Drive: ' . $ex->getMessage());
+                            }
+                        }
+                    }
+
+                    // Si la copia local existe, devolver la URL local del servidor Laravel
+                    if (File::exists($localPath)) {
+                        $pub->url = asset('uploads/publicidad/' . $fileName);
+                    }
+                }
+            } catch (\Exception $syncEx) {
+                Log::error('Error en sincronización local de publicidadActual: ' . $syncEx->getMessage());
+            }
+
             return response()->json($publicidades);
         } catch (\Exception $e) {
             Log::error('Error en publicidadActual: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function streamFile($id)
+    {
+        try {
+            $publicidad = Publicidad::findOrFail($id);
+            $driveService = $this->getDriveService();
+            if (!$driveService) {
+                return response()->json(['error' => 'Drive no vinculado.'], 401);
+            }
+
+            // Obtener metadata del archivo para saber el tamaño y mimeType
+            $file = $driveService->files->get($publicidad->file_id, ['fields' => 'mimeType,size']);
+            $mimeType = $file->getMimeType();
+            $size = $file->getSize();
+
+            // Realizar la descarga del contenido
+            $response = $driveService->files->get($publicidad->file_id, ['alt' => 'media']);
+            $body = $response->getBody();
+
+            return response()->stream(function() use ($body) {
+                while (!$body->eof()) {
+                    echo $body->read(1024 * 8); // Leer en bloques de 8KB
+                    flush();
+                }
+            }, 200, [
+                'Content-Type' => $mimeType,
+                'Content-Length' => $size,
+                'Content-Disposition' => 'inline; filename="' . rawurlencode($publicidad->name) . '"',
+                'Accept-Ranges' => 'bytes',
+                'Access-Control-Allow-Origin' => '*'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error en streamFile: ' . $e->getMessage());
+            return response()->json(['error' => 'Error al transmitir archivo: ' . $e->getMessage()], 500);
         }
     }
 
@@ -144,6 +233,17 @@ class PublicidadController extends Controller
             }
             $tempPublicidad = clone $publicidad; // Clonar para tener los datos después de borrar
             $publicidad->delete();
+
+            // Eliminar copia local si existe
+            try {
+                $extension = $tempPublicidad->type == 'video' ? 'mp4' : 'jpg';
+                $localFile = public_path('uploads/publicidad/publicidad_' . $tempPublicidad->file_id . '.' . $extension);
+                if (File::exists($localFile)) {
+                    File::delete($localFile);
+                }
+            } catch (\Exception $localEx) {
+                Log::error('Error al eliminar copia local en destroy(): ' . $localEx->getMessage());
+            }
             
             $this->notifySocket('new_publicidad', $tempPublicidad); // Notificar borrado
 

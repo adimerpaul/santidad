@@ -317,6 +317,18 @@
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">Realizar venta</div>
           <q-space />
+          <q-btn
+            flat
+            no-caps
+            dense
+            icon="cast"
+            :label="$q.screen.gt.sm ? 'Mostrar al Cliente' : ''"
+            color="indigo"
+            class="q-mr-sm"
+            @click="openClientDisplay"
+          >
+            <q-tooltip>Abrir pantalla de visualización para el cliente</q-tooltip>
+          </q-btn>
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
         <q-form @submit.prevent="saleInsert">
@@ -461,6 +473,9 @@ export default {
     return {
       agencia_id: parseInt(localStorage.getItem('agencia_id')),
       saleDialog: false,
+      saleCompleted: false,
+      clientDisplayVisible: false,
+      clientDisplayWindow: null,
       client: {},
       aporte: 0,
       descuento: 0,
@@ -516,6 +531,28 @@ export default {
       subcategoria: ''
     }
   },
+  watch: {
+    'client.numeroDocumento' () { this.syncClientDisplay(true) },
+    'client.complemento' () { this.syncClientDisplay(true) },
+    'client.nombreRazonSocial' () { this.syncClientDisplay(true) },
+    'client.email' () { this.syncClientDisplay(true) },
+    document: {
+      handler () { this.syncClientDisplay(true) },
+      deep: true
+    },
+
+    saleDialog (val) {
+      if (val) {
+        this.saleCompleted = false
+        this.clientDisplayVisible = false
+        this.syncClientDisplay(false)
+      } else {
+        // Diálogo cerrado (botón X, Atrás, o después de venta)
+        this.clientDisplayVisible = false
+        this.clearClientDisplayData()
+      }
+    }
+  },
   mounted () {
     this.productsGet()
     this.categoriesGet()
@@ -528,6 +565,26 @@ export default {
       this.documents = res.data
       this.document = this.documents[0]
     })
+
+    // Inicializar BroadcastChannel si está disponible
+    if (typeof BroadcastChannel !== 'undefined') {
+      this._clientChannel = new BroadcastChannel('cliente-display-channel')
+    }
+
+    // Cerrar la ventana del cliente si el usuario sale de la página de ventas
+    window.addEventListener('beforeunload', this._onBeforeUnload = () => {
+      this.closeClientDisplay()
+    })
+
+    // Iniciar latido continuo e inicializar limpio el display del cliente
+    this.startHeartbeat()
+    this.clearClientDisplayData()
+  },
+  beforeUnmount () {
+    this.closeClientDisplay()
+    this.stopHeartbeat()
+    if (this._clientChannel) this._clientChannel.close()
+    window.removeEventListener('beforeunload', this._onBeforeUnload)
   },
   computed: {
     // ✅ PRODUCTOS QUE SOBREPASARON STOCK (se muestra en tiempo real)
@@ -718,7 +775,16 @@ export default {
       this.$axios.post('sales', data).then(res => {
         this.loading = false
         this.$alert.success('Venta realizada con exito')
+        // Indicar que la venta se completó antes de cerrar el diálogo
+        this.saleCompleted = true
         this.saleDialog = false
+
+        // Notificar a la pantalla del cliente: "Gracias por su compra"
+        if (this._clientChannel) {
+          this._clientChannel.postMessage({ type: 'sale-complete' })
+        }
+        localStorage.setItem('clienteSaleComplete', Date.now().toString())
+
         this.$store.productosVenta = []
         this.client = {}
         this.aporte = 0
@@ -1081,6 +1147,124 @@ export default {
       // Reutiliza TODA tu lógica de clickAddSale (descuento, stock, etc.)
       for (let i = 0; i < cantidad; i++) {
         this.clickAddSale(producto)
+      }
+    },
+
+    // ===== PANTALLA CLIENTE =====
+    async openClientDisplay () {
+      this.clientDisplayVisible = true
+      // Si ya hay una ventana abierta y no se cerró, la enfocamos y mostramos datos
+      if (this.clientDisplayWindow && !this.clientDisplayWindow.closed) {
+        this.clientDisplayWindow.focus()
+        this.syncClientDisplay(true)
+        return
+      }
+
+      // Intentar detectar la segunda pantalla
+      let left = window.screen.availWidth // Por defecto: borde derecho de pantalla principal
+      let top = 0
+      let width = 1920
+      let height = 1080
+
+      try {
+        // API moderna de Window Management (Chrome 100+)
+        if ('getScreenDetails' in window) {
+          const screenDetails = await window.getScreenDetails()
+          const screens = screenDetails.screens
+
+          // Buscar una pantalla que NO sea la actual (la primaria)
+          const secondScreen = screens.find(s => !s.isPrimary) || screens.find(s => s !== screenDetails.currentScreen)
+
+          if (secondScreen) {
+            left = secondScreen.availLeft
+            top = secondScreen.availTop
+            width = secondScreen.availWidth
+            height = secondScreen.availHeight
+          }
+        }
+      } catch (e) {
+        // Si el usuario deniega el permiso o no está soportado,
+        // usamos el fallback: abrir en el borde derecho (pantalla extendida)
+        console.log('Usando posición por defecto para pantalla extendida')
+      }
+
+      // Abrir la ventana en la segunda pantalla
+      this.clientDisplayWindow = window.open(
+        `/cliente-display?agencia_id=${this.agencia_id}`,
+        'clienteDisplay',
+        `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes`
+      )
+
+      // Sincronizar datos después de un breve delay para que la ventana cargue
+      setTimeout(() => {
+        this.syncClientDisplay(true)
+      }, 500)
+    },
+
+    syncClientDisplay (show = false) {
+      const payload = {
+        numeroDocumento: this.client?.numeroDocumento || '',
+        complemento: this.client?.complemento || '',
+        nombreRazonSocial: this.client?.nombreRazonSocial || '',
+        email: this.client?.email || '',
+        tipoDocumento: this.document?.descripcion || this.document?.label || '',
+        visible: show
+      }
+
+      // Guardar en localStorage (dispara el evento 'storage' en la otra ventana)
+      localStorage.setItem('clienteDisplayData', JSON.stringify(payload))
+
+      // También enviar por BroadcastChannel para mayor fiabilidad
+      if (this._clientChannel) {
+        this._clientChannel.postMessage({
+          type: 'client-data',
+          payload
+        })
+      }
+    },
+
+    clearClientDisplayData () {
+      this.clientDisplayVisible = false
+      const payload = {
+        numeroDocumento: '',
+        complemento: '',
+        nombreRazonSocial: '',
+        email: '',
+        tipoDocumento: '',
+        visible: false
+      }
+      localStorage.setItem('clienteDisplayData', JSON.stringify(payload))
+      if (this._clientChannel) {
+        this._clientChannel.postMessage({
+          type: 'client-data',
+          payload
+        })
+      }
+    },
+
+    closeClientDisplay () {
+      // Enviar señal de cierre
+      if (this._clientChannel) {
+        this._clientChannel.postMessage({ type: 'display-close' })
+      }
+      localStorage.setItem('clienteDisplayClose', Date.now().toString())
+    },
+
+    startHeartbeat () {
+      this.stopHeartbeat()
+      // Enviar heartbeat cada 3 segundos para que la ventana del cliente sepa que seguimos activos
+      this._heartbeatInterval = setInterval(() => {
+        if (this._clientChannel) {
+          this._clientChannel.postMessage({ type: 'heartbeat' })
+        }
+        localStorage.setItem('clienteDisplayHeartbeat', Date.now().toString())
+      }, 3000)
+    },
+
+    stopHeartbeat () {
+      if (this._heartbeatInterval) {
+        clearInterval(this._heartbeatInterval)
+        this._heartbeatInterval = null
       }
     }
 
