@@ -20,13 +20,7 @@ import SiatPage from 'src/pages/SiatPage.vue'
 import PublicidadPage from 'src/pages/PublicidadPage.vue'
 import BajasPage from 'pages/BajasPage.vue'
 import BajaDetailPage from 'pages/BajaDetailPage.vue'
-import ClienteDisplayPage from 'pages/ClienteDisplayPage.vue'
-
 const routes = [
-  {
-    path: '/cliente-display',
-    component: ClienteDisplayPage
-  },
   {
     path: '/publicidad-tv',
     component: () => import('pages/PublicidadTvPage.vue')

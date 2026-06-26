@@ -9,9 +9,18 @@ const io = new Server(server, {
     origin: "*",
   }
 });
-
 app.use(express.json());
 
+// Enable CORS for HTTP requests (like /notify)
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
 app.get('/', (req, res) => {
   res.send('Socket server running');
 });

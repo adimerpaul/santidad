@@ -532,12 +532,12 @@ export default {
     }
   },
   watch: {
-    'client.numeroDocumento' () { this.syncClientDisplay(true) },
-    'client.complemento' () { this.syncClientDisplay(true) },
-    'client.nombreRazonSocial' () { this.syncClientDisplay(true) },
-    'client.email' () { this.syncClientDisplay(true) },
+    'client.numeroDocumento' () { if (this.clientDisplayVisible) this.syncClientDisplay(true) },
+    'client.complemento' () { if (this.clientDisplayVisible) this.syncClientDisplay(true) },
+    'client.nombreRazonSocial' () { if (this.clientDisplayVisible) this.syncClientDisplay(true) },
+    'client.email' () { if (this.clientDisplayVisible) this.syncClientDisplay(true) },
     document: {
-      handler () { this.syncClientDisplay(true) },
+      handler () { if (this.clientDisplayVisible) this.syncClientDisplay(true) },
       deep: true
     },
 
@@ -545,11 +545,12 @@ export default {
       if (val) {
         this.saleCompleted = false
         this.clientDisplayVisible = false
-        this.syncClientDisplay(false)
       } else {
         // Diálogo cerrado (botón X, Atrás, o después de venta)
-        this.clientDisplayVisible = false
-        this.clearClientDisplayData()
+        if (this.clientDisplayVisible) {
+          this.clientDisplayVisible = false
+          this.clearClientDisplayData()
+        }
       }
     }
   },
@@ -565,26 +566,10 @@ export default {
       this.documents = res.data
       this.document = this.documents[0]
     })
-
-    // Inicializar BroadcastChannel si está disponible
-    if (typeof BroadcastChannel !== 'undefined') {
-      this._clientChannel = new BroadcastChannel('cliente-display-channel')
-    }
-
-    // Cerrar la ventana del cliente si el usuario sale de la página de ventas
-    window.addEventListener('beforeunload', this._onBeforeUnload = () => {
-      this.closeClientDisplay()
-    })
-
-    // Iniciar latido continuo e inicializar limpio el display del cliente
-    this.startHeartbeat()
-    this.clearClientDisplayData()
   },
   beforeUnmount () {
     this.closeClientDisplay()
     this.stopHeartbeat()
-    if (this._clientChannel) this._clientChannel.close()
-    window.removeEventListener('beforeunload', this._onBeforeUnload)
   },
   computed: {
     // ✅ PRODUCTOS QUE SOBREPASARON STOCK (se muestra en tiempo real)
@@ -780,10 +765,7 @@ export default {
         this.saleDialog = false
 
         // Notificar a la pantalla del cliente: "Gracias por su compra"
-        if (this._clientChannel) {
-          this._clientChannel.postMessage({ type: 'sale-complete' })
-        }
-        localStorage.setItem('clienteSaleComplete', Date.now().toString())
+        this.notifySocket('clienteSaleComplete', Date.now().toString())
 
         this.$store.productosVenta = []
         this.client = {}
@@ -1153,52 +1135,8 @@ export default {
     // ===== PANTALLA CLIENTE =====
     async openClientDisplay () {
       this.clientDisplayVisible = true
-      // Si ya hay una ventana abierta y no se cerró, la enfocamos y mostramos datos
-      if (this.clientDisplayWindow && !this.clientDisplayWindow.closed) {
-        this.clientDisplayWindow.focus()
-        this.syncClientDisplay(true)
-        return
-      }
-
-      // Intentar detectar la segunda pantalla
-      let left = window.screen.availWidth // Por defecto: borde derecho de pantalla principal
-      let top = 0
-      let width = 1920
-      let height = 1080
-
-      try {
-        // API moderna de Window Management (Chrome 100+)
-        if ('getScreenDetails' in window) {
-          const screenDetails = await window.getScreenDetails()
-          const screens = screenDetails.screens
-
-          // Buscar una pantalla que NO sea la actual (la primaria)
-          const secondScreen = screens.find(s => !s.isPrimary) || screens.find(s => s !== screenDetails.currentScreen)
-
-          if (secondScreen) {
-            left = secondScreen.availLeft
-            top = secondScreen.availTop
-            width = secondScreen.availWidth
-            height = secondScreen.availHeight
-          }
-        }
-      } catch (e) {
-        // Si el usuario deniega el permiso o no está soportado,
-        // usamos el fallback: abrir en el borde derecho (pantalla extendida)
-        console.log('Usando posición por defecto para pantalla extendida')
-      }
-
-      // Abrir la ventana en la segunda pantalla
-      this.clientDisplayWindow = window.open(
-        `/cliente-display?agencia_id=${this.agencia_id}`,
-        'clienteDisplay',
-        `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes`
-      )
-
-      // Sincronizar datos después de un breve delay para que la ventana cargue
-      setTimeout(() => {
-        this.syncClientDisplay(true)
-      }, 500)
+      this.startHeartbeat()
+      this.syncClientDisplay(true)
     },
 
     syncClientDisplay (show = false) {
@@ -1211,20 +1149,13 @@ export default {
         visible: show
       }
 
-      // Guardar en localStorage (dispara el evento 'storage' en la otra ventana)
-      localStorage.setItem('clienteDisplayData', JSON.stringify(payload))
-
-      // También enviar por BroadcastChannel para mayor fiabilidad
-      if (this._clientChannel) {
-        this._clientChannel.postMessage({
-          type: 'client-data',
-          payload
-        })
-      }
+      // Notificar por Sockets para la aplicación de PC
+      this.notifySocket('clienteDisplayData', payload)
     },
 
     clearClientDisplayData () {
       this.clientDisplayVisible = false
+      this.stopHeartbeat()
       const payload = {
         numeroDocumento: '',
         complemento: '',
@@ -1233,31 +1164,21 @@ export default {
         tipoDocumento: '',
         visible: false
       }
-      localStorage.setItem('clienteDisplayData', JSON.stringify(payload))
-      if (this._clientChannel) {
-        this._clientChannel.postMessage({
-          type: 'client-data',
-          payload
-        })
-      }
+      this.notifySocket('clienteDisplayData', payload)
     },
 
     closeClientDisplay () {
-      // Enviar señal de cierre
-      if (this._clientChannel) {
-        this._clientChannel.postMessage({ type: 'display-close' })
+      if (this.clientDisplayVisible) {
+        this.clearClientDisplayData()
       }
-      localStorage.setItem('clienteDisplayClose', Date.now().toString())
+      this.stopHeartbeat()
     },
 
     startHeartbeat () {
       this.stopHeartbeat()
       // Enviar heartbeat cada 3 segundos para que la ventana del cliente sepa que seguimos activos
       this._heartbeatInterval = setInterval(() => {
-        if (this._clientChannel) {
-          this._clientChannel.postMessage({ type: 'heartbeat' })
-        }
-        localStorage.setItem('clienteDisplayHeartbeat', Date.now().toString())
+        this.notifySocket('clienteDisplayHeartbeat', Date.now().toString())
       }, 3000)
     },
 
@@ -1266,6 +1187,17 @@ export default {
         clearInterval(this._heartbeatInterval)
         this._heartbeatInterval = null
       }
+    },
+
+    notifySocket (event, data) {
+      const socketUrl = 'http://' + window.location.hostname + ':3000'
+      fetch(`${socketUrl}/notify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ event, data })
+      }).catch(err => console.warn('Could not notify socket server:', err))
     }
 
   }

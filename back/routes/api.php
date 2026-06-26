@@ -71,7 +71,7 @@ Route::get('/productsSale', [ProductController::class,'productsSale'])
     ->middleware('throttle:120,1');
 
 Route::get('/publicidad-actual', [App\Http\Controllers\PublicidadController::class, 'publicidadActual']);
-Route::get('/publicidad/{id}/stream', [App\Http\Controllers\PublicidadController::class, 'streamFile']);
+
 
 // Rutas para vinculación de Google Drive (OAuth)
 Route::get('/drive/login', [App\Http\Controllers\GoogleDriveAuthController::class, 'login']);

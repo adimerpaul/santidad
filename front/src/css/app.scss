@@ -22,3 +22,26 @@
 .uppercase input {
   text-transform: uppercase;
 }
+
+// Bajas & Control de Inventario row highlighting
+.bg-report-observado td {
+  background-color: #ffebee !important;
+  color: #c62828 !important;
+}
+.bg-observado td {
+  background-color: #ffebee !important;
+  color: #c62828 !important;
+}
+.bg-subsanado td {
+  background-color: #e8f5e9 !important;
+  color: #2e7d32 !important;
+}
+.bg-aceptado td {
+  background-color: #eceff1 !important;
+  color: #37474f !important;
+}
+.bg-rechazado td {
+  background-color: #fbe9e7 !important;
+  color: #d84315 !important;
+}
+

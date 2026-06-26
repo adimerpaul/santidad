@@ -19,6 +19,8 @@ class WithdrawalItem extends Model
         'conteo_fisico',
         'tipo',
         'descripcion',
+        'estado',
+        'prorroga_hasta',
         'admin_descripcion',
         'cantidad_original',
         'agencia_id_original',

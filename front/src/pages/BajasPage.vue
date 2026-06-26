@@ -8,12 +8,12 @@
         </div>
         <div class="text-caption text-grey-7">Gestión de informes y productos retirados</div>
       </div>
-      <div class="col-auto">
+      <div class="col-auto" v-if="tab !== 'productos'">
         <q-btn
           color="primary"
-          icon="add"
-          label="Nuevo Informe"
-          @click="showCreateDialog = true"
+          :icon="tab === 'inventario' ? 'playlist_add' : 'add'"
+          :label="tab === 'inventario' ? 'Crear Control Inventario' : 'Nuevo Informe'"
+          @click="tab === 'inventario' ? createControlInventario() : openCreateDialog()"
           no-caps
           unelevated
         />
@@ -31,6 +31,8 @@
       @update:model-value="fetchData"
     >
       <q-tab name="informes" label="Informes Mensuales" icon="folder" />
+      <q-tab name="inventario" label="Inventario" icon="assignment" />
+      <q-tab name="motivos_sanitarios" label="Bajas Motivos Sanitarios" icon="health_and_safety" />
       <q-tab name="productos" label="Productos Retirados" icon="inventory" />
     </q-tabs>
     <q-separator />
@@ -144,132 +146,146 @@
       </q-card-section>
     </q-card>
 
-    <q-tab-panels v-model="tab" animated class="bg-transparent">
-      <q-tab-panel name="informes" class="q-pa-none">
-        <q-table
-          :rows="reports"
-          :columns="columns"
-          row-key="id"
-          flat
-          bordered
-          :loading="loading"
-          :pagination="pagination"
-          @request="onRequestReports"
-          class="shadow-1"
-        >
-          <template v-slot:body-cell-mes="props">
-            <q-td :props="props">
-              {{ getMesNombre(props.row.mes) }}
-            </q-td>
-          </template>
+    <div class="q-mt-md">
+      <q-table
+        v-if="tab !== 'productos'"
+        :rows="reports"
+        :columns="columns"
+        row-key="id"
+        flat
+        bordered
+        :loading="loading"
+        :pagination="pagination"
+        @request="onRequestReports"
+        class="shadow-1"
+        :row-class="getReportRowClass"
+      >
+        <template v-slot:body-cell-tipo="props">
+          <q-td :props="props">
+            <q-chip
+              :color="getTipoReporteColor(getReportDisplayTipo(props.row))"
+              :text-color="getTipoReporteTextColor(getReportDisplayTipo(props.row))"
+              :icon="getTipoReporteIcon(getReportDisplayTipo(props.row))"
+              dense
+              size="sm"
+              class="text-weight-bold"
+            >
+              {{ getReportDisplayTipo(props.row) }}
+            </q-chip>
+          </q-td>
+        </template>
 
-          <template v-slot:body-cell-estado="props">
-            <q-td :props="props" class="text-center">
-              <q-chip
-                :color="props.row.estado === 'ABIERTO' ? 'green-1' : (props.row.estado === 'PENDIENTE' ? 'orange-1' : 'grey-2')"
-                :text-color="props.row.estado === 'ABIERTO' ? 'green-9' : (props.row.estado === 'PENDIENTE' ? 'orange-9' : 'grey-8')"
-                :icon="props.row.estado === 'ABIERTO' ? 'lock_open' : (props.row.estado === 'PENDIENTE' ? 'send' : 'lock')"
+        <template v-slot:body-cell-mes="props">
+          <q-td :props="props">
+            {{ getMesNombre(props.row.mes) }}
+          </q-td>
+        </template>
+
+        <template v-slot:body-cell-estado="props">
+          <q-td :props="props" class="text-center">
+            <q-chip
+              :color="props.row.estado === 'ABIERTO' ? 'green-1' : (props.row.estado === 'PENDIENTE' ? 'orange-1' : (props.row.estado === 'OBSERVADO' ? 'red-2' : 'grey-2'))"
+              :text-color="props.row.estado === 'ABIERTO' ? 'green-9' : (props.row.estado === 'PENDIENTE' ? 'orange-9' : (props.row.estado === 'OBSERVADO' ? 'red-10' : 'grey-8'))"
+              :icon="props.row.estado === 'ABIERTO' ? 'lock_open' : (props.row.estado === 'PENDIENTE' ? 'send' : (props.row.estado === 'OBSERVADO' ? 'warning' : 'lock'))"
+              size="sm"
+              class="text-weight-bold"
+            >
+              {{ props.row.estado }}
+            </q-chip>
+          </q-td>
+        </template>
+
+        <template v-slot:body-cell-items_count="props">
+          <q-td :props="props" class="text-center">
+            <q-badge color="blue-grey-6" outline>
+              {{ props.row.items ? props.row.items.length : 0 }} productos
+            </q-badge>
+          </q-td>
+        </template>
+
+        <template v-slot:body-cell-actions="props">
+          <q-td :props="props" class="text-right">
+            <q-btn-group flat round>
+              <q-btn
+                flat
+                round
                 size="sm"
-                class="text-weight-bold"
+                color="primary"
+                icon="visibility"
+                :to="'/informesBajas/' + props.row.id"
               >
-                {{ props.row.estado }}
-              </q-chip>
-            </q-td>
-          </template>
-
-          <template v-slot:body-cell-items_count="props">
-            <q-td :props="props" class="text-center">
-              <q-badge color="blue-grey-6" outline>
-                {{ props.row.items ? props.row.items.length : 0 }} productos
-              </q-badge>
-            </q-td>
-          </template>
-
-          <template v-slot:body-cell-actions="props">
-            <q-td :props="props" class="text-right">
-              <q-btn-group flat round>
-                <q-btn
-                  flat
-                  round
-                  size="sm"
-                  color="primary"
-                  icon="visibility"
-                  :to="'/informesBajas/' + props.row.id"
-                >
-                  <q-tooltip>Ver detalle / Gestionar</q-tooltip>
-                </q-btn>
-                <q-btn
-                  v-if="(props.row.estado === 'ABIERTO' || props.row.estado === 'PENDIENTE') && $store.user?.id === 1"
-                  flat
-                  round
-                  size="sm"
-                  color="negative"
-                  icon="delete"
-                  @click="confirmDelete(props.row)"
-                >
-                  <q-tooltip>Eliminar informe</q-tooltip>
-                </q-btn>
-              </q-btn-group>
-            </q-td>
-          </template>
-        </q-table>
-      </q-tab-panel>
-
-      <q-tab-panel name="productos" class="q-pa-none">
-        <q-table
-          :rows="productos"
-          :columns="columnsProductos"
-          row-key="id"
-          flat
-          bordered
-          :loading="loading"
-          :pagination="paginationProductos"
-          @request="onRequestProductos"
-          class="shadow-1"
-        >
-          <template v-slot:body-cell-cantidad="props">
-            <q-td :props="props" class="text-center">
-              <span :class="props.row.cantidad > 0 ? 'text-positive text-bold' : 'text-negative text-bold'">
-                {{ formatCantidad(props.row) }}
-              </span>
-            </q-td>
-          </template>
-          <template v-slot:body-cell-tipo="props">
-            <q-td :props="props">
-              <q-chip
-                :color="getTipoColor(props.row.tipo)"
-                :text-color="getTipoTextColor(props.row.tipo)"
-                dense
+                <q-tooltip>Ver detalle / Gestionar</q-tooltip>
+              </q-btn>
+              <q-btn
+                v-if="(props.row.estado === 'ABIERTO' || props.row.estado === 'PENDIENTE') && $store.user?.id === 1"
+                flat
+                round
                 size="sm"
-                class="text-weight-bold"
+                color="negative"
+                icon="delete"
+                @click="confirmDelete(props.row)"
               >
-                {{ props.row.tipo }}
-              </q-chip>
-            </q-td>
-          </template>
-          <template v-slot:body-cell-descripcion="props">
-            <q-td :props="props">
-              <div v-if="props.row.tipo === 'CONTEO FISICO'" class="q-mb-xs">
-                <div class="text-caption text-blue-9 text-bold">
-                  <q-icon name="inventory" /> Sis: {{ props.row.stock_sistema }} | Fís: {{ props.row.conteo_fisico }}
-                </div>
+                <q-tooltip>Eliminar informe</q-tooltip>
+              </q-btn>
+            </q-btn-group>
+          </q-td>
+        </template>
+      </q-table>
+
+      <q-table
+        v-else
+        :rows="productos"
+        :columns="columnsProductos"
+        row-key="id"
+        flat
+        bordered
+        :loading="loading"
+        :pagination="paginationProductos"
+        @request="onRequestProductos"
+        class="shadow-1"
+      >
+        <template v-slot:body-cell-cantidad="props">
+          <q-td :props="props" class="text-center">
+            <span :class="props.row.cantidad > 0 ? 'text-positive text-bold' : 'text-negative text-bold'">
+              {{ formatCantidad(props.row) }}
+            </span>
+          </q-td>
+        </template>
+        <template v-slot:body-cell-tipo="props">
+          <q-td :props="props">
+            <q-chip
+              :color="getTipoColor(props.row.tipo)"
+              :text-color="getTipoTextColor(props.row.tipo)"
+              dense
+              size="sm"
+              class="text-weight-bold"
+            >
+              {{ props.row.tipo }}
+            </q-chip>
+          </q-td>
+        </template>
+        <template v-slot:body-cell-descripcion="props">
+          <q-td :props="props">
+            <div v-if="props.row.tipo === 'CONTEO FISICO'" class="q-mb-xs">
+              <div class="text-caption text-blue-9 text-bold">
+                <q-icon name="inventory" /> Sis: {{ props.row.stock_sistema }} | Fís: {{ props.row.conteo_fisico }}
               </div>
-              <div style="white-space: pre-wrap;">{{ props.row.descripcion }}</div>
-            </q-td>
-          </template>
-          <template v-slot:body-cell-report_id="props">
-            <q-td :props="props">
-              <router-link :to="'/informesBajas/' + props.row.withdrawal_report_id" class="text-primary text-bold" style="text-decoration: none;">
-                #{{ props.row.withdrawal_report_id }}
-              </router-link>
-            </q-td>
-          </template>
-        </q-table>
-      </q-tab-panel>
-    </q-tab-panels>
+            </div>
+            <div style="white-space: pre-wrap;">{{ props.row.descripcion }}</div>
+          </q-td>
+        </template>
+        <template v-slot:body-cell-report_id="props">
+          <q-td :props="props">
+            <router-link :to="'/informesBajas/' + props.row.withdrawal_report_id" class="text-primary text-bold" style="text-decoration: none;">
+              #{{ props.row.withdrawal_report_id }}
+            </router-link>
+          </q-td>
+        </template>
+      </q-table>
+    </div>
 
     <q-dialog v-model="showCreateDialog" persistent>
-      <q-card style="min-width: 350px">
+      <q-card style="min-width: 380px">
         <q-card-section class="row items-center bg-primary text-white">
           <div class="text-h6">Crear Nuevo Informe</div>
           <q-space />
@@ -319,8 +335,8 @@
 
             <q-input
               v-model="newReport.observaciones"
+              label="Observaciones"
               type="textarea"
-              label="Observaciones (opcional)"
               outlined
               dense
               rows="2"
@@ -345,7 +361,7 @@ import autoTable from 'jspdf-autotable'
 export default {
   data () {
     return {
-      tab: 'informes',
+      tab: localStorage.getItem('bajas_active_tab') || 'informes',
       loading: false,
       reports: [],
       productos: [],
@@ -361,11 +377,21 @@ export default {
         agencia_id: null,
         mes: (new Date().getMonth() + 1),
         anio: new Date().getFullYear(),
-        observaciones: ''
+        observaciones: '',
+        tipo: 'VENCIMIENTO/DEVOLUCION',
+        customTipo: ''
       },
+      tiposReporteOptions: [
+        { label: 'Informe de VENCIMIENTO/DEVOLUCION', value: 'VENCIMIENTO/DEVOLUCION' },
+        { label: 'Informe de CONTEO FISICO', value: 'CONTEO FISICO' },
+        { label: 'Informe de PRODUCTOS DAÑADOS', value: 'PRODUCTOS DAÑADOS' },
+        { label: 'Informe de MOTIVOS SANITARIOS', value: 'MOTIVOS SANITARIOS' },
+        { label: 'Otro (Ingresar manualmente)', value: 'OTROS' }
+      ],
       columns: [
         { name: 'id', align: 'left', label: 'ID', field: 'id', sortable: true },
         { name: 'agencia', align: 'left', label: 'Sucursal', field: row => row.agencia ? row.agencia.nombre : 'N/A', sortable: true },
+        { name: 'tipo', align: 'left', label: 'Tipo/Título', field: 'tipo', sortable: true },
         { name: 'mes', align: 'left', label: 'Mes', field: 'mes', sortable: true },
         { name: 'anio', align: 'left', label: 'Año', field: 'anio', sortable: true },
         { name: 'items_count', align: 'center', label: 'Productos', field: row => row.items ? row.items.length : 0 },
@@ -437,8 +463,13 @@ export default {
         }
       })
     },
+    getReportRowClass (row) {
+      if (row.estado === 'OBSERVADO') return 'bg-report-observado'
+      return ''
+    },
     fetchData () {
-      if (this.tab === 'informes') {
+      localStorage.setItem('bajas_active_tab', this.tab)
+      if (this.tab === 'informes' || this.tab === 'inventario' || this.tab === 'motivos_sanitarios') {
         this.getReports()
       } else {
         this.getProductos()
@@ -448,6 +479,15 @@ export default {
       this.loading = true
       const { page, rowsPerPage, sortBy, descending } = props?.pagination || this.pagination
 
+      let tipoFiltro = null
+      if (this.tab === 'informes') {
+        tipoFiltro = 'VENCIMIENTO/DEVOLUCION'
+      } else if (this.tab === 'inventario') {
+        tipoFiltro = 'CONTEO FISICO'
+      } else if (this.tab === 'motivos_sanitarios') {
+        tipoFiltro = 'MOTIVOS SANITARIOS'
+      }
+
       this.$axios.get('withdrawal-reports', {
         params: {
           page,
@@ -456,7 +496,8 @@ export default {
           descending,
           agencia_id: this.filter.agencia_id,
           mes: this.filter.mes,
-          anio: this.filter.anio
+          anio: this.filter.anio,
+          tipo: tipoFiltro
         }
       }).then(res => {
         this.reports = res.data.data
@@ -539,13 +580,58 @@ export default {
         default: return 'grey-9'
       }
     },
+    createControlInventario () {
+      this.loading = true
+      const userAgenciaId = this.$store?.user?.agencia_id
+      const payload = {
+        agencia_id: userAgenciaId || 1,
+        mes: (new Date().getMonth() + 1),
+        anio: new Date().getFullYear(),
+        tipo: 'CONTEO FISICO',
+        observaciones: 'Control de Inventario automático'
+      }
+
+      this.$axios.post('withdrawal-reports', payload)
+        .then(res => {
+          this.$q.notify({ color: 'positive', message: 'Control de Inventario creado correctamente', icon: 'check' })
+          this.fetchData()
+          this.$router.push('/informesBajas/' + res.data.id)
+        })
+        .catch(err => {
+          this.$q.notify({ color: 'negative', message: err.response?.data?.message || 'Error al crear control de inventario' })
+        })
+        .finally(() => {
+          this.loading = false
+        })
+    },
+    openCreateDialog () {
+      let tipoReporte = 'VENCIMIENTO/DEVOLUCION'
+      if (this.tab === 'inventario') {
+        tipoReporte = 'CONTEO FISICO'
+      } else if (this.tab === 'motivos_sanitarios') {
+        tipoReporte = 'MOTIVOS SANITARIOS'
+      }
+
+      this.newReport = {
+        agencia_id: this.$store?.user?.agencia_id || null,
+        mes: (new Date().getMonth() + 1),
+        anio: new Date().getFullYear(),
+        observaciones: '',
+        tipo: tipoReporte,
+        customTipo: ''
+      }
+      this.showCreateDialog = true
+    },
     createReport () {
       this.loading = true
-      this.$axios.post('withdrawal-reports', this.newReport)
+      const payload = { ...this.newReport }
+      delete payload.customTipo
+
+      this.$axios.post('withdrawal-reports', payload)
         .then(res => {
           this.$q.notify({ color: 'positive', message: 'Informe creado correctamente', icon: 'check' })
           this.showCreateDialog = false
-          this.getReports()
+          this.fetchData()
           this.$router.push('/informesBajas/' + res.data.id)
         })
         .catch(err => {
@@ -554,6 +640,61 @@ export default {
         .finally(() => {
           this.loading = false
         })
+    },
+    getTipoReporteColor (tipo) {
+      if (!tipo) return 'indigo-1'
+      if (tipo.includes('VENCIMIENTO') || tipo.includes('VENCIDOS') || tipo.includes('DEVOLUCION')) return 'red-1'
+      if (tipo.includes('CONTEO')) return 'blue-1'
+      if (tipo.includes('DAÑADOS')) return 'orange-1'
+      if (tipo.includes('SANITARIOS')) return 'teal-1'
+      return 'indigo-1'
+    },
+    getTipoReporteTextColor (tipo) {
+      if (!tipo) return 'indigo-9'
+      if (tipo.includes('VENCIMIENTO') || tipo.includes('VENCIDOS') || tipo.includes('DEVOLUCION')) return 'red-9'
+      if (tipo.includes('CONTEO')) return 'blue-9'
+      if (tipo.includes('DAÑADOS')) return 'orange-9'
+      if (tipo.includes('SANITARIOS')) return 'teal-9'
+      return 'indigo-9'
+    },
+    getTipoReporteIcon (tipo) {
+      if (!tipo) return 'description'
+      if (tipo.includes('VENCIMIENTO') || tipo.includes('VENCIDOS') || tipo.includes('DEVOLUCION')) return 'warning'
+      if (tipo.includes('CONTEO')) return 'inventory'
+      if (tipo.includes('DAÑADOS')) return 'dangerous'
+      if (tipo.includes('SANITARIOS')) return 'health_and_safety'
+      return 'description'
+    },
+    getReportDisplayTipo (row) {
+      if (!row) return ''
+      const isVencimientoDevolucion =
+        row.tipo === 'VENCIMIENTO/DEVOLUCION' ||
+        row.tipo === 'VENCIMIENTO' ||
+        row.tipo === 'DEVOLUCION' ||
+        row.tipo === 'VENCIDOS/DEVOLUCIONES'
+
+      if (!isVencimientoDevolucion) {
+        return row.tipo
+      }
+
+      if (!row.items || row.items.length === 0) {
+        return row.tipo === 'VENCIDOS/DEVOLUCIONES' ? 'VENCIMIENTO/DEVOLUCION' : row.tipo
+      }
+
+      const motives = new Set(row.items.map(item => item.tipo))
+
+      const hasVencimiento = motives.has('VENCIMIENTO')
+      const hasDevolucion = motives.has('DEVOLUCION A PROVEEDOR') || motives.has('DEVOLUCION')
+
+      if (hasVencimiento && hasDevolucion) {
+        return 'VENCIMIENTO/DEVOLUCION'
+      } else if (hasDevolucion) {
+        return 'DEVOLUCION'
+      } else if (hasVencimiento) {
+        return 'VENCIMIENTO'
+      }
+
+      return row.tipo === 'VENCIDOS/DEVOLUCIONES' ? 'VENCIMIENTO/DEVOLUCION' : row.tipo
     },
     confirmDelete (report) {
       this.$q.dialog({

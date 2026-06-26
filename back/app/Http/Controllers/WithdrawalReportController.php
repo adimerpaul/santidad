@@ -21,7 +21,12 @@ class WithdrawalReportController extends Controller
             $query->where('agencia_id', $user->agencia_id);
         } elseif ($request->filled('agencia_id')) {
             $agencias = is_array($request->agencia_id) ? $request->agencia_id : explode(',', $request->agencia_id);
-            $query->whereIn('agencia_id', $agencias);
+            $agencias = array_filter($agencias, function ($val) {
+                return $val !== null && $val !== '' && $val !== 'null';
+            });
+            if (!empty($agencias)) {
+                $query->whereIn('agencia_id', $agencias);
+            }
         }
 
         if ($request->filled('mes')) {
@@ -30,6 +35,14 @@ class WithdrawalReportController extends Controller
 
         if ($request->filled('anio')) {
             $query->where('anio', $request->anio);
+        }
+
+        if ($request->filled('tipo')) {
+            if ($request->tipo === 'VENCIMIENTO/DEVOLUCION') {
+                $query->whereIn('tipo', ['VENCIMIENTO/DEVOLUCION', 'VENCIMIENTO', 'DEVOLUCION', 'VENCIDOS/DEVOLUCIONES']);
+            } else {
+                $query->where('tipo', $request->tipo);
+            }
         }
 
         return $query->orderBy('anio', 'desc')->orderBy('mes', 'desc')->paginate(20);
@@ -44,7 +57,12 @@ class WithdrawalReportController extends Controller
                     $q->where('agencia_id', $user->agencia_id);
                 } elseif ($request->filled('agencia_id')) {
                     $agencias = is_array($request->agencia_id) ? $request->agencia_id : explode(',', $request->agencia_id);
-                    $q->whereIn('agencia_id', $agencias);
+                    $agencias = array_filter($agencias, function ($val) {
+                        return $val !== null && $val !== '' && $val !== 'null';
+                    });
+                    if (!empty($agencias)) {
+                        $q->whereIn('agencia_id', $agencias);
+                    }
                 }
 
                 if ($request->filled('mes')) {
@@ -69,6 +87,8 @@ class WithdrawalReportController extends Controller
             'agencia_id' => 'required|exists:agencias,id',
             'mes' => 'required|integer|between:1,12',
             'anio' => 'required|integer',
+            'tipo' => 'nullable|string',
+            'observaciones' => 'nullable|string',
         ]);
 
         $agencia_id = $request->agencia_id;
@@ -82,6 +102,7 @@ class WithdrawalReportController extends Controller
             'anio' => $request->anio,
             'user_id' => $user->id,
             'estado' => 'ABIERTO',
+            'tipo' => $request->input('tipo', 'VENCIMIENTO'),
             'observaciones' => $request->observaciones,
         ]);
 
@@ -103,7 +124,7 @@ class WithdrawalReportController extends Controller
     public function close($id)
     {
         $user = auth()->user();
-        $report = WithdrawalReport::with('items.product')->findOrFail($id);
+        $report = WithdrawalReport::with(['items.product', 'items.buy'])->findOrFail($id);
         
         if ($user->id !== 1) {
             return response()->json(['message' => 'Solo el administrador puede marcar como revisado.'], 403);
@@ -113,21 +134,27 @@ class WithdrawalReportController extends Controller
             return response()->json(['message' => 'El informe ya ha sido revisado.'], 422);
         }
 
-        if ($report->estado !== 'PENDIENTE') {
-            return response()->json(['message' => 'El informe debe estar en estado PENDIENTE para ser revisado.'], 422);
+        if ($report->estado !== 'PENDIENTE' && $report->estado !== 'OBSERVADO') {
+            return response()->json(['message' => 'El informe debe estar en estado PENDIENTE u OBSERVADO para ser revisado.'], 422);
         }
 
         DB::beginTransaction();
         try {
             foreach ($report->items as $item) {
-                $product = $item->product;
-                $actualAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
-
-                if (!$this->hasEnoughStock($product, $actualAgenciaId, $item->cantidad)) {
-                    throw new \Exception("Stock insuficiente para el producto: {$product->nombre} en la sucursal seleccionada.");
+                if ($item->estado === 'PENDIENTE' || $item->estado === 'OBSERVADO') {
+                    throw new \Exception("El producto '{$item->product->nombre}' aún está pendiente de revisión o con observaciones.");
                 }
 
-                $this->updateStock($product, $actualAgenciaId, $item->cantidad);
+                if ($item->estado === 'ACEPTADO' || $item->estado === 'SUBSANADO') {
+                    $product = $item->product;
+                    $actualAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
+
+                    if (!$this->hasEnoughStock($product, $actualAgenciaId, $item->cantidad)) {
+                        throw new \Exception("Stock insuficiente para el producto: {$product->nombre} en la sucursal seleccionada.");
+                    }
+
+                    $this->updateStock($product, $actualAgenciaId, $item->cantidad);
+                }
             }
 
             $report->update(['estado' => 'REVISADO']);
@@ -148,8 +175,8 @@ class WithdrawalReportController extends Controller
             return response()->json(['message' => 'No tiene permiso para enviar este informe.'], 403);
         }
 
-        if ($report->estado !== 'ABIERTO') {
-            return response()->json(['message' => 'Solo se pueden enviar informes que estén ABIERTOS.'], 422);
+        if ($report->estado !== 'ABIERTO' && $report->estado !== 'OBSERVADO') {
+            return response()->json(['message' => 'Solo se pueden enviar informes que estén ABIERTOS u OBSERVADOS.'], 422);
         }
 
         $report->update(['estado' => 'PENDIENTE']);
@@ -262,12 +289,17 @@ class WithdrawalReportController extends Controller
     public function updateItem(Request $request, $reportId, $itemId)
     {
         $user = $request->user();
-        if ($user->id !== 1) {
-            return response()->json(['message' => 'Solo el administrador puede modificar ítems directamente.'], 403);
-        }
-
         $item = WithdrawalItem::where('withdrawal_report_id', $reportId)->findOrFail($itemId);
         $report = $item->report;
+
+        $isReportOwner = ($report->agencia_id === $user->agencia_id);
+        $isEditableReportState = ($report->estado === 'ABIERTO' || $report->estado === 'OBSERVADO');
+
+        if ($user->id !== 1) {
+            if (!$isReportOwner || !$isEditableReportState) {
+                return response()->json(['message' => 'No tiene permiso para editar este ítem.'], 403);
+            }
+        }
 
         $request->validate([
             'cantidad' => 'required|integer',
@@ -276,6 +308,8 @@ class WithdrawalReportController extends Controller
             'admin_descripcion' => 'nullable|string',
             'stock_sistema' => 'nullable|integer',
             'conteo_fisico' => 'nullable|integer',
+            'estado' => 'nullable|string|in:PENDIENTE,ACEPTADO,RECHAZADO,PRORROGADO,OBSERVADO,SUBSANADO',
+            'prorroga_hasta' => 'nullable|date_format:Y-m-d',
         ]);
 
         DB::beginTransaction();
@@ -287,8 +321,24 @@ class WithdrawalReportController extends Controller
                 $cantidad = -abs($cantidad);
             }
 
-            $updateData = $request->only(['tipo', 'agencia_id', 'admin_descripcion', 'stock_sistema', 'conteo_fisico']);
+            $updateFields = ['tipo', 'agencia_id', 'admin_descripcion', 'stock_sistema', 'conteo_fisico'];
+            if ($user->id === 1) {
+                $updateFields[] = 'estado';
+                $updateFields[] = 'prorroga_hasta';
+            }
+
+            $updateData = $request->only($updateFields);
             $updateData['cantidad'] = $cantidad;
+
+            if ($user->id !== 1) {
+                if ($item->estado === 'OBSERVADO') {
+                    $updateData['estado'] = 'SUBSANADO';
+                }
+            } else {
+                if ($request->filled('estado') && $request->estado === 'OBSERVADO') {
+                    $report->update(['estado' => 'OBSERVADO']);
+                }
+            }
 
             if ($report->estado === 'REVISADO') {
                 $oldAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
@@ -339,8 +389,8 @@ class WithdrawalReportController extends Controller
             return response()->json(['message' => 'No tiene permiso para quitar productos de este informe.'], 403);
         }
 
-        if ($report->estado !== 'ABIERTO') {
-            return response()->json(['message' => 'Solo se pueden quitar productos de un informe que esté ABIERTO.'], 422);
+        if ($report->estado !== 'ABIERTO' && $report->estado !== 'OBSERVADO') {
+            return response()->json(['message' => 'Solo se pueden quitar productos de un informe que esté ABIERTO u OBSERVADO.'], 422);
         }
 
         $item = WithdrawalItem::where('withdrawal_report_id', $reportId)->findOrFail($itemId);

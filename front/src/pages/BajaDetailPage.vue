@@ -3,16 +3,26 @@
     <div v-if="report" class="row items-center q-mb-md">
       <div class="col">
         <q-breadcrumbs class="text-grey-7 q-mb-xs" active-color="primary">
-          <q-breadcrumbs-el label="Informes de Bajas" icon="description" to="/informesBajas" />
-          <q-breadcrumbs-el :label="'Informe #' + report.id" />
+          <q-breadcrumbs-el :label="report.tipo === 'CONTEO FISICO' ? 'Control de Inventario' : 'Informes de Bajas'" icon="description" to="/informesBajas" />
+          <q-breadcrumbs-el :label="(report.tipo === 'CONTEO FISICO' ? 'Control #' : 'Informe #') + report.id" />
         </q-breadcrumbs>
         <div class="text-h5 text-bold text-primary flex items-center">
-          Informe de Bajas - {{ report.agencia?.nombre }} ({{ getMesNombre(report.mes) }} {{ report.anio }})
+          {{ report.tipo === 'CONTEO FISICO' ? 'Control de Inventario' : 'Informe de Bajas' }} - {{ report.agencia?.nombre }} ({{ getMesNombre(report.mes) }} {{ report.anio }})
           <q-chip
-            :color="report.estado === 'ABIERTO' ? 'green-1' : (report.estado === 'PENDIENTE' ? 'orange-1' : 'grey-2')"
-            :text-color="report.estado === 'ABIERTO' ? 'green-9' : (report.estado === 'PENDIENTE' ? 'orange-9' : 'grey-8')"
-            :icon="report.estado === 'ABIERTO' ? 'lock_open' : (report.estado === 'PENDIENTE' ? 'send' : 'lock')"
+            outline
+            :color="getTipoReporteColor(getReportDisplayTipo(report))"
+            :text-color="getTipoReporteTextColor(getReportDisplayTipo(report))"
+            :icon="getTipoReporteIcon(getReportDisplayTipo(report))"
             class="q-ml-md text-weight-bold"
+            dense
+          >
+            {{ getReportDisplayTipo(report) }}
+          </q-chip>
+          <q-chip
+            :color="report.estado === 'ABIERTO' ? 'green-1' : (report.estado === 'PENDIENTE' ? 'orange-1' : (report.estado === 'OBSERVADO' ? 'red-2' : 'grey-2'))"
+            :text-color="report.estado === 'ABIERTO' ? 'green-9' : (report.estado === 'PENDIENTE' ? 'orange-9' : (report.estado === 'OBSERVADO' ? 'red-10' : 'grey-8'))"
+            :icon="report.estado === 'ABIERTO' ? 'lock_open' : (report.estado === 'PENDIENTE' ? 'send' : (report.estado === 'OBSERVADO' ? 'warning' : 'lock'))"
+            class="q-ml-xs text-weight-bold"
             dense
           >
             {{ report.estado }}
@@ -128,23 +138,50 @@
               class="bg-white"
               :rows-per-page-options="[10, 20, 50]"
             >
-              <template v-slot:body-cell-vence="props">
+              <template v-slot:body-cell-agencia="props">
                 <q-td :props="props">
-                  <q-chip
-                    :color="getExpiryColor(props.row.dateExpiry)"
-                    text-color="white"
-                    dense
-                    class="text-weight-bold"
-                    style="min-width: 95px; justify-content: center;"
-                  >
-                    <q-icon :name="getExpiryIcon(props.row.dateExpiry)" size="xs" class="q-mr-xs" />
-                    {{ props.row.dateExpiry }}
-                  </q-chip>
+                  <div class="ellipsis" style="max-width: 90px">
+                    {{ props.row.agencia?.nombre || 'Almacén' }}
+                    <q-tooltip>
+                      {{ props.row.agencia?.nombre || 'Almacén' }}
+                    </q-tooltip>
+                  </div>
+                </q-td>
+              </template>
+              <template v-slot:body-cell-producto="props">
+                <q-td :props="props">
+                  <div class="ellipsis text-weight-bold" style="max-width: 150px">
+                    {{ props.row.product?.nombre }}
+                    <q-tooltip>
+                      {{ props.row.product?.nombre }}
+                    </q-tooltip>
+                  </div>
+                </q-td>
+              </template>
+              <template v-slot:body-cell-vence="props">
+                <q-td :props="props" class="text-center">
+                  <div class="row items-center justify-center no-wrap">
+                    <q-icon
+                      v-if="props.row.dateExpiry"
+                      :name="getExpiryIcon(props.row.dateExpiry)"
+                      :color="getExpiryColor(props.row.dateExpiry)"
+                      size="xs"
+                      class="q-mr-xs"
+                    />
+                    <span :class="'text-' + getExpiryColor(props.row.dateExpiry)" class="text-weight-bold">
+                      {{ props.row.dateExpiry || 'N/A' }}
+                    </span>
+                  </div>
+                </q-td>
+              </template>
+              <template v-slot:body-cell-stock_actual="props">
+                <q-td :props="props" class="text-center text-weight-bold text-teal">
+                  {{ props.value }}
                 </q-td>
               </template>
               <template v-slot:body-cell-user="props">
                 <q-td :props="props">
-                  <div class="ellipsis" style="max-width: 100px">
+                  <div class="ellipsis" style="max-width: 70px">
                     {{ props.row.user?.name || 'N/A' }}
                     <q-tooltip v-if="props.row.user?.name">
                       {{ props.row.user.name }}
@@ -154,7 +191,7 @@
               </template>
               <template v-slot:body-cell-proveedor="props">
                 <q-td :props="props">
-                  <div class="ellipsis" style="max-width: 120px">
+                  <div class="ellipsis" style="max-width: 80px">
                     {{ props.row.proveedor?.nombreRazonSocial || 'N/A' }}
                     <q-tooltip v-if="props.row.proveedor?.nombreRazonSocial">
                       {{ props.row.proveedor.nombreRazonSocial }}
@@ -163,8 +200,19 @@
                 </q-td>
               </template>
               <template v-slot:body-cell-actions="props">
-                <q-td :props="props" class="text-right">
-                  <q-btn color="primary" label="Seleccionar para Baja" dense size="sm" @click="preparaBaja(props.row)" no-caps />
+                <q-td :props="props" class="text-center">
+                  <q-btn
+                    color="primary"
+                    icon="playlist_add"
+                    label="Baja"
+                    dense
+                    size="sm"
+                    @click="preparaBaja(props.row)"
+                    no-caps
+                    class="q-px-sm"
+                  >
+                    <q-tooltip>Seleccionar para Baja</q-tooltip>
+                  </q-btn>
                 </q-td>
               </template>
             </q-table>
@@ -189,107 +237,126 @@
         :rows-per-page-options="[0]"
         :loading="loading"
       >
-        <template v-slot:body-cell-vence="props">
-          <q-td :props="props">
-            <q-chip
-              :color="getExpiryColor(props.row.buy?.dateExpiry)"
-              text-color="white"
-              dense
-              class="text-weight-bold"
-              style="min-width: 95px; justify-content: center;"
-            >
-              <q-icon :name="getExpiryIcon(props.row.buy?.dateExpiry)" size="xs" class="q-mr-xs" />
-              {{ props.row.buy?.dateExpiry || 'N/A' }}
-            </q-chip>
-          </q-td>
-        </template>
-        <template v-slot:body-cell-user="props">
-          <q-td :props="props">
-            <div class="ellipsis" style="max-width: 100px">
-              {{ props.row.buy?.user?.name || 'N/A' }}
-              <q-tooltip v-if="props.row.buy?.user?.name">
-                {{ props.row.buy.user.name }}
-              </q-tooltip>
-            </div>
-          </q-td>
-        </template>
-        <template v-slot:body-cell-proveedor="props">
-          <q-td :props="props">
-            <div class="ellipsis" style="max-width: 120px">
-              {{ props.row.buy?.proveedor?.nombreRazonSocial || 'N/A' }}
-              <q-tooltip v-if="props.row.buy?.proveedor?.nombreRazonSocial">
-                {{ props.row.buy.proveedor.nombreRazonSocial }}
-              </q-tooltip>
-            </div>
-          </q-td>
-        </template>
-        <template v-slot:body-cell-cantidad="props">
-          <q-td :props="props" class="text-center">
-            <span :class="props.row.cantidad > 0 ? 'text-positive text-bold' : 'text-negative text-bold'">
-              {{ formatCantidad(props.row) }}
-            </span>
-          </q-td>
-        </template>
-        <template v-slot:body-cell-tipo="props">
-          <q-td :props="props">
-            <q-chip
-              :color="getTipoColor(props.row.tipo)"
-              :text-color="getTipoTextColor(props.row.tipo)"
-              dense
-              size="sm"
-              class="text-weight-bold"
-            >
-              {{ props.row.tipo }}
-            </q-chip>
-          </q-td>
-        </template>
-        <template v-slot:body-cell-descripcion="props">
-          <q-td :props="props">
-            <div v-if="props.row.tipo === 'CONTEO FISICO'" class="q-mb-xs">
-              <div class="text-caption text-blue-9 text-bold">
-                <q-icon name="inventory" /> Sis: {{ props.row.stock_sistema }} | Fís: {{ props.row.conteo_fisico }}
-              </div>
-              <div class="text-caption text-grey-8">
-                <q-icon name="person" /> {{ report.user?.name || 'N/A' }} | <q-icon name="schedule" /> {{ formatDate(props.row.created_at) }}
-              </div>
-            </div>
-            <div style="white-space: pre-wrap;">{{ props.row.descripcion }}</div>
-            <div v-if="props.row.admin_descripcion" class="q-mt-xs q-pa-xs bg-grey-2 rounded-borders">
-              <div class="text-caption text-bold text-primary">Obs. Admin:</div>
-              <div style="white-space: pre-wrap;" class="text-caption">{{ props.row.admin_descripcion }}</div>
-            </div>
-            <div v-if="props.row.cantidad_original !== null" class="text-caption text-orange-9 text-bold">
-              [Modificado: Cant. Original era {{ props.row.cantidad_original }}]
-            </div>
-          </q-td>
-        </template>
-        <template v-slot:body-cell-actions="props">
-          <q-td :props="props" class="text-right q-gutter-x-sm">
-            <q-btn
-              v-if="String($store.user?.id) === '1'"
-              flat
-              round
-              dense
-              color="primary"
-              icon="edit"
-              size="sm"
-              @click="preparaEditItem(props.row)"
-            >
-              <q-tooltip>Modificar ítem (Admin)</q-tooltip>
-            </q-btn>
-            <q-btn
-              v-if="report.estado === 'ABIERTO'"
-              flat
-              round
-              dense
-              color="negative"
-              icon="remove_circle_outline"
-              size="sm"
-              @click="removeItem(props.row)"
-            >
-              <q-tooltip>Quitar del informe</q-tooltip>
-            </q-btn>
-          </q-td>
+        <template v-slot:body="props">
+          <q-tr :props="props" :class="getRowClass(props.row)">
+            <q-td v-for="col in props.cols" :key="col.name" :props="props">
+              <!-- vence -->
+              <template v-if="col.name === 'vence'">
+                <q-chip
+                  :color="getExpiryColor(props.row.buy?.dateExpiry)"
+                  text-color="white"
+                  dense
+                  class="text-weight-bold"
+                  style="min-width: 95px; justify-content: center;"
+                >
+                  <q-icon :name="getExpiryIcon(props.row.buy?.dateExpiry)" size="xs" class="q-mr-xs" />
+                  {{ props.row.buy?.dateExpiry || 'N/A' }}
+                </q-chip>
+              </template>
+              <!-- user -->
+              <template v-else-if="col.name === 'user'">
+                <div class="ellipsis" style="max-width: 100px">
+                  {{ props.row.buy?.user?.name || 'N/A' }}
+                  <q-tooltip v-if="props.row.buy?.user?.name">{{ props.row.buy.user.name }}</q-tooltip>
+                </div>
+              </template>
+              <!-- proveedor -->
+              <template v-else-if="col.name === 'proveedor'">
+                <div class="ellipsis" style="max-width: 120px">
+                  {{ props.row.buy?.proveedor?.nombreRazonSocial || 'N/A' }}
+                  <q-tooltip v-if="props.row.buy?.proveedor?.nombreRazonSocial">{{ props.row.buy.proveedor.nombreRazonSocial }}</q-tooltip>
+                </div>
+              </template>
+              <!-- cantidad -->
+              <template v-else-if="col.name === 'cantidad'">
+                <span :class="props.row.cantidad > 0 ? 'text-positive text-bold' : 'text-negative text-bold'">
+                  {{ formatCantidad(props.row) }}
+                </span>
+              </template>
+              <!-- tipo -->
+              <template v-else-if="col.name === 'tipo'">
+                <q-chip
+                  :color="getTipoColor(props.row.tipo)"
+                  :text-color="getTipoTextColor(props.row.tipo)"
+                  dense
+                  size="sm"
+                  class="text-weight-bold"
+                >
+                  {{ props.row.tipo }}
+                </q-chip>
+              </template>
+              <!-- estado -->
+              <template v-else-if="col.name === 'estado'">
+                <q-chip
+                  :color="getItemStatusColor(props.row.estado)"
+                  :text-color="getItemStatusTextColor(props.row.estado)"
+                  dense
+                  size="sm"
+                  class="text-weight-bold"
+                >
+                  <q-icon :name="getItemStatusIcon(props.row.estado)" size="xs" class="q-mr-xs" />
+                  {{ props.row.estado }}
+                  <q-tooltip v-if="props.row.estado === 'RECHAZADO' && props.row.admin_descripcion">Rechazado: {{ props.row.admin_descripcion }}</q-tooltip>
+                  <q-tooltip v-else-if="props.row.estado === 'OBSERVADO' && props.row.admin_descripcion">Observación: {{ props.row.admin_descripcion }}</q-tooltip>
+                  <q-tooltip v-else-if="props.row.estado === 'PRORROGADO' && props.row.prorroga_hasta">Prórroga hasta: {{ props.row.prorroga_hasta }}</q-tooltip>
+                </q-chip>
+              </template>
+              <!-- descripcion -->
+              <template v-else-if="col.name === 'descripcion'">
+                <div v-if="props.row.tipo === 'CONTEO FISICO'" class="q-mb-xs">
+                  <div class="text-caption text-blue-9 text-bold">
+                    <q-icon name="inventory" /> Sis: {{ props.row.stock_sistema }} | Fís: {{ props.row.conteo_fisico }}
+                  </div>
+                  <div class="text-caption text-grey-8">
+                    <q-icon name="person" /> {{ report.user?.name || 'N/A' }} | <q-icon name="schedule" /> {{ formatDate(props.row.created_at) }}
+                  </div>
+                </div>
+                <div style="white-space: pre-wrap;">{{ props.row.descripcion }}</div>
+                <div v-if="props.row.admin_descripcion" class="q-mt-xs q-pa-xs bg-grey-2 rounded-borders">
+                  <div class="text-caption text-bold text-primary">Obs. Admin:</div>
+                  <div style="white-space: pre-wrap;" class="text-caption">{{ props.row.admin_descripcion }}</div>
+                </div>
+                <div v-if="props.row.cantidad_original !== null" class="text-caption text-orange-9 text-bold">
+                  [Modificado: Cant. Original era {{ props.row.cantidad_original }}]
+                </div>
+              </template>
+              <!-- actions -->
+              <template v-else-if="col.name === 'actions'">
+                <div class="row justify-end q-gutter-x-xs no-wrap">
+                  <template v-if="String($store.user?.id) === '1' && (report.estado === 'PENDIENTE' || report.estado === 'OBSERVADO')">
+                    <q-btn
+                      v-if="props.row.estado !== 'ACEPTADO'"
+                      flat round dense color="positive" icon="check_circle" size="sm"
+                      @click="setItemStatus(props.row, 'ACEPTADO')"
+                    ><q-tooltip>Aceptar Baja</q-tooltip></q-btn>
+                    <q-btn flat round dense color="info" icon="hourglass_top" size="sm" @click="preparaProrroga(props.row)">
+                      <q-tooltip>Dar Prórroga</q-tooltip>
+                    </q-btn>
+                    <q-btn flat round dense color="negative" icon="warning" size="sm" @click="preparaObservacion(props.row)">
+                      <q-tooltip>Rechazar u Observar</q-tooltip>
+                    </q-btn>
+                  </template>
+                  <q-btn
+                    v-if="String($store.user?.id) !== '1' && report.tipo === 'CONTEO FISICO' && report.estado === 'OBSERVADO' && props.row.estado === 'OBSERVADO'"
+                    flat round dense color="warning" icon="build" size="sm"
+                    @click="preparaSubsanar(props.row)"
+                  ><q-tooltip>Subsanar Observación (Conteo Físico)</q-tooltip></q-btn>
+                  <q-btn
+                    v-if="String($store.user?.id) === '1' || report.estado === 'ABIERTO' || (String($store.user?.id) !== '1' && report.tipo !== 'CONTEO FISICO' && report.estado === 'OBSERVADO' && props.row.estado === 'OBSERVADO')"
+                    flat round dense color="primary" icon="edit" size="sm"
+                    @click="preparaEditItem(props.row)"
+                  ><q-tooltip>{{ String($store.user?.id) === '1' ? 'Editar Ítem (Admin)' : 'Corregir Observación' }}</q-tooltip></q-btn>
+                  <q-btn
+                    v-if="report.estado === 'ABIERTO' || (report.estado === 'OBSERVADO' && props.row.estado === 'OBSERVADO')"
+                    flat round dense color="negative" icon="remove_circle_outline" size="sm"
+                    @click="removeItem(props.row)"
+                  ><q-tooltip>Quitar del informe</q-tooltip></q-btn>
+                </div>
+              </template>
+              <!-- default -->
+              <template v-else>{{ col.value }}</template>
+            </q-td>
+          </q-tr>
         </template>
       </q-table>
       <q-card-section v-if="report && report.items && report.items.length === 0" class="text-center q-pa-lg text-grey">
@@ -311,13 +378,14 @@
             <div class="col-12">
               <q-select
                 v-model="bajaForm.tipo"
-                :options="tiposBaja"
+                :options="filteredTiposBaja"
                 label="Motivo de la Baja *"
                 outlined
                 dense
                 emit-value
                 map-options
                 :rules="[val => !!val || 'Requerido']"
+                @update:model-value="onTipoBajaChange"
               />
             </div>
             <div class="col-12">
@@ -329,7 +397,7 @@
             <div class="col-6">
               <q-select
                 v-model="bajaForm.agencia_id"
-                :options="agenciasOptions"
+                :options="dialogAgenciasOptions"
                 label="Sucursal *"
                 outlined
                 dense
@@ -339,7 +407,7 @@
                 option-label="nombre"
                 :rules="[val => val !== null || 'Requerido']"
                 @update:model-value="updateSelectedStock"
-                :disable="String($store.user?.id) !== '1'"
+                :disable="String($store.user?.id) !== '1' && String($store.user?.agencia_id) !== '1'"
               />
             </div>
             <div class="col-6">
@@ -393,12 +461,13 @@
 
             <div class="col-12">
               <q-input
-                label="Descripción / Observaciones"
+                :label="bajaForm.tipo === 'OTRO' ? 'Escriba el motivo manualmente *' : 'Descripción / Observaciones'"
                 v-model="bajaForm.descripcion"
                 type="textarea"
                 outlined
                 dense
                 rows="2"
+                :rules="bajaForm.tipo === 'OTRO' ? [val => !!val || 'Requerido'] : []"
               />
             </div>
           </div>
@@ -425,12 +494,13 @@
             <div class="col-12">
               <q-select
                 v-model="editItemForm.tipo"
-                :options="tiposBaja"
+                :options="filteredTiposBaja"
                 label="Motivo de la Baja *"
                 outlined
                 dense
                 emit-value
                 map-options
+                @update:model-value="onEditTipoChange"
               />
             </div>
             <div class="col-12 text-subtitle2 text-bold text-primary">
@@ -439,7 +509,7 @@
             <div class="col-12">
               <q-select
                 v-model="editItemForm.agencia_id"
-                :options="agenciasOptions"
+                :options="dialogAgenciasOptions"
                 label="Sucursal de Retiro *"
                 outlined
                 dense
@@ -506,7 +576,19 @@
               </div>
             </div>
 
-            <div class="col-12">
+            <div class="col-12" v-if="editingItem.admin_descripcion">
+              <q-input
+                label="Observación del Administrador"
+                :model-value="editingItem.admin_descripcion"
+                readonly
+                outlined
+                dense
+                bg-color="red-1"
+                type="textarea"
+                rows="2"
+              />
+            </div>
+            <div class="col-12" v-if="String($store.user?.id) === '1'">
               <q-input
                 label="Observaciones del Administrador"
                 v-model="editItemForm.admin_descripcion"
@@ -523,6 +605,146 @@
         <q-card-actions align="right">
           <q-btn label="Cancelar" color="grey" flat v-close-popup />
           <q-btn label="Guardar Cambios" color="orange-9" unelevated @click="updateItem" :loading="loading" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Dialogo para PRÓRROGA (Admin) -->
+    <q-dialog v-model="showProrrogaDialog" persistent>
+      <q-card style="min-width: 350px">
+        <q-card-section class="row items-center bg-blue-8 text-white">
+          <div class="text-h6">Establecer Prórroga de Venta</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-pt-md" v-if="prorrogaItem">
+          <div class="q-mb-md text-weight-bold text-primary">
+            {{ prorrogaItem.product?.nombre }} (Lote: {{ prorrogaItem.buy?.lote }})
+          </div>
+          <q-input
+            v-model="prorrogaForm.prorroga_hasta"
+            type="date"
+            label="Fecha Límite de Prórroga *"
+            outlined
+            dense
+            :rules="[val => !!val || 'Requerido']"
+          />
+          <q-input
+            v-model="prorrogaForm.admin_descripcion"
+            type="textarea"
+            label="Indicación o Motivo"
+            outlined
+            dense
+            rows="2"
+            placeholder="Ej: Intentar vender con descuento en mostrador..."
+          />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn label="Cancelar" color="grey" flat v-close-popup />
+          <q-btn label="Guardar Prórroga" color="primary" unelevated @click="saveProrroga" :loading="loading" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Dialogo para RECHAZO / OBSERVACIÓN (Admin) -->
+    <q-dialog v-model="showObservarDialog" persistent>
+      <q-card style="min-width: 400px">
+        <q-card-section class="row items-center bg-negative text-white">
+          <div class="text-h6">Rechazar u Observar Ítem</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-pt-md" v-if="observarItem">
+          <div class="q-mb-md text-weight-bold text-negative">
+            {{ observarItem.product?.nombre }} (Lote: {{ observarItem.buy?.lote }})
+          </div>
+          <div class="q-gutter-sm q-mb-md">
+            <q-radio v-model="observarForm.estado" val="OBSERVADO" label="Observar (Pedir corrección a sucursal)" color="orange-8" />
+            <q-radio v-model="observarForm.estado" val="RECHAZADO" label="Rechazar definitivamente" color="red-8" />
+          </div>
+          <q-input
+            v-model="observarForm.admin_descripcion"
+            type="textarea"
+            label="Instrucción / Motivo de Rechazo *"
+            outlined
+            dense
+            rows="3"
+            placeholder="Ej: Contar físicamente de nuevo, o motivo de rechazo..."
+            :rules="[val => !!val || 'Requerido']"
+          />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn label="Cancelar" color="grey" flat v-close-popup />
+          <q-btn label="Confirmar" color="negative" unelevated @click="saveObservacion" :loading="loading" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Dialogo para SUBSANAR Observación (Sucursal) -->
+    <q-dialog v-model="showSubsanarDialog" persistent>
+      <q-card style="min-width: 400px">
+        <q-card-section class="row items-center bg-green-8 text-white">
+          <div class="text-h6">Subsanar Observación - Conteo Físico</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-pt-md" v-if="subsanarItem">
+          <div class="q-mb-sm text-weight-bold text-primary">
+            {{ subsanarItem.product?.nombre }} (Lote: {{ subsanarItem.buy?.lote }})
+          </div>
+          <div class="text-caption text-red-9 q-mb-md" v-if="subsanarItem.admin_descripcion">
+            <strong>Observación del Administrador:</strong> {{ subsanarItem.admin_descripcion }}
+          </div>
+
+          <div class="row q-col-gutter-sm">
+            <div class="col-6">
+              <q-input label="Stock Sistema" :model-value="subsanarItem.stock_sistema" readonly outlined dense bg-color="grey-2" />
+            </div>
+            <div class="col-6">
+              <q-input
+                label="Conteo Físico *"
+                v-model.number="subsanarForm.conteo_fisico"
+                type="number"
+                outlined
+                dense
+                autofocus
+                :rules="[val => val !== null && val >= 0 || 'Inválido']"
+              />
+            </div>
+            <div class="col-12">
+              <q-input
+                label="Diferencia calculada"
+                :model-value="subsanarForm.conteo_fisico - subsanarItem.stock_sistema"
+                readonly
+                outlined
+                dense
+                bg-color="blue-1"
+              />
+            </div>
+            <div class="col-12">
+              <q-select
+                v-model="subsanarForm.motivo"
+                :options="motivosSubsanacion"
+                label="Razón de la discrepancia *"
+                outlined
+                dense
+                :rules="[val => !!val || 'Requerido']"
+              />
+            </div>
+            <div class="col-12" v-if="subsanarForm.motivo === 'Otro'">
+              <q-input
+                v-model="subsanarForm.customMotivo"
+                label="Escriba la razón *"
+                outlined
+                dense
+                :rules="[val => !!val || 'Requerido']"
+              />
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn label="Cancelar" color="grey" flat v-close-popup />
+          <q-btn label="Guardar Corrección" color="positive" unelevated @click="saveSubsanar" :loading="loading" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -553,13 +775,14 @@ export default {
         { name: 'agencia', align: 'left', label: 'Agencia', field: row => row.agencia?.nombre || 'Almacen', sortable: true },
         { name: 'producto', align: 'left', label: 'Producto', field: row => row.product.nombre, sortable: true },
         { name: 'vence', align: 'center', label: 'Vence', field: 'dateExpiry', sortable: true },
-        { name: 'quantity', align: 'center', label: 'Stock', field: 'quantity', sortable: true, style: 'width: 70px', headerStyle: 'width: 70px' },
+        { name: 'quantity', align: 'center', label: 'Cant. Cargado', field: 'quantity', sortable: true, style: 'width: 80px', headerStyle: 'width: 80px' },
+        { name: 'stock_actual', align: 'center', label: 'Stock Actual', field: row => (row.agencia_id === 0 || row.agencia_id === null) ? row.product.cantidadAlmacen : (row.product['cantidadSucursal' + row.agencia_id] || 0), sortable: true, style: 'width: 80px', headerStyle: 'width: 80px' },
         { name: 'price', align: 'right', label: 'Precio', field: 'price', sortable: true },
         { name: 'total', align: 'right', label: 'Total', field: 'total', sortable: true },
-        { name: 'compra', align: 'left', label: 'Fecha Compra', field: row => row.date + ' ' + row.time, sortable: true },
+        { name: 'compra', align: 'center', label: 'Fecha Compra', field: 'date', sortable: true },
         { name: 'user', align: 'left', label: 'Usuario', field: row => row.user?.name || 'N/A' },
         { name: 'proveedor', align: 'left', label: 'Proveedor', field: row => row.proveedor?.nombreRazonSocial || 'N/A' },
-        { name: 'actions', align: 'right', label: 'Acción', field: 'actions' }
+        { name: 'actions', align: 'center', label: 'Acción', field: 'actions' }
       ],
 
       columnsDetail: [
@@ -569,9 +792,36 @@ export default {
         { name: 'cantidad', align: 'center', label: 'Cantidad', field: 'cantidad', sortable: true },
         { name: 'tipo', align: 'center', label: 'Motivo', field: 'tipo', sortable: true },
         { name: 'vence', align: 'left', label: 'Vence', field: row => row.buy?.dateExpiry || 'N/A' },
+        { name: 'estado', align: 'center', label: 'Estado Ref.', field: 'estado', sortable: true },
         { name: 'proveedor', align: 'left', label: 'Proveedor', field: row => row.buy?.proveedor?.nombreRazonSocial || 'N/A' },
         { name: 'descripcion', align: 'left', label: 'Descripción', field: 'descripcion' },
         { name: 'actions', align: 'right', label: 'Acciones', field: 'actions' }
+      ],
+
+      showProrrogaDialog: false,
+      showObservarDialog: false,
+      prorrogaItem: null,
+      observarItem: null,
+      prorrogaForm: {
+        prorroga_hasta: '',
+        admin_descripcion: ''
+      },
+      observarForm: {
+        estado: 'OBSERVADO',
+        admin_descripcion: ''
+      },
+      showSubsanarDialog: false,
+      subsanarItem: null,
+      subsanarForm: {
+        conteo_fisico: 0,
+        motivo: 'Error en el conteo',
+        customMotivo: ''
+      },
+      motivosSubsanacion: [
+        'Error en el conteo',
+        'Vendido sin sistema',
+        'Producto perdido',
+        'Otro'
       ],
 
       showBajaDialog: false,
@@ -608,6 +858,39 @@ export default {
         { label: 'PRODUCTO DAÑADO', value: 'PRODUCTO DAÑADO' },
         { label: 'OTRO', value: 'OTRO' }
       ]
+    }
+  },
+  computed: {
+    dialogAgenciasOptions () {
+      const list = []
+      const isCentralOrAdmin = String(this.$store.user?.id) === '1' || String(this.$store.user?.agencia_id) === '1'
+      if (isCentralOrAdmin) {
+        list.push({ id: 0, nombre: 'Almacén' })
+      }
+      this.agenciasOptions.forEach(opt => {
+        if (opt.id !== null) {
+          if (opt.id === 1) {
+            list.push({ id: 1, nombre: 'Casa Matriz Velasco' })
+          } else {
+            list.push(opt)
+          }
+        }
+      })
+      return list
+    },
+    filteredTiposBaja () {
+      if (!this.report || !this.report.tipo) return this.tiposBaja
+      const tipoReporte = this.report.tipo
+      if (tipoReporte.includes('VENCIMIENTO') || tipoReporte.includes('VENCIDOS') || tipoReporte === 'VENCIMIENTO/DEVOLUCION') {
+        return this.tiposBaja.filter(t => t.value === 'VENCIMIENTO' || t.value === 'DEVOLUCION A PROVEEDOR')
+      }
+      if (tipoReporte.includes('CONTEO') || tipoReporte === 'CONTEO FISICO') {
+        return this.tiposBaja.filter(t => t.value === 'CONTEO FISICO' || t.value === 'OTRO')
+      }
+      if (tipoReporte.includes('DAÑADOS') || tipoReporte === 'PRODUCTOS DAÑADOS') {
+        return this.tiposBaja.filter(t => t.value === 'PRODUCTO DAÑADO')
+      }
+      return this.tiposBaja
     }
   },
   created () {
@@ -671,28 +954,57 @@ export default {
     },
     preparaBaja (buy) {
       this.selectedBuy = buy
+      const isCentralOrAdmin = String(this.$store.user?.id) === '1' || String(this.$store.user?.agencia_id) === '1'
       let originAgenciaId = this.report?.agencia_id
-      if (originAgenciaId === undefined || originAgenciaId === null) {
+
+      if (isCentralOrAdmin && (buy.agencia_id === null || buy.agencia_id === 0)) {
+        originAgenciaId = 0
+      } else if (originAgenciaId === undefined || originAgenciaId === null) {
         originAgenciaId = (buy.agencia_id === null || buy.agencia_id === undefined) ? 0 : buy.agencia_id
       }
       this.selectedStock = this.getAgenciaStock(buy.product, originAgenciaId)
 
       let sugerido = 'OTRO'
-      if (buy.dateExpiry) {
+      if (this.report?.tipo === 'CONTEO FISICO') {
+        sugerido = 'CONTEO FISICO'
+      } else if (buy.dateExpiry) {
         const vence = moment(buy.dateExpiry)
         if (vence.isBefore(moment())) {
           sugerido = 'VENCIMIENTO'
         }
       }
 
+      // Filter based on filteredTiposBaja
+      const allowedValues = this.filteredTiposBaja.map(t => t.value)
+      if (!allowedValues.includes(sugerido)) {
+        sugerido = allowedValues.length > 0 ? allowedValues[0] : 'OTRO'
+      }
+
       this.bajaForm = {
         agencia_id: originAgenciaId,
-        cantidad: 1,
-        fisico: this.selectedStock,
+        cantidad: sugerido === 'CONTEO FISICO' ? -this.selectedStock : 1,
+        fisico: sugerido === 'CONTEO FISICO' ? 0 : this.selectedStock,
         tipo: sugerido,
         descripcion: ''
       }
       this.showBajaDialog = true
+    },
+    onTipoBajaChange (val) {
+      if (val === 'CONTEO FISICO') {
+        this.bajaForm.fisico = 0
+        this.calculateFromFisico(0)
+      } else {
+        this.bajaForm.cantidad = 1
+      }
+    },
+    onEditTipoChange (val) {
+      if (val === 'CONTEO FISICO') {
+        this.editItemForm.stock_sistema = this.selectedStock
+        this.editItemForm.conteo_fisico = 0
+        this.calculateEditFromFisico()
+      } else {
+        this.editItemForm.cantidad = Math.abs(this.editItemForm.cantidad) || 1
+      }
     },
     updateSelectedStock (val) {
       this.selectedStock = this.getAgenciaStock(this.selectedBuy.product, val)
@@ -738,7 +1050,7 @@ export default {
       this.$axios.post(`withdrawal-reports/${this.id}/items`, {
         buy_id: this.selectedBuy.id,
         product_id: this.selectedBuy.product_id,
-        agencia_id: this.bajaForm.agencia_id,
+        agencia_id: this.bajaForm.agencia_id === 0 ? null : this.bajaForm.agencia_id,
         cantidad: cantidadEnviar,
         stock_sistema: this.bajaForm.tipo === 'CONTEO FISICO' ? this.selectedStock : null,
         conteo_fisico: this.bajaForm.tipo === 'CONTEO FISICO' ? this.bajaForm.fisico : null,
@@ -851,7 +1163,7 @@ export default {
     preparaEditItem (item) {
       this.editingItem = item
       this.editItemForm = {
-        agencia_id: item.agencia_id,
+        agencia_id: item.agencia_id === null ? 0 : item.agencia_id,
         cantidad: item.cantidad,
         tipo: item.tipo,
         admin_descripcion: item.admin_descripcion || '',
@@ -860,6 +1172,52 @@ export default {
       }
       this.selectedStock = this.getAgenciaStock(item.product, item.agencia_id)
       this.showEditItemDialog = true
+    },
+    preparaSubsanar (item) {
+      this.subsanarItem = item
+      this.subsanarForm = {
+        conteo_fisico: item.conteo_fisico !== null ? item.conteo_fisico : item.stock_sistema,
+        motivo: 'Error en el conteo',
+        customMotivo: ''
+      }
+      this.showSubsanarDialog = true
+    },
+    saveSubsanar () {
+      if (this.subsanarForm.conteo_fisico === null || this.subsanarForm.conteo_fisico < 0) {
+        this.$q.notify({ color: 'negative', message: 'Debe ingresar un conteo físico válido' })
+        return
+      }
+      if (this.subsanarForm.motivo === 'Otro' && !this.subsanarForm.customMotivo) {
+        this.$q.notify({ color: 'negative', message: 'Debe escribir la razón de la discrepancia' })
+        return
+      }
+
+      this.loading = true
+      const calculoCantidad = this.subsanarForm.conteo_fisico - this.subsanarItem.stock_sistema
+      const razonDesc = this.subsanarForm.motivo === 'Otro' ? this.subsanarForm.customMotivo : this.subsanarForm.motivo
+
+      const data = {
+        cantidad: calculoCantidad,
+        tipo: 'CONTEO FISICO',
+        agencia_id: this.subsanarItem.agencia_id === null ? 0 : this.subsanarItem.agencia_id,
+        conteo_fisico: this.subsanarForm.conteo_fisico,
+        stock_sistema: this.subsanarItem.stock_sistema,
+        descripcion: razonDesc
+      }
+
+      this.$axios.put(`withdrawal-reports/${this.id}/items/${this.subsanarItem.id}`, data)
+        .then(() => {
+          this.$q.notify({ color: 'positive', message: 'Observación subsanada correctamente' })
+          this.showSubsanarDialog = false
+          this.getReport()
+        })
+        .catch(err => {
+          console.error(err)
+          this.$q.notify({ color: 'negative', message: err.response?.data?.message || 'Error al subsanar observación' })
+        })
+        .finally(() => {
+          this.loading = false
+        })
     },
     calculateEditFromFisico (val) {
       this.editItemForm.cantidad = (this.editItemForm.conteo_fisico || 0) - (this.editItemForm.stock_sistema || 0)
@@ -872,6 +1230,9 @@ export default {
       const data = { ...this.editItemForm }
       if (data.tipo !== 'CONTEO FISICO') {
         data.cantidad = -Math.abs(data.cantidad)
+      }
+      if (data.agencia_id === 0) {
+        data.agencia_id = null
       }
 
       this.$axios.put(`withdrawal-reports/${this.id}/items/${this.editingItem.id}`, data)
@@ -887,6 +1248,125 @@ export default {
         .finally(() => {
           this.loading = false
         })
+    },
+    setItemStatus (item, status) {
+      this.loading = true
+      this.$axios.put(`withdrawal-reports/${this.id}/items/${item.id}`, {
+        cantidad: item.cantidad,
+        tipo: item.tipo,
+        agencia_id: item.agencia_id,
+        estado: status,
+        prorroga_hasta: null
+      }).then(() => {
+        this.$q.notify({ color: 'positive', message: 'Estado del producto actualizado' })
+        this.getReport()
+      }).catch(err => {
+        console.error(err)
+        this.$q.notify({ color: 'negative', message: err.response?.data?.message || 'Error al actualizar estado' })
+      }).finally(() => {
+        this.loading = false
+      })
+    },
+    preparaProrroga (item) {
+      this.prorrogaItem = item
+      this.prorrogaForm = {
+        prorroga_hasta: item.prorroga_hasta || '',
+        admin_descripcion: item.admin_descripcion || ''
+      }
+      this.showProrrogaDialog = true
+    },
+    saveProrroga () {
+      if (!this.prorrogaForm.prorroga_hasta) {
+        this.$q.notify({ color: 'negative', message: 'Debe ingresar una fecha límite' })
+        return
+      }
+      this.loading = true
+      this.$axios.put(`withdrawal-reports/${this.id}/items/${this.prorrogaItem.id}`, {
+        cantidad: this.prorrogaItem.cantidad,
+        tipo: this.prorrogaItem.tipo,
+        agencia_id: this.prorrogaItem.agencia_id,
+        estado: 'PRORROGADO',
+        prorroga_hasta: this.prorrogaForm.prorroga_hasta,
+        admin_descripcion: this.prorrogaForm.admin_descripcion
+      }).then(() => {
+        this.$q.notify({ color: 'positive', message: 'Prórroga establecida correctamente' })
+        this.showProrrogaDialog = false
+        this.getReport()
+      }).catch(err => {
+        console.error(err)
+        this.$q.notify({ color: 'negative', message: 'Error al establecer prórroga' })
+      }).finally(() => {
+        this.loading = false
+      })
+    },
+    preparaObservacion (item) {
+      this.observarItem = item
+      this.observarForm = {
+        estado: item.estado === 'RECHAZADO' ? 'RECHAZADO' : 'OBSERVADO',
+        admin_descripcion: item.admin_descripcion || ''
+      }
+      this.showObservarDialog = true
+    },
+    saveObservacion () {
+      if (!this.observarForm.admin_descripcion) {
+        this.$q.notify({ color: 'negative', message: 'Debe ingresar un motivo u observación' })
+        return
+      }
+      this.loading = true
+      this.$axios.put(`withdrawal-reports/${this.id}/items/${this.observarItem.id}`, {
+        cantidad: this.observarItem.cantidad,
+        tipo: this.observarItem.tipo,
+        agencia_id: this.observarItem.agencia_id,
+        estado: this.observarForm.estado,
+        admin_descripcion: this.observarForm.admin_descripcion,
+        prorroga_hasta: null
+      }).then(() => {
+        this.$q.notify({ color: 'positive', message: 'Estado del producto actualizado' })
+        this.showObservarDialog = false
+        this.getReport()
+      }).catch(err => {
+        console.error(err)
+        this.$q.notify({ color: 'negative', message: 'Error al guardar estado' })
+      }).finally(() => {
+        this.loading = false
+      })
+    },
+    getRowClass (row) {
+      if (row.estado === 'OBSERVADO') return 'bg-red-1'
+      if (row.estado === 'SUBSANADO') return 'bg-green-1'
+      if (row.estado === 'ACEPTADO') return ''
+      if (row.estado === 'RECHAZADO') return 'bg-grey-3'
+      return ''
+    },
+    getItemStatusColor (status) {
+      switch (status) {
+        case 'ACEPTADO': return 'green-1'
+        case 'RECHAZADO': return 'red-1'
+        case 'PRORROGADO': return 'blue-1'
+        case 'OBSERVADO': return 'orange-1'
+        case 'SUBSANADO': return 'green-2'
+        default: return 'grey-2'
+      }
+    },
+    getItemStatusTextColor (status) {
+      switch (status) {
+        case 'ACEPTADO': return 'green-9'
+        case 'RECHAZADO': return 'red-9'
+        case 'PRORROGADO': return 'blue-9'
+        case 'OBSERVADO': return 'orange-9'
+        case 'SUBSANADO': return 'green-10'
+        default: return 'grey-8'
+      }
+    },
+    getItemStatusIcon (status) {
+      switch (status) {
+        case 'ACEPTADO': return 'check_circle'
+        case 'RECHAZADO': return 'cancel'
+        case 'PRORROGADO': return 'hourglass_top'
+        case 'OBSERVADO': return 'warning'
+        case 'SUBSANADO': return 'assignment_turned_in'
+        default: return 'help_outline'
+      }
     },
     generatePDF () {
       const doc = jsPDF()
@@ -919,7 +1399,7 @@ export default {
       doc.setTextColor(255, 255, 255)
       doc.setFontSize(22)
       doc.setFont('helvetica', 'bold')
-      doc.text('INFORME DE BAJAS', 14, 25)
+      doc.text(String(this.getReportDisplayTipo(this.report) || 'INFORME DE BAJAS').toUpperCase(), 14, 25)
       doc.setFontSize(12)
       doc.setFont('helvetica', 'normal')
       doc.text(`Informe Nro: #${this.report.id}`, pW - 14, 25, { align: 'right' })
@@ -1016,7 +1496,8 @@ export default {
     },
     shareWhatsApp () {
       this.generatePDF()
-      const text = `*INFORME DE BAJAS #${this.report.id}*\n📍 *Agencia:* ${this.report.agencia?.nombre}\n📅 *Periodo:* ${this.getMesNombre(this.report.mes)} ${this.report.anio}\n👤 *Responsable:* ${this.report.user?.name}`
+      const tituloUpper = String(this.getReportDisplayTipo(this.report) || 'INFORME DE BAJAS').toUpperCase()
+      const text = `*${tituloUpper} #${this.report.id}*\n📍 *Agencia:* ${this.report.agencia?.nombre}\n📅 *Periodo:* ${this.getMesNombre(this.report.mes)} ${this.report.anio}\n👤 *Responsable:* ${this.report.user?.name}`
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')
     },
     getExpiryColor (date) {
@@ -1050,6 +1531,61 @@ export default {
         case 'CONTEO FISICO': return 'blue-9'
         default: return 'grey-9'
       }
+    },
+    getTipoReporteColor (tipo) {
+      if (!tipo) return 'indigo-1'
+      if (tipo.includes('VENCIMIENTO') || tipo.includes('VENCIDOS') || tipo.includes('DEVOLUCION')) return 'red-1'
+      if (tipo.includes('CONTEO')) return 'blue-1'
+      if (tipo.includes('DAÑADOS')) return 'orange-1'
+      if (tipo.includes('SANITARIOS')) return 'teal-1'
+      return 'indigo-1'
+    },
+    getTipoReporteTextColor (tipo) {
+      if (!tipo) return 'indigo-9'
+      if (tipo.includes('VENCIMIENTO') || tipo.includes('VENCIDOS') || tipo.includes('DEVOLUCION')) return 'red-9'
+      if (tipo.includes('CONTEO')) return 'blue-9'
+      if (tipo.includes('DAÑADOS')) return 'orange-9'
+      if (tipo.includes('SANITARIOS')) return 'teal-9'
+      return 'indigo-9'
+    },
+    getTipoReporteIcon (tipo) {
+      if (!tipo) return 'description'
+      if (tipo.includes('VENCIMIENTO') || tipo.includes('VENCIDOS') || tipo.includes('DEVOLUCION')) return 'warning'
+      if (tipo.includes('CONTEO')) return 'inventory'
+      if (tipo.includes('DAÑADOS')) return 'dangerous'
+      if (tipo.includes('SANITARIOS')) return 'health_and_safety'
+      return 'description'
+    },
+    getReportDisplayTipo (row) {
+      if (!row) return ''
+      const isVencimientoDevolucion =
+        row.tipo === 'VENCIMIENTO/DEVOLUCION' ||
+        row.tipo === 'VENCIMIENTO' ||
+        row.tipo === 'DEVOLUCION' ||
+        row.tipo === 'VENCIDOS/DEVOLUCIONES'
+
+      if (!isVencimientoDevolucion) {
+        return row.tipo
+      }
+
+      if (!row.items || row.items.length === 0) {
+        return row.tipo === 'VENCIDOS/DEVOLUCIONES' ? 'VENCIMIENTO/DEVOLUCION' : row.tipo
+      }
+
+      const motives = new Set(row.items.map(item => item.tipo))
+
+      const hasVencimiento = motives.has('VENCIMIENTO')
+      const hasDevolucion = motives.has('DEVOLUCION A PROVEEDOR') || motives.has('DEVOLUCION')
+
+      if (hasVencimiento && hasDevolucion) {
+        return 'VENCIMIENTO/DEVOLUCION'
+      } else if (hasDevolucion) {
+        return 'DEVOLUCION'
+      } else if (hasVencimiento) {
+        return 'VENCIMIENTO'
+      }
+
+      return row.tipo === 'VENCIDOS/DEVOLUCIONES' ? 'VENCIMIENTO/DEVOLUCION' : row.tipo
     }
   }
 }
