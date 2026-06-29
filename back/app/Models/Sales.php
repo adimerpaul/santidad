@@ -26,6 +26,8 @@ class Sales extends Model
         "siatAnulado",
         "tipoVenta",
         "metodoPago",
+        "montoEfectivo",
+        "montoQr",
         "codigoDocumentoSector",
         "leyenda",
         "venta",

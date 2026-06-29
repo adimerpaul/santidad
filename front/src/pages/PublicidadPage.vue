@@ -19,15 +19,11 @@
           >
             <template v-slot:body-cell-preview="props">
               <q-td :props="props">
-                <q-btn
-                  flat
-                  round
-                  color="primary"
-                  icon="visibility"
-                  @click="openDriveLink(props.row.file_id)"
-                >
-                  <q-tooltip>Ver en Google Drive</q-tooltip>
-                </q-btn>
+                <q-avatar rounded size="40px" class="cursor-pointer shadow-1" @click="viewMedia(props.row)">
+                  <img v-if="props.row.type === 'image'" :src="getPublicUrl(props.row)" style="object-fit: cover;" />
+                  <q-icon v-else name="play_circle" size="32px" color="primary" />
+                  <q-tooltip>Ampliar vista previa</q-tooltip>
+                </q-avatar>
               </q-td>
             </template>
             <template v-slot:body-cell-active="props">
@@ -115,16 +111,17 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="showVideoDialog">
-      <q-card style="width: 800px; max-width: 90vw">
+    <q-dialog v-model="showPreviewDialog">
+      <q-card style="width: 700px; max-width: 90vw">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Vista Previa de Video</div>
+          <div class="text-h6">{{ previewTitle }}</div>
           <q-space />
           <q-btn icon="close" flat round v-close-popup />
         </q-card-section>
 
-        <q-card-section>
-          <video :src="currentVideoUrl" style="width: 100%" controls autoplay></video>
+        <q-card-section class="flex flex-center q-pa-md" style="min-height: 200px;">
+          <video v-if="previewType === 'video'" :src="previewMediaUrl" style="max-width: 100%; max-height: 65vh; border-radius: 8px;" controls autoplay></video>
+          <q-img v-else :src="previewMediaUrl" style="max-width: 100%; max-height: 65vh; border-radius: 8px;" contain />
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -143,8 +140,10 @@ export default {
       previewUrl: null,
       isImage: false,
       isVideo: false,
-      showVideoDialog: false,
-      currentVideoUrl: '',
+      showPreviewDialog: false,
+      previewMediaUrl: '',
+      previewType: '',
+      previewTitle: '',
       agencias: [],
       form: {
         name: '',
@@ -209,9 +208,22 @@ export default {
       this.isVideo = false
       this.uploadProgress = 0
     },
-    openDriveLink (fileId) {
-      if (!fileId) return
-      window.open(`https://drive.google.com/file/d/${fileId}/view`, '_blank')
+    getPublicUrl (row) {
+      if (!row || !row.url) return ''
+      // Reparar URLs antiguas que apuntan al endpoint privado de Cloudflare R2
+      if (row.url.includes('cloudflarestorage.com')) {
+        const fileName = row.file_id || row.url.split('/').pop()
+        const publicUrl = 'https://pub-2a241fac89cf4fc795ff03f0b7f79f7e.r2.dev'
+        const path = fileName.startsWith('publicidad/') ? fileName : `publicidad/${fileName}`
+        return `${publicUrl}/${path}`
+      }
+      return row.url
+    },
+    viewMedia (row) {
+      this.previewMediaUrl = this.getPublicUrl(row)
+      this.previewType = row.type
+      this.previewTitle = `Vista Previa: ${row.name}`
+      this.showPreviewDialog = true
     },
     getPublicidades () {
       this.loading = true
@@ -272,7 +284,7 @@ export default {
     deletePublicidad (row) {
       this.$q.dialog({
         title: 'Confirmar eliminacion',
-        message: '¿Estas seguro de eliminar esta publicidad de Drive y la base de datos?',
+        message: '¿Estas seguro de eliminar esta publicidad y la base de datos?',
         cancel: true,
         persistent: true
       }).onOk(() => {

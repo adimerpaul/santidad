@@ -209,10 +209,13 @@
                 <div class="text-caption" style="width: 100px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.agencia?.nombre }}</div>
               </q-td>
               <q-td key="metodoPago" :props="props">
-              <q-badge :color="props.row.metodoPago == 'Efectivo' ? 'green' : 'blue'" text-color="white">
-                {{ props.row.metodoPago }}
-              </q-badge>
-            </q-td>
+                <q-badge :color="props.row.metodoPago === 'Efectivo' ? 'green' : (props.row.metodoPago === 'Personalizado' ? 'purple' : 'blue')" text-color="white">
+                  {{ props.row.metodoPago }}
+                </q-badge>
+                <div v-if="props.row.metodoPago === 'Personalizado'" class="text-caption text-grey text-bold" style="font-size: 10px; margin-top: 2px;">
+                  Ef: {{ parseFloat(props.row.montoEfectivo || 0).toFixed(1) }} / QR: {{ parseFloat(props.row.montoQr || 0).toFixed(1) }}
+                </div>
+              </q-td>
               <q-td key="proveedorcliente" :props="props">
                 <div class="text-grey" v-if="props.row.client">{{ props.row.client.nombreRazonSocial }}</div>
               </q-td>
@@ -617,16 +620,30 @@ export default {
     },
     totalEfectivo () {
       const monto = this.sales
-        .filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO' && sale.metodoPago === 'Efectivo')
-        .reduce((a, b) => a + (parseFloat(b.montoTotal)), 0)
+        .filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO')
+        .reduce((a, b) => {
+          if (b.metodoPago === 'Efectivo') {
+            return a + parseFloat(b.montoTotal || 0)
+          } else if (b.metodoPago === 'Personalizado') {
+            return a + parseFloat(b.montoEfectivo || 0)
+          }
+          return a
+        }, 0)
       return Math.round(monto * 100) / 100
     },
 
     // 2. Suma todo lo que NO sea "Efectivo" (QR, Tarjeta, etc.)
     totalDigital () {
       const monto = this.sales
-        .filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO' && sale.metodoPago !== 'Efectivo')
-        .reduce((a, b) => a + (parseFloat(b.montoTotal)), 0)
+        .filter(sale => sale.tipoVenta === 'Ingreso' && sale.estado === 'ACTIVO')
+        .reduce((a, b) => {
+          if (b.metodoPago !== 'Efectivo' && b.metodoPago !== 'Personalizado') {
+            return a + parseFloat(b.montoTotal || 0)
+          } else if (b.metodoPago === 'Personalizado') {
+            return a + parseFloat(b.montoQr || 0)
+          }
+          return a
+        }, 0)
       return Math.round(monto * 100) / 100
     }
   }

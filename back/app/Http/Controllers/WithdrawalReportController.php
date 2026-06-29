@@ -252,6 +252,7 @@ class WithdrawalReportController extends Controller
             'agencia_id' => 'nullable|integer',
             'stock_sistema' => 'nullable|integer',
             'conteo_fisico' => 'nullable|integer',
+            'lote' => 'nullable|string',
         ]);
 
         if ($request->cantidad == 0) {
@@ -259,6 +260,9 @@ class WithdrawalReportController extends Controller
         }
 
         $buy = Buy::with('product')->findOrFail($request->buy_id);
+        if ($request->filled('lote') && $request->lote !== $buy->lote) {
+            $buy->update(['lote' => $request->lote]);
+        }
         $product = $buy->product;
         $actualAgenciaId = $request->agencia_id ?? ($buy->agencia_id ?? 0);
 
@@ -310,11 +314,19 @@ class WithdrawalReportController extends Controller
             'conteo_fisico' => 'nullable|integer',
             'estado' => 'nullable|string|in:PENDIENTE,ACEPTADO,RECHAZADO,PRORROGADO,OBSERVADO,SUBSANADO',
             'prorroga_hasta' => 'nullable|date_format:Y-m-d',
+            'lote' => 'nullable|string',
         ]);
 
         DB::beginTransaction();
         try {
             $this->trackChanges($item, $request);
+
+            if ($request->filled('lote')) {
+                $buy = Buy::findOrFail($item->buy_id);
+                if ($request->lote !== $buy->lote) {
+                    $buy->update(['lote' => $request->lote]);
+                }
+            }
 
             $cantidad = $request->cantidad;
             if ($request->tipo !== 'CONTEO FISICO') {

@@ -394,6 +394,7 @@ export default {
         { name: 'tipo', align: 'left', label: 'Tipo/Título', field: 'tipo', sortable: true },
         { name: 'mes', align: 'left', label: 'Mes', field: 'mes', sortable: true },
         { name: 'anio', align: 'left', label: 'Año', field: 'anio', sortable: true },
+        { name: 'fecha_creacion', align: 'left', label: 'Fecha Creación', field: row => this.formatDate(row.created_at), sortable: true },
         { name: 'items_count', align: 'center', label: 'Productos', field: row => row.items ? row.items.length : 0 },
         { name: 'estado', align: 'center', label: 'Estado', field: 'estado', sortable: true },
         { name: 'user', align: 'left', label: 'Creado por', field: row => row.user ? row.user.name : 'N/A' },

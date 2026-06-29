@@ -62,11 +62,12 @@
             color="red-7"
             icon="picture_as_pdf"
             label="PDF"
-            @click="generatePDF"
+            @click="generatePDF(false)"
             no-caps
             unelevated
           />
           <q-btn
+            v-if="String($store.user?.id) === '1'"
             color="green-7"
             icon="fa-brands fa-whatsapp"
             label="WhatsApp"
@@ -392,7 +393,27 @@
               <q-input label="Producto" :model-value="selectedBuy.product.nombre" readonly outlined dense bg-color="grey-2" />
             </div>
             <div class="col-6">
-              <q-input label="Lote" :model-value="selectedBuy.lote" readonly outlined dense />
+              <q-input
+                label="Lote *"
+                v-model="bajaForm.lote"
+                :readonly="!editLoteMode"
+                outlined
+                dense
+                :bg-color="editLoteMode ? 'amber-1' : ''"
+              >
+                <template v-slot:append>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    :color="editLoteMode ? 'positive' : 'grey-7'"
+                    :icon="editLoteMode ? 'check' : 'edit'"
+                    @click="editLoteMode = !editLoteMode"
+                  >
+                    <q-tooltip>{{ editLoteMode ? 'Confirmar lote' : 'Corregir lote manualmente' }}</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
             </div>
             <div class="col-6">
               <q-select
@@ -503,8 +524,31 @@
                 @update:model-value="onEditTipoChange"
               />
             </div>
-            <div class="col-12 text-subtitle2 text-bold text-primary">
-              {{ editingItem.product?.nombre }} (Lote: {{ editingItem.buy?.lote }})
+            <div class="col-12">
+              <q-input label="Producto" :model-value="editingItem.product?.nombre" readonly outlined dense bg-color="grey-2" />
+            </div>
+            <div class="col-12">
+              <q-input
+                label="Lote *"
+                v-model="editItemForm.lote"
+                :readonly="!editItemLoteMode"
+                outlined
+                dense
+                :bg-color="editItemLoteMode ? 'amber-1' : ''"
+              >
+                <template v-slot:append>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    :color="editItemLoteMode ? 'positive' : 'grey-7'"
+                    :icon="editItemLoteMode ? 'check' : 'edit'"
+                    @click="editItemLoteMode = !editItemLoteMode"
+                  >
+                    <q-tooltip>{{ editItemLoteMode ? 'Confirmar lote' : 'Corregir lote manualmente' }}</q-tooltip>
+                  </q-btn>
+                </template>
+              </q-input>
             </div>
             <div class="col-12">
               <q-select
@@ -662,6 +706,18 @@
             <q-radio v-model="observarForm.estado" val="OBSERVADO" label="Observar (Pedir corrección a sucursal)" color="orange-8" />
             <q-radio v-model="observarForm.estado" val="RECHAZADO" label="Rechazar definitivamente" color="red-8" />
           </div>
+          <div class="q-mb-md">
+            <q-select
+              v-model="selectedMotivoObservacion"
+              :options="motivosObservacion"
+              label="Motivo predefinido (opcional)"
+              outlined
+              dense
+              emit-value
+              map-options
+              @update:model-value="onMotivoObservacionSelect"
+            />
+          </div>
           <q-input
             v-model="observarForm.admin_descripcion"
             type="textarea"
@@ -810,6 +866,14 @@ export default {
         estado: 'OBSERVADO',
         admin_descripcion: ''
       },
+      selectedMotivoObservacion: null,
+      motivosObservacion: [
+        'Producto con Rotación (se debe vender)',
+        'Error en el conteo físico (por favor volver a contar)',
+        'Falta documentación o justificación detallada',
+        'Lote o fecha de vencimiento incorrecta',
+        'Otro (describir manualmente)'
+      ],
       showSubsanarDialog: false,
       subsanarItem: null,
       subsanarForm: {
@@ -829,12 +893,16 @@ export default {
       selectedBuy: null,
       editingItem: null,
       selectedStock: 0,
+      editLoteMode: false,
+      editItemLoteMode: false,
+
       bajaForm: {
         agencia_id: null,
         cantidad: 0,
         fisico: 0,
         tipo: 'VENCIMIENTO',
-        descripcion: ''
+        descripcion: '',
+        lote: ''
       },
       editItemForm: {
         agencia_id: null,
@@ -842,7 +910,8 @@ export default {
         tipo: 'VENCIMIENTO',
         admin_descripcion: '',
         stock_sistema: 0,
-        conteo_fisico: 0
+        conteo_fisico: 0,
+        lote: ''
       },
 
       meses: [
@@ -985,8 +1054,10 @@ export default {
         cantidad: sugerido === 'CONTEO FISICO' ? -this.selectedStock : 1,
         fisico: sugerido === 'CONTEO FISICO' ? 0 : this.selectedStock,
         tipo: sugerido,
-        descripcion: ''
+        descripcion: '',
+        lote: buy.lote
       }
+      this.editLoteMode = false
       this.showBajaDialog = true
     },
     onTipoBajaChange (val) {
@@ -1055,7 +1126,8 @@ export default {
         stock_sistema: this.bajaForm.tipo === 'CONTEO FISICO' ? this.selectedStock : null,
         conteo_fisico: this.bajaForm.tipo === 'CONTEO FISICO' ? this.bajaForm.fisico : null,
         tipo: this.bajaForm.tipo,
-        descripcion: this.bajaForm.descripcion
+        descripcion: this.bajaForm.descripcion,
+        lote: this.bajaForm.lote
       }).then(() => {
         this.$q.notify({ color: 'positive', message: 'Producto agregado al informe', icon: 'check' })
         this.showBajaDialog = false
@@ -1168,8 +1240,10 @@ export default {
         tipo: item.tipo,
         admin_descripcion: item.admin_descripcion || '',
         stock_sistema: item.stock_sistema || 0,
-        conteo_fisico: item.conteo_fisico || 0
+        conteo_fisico: item.conteo_fisico || 0,
+        lote: item.buy?.lote
       }
+      this.editItemLoteMode = false
       this.selectedStock = this.getAgenciaStock(item.product, item.agencia_id)
       this.showEditItemDialog = true
     },
@@ -1305,7 +1379,15 @@ export default {
         estado: item.estado === 'RECHAZADO' ? 'RECHAZADO' : 'OBSERVADO',
         admin_descripcion: item.admin_descripcion || ''
       }
+      this.selectedMotivoObservacion = null
       this.showObservarDialog = true
+    },
+    onMotivoObservacionSelect (val) {
+      if (val && val !== 'Otro (describir manualmente)') {
+        this.observarForm.admin_descripcion = val
+      } else {
+        this.observarForm.admin_descripcion = ''
+      }
     },
     saveObservacion () {
       if (!this.observarForm.admin_descripcion) {
@@ -1368,21 +1450,23 @@ export default {
         default: return 'help_outline'
       }
     },
-    generatePDF () {
-      const doc = jsPDF()
+    generatePDF (withWatermark = false) {
+      const doc = jsPDF('p', 'mm', 'letter')
       const pW = doc.internal.pageSize.getWidth()
       const pH = doc.internal.pageSize.getHeight()
 
       // Función para dibujar marca de agua y pie de página en cada hoja
       const drawCommonElements = (data) => {
         // --- MARCA DE AGUA "REVISADO" ---
-        doc.saveGraphicsState()
-        doc.setGState(new doc.GState({ opacity: 0.4 }))
-        doc.setTextColor(46, 204, 113)
-        doc.setFontSize(120)
-        doc.setFont('helvetica', 'bold')
-        doc.text('REVISADO', pW * 0.7, pH * 0.75, { align: 'center', angle: 45 })
-        doc.restoreGraphicsState()
+        if (withWatermark) {
+          doc.saveGraphicsState()
+          doc.setGState(new doc.GState({ opacity: 0.4 }))
+          doc.setTextColor(46, 204, 113)
+          doc.setFontSize(120)
+          doc.setFont('helvetica', 'bold')
+          doc.text('REVISADO', pW * 0.7, pH * 0.75, { align: 'center', angle: 45 })
+          doc.restoreGraphicsState()
+        }
 
         // --- PIE DE PÁGINA EMPRESARIAL ---
         doc.setFontSize(8)
@@ -1495,7 +1579,7 @@ export default {
       doc.save(`Informe_Bajas_${this.report.id}.pdf`)
     },
     shareWhatsApp () {
-      this.generatePDF()
+      this.generatePDF(true)
       const tituloUpper = String(this.getReportDisplayTipo(this.report) || 'INFORME DE BAJAS').toUpperCase()
       const text = `*${tituloUpper} #${this.report.id}*\n📍 *Agencia:* ${this.report.agencia?.nombre}\n📅 *Periodo:* ${this.getMesNombre(this.report.mes)} ${this.report.anio}\n👤 *Responsable:* ${this.report.user?.name}`
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')

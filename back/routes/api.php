@@ -73,10 +73,6 @@ Route::get('/productsSale', [ProductController::class,'productsSale'])
 Route::get('/publicidad-actual', [App\Http\Controllers\PublicidadController::class, 'publicidadActual']);
 
 
-// Rutas para vinculación de Google Drive (OAuth)
-Route::get('/drive/login', [App\Http\Controllers\GoogleDriveAuthController::class, 'login']);
-Route::get('/drive/callback', [App\Http\Controllers\GoogleDriveAuthController::class, 'callback']);
-
 // --- PROTEGIDAS ---
 Route::group(['middleware' => 'auth:sanctum'], function () {
 

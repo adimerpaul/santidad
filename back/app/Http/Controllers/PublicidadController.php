@@ -4,101 +4,78 @@ namespace App\Http\Controllers;
 
 use App\Models\Publicidad;
 use Illuminate\Http\Request;
-use Google\Client;
-use Google\Service\Drive;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\File;
+use Aws\S3\S3Client;
+use Aws\Exception\AwsException;
 
 class PublicidadController extends Controller
 {
-    private function getDriveService()
-    {
-        $tokenPath = storage_path('app/google-drive-token.json');
-        if (!File::exists($tokenPath)) {
-            return null;
-        }
-
-        $client = new Client();
-        $client->setClientId(env('GOOGLE_CLIENT_ID'));
-        $client->setClientSecret(env('GOOGLE_CLIENT_SECRET'));
-        $client->setAccessToken(json_decode(File::get($tokenPath), true));
-
-        // Si el token expiró, lo refrescamos
-        if ($client->isAccessTokenExpired()) {
-            if ($client->getRefreshToken()) {
-                $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
-                File::put($tokenPath, json_encode($client->getAccessToken()));
-            } else {
-                return null;
-            }
-        }
-
-        return new Drive($client);
-    }
-
     public function index()
     {
         return Publicidad::with('agencia')->orderBy('id', 'desc')->get();
     }
 
+    private function getS3Client(): S3Client
+    {
+        return new S3Client([
+            'version'                 => '2006-03-01',
+            'region'                  => config('filesystems.disks.r2.region', 'us-east-1'),
+            'endpoint'                => config('filesystems.disks.r2.endpoint'),
+            'use_path_style_endpoint' => true,
+            'credentials'             => [
+                'key'    => config('filesystems.disks.r2.key'),
+                'secret' => config('filesystems.disks.r2.secret'),
+            ],
+        ]);
+    }
+
     public function store(Request $request)
     {
-        $driveService = $this->getDriveService();
-        if (!$driveService) {
-            return response()->json(['error' => 'Drive no vinculado. Por favor, visita /api/drive/login en el navegador.'], 401);
-        }
-
         $request->validate([
-            'file' => 'required|file|max:204800', // 200MB max
-            'name' => 'required|string',
+            'file'       => 'required|file|max:204800',
+            'name'       => 'required|string',
             'agencia_id' => 'nullable|exists:agencias,id'
         ]);
 
         try {
-            $file = $request->file('file');
-            $name = $request->name;
+            $file       = $request->file('file');
+            $name       = $request->name;
             $agencia_id = $request->agencia_id;
-            $mimeType = $file->getMimeType();
-            $type = str_contains($mimeType, 'video') ? 'video' : 'image';
-            $folderId = env('GOOGLE_DRIVE_FOLDER_ID');
+            $mimeType   = $file->getMimeType();
+            $type       = str_contains($mimeType, 'video') ? 'video' : 'image';
+            $extension  = $file->getClientOriginalExtension();
+            $fileName   = $name . '.' . $extension;
+            $filePath   = 'publicidad/' . $fileName;
 
-            $fileMetadata = new \Google\Service\Drive\DriveFile([
-                'name' => $name . '.' . $file->getClientOriginalExtension(),
-                'parents' => [$folderId]
+            // Subir a Cloudflare R2 usando S3Client directo (sin chunked encoding)
+            $s3 = $this->getS3Client();
+            $s3->putObject([
+                'Bucket'      => env('AWS_BUCKET'),
+                'Key'         => $filePath,
+                'Body'        => fopen($file->getRealPath(), 'rb'),
+                'ContentType' => $mimeType,
             ]);
 
-            $content = file_get_contents($file->getRealPath());
-
-            $driveFile = $driveService->files->create($fileMetadata, [
-                'data' => $content,
-                'mimeType' => $mimeType,
-                'uploadType' => 'multipart',
-                'fields' => 'id'
-            ]);
-
-            // Permisos públicos
-            $permission = new \Google\Service\Drive\Permission([
-                'type' => 'anyone',
-                'role' => 'reader'
-            ]);
-            $driveService->permissions->create($driveFile->id, $permission);
-
-            // No guardamos copia local, solo dejamos el archivo en Drive
+            // URL pública del archivo en R2
+            $url = rtrim(config('filesystems.disks.r2.url'), '/') . '/' . $filePath;
 
             $publicidad = Publicidad::create([
-                'name' => $name,
-                'file_id' => $driveFile->id,
-                'type' => $type,
-                'url' => 'https://docs.google.com/uc?export=download&id=' . $driveFile->id,
-                'active' => true,
+                'name'       => $name,
+                'file_id'    => $filePath,
+                'type'       => $type,
+                'url'        => $url,
+                'active'     => true,
                 'agencia_id' => $agencia_id
             ]);
 
             $this->notifySocket('new_publicidad', $publicidad);
 
             return response()->json($publicidad->load('agencia'), 201);
+        } catch (AwsException $e) {
+            Log::error('AWS/R2 Error: ' . $e->getAwsErrorMessage() . ' | Code: ' . $e->getAwsErrorCode());
+            return response()->json(['error' => 'Error R2: ' . $e->getAwsErrorMessage()], 500);
         } catch (\Exception $e) {
-            Log::error('Error uploading to personal Drive: ' . $e->getMessage());
+            Log::error('Error uploading to Cloudflare R2: ' . $e->getMessage());
             return response()->json(['error' => 'Error al subir: ' . $e->getMessage()], 500);
         }
     }
@@ -112,7 +89,7 @@ class PublicidadController extends Controller
             $query = Publicidad::where('active', true);
 
             if ($agencia_id) {
-                $query->where(function($q) use ($agencia_id) {
+                $query->where(function ($q) use ($agencia_id) {
                     $q->where('agencia_id', $agencia_id)
                       ->orWhereNull('agencia_id');
                 });
@@ -133,40 +110,42 @@ class PublicidadController extends Controller
         }
     }
 
-    // El método streamFile ha sido eliminado porque pcpubli ahora reproduce de archivos locales descargados
-
     public function destroy($id)
     {
         try {
             $publicidad = Publicidad::findOrFail($id);
-            $driveService = $this->getDriveService();
-            if ($driveService) {
+
+            // Eliminar de Cloudflare R2
+            if ($publicidad->file_id) {
                 try {
-                    $driveService->files->delete($publicidad->file_id);
+                    $s3 = $this->getS3Client();
+                    $s3->deleteObject([
+                        'Bucket' => env('AWS_BUCKET'),
+                        'Key'    => $publicidad->file_id,
+                    ]);
                 } catch (\Exception $e) {
-                    Log::warning('Could not delete file from personal Drive: ' . $e->getMessage());
+                    Log::warning('No se pudo eliminar el archivo de R2: ' . $e->getMessage());
                 }
             }
-            $tempPublicidad = clone $publicidad; // Clonar para tener los datos después de borrar
+
+            $tempPublicidad = clone $publicidad;
             $publicidad->delete();
 
-            // No borramos copia local porque ya no se crea en el servidor
-            
-            $this->notifySocket('new_publicidad', $tempPublicidad); // Notificar borrado
+            $this->notifySocket('new_publicidad', $tempPublicidad);
 
             return response()->json(['message' => 'Publicidad eliminada correctamente']);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
         }
     }
-    
+
     public function toggleActive($id)
     {
         $publicidad = Publicidad::findOrFail($id);
         $publicidad->active = !$publicidad->active;
         $publicidad->save();
 
-        $this->notifySocket('new_publicidad', $publicidad); // Notificar siempre el cambio de estado
+        $this->notifySocket('new_publicidad', $publicidad);
 
         return response()->json($publicidad);
     }
@@ -176,7 +155,7 @@ class PublicidadController extends Controller
         try {
             \Illuminate\Support\Facades\Http::post(env('SOCKET_SERVER_URL') . '/notify', [
                 'event' => $event,
-                'data' => $data
+                'data'  => $data
             ]);
         } catch (\Exception $e) {
             Log::warning('Could not notify socket server: ' . $e->getMessage());

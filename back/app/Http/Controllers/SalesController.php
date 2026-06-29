@@ -73,6 +73,21 @@ class SalesController extends Controller
             );
             $montoTotal = $montoBase + $request->aporte - $request->descuento;
 
+            $montoEfectivoVal = 0.0;
+            $montoQrVal = 0.0;
+
+            if ($request->metodoPago === 'Personalizado') {
+                $montoEfectivoVal = (double) ($request->montoEfectivo ?? 0.0);
+                $montoQrVal = (double) ($request->montoQr ?? 0.0);
+            } elseif ($request->metodoPago === 'Efectivo') {
+                $montoEfectivoVal = (double) $montoTotal;
+                $montoQrVal = 0.0;
+            } else {
+                // 'Qr', 'Tarjeta', 'Transferencia'
+                $montoQrVal = (double) $montoTotal;
+                $montoEfectivoVal = 0.0;
+            }
+
             $sale = new Sales();
             $sale->fill([
                 'numeroFactura' => 0,
@@ -82,6 +97,8 @@ class SalesController extends Controller
                 'venta'         => 'R',
                 'tipoVenta'     => 'Ingreso',
                 'metodoPago'    => $request->metodoPago,
+                'montoEfectivo' => $montoEfectivoVal,
+                'montoQr'       => $montoQrVal,
                 'client_id'     => $client->id,
                 'aporte'        => $request->aporte,
                 'descuento'     => $request->descuento,
@@ -296,6 +313,14 @@ class SalesController extends Controller
             $request->concepto = 'Gasto ' . ($numeroGasto + 1);
         }
 
+        $montoEfectivoVal = 0.0;
+        $montoQrVal = 0.0;
+        if ($request->metodoPago === 'Efectivo') {
+            $montoEfectivoVal = (double) $request->montoTotal;
+        } else {
+            $montoQrVal = (double) $request->montoTotal;
+        }
+
         $sale = new Sales();
         $sale->fill([
             'numeroFactura' => 0,
@@ -305,6 +330,8 @@ class SalesController extends Controller
             'concepto'      => $request->concepto,
             'tipoVenta'     => 'Egreso',
             'metodoPago'    => $request->metodoPago,
+            'montoEfectivo' => $montoEfectivoVal,
+            'montoQr'       => $montoQrVal,
             'client_id'     => $request->client_id == 0 ? null : $request->client_id,
             'user_id'       => $request->user()->id,
         ]);

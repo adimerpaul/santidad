@@ -425,6 +425,30 @@
               </div>
             </div>
 
+            <!-- Campos para método de pago personalizado -->
+            <div v-if="metodoPago === 'Personalizado'" class="row q-col-gutter-sm q-mt-sm q-pa-sm bg-purple-1 rounded-borders items-center">
+              <div class="col-6 col-md-3">
+                <q-input outlined dense label="Monto en Efectivo" v-model.number="montoEfectivoPersonalizado" type="number" step="0.01"
+                         @update:model-value="onMontoEfectivoChange">
+                  <template v-slot:prepend>
+                    <q-icon name="payments" color="green" />
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-6 col-md-3">
+                <q-input outlined dense label="Monto en QR" v-model.number="montoQrPersonalizado" type="number" step="0.01"
+                         @update:model-value="onMontoQrChange">
+                  <template v-slot:prepend>
+                    <q-icon name="qr_code" color="blue" />
+                  </template>
+                </q-input>
+              </div>
+              <div class="col-12 col-md-6 text-purple text-bold flex items-center">
+                <q-icon name="info" class="q-mr-xs" size="20px" />
+                Pago Dividido: La suma debe ser exactamente {{ totalFinal }} Bs.
+              </div>
+            </div>
+
             <!-- Información del descuento aplicado -->
             <div class="row q-mt-sm" v-if="descuento > 0">
               <div class="col-12">
@@ -483,6 +507,8 @@ export default {
       qr: false,
       documents: [],
       metodoPago: 'Efectivo',
+      montoEfectivoPersonalizado: 0,
+      montoQrPersonalizado: 0,
       document: {},
       current_page: 1,
       last_page: 1,
@@ -551,6 +577,20 @@ export default {
           this.clientDisplayVisible = false
           this.clearClientDisplayData()
         }
+      }
+    },
+
+    metodoPago (val) {
+      if (val === 'Personalizado') {
+        this.montoEfectivoPersonalizado = parseFloat(this.totalFinal || 0)
+        this.montoQrPersonalizado = 0
+      }
+    },
+
+    totalFinal (val) {
+      if (this.metodoPago === 'Personalizado') {
+        this.montoEfectivoPersonalizado = parseFloat(val || 0)
+        this.montoQrPersonalizado = 0
       }
     }
   },
@@ -692,6 +732,18 @@ export default {
       this.$forceUpdate()
     },
 
+    onMontoEfectivoChange (val) {
+      const total = parseFloat(this.totalFinal || 0)
+      const efe = parseFloat(val || 0)
+      this.montoQrPersonalizado = Math.max(0, parseFloat((total - efe).toFixed(2)))
+    },
+
+    onMontoQrChange (val) {
+      const total = parseFloat(this.totalFinal || 0)
+      const qr = parseFloat(val || 0)
+      this.montoEfectivoPersonalizado = Math.max(0, parseFloat((total - qr).toFixed(2)))
+    },
+
     // Actualizar descuento desde monto fijo
     actualizarDesdeMonto (nuevoMonto) {
       if (nuevoMonto === '' || nuevoMonto === null) {
@@ -755,6 +807,8 @@ export default {
         efectivo: this.efectivo,
         products: this.$store.productosVenta,
         metodoPago: this.metodoPago,
+        montoEfectivo: this.metodoPago === 'Personalizado' ? this.montoEfectivoPersonalizado : null,
+        montoQr: this.metodoPago === 'Personalizado' ? this.montoQrPersonalizado : null,
         agencia_id: this.agencia_id
       }
       this.$axios.post('sales', data).then(res => {
@@ -774,6 +828,8 @@ export default {
         this.efectivo = ''
         this.descuento = 0
         this.descuentoPorcentaje = 0
+        this.montoEfectivoPersonalizado = 0
+        this.montoQrPersonalizado = 0
         this.products.forEach(p => {
           p.cantidadPedida = 0
         })
