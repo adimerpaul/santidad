@@ -29,3 +29,25 @@ yarn-error.log*
 *.sln
 AGENTS.md
 CLAUDE.md
+# Flutter
+AppMovilPubli/build/
+AppMovilPubli/.dart_tool/
+AppMovilPubli/.idea/
+AppMovilPubli/.gradle/
+AppMovilPubli/.flutter-plugins
+AppMovilPubli/.flutter-plugins-dependencies
+AppMovilPubli/.packages
+AppMovilPubli/.metadata
+
+# Android
+AppMovilPubli/android/.gradle/
+AppMovilPubli/android/app/build/
+# Flutter
+AppMovilPubli/build/
+AppMovilPubli/.dart_tool/
+AppMovilPubli/.gradle/
+AppMovilPubli/.idea/
+
+# Android
+AppMovilPubli/android/.gradle/
+AppMovilPubli/android/app/build/
