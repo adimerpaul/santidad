@@ -23,25 +23,52 @@
   text-transform: uppercase;
 }
 
-// Bajas & Control de Inventario row highlighting
+// Bajas & Control de Inventario row highlighting (Premium & Modern)
 .bg-report-observado td {
-  background-color: #ffebee !important;
-  color: #c62828 !important;
+  background-color: rgba(231, 76, 60, 0.05) !important;
+  color: #2c3e50 !important;
+  &:first-child {
+    border-left: 4px solid #e74c3c !important;
+  }
 }
+
 .bg-observado td {
-  background-color: #ffebee !important;
-  color: #c62828 !important;
+  background-color: rgba(243, 156, 18, 0.05) !important;
+  color: #2c3e50 !important;
+  &:first-child {
+    border-left: 4px solid #f39c12 !important;
+  }
 }
+
 .bg-subsanado td {
-  background-color: #e8f5e9 !important;
-  color: #2e7d32 !important;
+  background-color: rgba(26, 188, 156, 0.05) !important;
+  color: #2c3e50 !important;
+  &:first-child {
+    border-left: 4px solid #1abc9c !important;
+  }
 }
+
 .bg-aceptado td {
-  background-color: #eceff1 !important;
-  color: #37474f !important;
+  background-color: rgba(46, 204, 113, 0.05) !important;
+  color: #2c3e50 !important;
+  &:first-child {
+    border-left: 4px solid #2ecc71 !important;
+  }
 }
+
 .bg-rechazado td {
-  background-color: #fbe9e7 !important;
-  color: #d84315 !important;
+  background-color: rgba(231, 76, 60, 0.05) !important;
+  color: #2c3e50 !important;
+  &:first-child {
+    border-left: 4px solid #e74c3c !important;
+  }
+}
+
+.bg-prorrogado td {
+  background-color: rgba(52, 152, 219, 0.05) !important;
+  color: #2c3e50 !important;
+  &:first-child {
+    border-left: 4px solid #3498db !important;
+  }
 }
 

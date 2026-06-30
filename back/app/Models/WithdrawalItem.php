@@ -24,6 +24,8 @@ class WithdrawalItem extends Model
         'admin_descripcion',
         'cantidad_original',
         'agencia_id_original',
+        'central_estado',
+        'central_observacion',
     ];
 
     public function report()

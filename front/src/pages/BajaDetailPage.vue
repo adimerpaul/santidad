@@ -9,7 +9,6 @@
         <div class="text-h5 text-bold text-primary flex items-center">
           {{ report.tipo === 'CONTEO FISICO' ? 'Control de Inventario' : 'Informe de Bajas' }} - {{ report.agencia?.nombre }} ({{ getMesNombre(report.mes) }} {{ report.anio }})
           <q-chip
-            outline
             :color="getTipoReporteColor(getReportDisplayTipo(report))"
             :text-color="getTipoReporteTextColor(getReportDisplayTipo(report))"
             :icon="getTipoReporteIcon(getReportDisplayTipo(report))"
@@ -57,6 +56,16 @@
             unelevated
           />
         </template>
+        <template v-if="String($store.user?.id) === '1' && (report.estado === 'PENDIENTE' || report.estado === 'OBSERVADO')">
+          <q-btn
+            color="green-8"
+            icon="done_all"
+            label="Marcar todos como Revisados"
+            @click="confirmMarkAllAsReviewed"
+            no-caps
+            unelevated
+          />
+        </template>
         <template v-if="report.estado === 'REVISADO'">
           <q-btn
             color="red-7"
@@ -77,6 +86,24 @@
           />
         </template>
       </div>
+    </div>
+
+    <!-- Banner especial para Informes Mensuales (Legible y moderno) -->
+    <div
+      v-if="report && isMonthlyReport"
+      class="q-pa-md q-mb-md rounded-borders text-white flex items-center justify-between shadow-2"
+      style="background: linear-gradient(135deg, #1A237E 0%, #3F51B5 100%); border-radius: 8px;"
+    >
+      <div class="flex items-center">
+        <q-icon name="calendar_month" size="md" class="q-mr-md" />
+        <div>
+          <div class="text-h6 text-bold">Sección: Informes Mensuales de Bajas</div>
+          <div class="text-caption">Revisión y validación de productos vencidos o para devolución a proveedor de sucursales.</div>
+        </div>
+      </div>
+      <q-badge color="white" text-color="indigo-10" class="text-bold q-px-sm q-py-xs" style="font-size: 12px; border-radius: 4px;">
+        BAJAS MENSUALES
+      </q-badge>
     </div>
 
     <!-- Sección de Búsqueda de Productos -->
@@ -139,23 +166,18 @@
               class="bg-white"
               :rows-per-page-options="[10, 20, 50]"
             >
-              <template v-slot:body-cell-agencia="props">
+              <template v-slot:body-cell-agencia_usuario="props">
                 <q-td :props="props">
-                  <div class="ellipsis" style="max-width: 90px">
-                    {{ props.row.agencia?.nombre || 'Almacén' }}
-                    <q-tooltip>
-                      {{ props.row.agencia?.nombre || 'Almacén' }}
-                    </q-tooltip>
+                  <div style="font-size: 11px; line-height: 1.2;">
+                    <div class="text-bold text-primary">{{ props.row.agencia?.nombre || 'Almacén' }}</div>
+                    <div class="text-grey-7">{{ props.row.user?.name || 'N/A' }}</div>
                   </div>
                 </q-td>
               </template>
               <template v-slot:body-cell-producto="props">
                 <q-td :props="props">
-                  <div class="ellipsis text-weight-bold" style="max-width: 150px">
+                  <div class="text-weight-bold" style="white-space: normal; min-width: 220px; max-width: 380px; word-break: break-word; line-height: 1.2;">
                     {{ props.row.product?.nombre }}
-                    <q-tooltip>
-                      {{ props.row.product?.nombre }}
-                    </q-tooltip>
                   </div>
                 </q-td>
               </template>
@@ -178,16 +200,6 @@
               <template v-slot:body-cell-stock_actual="props">
                 <q-td :props="props" class="text-center text-weight-bold text-teal">
                   {{ props.value }}
-                </q-td>
-              </template>
-              <template v-slot:body-cell-user="props">
-                <q-td :props="props">
-                  <div class="ellipsis" style="max-width: 70px">
-                    {{ props.row.user?.name || 'N/A' }}
-                    <q-tooltip v-if="props.row.user?.name">
-                      {{ props.row.user.name }}
-                    </q-tooltip>
-                  </div>
                 </q-td>
               </template>
               <template v-slot:body-cell-proveedor="props">
@@ -241,8 +253,24 @@
         <template v-slot:body="props">
           <q-tr :props="props" :class="getRowClass(props.row)">
             <q-td v-for="col in props.cols" :key="col.name" :props="props">
+              <!-- agencia -->
+              <template v-if="col.name === 'agencia'">
+                <div>
+                  <div class="text-bold text-grey-9">{{ props.row.agencia?.nombre || (props.row.buy?.agencia?.nombre || 'Almacen') }}</div>
+                  <div class="text-caption text-grey-6 flex items-center q-mt-xs" style="font-size: 11px;">
+                    <q-icon name="person" size="13px" class="q-mr-xs" />
+                    <span>{{ report.user?.name || 'N/A' }}</span>
+                  </div>
+                </div>
+              </template>
+              <!-- stock_sucursal -->
+              <template v-else-if="col.name === 'stock_sucursal'">
+                <q-badge color="blue-grey-2" text-color="blue-grey-9" class="text-bold" style="font-size: 11.5px; padding: 4px 8px;">
+                  {{ col.value }}
+                </q-badge>
+              </template>
               <!-- vence -->
-              <template v-if="col.name === 'vence'">
+              <template v-else-if="col.name === 'vence'">
                 <q-chip
                   :color="getExpiryColor(props.row.buy?.dateExpiry)"
                   text-color="white"
@@ -286,25 +314,10 @@
                   {{ props.row.tipo }}
                 </q-chip>
               </template>
-              <!-- estado -->
-              <template v-else-if="col.name === 'estado'">
-                <q-chip
-                  :color="getItemStatusColor(props.row.estado)"
-                  :text-color="getItemStatusTextColor(props.row.estado)"
-                  dense
-                  size="sm"
-                  class="text-weight-bold"
-                >
-                  <q-icon :name="getItemStatusIcon(props.row.estado)" size="xs" class="q-mr-xs" />
-                  {{ props.row.estado }}
-                  <q-tooltip v-if="props.row.estado === 'RECHAZADO' && props.row.admin_descripcion">Rechazado: {{ props.row.admin_descripcion }}</q-tooltip>
-                  <q-tooltip v-else-if="props.row.estado === 'OBSERVADO' && props.row.admin_descripcion">Observación: {{ props.row.admin_descripcion }}</q-tooltip>
-                  <q-tooltip v-else-if="props.row.estado === 'PRORROGADO' && props.row.prorroga_hasta">Prórroga hasta: {{ props.row.prorroga_hasta }}</q-tooltip>
-                </q-chip>
-              </template>
+
               <!-- descripcion -->
               <template v-else-if="col.name === 'descripcion'">
-                <div v-if="props.row.tipo === 'CONTEO FISICO'" class="q-mb-xs">
+                <div v-if="report.tipo === 'CONTEO FISICO'" class="q-mb-xs">
                   <div class="text-caption text-blue-9 text-bold">
                     <q-icon name="inventory" /> Sis: {{ props.row.stock_sistema }} | Fís: {{ props.row.conteo_fisico }}
                   </div>
@@ -325,18 +338,90 @@
               <template v-else-if="col.name === 'actions'">
                 <div class="row justify-end q-gutter-x-xs no-wrap">
                   <template v-if="String($store.user?.id) === '1' && (report.estado === 'PENDIENTE' || report.estado === 'OBSERVADO')">
-                    <q-btn
-                      v-if="props.row.estado !== 'ACEPTADO'"
-                      flat round dense color="positive" icon="check_circle" size="sm"
-                      @click="setItemStatus(props.row, 'ACEPTADO')"
-                    ><q-tooltip>Aceptar Baja</q-tooltip></q-btn>
-                    <q-btn flat round dense color="info" icon="hourglass_top" size="sm" @click="preparaProrroga(props.row)">
-                      <q-tooltip>Dar Prórroga</q-tooltip>
-                    </q-btn>
-                    <q-btn flat round dense color="negative" icon="warning" size="sm" @click="preparaObservacion(props.row)">
-                      <q-tooltip>Rechazar u Observar</q-tooltip>
-                    </q-btn>
+                    <!-- Selector de Estados e Interacciones del Administrador -->
+                    <q-btn-dropdown
+                      dense
+                      unelevated
+                      no-caps
+                      :color="getBtnStatusColor(props.row.estado)"
+                      :label="getBtnStatusLabel(props.row.estado)"
+                      :icon="getBtnStatusIcon(props.row.estado)"
+                      class="text-weight-bold q-px-sm"
+                      style="border-radius: 6px; font-size: 13px;"
+                    >
+                      <q-list style="min-width: 220px" class="q-py-xs">
+                        <!-- Conteo Físico: Revisado/Pendiente -->
+                        <template v-if="report.tipo === 'CONTEO FISICO'">
+                          <q-item clickable v-close-popup @click="setItemStatus(props.row, props.row.estado === 'ACEPTADO' ? 'PENDIENTE' : 'ACEPTADO')" class="q-py-md">
+                            <q-item-section avatar>
+                              <q-avatar :color="props.row.estado === 'ACEPTADO' ? 'grey-2' : 'green-1'" :text-color="props.row.estado === 'ACEPTADO' ? 'grey-7' : 'green-9'" :icon="props.row.estado === 'ACEPTADO' ? 'radio_button_unchecked' : 'check_circle'" size="md" />
+                            </q-item-section>
+                            <q-item-section>
+                              <q-item-label class="text-bold" :class="props.row.estado === 'ACEPTADO' ? 'text-grey-7' : 'text-green-9'">
+                                {{ props.row.estado === 'ACEPTADO' ? 'Marcar como Pendiente' : 'Aprobar / Revisado' }}
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </template>
+
+                        <!-- Reporte Normal -->
+                        <template v-else>
+                          <!-- Aprobar -->
+                          <q-item clickable v-close-popup @click="setItemStatus(props.row, 'ACEPTADO')" class="q-py-md">
+                            <q-item-section avatar>
+                              <q-avatar color="green-1" text-color="green-9" icon="check_circle" size="md" />
+                            </q-item-section>
+                            <q-item-section>
+                              <q-item-label class="text-bold text-green-9">Aprobar / Revisar</q-item-label>
+                            </q-item-section>
+                          </q-item>
+
+                          <!-- Prórroga -->
+                          <q-item clickable v-close-popup @click="preparaProrroga(props.row)" class="q-py-md">
+                            <q-item-section avatar>
+                              <q-avatar color="blue-1" text-color="blue-9" icon="hourglass_top" size="md" />
+                            </q-item-section>
+                            <q-item-section>
+                              <q-item-label class="text-bold text-blue-9">Dar Prórroga</q-item-label>
+                            </q-item-section>
+                          </q-item>
+
+                          <!-- Observar -->
+                          <q-item clickable v-close-popup @click="preparaEstadoDirecto(props.row, 'OBSERVADO')" class="q-py-md">
+                            <q-item-section avatar>
+                              <q-avatar color="orange-1" text-color="orange-9" icon="warning" size="md" />
+                            </q-item-section>
+                            <q-item-section>
+                              <q-item-label class="text-bold text-orange-9">Observar (Pedir Corrección)</q-item-label>
+                            </q-item-section>
+                          </q-item>
+
+                          <!-- Rechazar -->
+                          <q-item clickable v-close-popup @click="preparaEstadoDirecto(props.row, 'RECHAZADO')" class="q-py-md">
+                            <q-item-section avatar>
+                              <q-avatar color="red-1" text-color="red-9" icon="block" size="md" />
+                            </q-item-section>
+                            <q-item-section>
+                              <q-item-label class="text-bold text-red-9">Rechazar Definitivamente</q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </template>
+
+                        <q-separator />
+
+                        <!-- Nota Admin -->
+                        <q-item clickable v-close-popup @click="preparaNota(props.row)" class="q-py-md">
+                          <q-item-section avatar>
+                            <q-avatar color="indigo-1" text-color="indigo-9" icon="rate_review" size="md" />
+                          </q-item-section>
+                          <q-item-section>
+                            <q-item-label class="text-bold text-indigo-9">Nota del Administrador</q-item-label>
+                          </q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-btn-dropdown>
                   </template>
+
                   <q-btn
                     v-if="String($store.user?.id) !== '1' && report.tipo === 'CONTEO FISICO' && report.estado === 'OBSERVADO' && props.row.estado === 'OBSERVADO'"
                     flat round dense color="warning" icon="build" size="sm"
@@ -436,7 +521,7 @@
             </div>
 
             <!-- Caso Conteo Fisico -->
-            <template v-if="bajaForm.tipo === 'CONTEO FISICO'">
+            <template v-if="report.tipo === 'CONTEO FISICO'">
               <div class="col-6">
                 <q-input
                   label="Conteo Físico *"
@@ -567,7 +652,7 @@
             </div>
 
             <!-- Caso Conteo Fisico -->
-            <template v-if="editItemForm.tipo === 'CONTEO FISICO'">
+            <template v-if="report.tipo === 'CONTEO FISICO'">
               <div class="col-6">
                 <q-input
                   label="Stock Sistema"
@@ -585,6 +670,7 @@
                   type="number"
                   outlined
                   dense
+                  :rules="[val => val !== null && val >= 0 || 'Inválido']"
                   @update:model-value="calculateEditFromFisico"
                 />
               </div>
@@ -592,14 +678,18 @@
 
             <div class="col-12">
               <q-input
-                :label="editItemForm.tipo === 'CONTEO FISICO' ? 'Diferencia calculada' : 'Cantidad a retirar *'"
+                :label="report.tipo === 'CONTEO FISICO' ? 'Diferencia calculada' : 'Cantidad a retirar *'"
                 v-model.number="editItemForm.cantidad"
                 type="number"
                 outlined
                 dense
-                :rules="[val => val !== null || 'Inválido']"
-                :readonly="editItemForm.tipo === 'CONTEO FISICO'"
-                :bg-color="editItemForm.tipo === 'CONTEO FISICO' ? 'grey-2' : ''"
+                :rules="[
+                  val => val !== null || 'Inválido',
+                  val => report.tipo === 'CONTEO FISICO' || val > 0 || 'Debe ser mayor a 0',
+                  val => report.tipo === 'CONTEO FISICO' || val <= selectedStock || 'Stock insuficiente en sucursal'
+                ]"
+                :readonly="report.tipo === 'CONTEO FISICO'"
+                :bg-color="report.tipo === 'CONTEO FISICO' ? 'grey-2' : ''"
               >
                 <template v-slot:append>
                   <q-chip
@@ -703,13 +793,13 @@
             {{ observarItem.product?.nombre }} (Lote: {{ observarItem.buy?.lote }})
           </div>
           <div class="q-gutter-sm q-mb-md">
-            <q-radio v-model="observarForm.estado" val="OBSERVADO" label="Observar (Pedir corrección a sucursal)" color="orange-8" />
-            <q-radio v-model="observarForm.estado" val="RECHAZADO" label="Rechazar definitivamente" color="red-8" />
+            <q-radio v-model="observarForm.estado" val="OBSERVADO" label="Observar (Pedir corrección a sucursal)" color="orange-8" @update:model-value="onEstadoObservacionChange" />
+            <q-radio v-model="observarForm.estado" val="RECHAZADO" label="Rechazar definitivamente" color="red-8" @update:model-value="onEstadoObservacionChange" />
           </div>
           <div class="q-mb-md">
             <q-select
               v-model="selectedMotivoObservacion"
-              :options="motivosObservacion"
+              :options="motivosObservacionOptions"
               label="Motivo predefinido (opcional)"
               outlined
               dense
@@ -732,6 +822,36 @@
         <q-card-actions align="right">
           <q-btn label="Cancelar" color="grey" flat v-close-popup />
           <q-btn label="Confirmar" color="negative" unelevated @click="saveObservacion" :loading="loading" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Dialogo para NOTA DEL ADMINISTRADOR (Admin) -->
+    <q-dialog v-model="showNoteDialog" persistent>
+      <q-card style="min-width: 380px">
+        <q-card-section class="row items-center bg-indigo-9 text-white">
+          <div class="text-h6">Observación del Administrador</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section class="q-pt-md" v-if="noteItem">
+          <div class="q-mb-sm text-weight-bold text-indigo-9">
+            {{ noteItem.product?.nombre }} (Lote: {{ noteItem.buy?.lote }})
+          </div>
+          <q-input
+            v-model="noteFormText"
+            type="textarea"
+            label="Nota / Observación libre *"
+            outlined
+            dense
+            rows="4"
+            placeholder="Escriba aquí sus observaciones o comentarios..."
+            autofocus
+          />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn label="Cancelar" color="grey" flat v-close-popup />
+          <q-btn label="Guardar Nota" color="indigo-9" unelevated @click="saveNote" :loading="loading" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -828,7 +948,17 @@ export default {
       loadingInventory: false,
       columnsInventory: [
         { name: 'lote', align: 'left', label: 'Lote', field: 'lote', sortable: true },
-        { name: 'agencia', align: 'left', label: 'Agencia', field: row => row.agencia?.nombre || 'Almacen', sortable: true },
+        {
+          name: 'agencia_usuario',
+          align: 'left',
+          label: 'Agencia / Usuario',
+          field: row => {
+            const ag = row.agencia?.nombre || 'Almacén'
+            const us = row.user?.name || 'N/A'
+            return `${ag} (${us})`
+          },
+          sortable: true
+        },
         { name: 'producto', align: 'left', label: 'Producto', field: row => row.product.nombre, sortable: true },
         { name: 'vence', align: 'center', label: 'Vence', field: 'dateExpiry', sortable: true },
         { name: 'quantity', align: 'center', label: 'Cant. Cargado', field: 'quantity', sortable: true, style: 'width: 80px', headerStyle: 'width: 80px' },
@@ -836,7 +966,6 @@ export default {
         { name: 'price', align: 'right', label: 'Precio', field: 'price', sortable: true },
         { name: 'total', align: 'right', label: 'Total', field: 'total', sortable: true },
         { name: 'compra', align: 'center', label: 'Fecha Compra', field: 'date', sortable: true },
-        { name: 'user', align: 'left', label: 'Usuario', field: row => row.user?.name || 'N/A' },
         { name: 'proveedor', align: 'left', label: 'Proveedor', field: row => row.proveedor?.nombreRazonSocial || 'N/A' },
         { name: 'actions', align: 'center', label: 'Acción', field: 'actions' }
       ],
@@ -844,11 +973,21 @@ export default {
       columnsDetail: [
         { name: 'lote', align: 'left', label: 'Lote', field: row => row.buy?.lote || 'N/A' },
         { name: 'agencia', align: 'left', label: 'Agencia Retiro', field: row => row.agencia?.nombre || (row.buy?.agencia?.nombre || 'Almacen') },
-        { name: 'producto', align: 'left', label: 'Producto', field: row => row.product.nombre, sortable: true },
+        { name: 'producto', align: 'left', label: 'Producto', field: row => row.product.nombre, sortable: true, style: 'white-space: normal; min-width: 220px; max-width: 380px; word-break: break-word; line-height: 1.2;' },
         { name: 'cantidad', align: 'center', label: 'Cantidad', field: 'cantidad', sortable: true },
+        {
+          name: 'stock_sucursal',
+          align: 'center',
+          label: 'Cant. Sucursal',
+          field: row => {
+            const agId = row.agencia_id === null ? 0 : row.agencia_id
+            if (agId === 0) return row.product?.cantidadAlmacen || 0
+            return row.product?.['cantidadSucursal' + agId] || 0
+          },
+          sortable: true
+        },
         { name: 'tipo', align: 'center', label: 'Motivo', field: 'tipo', sortable: true },
         { name: 'vence', align: 'left', label: 'Vence', field: row => row.buy?.dateExpiry || 'N/A' },
-        { name: 'estado', align: 'center', label: 'Estado Ref.', field: 'estado', sortable: true },
         { name: 'proveedor', align: 'left', label: 'Proveedor', field: row => row.buy?.proveedor?.nombreRazonSocial || 'N/A' },
         { name: 'descripcion', align: 'left', label: 'Descripción', field: 'descripcion' },
         { name: 'actions', align: 'right', label: 'Acciones', field: 'actions' }
@@ -867,13 +1006,6 @@ export default {
         admin_descripcion: ''
       },
       selectedMotivoObservacion: null,
-      motivosObservacion: [
-        'Producto con Rotación (se debe vender)',
-        'Error en el conteo físico (por favor volver a contar)',
-        'Falta documentación o justificación detallada',
-        'Lote o fecha de vencimiento incorrecta',
-        'Otro (describir manualmente)'
-      ],
       showSubsanarDialog: false,
       subsanarItem: null,
       subsanarForm: {
@@ -881,6 +1013,9 @@ export default {
         motivo: 'Error en el conteo',
         customMotivo: ''
       },
+      showNoteDialog: false,
+      noteItem: null,
+      noteFormText: '',
       motivosSubsanacion: [
         'Error en el conteo',
         'Vendido sin sistema',
@@ -923,13 +1058,74 @@ export default {
       tiposBaja: [
         { label: 'VENCIMIENTO', value: 'VENCIMIENTO' },
         { label: 'DEVOLUCION A PROVEEDOR', value: 'DEVOLUCION A PROVEEDOR' },
+        { label: 'ENVIADO A CENTRAL PARA DEVOLUCION', value: 'ENVIADO A CENTRAL PARA DEVOLUCION' },
         { label: 'CONTEO FISICO', value: 'CONTEO FISICO' },
+        { label: 'ERROR AL CARGAR AL SISTEMA', value: 'ERROR AL CARGAR AL SISTEMA' },
+        { label: 'PRODUCTO CRUZADO', value: 'PRODUCTO CRUZADO' },
+        { label: 'VENCIDO HACE MUCHO TIEMPO', value: 'VENCIDO HACE MUCHO TIEMPO' },
+        { label: 'ROBO / PERDIDA', value: 'ROBO / PERDIDA' },
+        { label: 'ROTURA / MAL ESTADO', value: 'ROTURA / MAL ESTADO' },
+        { label: 'DONACION / REGALO', value: 'DONACION / REGALO' },
         { label: 'PRODUCTO DAÑADO', value: 'PRODUCTO DAÑADO' },
+        { label: 'RETIRO ORDEN AGEMED / SEDES', value: 'RETIRO ORDEN AGEMED / SEDES' },
+        { label: 'RETIRO VOLUNTARIO PROVEEDOR', value: 'RETIRO VOLUNTARIO PROVEEDOR' },
+        { label: 'ALERTA SANITARIA / FALSIFICACION', value: 'ALERTA SANITARIA / FALSIFICACION' },
+        { label: 'FALLA DE CALIDAD / IMPUREZAS', value: 'FALLA DE CALIDAD / IMPUREZAS' },
+        { label: 'SUSPENSION DE REGISTRO SANITARIO', value: 'SUSPENSION DE REGISTRO SANITARIO' },
         { label: 'OTRO', value: 'OTRO' }
       ]
     }
   },
   computed: {
+    isMonthlyReport () {
+      if (!this.report) return false
+      const tipo = this.report.tipo
+      return tipo === 'VENCIMIENTO' ||
+             tipo === 'DEVOLUCION' ||
+             tipo === 'VENCIMIENTO/DEVOLUCION' ||
+             tipo === 'VENCIDOS/DEVOLUCIONES'
+    },
+    motivosObservacionOptions () {
+      if (!this.report) return []
+
+      const tipo = this.report.tipo
+      const isMensual = tipo === 'VENCIMIENTO' ||
+                        tipo === 'DEVOLUCION' ||
+                        tipo === 'VENCIMIENTO/DEVOLUCION' ||
+                        tipo === 'VENCIDOS/DEVOLUCIONES'
+
+      if (isMensual) {
+        if (this.observarForm.estado === 'RECHAZADO') {
+          return [
+            'Producto con rotación (SE DEBE VENDER)',
+            'Producto no corresponde a esta sucursal',
+            'Presentación o empaque dañado irrecuperable',
+            'El lote indicado no existe en compras de sistema',
+            'Otro (describir manualmente)'
+          ]
+        } else {
+          // OBSERVADO
+          return [
+            'Lote erróneo / No coincide',
+            'Revisar cantidad física ingresada',
+            'Fecha de vencimiento incorrecta',
+            'Falta adjuntar documento de descargo',
+            'Detallar motivo de la devolución',
+            'Otro (describir manualmente)'
+          ]
+        }
+      }
+
+      // Para otros tipos de reportes (Conteo Físico, Sanitarios, etc.)
+      return [
+        'Cantidades no coinciden, volver a contar',
+        'Producto incorrecto',
+        'Lote no coincide',
+        'Fecha de vencimiento errónea',
+        'Mal estado / Embalaje dañado',
+        'Otro (describir manualmente)'
+      ]
+    },
     dialogAgenciasOptions () {
       const list = []
       const isCentralOrAdmin = String(this.$store.user?.id) === '1' || String(this.$store.user?.agencia_id) === '1'
@@ -951,10 +1147,33 @@ export default {
       if (!this.report || !this.report.tipo) return this.tiposBaja
       const tipoReporte = this.report.tipo
       if (tipoReporte.includes('VENCIMIENTO') || tipoReporte.includes('VENCIDOS') || tipoReporte === 'VENCIMIENTO/DEVOLUCION') {
-        return this.tiposBaja.filter(t => t.value === 'VENCIMIENTO' || t.value === 'DEVOLUCION A PROVEEDOR')
+        return this.tiposBaja.filter(t =>
+          t.value === 'VENCIMIENTO' ||
+          t.value === 'DEVOLUCION A PROVEEDOR' ||
+          t.value === 'ENVIADO A CENTRAL PARA DEVOLUCION'
+        )
       }
       if (tipoReporte.includes('CONTEO') || tipoReporte === 'CONTEO FISICO') {
-        return this.tiposBaja.filter(t => t.value === 'CONTEO FISICO' || t.value === 'OTRO')
+        return this.tiposBaja.filter(t =>
+          t.value === 'CONTEO FISICO' ||
+          t.value === 'ERROR AL CARGAR AL SISTEMA' ||
+          t.value === 'PRODUCTO CRUZADO' ||
+          t.value === 'VENCIDO HACE MUCHO TIEMPO' ||
+          t.value === 'ROBO / PERDIDA' ||
+          t.value === 'ROTURA / MAL ESTADO' ||
+          t.value === 'DONACION / REGALO' ||
+          t.value === 'OTRO'
+        )
+      }
+      if (tipoReporte.includes('SANITARIOS') || tipoReporte === 'MOTIVOS SANITARIOS') {
+        return this.tiposBaja.filter(t =>
+          t.value === 'RETIRO ORDEN AGEMED / SEDES' ||
+          t.value === 'RETIRO VOLUNTARIO PROVEEDOR' ||
+          t.value === 'ALERTA SANITARIA / FALSIFICACION' ||
+          t.value === 'FALLA DE CALIDAD / IMPUREZAS' ||
+          t.value === 'SUSPENSION DE REGISTRO SANITARIO' ||
+          t.value === 'OTRO'
+        )
       }
       if (tipoReporte.includes('DAÑADOS') || tipoReporte === 'PRODUCTOS DAÑADOS') {
         return this.tiposBaja.filter(t => t.value === 'PRODUCTO DAÑADO')
@@ -1036,6 +1255,8 @@ export default {
       let sugerido = 'OTRO'
       if (this.report?.tipo === 'CONTEO FISICO') {
         sugerido = 'CONTEO FISICO'
+      } else if (this.report?.tipo?.includes('SANITARIOS')) {
+        sugerido = 'RETIRO ORDEN AGEMED / SEDES'
       } else if (buy.dateExpiry) {
         const vence = moment(buy.dateExpiry)
         if (vence.isBefore(moment())) {
@@ -1051,8 +1272,8 @@ export default {
 
       this.bajaForm = {
         agencia_id: originAgenciaId,
-        cantidad: sugerido === 'CONTEO FISICO' ? -this.selectedStock : 1,
-        fisico: sugerido === 'CONTEO FISICO' ? 0 : this.selectedStock,
+        cantidad: this.report?.tipo === 'CONTEO FISICO' ? -this.selectedStock : 1,
+        fisico: this.report?.tipo === 'CONTEO FISICO' ? 0 : this.selectedStock,
         tipo: sugerido,
         descripcion: '',
         lote: buy.lote
@@ -1061,7 +1282,7 @@ export default {
       this.showBajaDialog = true
     },
     onTipoBajaChange (val) {
-      if (val === 'CONTEO FISICO') {
+      if (this.report?.tipo === 'CONTEO FISICO') {
         this.bajaForm.fisico = 0
         this.calculateFromFisico(0)
       } else {
@@ -1069,7 +1290,7 @@ export default {
       }
     },
     onEditTipoChange (val) {
-      if (val === 'CONTEO FISICO') {
+      if (this.report?.tipo === 'CONTEO FISICO') {
         this.editItemForm.stock_sistema = this.selectedStock
         this.editItemForm.conteo_fisico = 0
         this.calculateEditFromFisico()
@@ -1079,7 +1300,7 @@ export default {
     },
     updateSelectedStock (val) {
       this.selectedStock = this.getAgenciaStock(this.selectedBuy.product, val)
-      if (this.bajaForm.tipo === 'CONTEO FISICO') {
+      if (this.report?.tipo === 'CONTEO FISICO') {
         this.calculateFromFisico(this.bajaForm.fisico)
       }
     },
@@ -1101,7 +1322,7 @@ export default {
       return row.cantidad
     },
     addItem () {
-      if (this.bajaForm.tipo === 'CONTEO FISICO') {
+      if (this.report?.tipo === 'CONTEO FISICO') {
         if (this.bajaForm.cantidad === 0) {
           this.$q.notify({ color: 'warning', message: 'No hay diferencia en el conteo físico' })
           return
@@ -1116,15 +1337,15 @@ export default {
 
       this.loading = true
       // CONVERT TO NEGATIVE IF IT'S A NORMAL WITHDRAWAL
-      const cantidadEnviar = this.bajaForm.tipo === 'CONTEO FISICO' ? this.bajaForm.cantidad : -Math.abs(this.bajaForm.cantidad)
+      const cantidadEnviar = this.report?.tipo === 'CONTEO FISICO' ? this.bajaForm.cantidad : -Math.abs(this.bajaForm.cantidad)
 
       this.$axios.post(`withdrawal-reports/${this.id}/items`, {
         buy_id: this.selectedBuy.id,
         product_id: this.selectedBuy.product_id,
         agencia_id: this.bajaForm.agencia_id === 0 ? null : this.bajaForm.agencia_id,
         cantidad: cantidadEnviar,
-        stock_sistema: this.bajaForm.tipo === 'CONTEO FISICO' ? this.selectedStock : null,
-        conteo_fisico: this.bajaForm.tipo === 'CONTEO FISICO' ? this.bajaForm.fisico : null,
+        stock_sistema: this.report?.tipo === 'CONTEO FISICO' ? this.selectedStock : null,
+        conteo_fisico: this.report?.tipo === 'CONTEO FISICO' ? this.bajaForm.fisico : null,
         tipo: this.bajaForm.tipo,
         descripcion: this.bajaForm.descripcion,
         lote: this.bajaForm.lote
@@ -1232,6 +1453,31 @@ export default {
           this.loading = false
         })
     },
+    confirmMarkAllAsReviewed () {
+      this.$q.dialog({
+        title: 'Marcar todos como Revisados',
+        message: '¿Estás seguro de marcar todos los productos de este informe como revisados/aceptados?',
+        cancel: true,
+        persistent: true,
+        ok: { color: 'green-8', label: 'Confirmar', unelevated: true }
+      }).onOk(() => {
+        this.markAllAsReviewed()
+      })
+    },
+    markAllAsReviewed () {
+      this.loading = true
+      this.$axios.put(`withdrawal-reports/${this.id}/items-bulk`, {
+        estado: 'ACEPTADO'
+      }).then(() => {
+        this.$q.notify({ color: 'positive', message: 'Todos los productos han sido marcados como revisados' })
+        this.getReport()
+      }).catch(err => {
+        console.error(err)
+        this.$q.notify({ color: 'negative', message: err.response?.data?.message || 'Error al actualizar productos' })
+      }).finally(() => {
+        this.loading = false
+      })
+    },
     preparaEditItem (item) {
       this.editingItem = item
       this.editItemForm = {
@@ -1302,7 +1548,7 @@ export default {
     updateItem () {
       this.loading = true
       const data = { ...this.editItemForm }
-      if (data.tipo !== 'CONTEO FISICO') {
+      if (this.report?.tipo !== 'CONTEO FISICO') {
         data.cantidad = -Math.abs(data.cantidad)
       }
       if (data.agencia_id === 0) {
@@ -1337,6 +1583,39 @@ export default {
       }).catch(err => {
         console.error(err)
         this.$q.notify({ color: 'negative', message: err.response?.data?.message || 'Error al actualizar estado' })
+      }).finally(() => {
+        this.loading = false
+      })
+    },
+    preparaEstadoDirecto (item, estado) {
+      this.observarItem = item
+      this.observarForm = {
+        estado,
+        admin_descripcion: item.admin_descripcion || ''
+      }
+      this.selectedMotivoObservacion = null
+      this.showObservarDialog = true
+    },
+    preparaNota (item) {
+      this.noteItem = item
+      this.noteFormText = item.admin_descripcion || ''
+      this.showNoteDialog = true
+    },
+    saveNote () {
+      this.loading = true
+      this.$axios.put(`withdrawal-reports/${this.id}/items/${this.noteItem.id}`, {
+        cantidad: this.noteItem.cantidad,
+        tipo: this.noteItem.tipo,
+        agencia_id: this.noteItem.agencia_id,
+        admin_descripcion: this.noteFormText,
+        estado: this.noteItem.estado
+      }).then(() => {
+        this.$q.notify({ color: 'positive', message: 'Observación del administrador guardada con éxito' })
+        this.showNoteDialog = false
+        this.getReport()
+      }).catch(err => {
+        console.error(err)
+        this.$q.notify({ color: 'negative', message: err.response?.data?.message || 'Error al guardar la nota' })
       }).finally(() => {
         this.loading = false
       })
@@ -1389,6 +1668,10 @@ export default {
         this.observarForm.admin_descripcion = ''
       }
     },
+    onEstadoObservacionChange (val) {
+      this.selectedMotivoObservacion = null
+      this.observarForm.admin_descripcion = ''
+    },
     saveObservacion () {
       if (!this.observarForm.admin_descripcion) {
         this.$q.notify({ color: 'negative', message: 'Debe ingresar un motivo u observación' })
@@ -1414,42 +1697,46 @@ export default {
       })
     },
     getRowClass (row) {
-      if (row.estado === 'OBSERVADO') return 'bg-red-1'
-      if (row.estado === 'SUBSANADO') return 'bg-green-1'
-      if (row.estado === 'ACEPTADO') return ''
-      if (row.estado === 'RECHAZADO') return 'bg-grey-3'
-      return ''
-    },
-    getItemStatusColor (status) {
-      switch (status) {
-        case 'ACEPTADO': return 'green-1'
-        case 'RECHAZADO': return 'red-1'
-        case 'PRORROGADO': return 'blue-1'
-        case 'OBSERVADO': return 'orange-1'
-        case 'SUBSANADO': return 'green-2'
-        default: return 'grey-2'
+      switch (row.estado) {
+        case 'ACEPTADO': return 'bg-aceptado'
+        case 'OBSERVADO': return 'bg-observado'
+        case 'RECHAZADO': return 'bg-rechazado'
+        case 'PRORROGADO': return 'bg-prorrogado'
+        case 'SUBSANADO': return 'bg-subsanado'
+        default: return ''
       }
     },
-    getItemStatusTextColor (status) {
+    getBtnStatusColor (status) {
       switch (status) {
-        case 'ACEPTADO': return 'green-9'
-        case 'RECHAZADO': return 'red-9'
-        case 'PRORROGADO': return 'blue-9'
-        case 'OBSERVADO': return 'orange-9'
-        case 'SUBSANADO': return 'green-10'
-        default: return 'grey-8'
+        case 'ACEPTADO': return 'positive'
+        case 'OBSERVADO': return 'warning'
+        case 'RECHAZADO': return 'negative'
+        case 'PRORROGADO': return 'blue'
+        case 'SUBSANADO': return 'teal'
+        default: return 'grey-7'
       }
     },
-    getItemStatusIcon (status) {
+    getBtnStatusLabel (status) {
+      switch (status) {
+        case 'ACEPTADO': return 'APROBADO'
+        case 'OBSERVADO': return 'OBSERVADO'
+        case 'RECHAZADO': return 'RECHAZADO'
+        case 'PRORROGADO': return 'PRORROGADO'
+        case 'SUBSANADO': return 'SUBSANADO'
+        default: return 'PENDIENTE'
+      }
+    },
+    getBtnStatusIcon (status) {
       switch (status) {
         case 'ACEPTADO': return 'check_circle'
-        case 'RECHAZADO': return 'cancel'
-        case 'PRORROGADO': return 'hourglass_top'
         case 'OBSERVADO': return 'warning'
-        case 'SUBSANADO': return 'assignment_turned_in'
-        default: return 'help_outline'
+        case 'RECHAZADO': return 'block'
+        case 'PRORROGADO': return 'hourglass_top'
+        case 'SUBSANADO': return 'build'
+        default: return 'help'
       }
     },
+
     generatePDF (withWatermark = false) {
       const doc = jsPDF('p', 'mm', 'letter')
       const pW = doc.internal.pageSize.getWidth()
@@ -1504,7 +1791,7 @@ export default {
       // --- TABLA ---
       const tableData = this.report.items.map(item => {
         let pdfDesc = item.descripcion || '-'
-        if (item.tipo === 'CONTEO FISICO') {
+        if (this.report?.tipo === 'CONTEO FISICO') {
           const dateStr = this.formatDate(item.created_at)
           const userStr = this.report.user?.name || 'N/A'
           pdfDesc = `[Sis: ${item.stock_sistema} | Físico: ${item.conteo_fisico}]\nReg: ${userStr} el ${dateStr}\n${pdfDesc}`

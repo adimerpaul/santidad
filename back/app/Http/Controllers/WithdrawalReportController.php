@@ -45,7 +45,12 @@ class WithdrawalReportController extends Controller
             }
         }
 
-        return $query->orderBy('anio', 'desc')->orderBy('mes', 'desc')->paginate(20);
+        $rowsPerPage = $request->input('rowsPerPage', 20);
+        if ($rowsPerPage <= 0) {
+            $rowsPerPage = $query->count() ?: 20;
+        }
+
+        return $query->orderBy('anio', 'desc')->orderBy('mes', 'desc')->paginate($rowsPerPage);
     }
 
     public function allItems(Request $request)
@@ -77,7 +82,12 @@ class WithdrawalReportController extends Controller
             $query->where('tipo', $request->tipo);
         }
 
-        return $query->orderBy('id', 'desc')->paginate($request->input('rowsPerPage', 20));
+        $rowsPerPage = $request->input('rowsPerPage', 20);
+        if ($rowsPerPage <= 0) {
+            $rowsPerPage = $query->count() ?: 20;
+        }
+
+        return $query->orderBy('id', 'desc')->paginate($rowsPerPage);
     }
 
     public function store(Request $request)
@@ -248,10 +258,10 @@ class WithdrawalReportController extends Controller
         $request->validate([
             'buy_id' => 'required|exists:buys,id',
             'cantidad' => 'required|integer',
-            'tipo' => 'required|in:VENCIMIENTO,DEVOLUCION A PROVEEDOR,CONTEO FISICO,PRODUCTO DAÑADO,OTRO',
+            'tipo' => 'required|string',
             'agencia_id' => 'nullable|integer',
             'stock_sistema' => 'nullable|integer',
-            'conteo_fisico' => 'nullable|integer',
+            'conteo_fisico' => 'nullable|integer|min:0',
             'lote' => 'nullable|string',
         ]);
 
@@ -271,7 +281,7 @@ class WithdrawalReportController extends Controller
         }
 
         $cantidad = $request->cantidad;
-        if ($request->tipo !== 'CONTEO FISICO') {
+        if ($report->tipo !== 'CONTEO FISICO') {
             $cantidad = -abs($cantidad);
         }
 
@@ -307,11 +317,11 @@ class WithdrawalReportController extends Controller
 
         $request->validate([
             'cantidad' => 'required|integer',
-            'tipo' => 'required|in:VENCIMIENTO,DEVOLUCION A PROVEEDOR,CONTEO FISICO,PRODUCTO DAÑADO,OTRO',
+            'tipo' => 'required|string',
             'agencia_id' => 'nullable|integer',
             'admin_descripcion' => 'nullable|string',
             'stock_sistema' => 'nullable|integer',
-            'conteo_fisico' => 'nullable|integer',
+            'conteo_fisico' => 'nullable|integer|min:0',
             'estado' => 'nullable|string|in:PENDIENTE,ACEPTADO,RECHAZADO,PRORROGADO,OBSERVADO,SUBSANADO',
             'prorroga_hasta' => 'nullable|date_format:Y-m-d',
             'lote' => 'nullable|string',
@@ -329,7 +339,7 @@ class WithdrawalReportController extends Controller
             }
 
             $cantidad = $request->cantidad;
-            if ($request->tipo !== 'CONTEO FISICO') {
+            if ($report->tipo !== 'CONTEO FISICO') {
                 $cantidad = -abs($cantidad);
             }
 
@@ -341,6 +351,15 @@ class WithdrawalReportController extends Controller
 
             $updateData = $request->only($updateFields);
             $updateData['cantidad'] = $cantidad;
+
+            // Stock validation for normal reports
+            if ($report->tipo !== 'CONTEO FISICO') {
+                $actualAgenciaId = $request->agencia_id ?? ($item->agencia_id ?? ($item->buy->agencia_id ?? 0));
+                $product = Product::findOrFail($item->product_id);
+                if (!$this->hasEnoughStock($product, $actualAgenciaId, $cantidad)) {
+                    return response()->json(['message' => 'Stock insuficiente en la sucursal seleccionada.'], 422);
+                }
+            }
 
             if ($user->id !== 1) {
                 if ($item->estado === 'OBSERVADO') {
@@ -447,20 +466,27 @@ class WithdrawalReportController extends Controller
         if ($search) {
             $words = array_filter(explode(' ', $search));
             $buys->where(function($query) use ($words) {
-                // Check if all words match in ANY of these columns (Logical OR between columns, Logical AND between words)
+                // Option A: Product name matches all words
                 $query->where(function($q) use ($words) {
-                    foreach ($words as $word) {
-                        $q->where('lote', 'like', "%$word%");
-                    }
+                    $q->whereHas('product', function($qp) use ($words) {
+                        foreach ($words as $word) {
+                            $upperWord = strtoupper($word);
+                            $qp->whereRaw("UPPER(nombre) LIKE ?", ["%$upperWord%"]);
+                        }
+                    });
                 })
+                // Option B: Lote matches all words
                 ->orWhere(function($q) use ($words) {
                     foreach ($words as $word) {
-                        $q->where('factura', 'like', "%$word%");
+                        $upperWord = strtoupper($word);
+                        $q->whereRaw("UPPER(lote) LIKE ?", ["%$upperWord%"]);
                     }
                 })
-                ->orWhereHas('product', function($q) use ($words) {
+                // Option C: Factura matches all words
+                ->orWhere(function($q) use ($words) {
                     foreach ($words as $word) {
-                        $q->where('nombre', 'like', "%$word%");
+                        $upperWord = strtoupper($word);
+                        $q->whereRaw("UPPER(factura) LIKE ?", ["%$upperWord%"]);
                     }
                 });
             });
@@ -480,4 +506,118 @@ class WithdrawalReportController extends Controller
 
         return $buys->orderBy('dateExpiry', 'asc')->paginate(50);
     }
+
+    public function updateItemsBulk(Request $request, $reportId)
+    {
+        $user = $request->user();
+        if ($user->id !== 1) {
+            return response()->json(['message' => 'No tiene permiso para realizar esta acción.'], 403);
+        }
+
+        $report = WithdrawalReport::findOrFail($reportId);
+        if ($report->estado === 'REVISADO') {
+            return response()->json(['message' => 'No se puede modificar un informe que ya ha sido REVISADO.'], 422);
+        }
+
+        $request->validate([
+            'estado' => 'required|string|in:PENDIENTE,ACEPTADO,RECHAZADO,PRORROGADO,OBSERVADO,SUBSANADO',
+        ]);
+
+        $estado = $request->estado;
+
+        DB::beginTransaction();
+        try {
+            // Update all items in this report to the given state
+            WithdrawalItem::where('withdrawal_report_id', $report->id)
+                ->update(['estado' => $estado]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Ítems actualizados correctamente.',
+                'items' => WithdrawalItem::where('withdrawal_report_id', $report->id)
+                    ->with('product', 'buy.proveedor', 'agencia')
+                    ->get()
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error al actualizar los ítems: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getCentralReturns(Request $request)
+    {
+        $user = $request->user();
+        if ($user->id !== 1 && (int)$user->agencia_id !== 1) {
+            return response()->json(['message' => 'No tiene permiso para ver las devoluciones a central.'], 403);
+        }
+
+        $query = WithdrawalItem::with([
+            'report.agencia',
+            'report.user',
+            'product',
+            'buy.proveedor',
+            'agencia'
+        ])->where('tipo', 'ENVIADO A CENTRAL PARA DEVOLUCION');
+
+        if ($request->filled('agencia_id')) {
+            $agencias = is_array($request->agencia_id) ? $request->agencia_id : explode(',', $request->agencia_id);
+            $agencias = array_filter($agencias, function ($val) {
+                return $val !== null && $val !== '' && $val !== 'null';
+            });
+            if (!empty($agencias)) {
+                $query->whereHas('report', function ($q) use ($agencias) {
+                    $q->whereIn('agencia_id', $agencias);
+                });
+            }
+        }
+
+        if ($request->filled('mes')) {
+            $query->whereHas('report', function ($q) use ($request) {
+                $q->where('mes', $request->mes);
+            });
+        }
+
+        if ($request->filled('anio')) {
+            $query->whereHas('report', function ($q) use ($request) {
+                $q->where('anio', $request->anio);
+            });
+        }
+
+        if ($request->filled('central_estado')) {
+            $query->where('central_estado', $request->central_estado);
+        }
+
+        $rowsPerPage = $request->input('rowsPerPage', 20);
+        if ($rowsPerPage <= 0) {
+            $rowsPerPage = $query->count() ?: 20;
+        }
+
+        return $query->orderBy('id', 'desc')->paginate($rowsPerPage);
+    }
+
+    public function updateCentralReturn(Request $request, $itemId)
+    {
+        $user = $request->user();
+        if ($user->id !== 1 && (int)$user->agencia_id !== 1) {
+            return response()->json(['message' => 'No tiene permiso para modificar las devoluciones a central.'], 403);
+        }
+
+        $item = WithdrawalItem::findOrFail($itemId);
+
+        $request->validate([
+            'central_estado' => 'required|string|in:PENDIENTE,RECIBIDO,RECHAZADO',
+            'central_observacion' => 'nullable|string',
+        ]);
+
+        $item->central_estado = $request->central_estado;
+        $item->central_observacion = $request->central_observacion;
+        $item->save();
+
+        return response()->json([
+            'message' => 'Devolución de central actualizada con éxito.',
+            'item' => $item->load('report.agencia', 'report.user', 'product', 'buy.proveedor', 'agencia')
+        ]);
+    }
 }
+

@@ -138,6 +138,9 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/withdrawal-reports/{id}/items', [App\Http\Controllers\WithdrawalReportController::class, 'addItem']);
     Route::put('/withdrawal-reports/{id}/items/{itemId}', [App\Http\Controllers\WithdrawalReportController::class, 'updateItem']);
     Route::delete('/withdrawal-reports/{id}/items/{itemId}', [App\Http\Controllers\WithdrawalReportController::class, 'removeItem']);
+    Route::put('/withdrawal-reports/{id}/items-bulk', [App\Http\Controllers\WithdrawalReportController::class, 'updateItemsBulk']);
+    Route::get('/withdrawal-reports/central-returns', [App\Http\Controllers\WithdrawalReportController::class, 'getCentralReturns']);
+    Route::put('/withdrawal-reports/central-returns/{itemId}', [App\Http\Controllers\WithdrawalReportController::class, 'updateCentralReturn']);
     Route::resource('/withdrawal-reports', App\Http\Controllers\WithdrawalReportController::class);
 
     Route::post('/salesGasto', [SalesController::class,'salesGasto']);

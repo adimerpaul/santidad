@@ -52,7 +52,7 @@
           <div class="text-caption text-grey-4 q-mb-md">
             Selecciona la sucursal para sincronizar y reproducir la publicidad correspondiente en esta pantalla.
           </div>
-          
+
           <q-list bordered separator class="rounded-borders bg-grey-9">
             <q-item
               clickable
@@ -128,13 +128,13 @@ export default {
       this.agenciaId = id
       localStorage.setItem('tv_agencia_id', id)
       this.showSelector = false
-      
+
       this.playlist = []
       this.currentIndex = 0
       this.clearImageTimer()
-      
+
       this.getPlaylist()
-      
+
       if (this.playlistInterval) clearInterval(this.playlistInterval)
       this.playlistInterval = setInterval(this.getPlaylist, 30000)
     },
