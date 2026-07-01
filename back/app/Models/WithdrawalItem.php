@@ -26,6 +26,7 @@ class WithdrawalItem extends Model
         'agencia_id_original',
         'central_estado',
         'central_observacion',
+        'user_id',
     ];
 
     public function report()
@@ -46,5 +47,10 @@ class WithdrawalItem extends Model
     public function agencia()
     {
         return $this->belongsTo(Agencia::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

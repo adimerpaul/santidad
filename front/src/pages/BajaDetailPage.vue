@@ -30,7 +30,7 @@
       </div>
       <div class="col-auto q-gutter-sm">
         <q-btn
-          v-if="report.estado === 'ABIERTO' && report.items && report.items.length > 0"
+          v-if="(report.estado === 'ABIERTO' || report.estado === 'OBSERVADO') && report.items && report.items.length > 0 && String($store.user?.id) !== '1'"
           color="primary"
           icon="send"
           label="Enviar Informe"
@@ -38,7 +38,7 @@
           no-caps
           unelevated
         />
-        <template v-if="report.estado === 'PENDIENTE' && String($store.user?.id) === '1'">
+        <template v-if="(report.estado === 'PENDIENTE' || report.estado === 'OBSERVADO') && String($store.user?.id) === '1'">
           <q-btn
             color="positive"
             icon="check_circle"
@@ -48,6 +48,7 @@
             unelevated
           />
           <q-btn
+            v-if="report.estado === 'PENDIENTE'"
             color="orange-8"
             icon="undo"
             label="Reabrir Informe"
@@ -68,6 +69,7 @@
         </template>
         <template v-if="report.estado === 'REVISADO'">
           <q-btn
+            v-if="report.tipo !== 'CONTEO FISICO' || String($store.user?.id) === '1'"
             color="red-7"
             icon="picture_as_pdf"
             label="PDF"
@@ -106,6 +108,42 @@
       </q-badge>
     </div>
 
+    <!-- Banner especial para Control de Inventario (Legible y moderno) -->
+    <div
+      v-if="report && report.tipo === 'CONTEO FISICO'"
+      class="q-pa-md q-mb-md rounded-borders text-white flex items-center justify-between shadow-2"
+      style="background: linear-gradient(135deg, #004D40 0%, #00796B 100%); border-radius: 8px;"
+    >
+      <div class="flex items-center">
+        <q-icon name="assignment" size="md" class="q-mr-md" />
+        <div>
+          <div class="text-h6 text-bold">Sección: Control de Inventario (Conteo Físico)</div>
+          <div class="text-caption">Revisión y conciliación de stock físico en sucursales contra el stock registrado en el sistema.</div>
+        </div>
+      </div>
+      <q-badge color="white" text-color="teal-10" class="text-bold q-px-sm q-py-xs" style="font-size: 12px; border-radius: 4px;">
+        CONTROL INVENTARIO
+      </q-badge>
+    </div>
+
+    <!-- Banner especial para Bajas por Motivos Sanitarios (Legible y moderno) -->
+    <div
+      v-if="report && report.tipo === 'MOTIVOS SANITARIOS'"
+      class="q-pa-md q-mb-md rounded-borders text-white flex items-center justify-between shadow-2"
+      style="background: linear-gradient(135deg, #880E4F 0%, #AD1457 100%); border-radius: 8px;"
+    >
+      <div class="flex items-center">
+        <q-icon name="health_and_safety" size="md" class="q-mr-md" />
+        <div>
+          <div class="text-h6 text-bold">Sección: Bajas por Motivos Sanitarios</div>
+          <div class="text-caption">Retiros por alertas sanitarias, orden de AGEMED/SEDES, fallas de calidad, o suspensiones de registro.</div>
+        </div>
+      </div>
+      <q-badge color="white" text-color="pink-10" class="text-bold q-px-sm q-py-xs" style="font-size: 12px; border-radius: 4px;">
+        MOTIVOS SANITARIOS
+      </q-badge>
+    </div>
+
     <!-- Sección de Búsqueda de Productos -->
     <div v-if="report && report.estado === 'ABIERTO'" class="row q-col-gutter-md q-mb-lg">
       <div class="col-12">
@@ -118,7 +156,7 @@
           </q-card-section>
           <q-card-section>
             <div class="row q-col-gutter-sm q-mb-sm">
-              <div class="col-12 col-sm-4">
+              <div class="col-12 col-sm-3">
                 <q-select
                   v-model="searchAgenciaId"
                   :options="agenciasOptions"
@@ -138,7 +176,7 @@
                   </template>
                 </q-select>
               </div>
-              <div class="col-12 col-sm-8">
+              <div class="col-12 col-sm-6">
                 <q-input
                   v-model="search"
                   placeholder="Producto, Lote o Factura..."
@@ -153,6 +191,28 @@
                     <q-icon name="search" />
                   </template>
                 </q-input>
+              </div>
+              <div class="col-12 col-sm-3">
+                <q-select
+                  v-model="limitLotes"
+                  :options="[
+                    { label: 'Últimos 3 lotes', value: '3' },
+                    { label: 'Últimos 5 lotes', value: '5' },
+                    { label: 'Últimos 7 lotes', value: '7' },
+                    { label: 'Mostrar todos', value: 'all' }
+                  ]"
+                  label="Lotes a Mostrar"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  class="bg-white"
+                  @update:model-value="searchInventory"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="layers" />
+                  </template>
+                </q-select>
               </div>
             </div>
             <q-table
@@ -259,7 +319,7 @@
                   <div class="text-bold text-grey-9">{{ props.row.agencia?.nombre || (props.row.buy?.agencia?.nombre || 'Almacen') }}</div>
                   <div class="text-caption text-grey-6 flex items-center q-mt-xs" style="font-size: 11px;">
                     <q-icon name="person" size="13px" class="q-mr-xs" />
-                    <span>{{ report.user?.name || 'N/A' }}</span>
+                    <span>{{ props.row.user?.name || (report.user?.name || 'N/A') }}</span>
                   </div>
                 </div>
               </template>
@@ -350,16 +410,35 @@
                       style="border-radius: 6px; font-size: 13px;"
                     >
                       <q-list style="min-width: 220px" class="q-py-xs">
-                        <!-- Conteo Físico: Revisado/Pendiente -->
+                        <!-- Conteo Físico: Acciones -->
                         <template v-if="report.tipo === 'CONTEO FISICO'">
-                          <q-item clickable v-close-popup @click="setItemStatus(props.row, props.row.estado === 'ACEPTADO' ? 'PENDIENTE' : 'ACEPTADO')" class="q-py-md">
+                          <!-- Aprobar -->
+                          <q-item clickable v-close-popup @click="setItemStatus(props.row, 'ACEPTADO')" class="q-py-md">
                             <q-item-section avatar>
-                              <q-avatar :color="props.row.estado === 'ACEPTADO' ? 'grey-2' : 'green-1'" :text-color="props.row.estado === 'ACEPTADO' ? 'grey-7' : 'green-9'" :icon="props.row.estado === 'ACEPTADO' ? 'radio_button_unchecked' : 'check_circle'" size="md" />
+                              <q-avatar color="green-1" text-color="green-9" icon="check_circle" size="md" />
                             </q-item-section>
                             <q-item-section>
-                              <q-item-label class="text-bold" :class="props.row.estado === 'ACEPTADO' ? 'text-grey-7' : 'text-green-9'">
-                                {{ props.row.estado === 'ACEPTADO' ? 'Marcar como Pendiente' : 'Aprobar / Revisado' }}
-                              </q-item-label>
+                              <q-item-label class="text-bold text-green-9">Aprobar / Revisado</q-item-label>
+                            </q-item-section>
+                          </q-item>
+
+                          <!-- Observar -->
+                          <q-item clickable v-close-popup @click="preparaEstadoDirecto(props.row, 'OBSERVADO')" class="q-py-md">
+                            <q-item-section avatar>
+                              <q-avatar color="orange-1" text-color="orange-9" icon="warning" size="md" />
+                            </q-item-section>
+                            <q-item-section>
+                              <q-item-label class="text-bold text-orange-9">Observar (Pedir Corrección)</q-item-label>
+                            </q-item-section>
+                          </q-item>
+
+                          <!-- Rechazar -->
+                          <q-item clickable v-close-popup @click="preparaEstadoDirecto(props.row, 'RECHAZADO')" class="q-py-md">
+                            <q-item-section avatar>
+                              <q-avatar color="red-1" text-color="red-9" icon="block" size="md" />
+                            </q-item-section>
+                            <q-item-section>
+                              <q-item-label class="text-bold text-red-9">Rechazar Definitivamente</q-item-label>
                             </q-item-section>
                           </q-item>
                         </template>
@@ -942,6 +1021,7 @@ export default {
       loading: false,
       search: '',
       searchAgenciaId: null,
+      limitLotes: '3',
       agenciasOptions: [],
 
       inventory: [],
@@ -1229,7 +1309,8 @@ export default {
       this.$axios.get('withdrawal-reports/search-products', {
         params: {
           search: this.search,
-          agencia_id: this.searchAgenciaId
+          agencia_id: this.searchAgenciaId,
+          limit_lotes: this.limitLotes
         }
       }).then(res => {
         this.inventory = res.data.data
@@ -1793,7 +1874,7 @@ export default {
         let pdfDesc = item.descripcion || '-'
         if (this.report?.tipo === 'CONTEO FISICO') {
           const dateStr = this.formatDate(item.created_at)
-          const userStr = this.report.user?.name || 'N/A'
+          const userStr = item.user?.name || (this.report.user?.name || 'N/A')
           pdfDesc = `[Sis: ${item.stock_sistema} | Físico: ${item.conteo_fisico}]\nReg: ${userStr} el ${dateStr}\n${pdfDesc}`
         }
 

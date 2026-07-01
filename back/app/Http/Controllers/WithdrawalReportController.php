@@ -14,7 +14,7 @@ class WithdrawalReportController extends Controller
 {
     public function index(Request $request)
     {
-        $query = WithdrawalReport::with(['agencia', 'user', 'items.product', 'items.buy.proveedor', 'items.agencia']);
+        $query = WithdrawalReport::with(['agencia', 'user', 'items.product', 'items.buy.proveedor', 'items.agencia', 'items.user']);
         $user = $request->user();
 
         if ($user->id !== 1) {
@@ -122,7 +122,7 @@ class WithdrawalReportController extends Controller
     public function show($id)
     {
         $user = auth()->user();
-        $report = WithdrawalReport::with(['agencia', 'user', 'items.product', 'items.buy.proveedor', 'items.buy.agencia', 'items.agencia'])->findOrFail($id);
+        $report = WithdrawalReport::with(['agencia', 'user', 'items.product', 'items.buy.proveedor', 'items.buy.agencia', 'items.agencia', 'items.user'])->findOrFail($id);
 
         if ($user->id !== 1 && $report->agencia_id !== $user->agencia_id) {
             return response()->json(['message' => 'No tiene permiso para ver este informe.'], 403);
@@ -134,7 +134,7 @@ class WithdrawalReportController extends Controller
     public function close($id)
     {
         $user = auth()->user();
-        $report = WithdrawalReport::with(['items.product', 'items.buy'])->findOrFail($id);
+        $report = WithdrawalReport::with(['items.product', 'items.buy', 'items.user'])->findOrFail($id);
         
         if ($user->id !== 1) {
             return response()->json(['message' => 'Solo el administrador puede marcar como revisado.'], 403);
@@ -169,7 +169,7 @@ class WithdrawalReportController extends Controller
 
             $report->update(['estado' => 'REVISADO']);
             DB::commit();
-            return response()->json($report->load('agencia', 'user', 'items.product', 'items.agencia'));
+            return response()->json($report->load('agencia', 'user', 'items.product', 'items.agencia', 'items.user'));
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Error al cerrar el informe: ' . $e->getMessage()], 422);
@@ -273,16 +273,25 @@ class WithdrawalReportController extends Controller
         if ($request->filled('lote') && $request->lote !== $buy->lote) {
             $buy->update(['lote' => $request->lote]);
         }
+
+        // Prevent duplicate buy_id in the same report
+        $exists = WithdrawalItem::where('withdrawal_report_id', $report->id)
+            ->where('buy_id', $buy->id)
+            ->exists();
+        if ($exists) {
+            return response()->json(['message' => 'Este lote/compra ya se encuentra registrado en el informe. Edite el registro existente si desea modificar la cantidad.'], 422);
+        }
+
         $product = $buy->product;
         $actualAgenciaId = $request->agencia_id ?? ($buy->agencia_id ?? 0);
-
-        if (!$this->hasEnoughStock($product, $actualAgenciaId, $request->cantidad)) {
-            return response()->json(['message' => 'Stock insuficiente en la sucursal seleccionada.'], 422);
-        }
 
         $cantidad = $request->cantidad;
         if ($report->tipo !== 'CONTEO FISICO') {
             $cantidad = -abs($cantidad);
+        }
+
+        if (!$this->hasEnoughStock($product, $actualAgenciaId, $cantidad)) {
+            return response()->json(['message' => 'Stock insuficiente en la sucursal seleccionada.'], 422);
         }
 
         $item = WithdrawalItem::create([
@@ -295,9 +304,10 @@ class WithdrawalReportController extends Controller
             'conteo_fisico' => $request->conteo_fisico,
             'tipo' => $request->tipo,
             'descripcion' => $request->descripcion,
+            'user_id' => $user->id,
         ]);
 
-        return response()->json($item->load('product', 'buy.proveedor', 'agencia'));
+        return response()->json($item->load('product', 'buy.proveedor', 'agencia', 'user'));
     }
 
     public function updateItem(Request $request, $reportId, $itemId)
@@ -351,6 +361,9 @@ class WithdrawalReportController extends Controller
 
             $updateData = $request->only($updateFields);
             $updateData['cantidad'] = $cantidad;
+            if ($user->id !== 1) {
+                $updateData['user_id'] = $user->id;
+            }
 
             // Stock validation for normal reports
             if ($report->tipo !== 'CONTEO FISICO') {
@@ -377,7 +390,7 @@ class WithdrawalReportController extends Controller
 
                 $newAgenciaId = $request->agencia_id;
                 $product = Product::findOrFail($item->product_id);
-                if (!$this->hasEnoughStock($product, $newAgenciaId, $request->cantidad)) {
+                if (!$this->hasEnoughStock($product, $newAgenciaId, $cantidad)) {
                      throw new \Exception("Stock insuficiente en la nueva sucursal seleccionada.");
                 }
 
@@ -388,7 +401,7 @@ class WithdrawalReportController extends Controller
             }
 
             DB::commit();
-            return response()->json($item->load('product', 'buy.proveedor', 'agencia'));
+            return response()->json($item->load('product', 'buy.proveedor', 'agencia', 'user'));
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Error al actualizar el ítem: ' . $e->getMessage()], 422);
@@ -461,11 +474,14 @@ class WithdrawalReportController extends Controller
             $agencia_id = $user->agencia_id;
         }
 
-        $buys = Buy::with(['product', 'proveedor', 'agencia', 'user']);
+        $limit_lotes = $request->input('limit_lotes', '7');
+
+        // We build the query for fetching buys
+        $queryBuilder = Buy::query();
 
         if ($search) {
             $words = array_filter(explode(' ', $search));
-            $buys->where(function($query) use ($words) {
+            $queryBuilder->where(function($query) use ($words) {
                 // Option A: Product name matches all words
                 $query->where(function($q) use ($words) {
                     $q->whereHas('product', function($qp) use ($words) {
@@ -495,16 +511,53 @@ class WithdrawalReportController extends Controller
         if ($agencia_id !== null && $agencia_id !== '') {
             if ($agencia_id == 1) {
                 // Special case: Casa Matriz (1) includes Warehouse (null)
-                $buys->where(function($q) {
+                $queryBuilder->where(function($q) {
                     $q->where('agencia_id', 1)
                       ->orWhereNull('agencia_id');
                 });
             } else {
-                $buys->where('agencia_id', $agencia_id);
+                $queryBuilder->where('agencia_id', $agencia_id);
             }
         }
 
-        return $buys->orderBy('dateExpiry', 'asc')->paginate(50);
+        if ($limit_lotes !== 'all') {
+            $limitValue = intval($limit_lotes);
+            if ($limitValue <= 0) $limitValue = 3;
+
+            // Get all matching product IDs
+            $productIds = (clone $queryBuilder)->distinct()->pluck('product_id')->toArray();
+            
+            // For each product, get only the latest N buy IDs
+            $buyIds = [];
+            foreach ($productIds as $productId) {
+                $latestBuyIds = Buy::where('product_id', $productId)
+                    ->where(function($q) use ($agencia_id) {
+                        if ($agencia_id !== null && $agencia_id !== '') {
+                            if ($agencia_id == 1) {
+                                $q->where('agencia_id', 1)->orWhereNull('agencia_id');
+                            } else {
+                                $q->where('agencia_id', $agencia_id);
+                            }
+                        }
+                    })
+                    ->orderBy('id', 'desc')
+                    ->limit($limitValue)
+                    ->pluck('id')
+                    ->toArray();
+                $buyIds = array_merge($buyIds, $latestBuyIds);
+            }
+
+            // Return only those buys, sorted by dateExpiry ascending
+            return Buy::with(['product', 'proveedor', 'agencia', 'user'])
+                ->whereIn('id', $buyIds)
+                ->orderBy('dateExpiry', 'asc')
+                ->paginate(50);
+        }
+
+        // Default / Show all: just return everything sorted by expiry date
+        return $queryBuilder->with(['product', 'proveedor', 'agencia', 'user'])
+            ->orderBy('dateExpiry', 'asc')
+            ->paginate(50);
     }
 
     public function updateItemsBulk(Request $request, $reportId)
