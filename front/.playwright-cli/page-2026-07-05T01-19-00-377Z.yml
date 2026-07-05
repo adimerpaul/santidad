@@ -558,40 +558,60 @@
               - textbox "Email" [ref=e772]
               - generic: Email
           - separator [ref=e773]
-          - generic [ref=e775]:
-            - generic [ref=e780]:
-              - textbox "TOTAL A PAGAR:" [ref=e781]: "0.36"
-              - generic: "TOTAL A PAGAR:"
-            - generic [ref=e787]:
-              - spinbutton "EFECTIVO BS." [ref=e788]: "0"
-              - generic: EFECTIVO BS.
-            - generic [ref=e794]:
-              - spinbutton "Aporte" [ref=e795]: "0"
-              - generic: Aporte
-            - generic [ref=e800]:
-              - generic [ref=e801]:
-                - spinbutton "Descuento (Bs.)" [ref=e802]: "0"
-                - generic: Descuento (Bs.)
-              - generic [ref=e804] [cursor=pointer]: attach_money
-            - generic [ref=e808]:
-              - generic [ref=e809]:
-                - generic [ref=e810]:
-                  - spinbutton "Descuento (%)" [ref=e811]: "0"
-                  - generic: Descuento (%)
-                - generic [ref=e813] [cursor=pointer]: percent
-              - generic [ref=e816]: 0.00 Bs.
-            - generic [ref=e821]:
-              - textbox "CAMBIO:" [ref=e822]: "-0.36"
-              - generic: "CAMBIO:"
-            - generic [ref=e825]:
-              - generic [ref=e826] [cursor=pointer]:
-                - generic [ref=e827]:
-                  - generic [ref=e828]:
-                    - generic [ref=e829]: Efectivo
-                    - combobox "Metodo de pago" [expanded] [active] [ref=e830]: Efectivo
-                  - generic: Metodo de pago
-                - generic [ref=e832]: arrow_drop_down
-              - generic [ref=e835]: Metodo de pago del gasto
+          - generic [ref=e774]:
+            - generic [ref=e775]:
+              - generic [ref=e780]:
+                - textbox "TOTAL A PAGAR:" [ref=e781]: "0.36"
+                - generic: "TOTAL A PAGAR:"
+              - generic [ref=e787]:
+                - spinbutton "EFECTIVO BS." [ref=e788]: "0"
+                - generic: EFECTIVO BS.
+              - generic [ref=e794]:
+                - spinbutton "Aporte" [ref=e795]: "0"
+                - generic: Aporte
+              - generic [ref=e800]:
+                - generic [ref=e801]:
+                  - spinbutton "Descuento (Bs.)" [ref=e802]: "0"
+                  - generic: Descuento (Bs.)
+                - generic [ref=e804] [cursor=pointer]: attach_money
+              - generic [ref=e808]:
+                - generic [ref=e809]:
+                  - generic [ref=e810]:
+                    - spinbutton "Descuento (%)" [ref=e811]: "0"
+                    - generic: Descuento (%)
+                  - generic [ref=e813] [cursor=pointer]: percent
+                - generic [ref=e816]: 0.00 Bs.
+              - generic [ref=e821]:
+                - textbox "CAMBIO:" [ref=e822]: "-0.36"
+                - generic: "CAMBIO:"
+              - generic [ref=e825]:
+                - generic [ref=e826] [cursor=pointer]:
+                  - generic [ref=e827]:
+                    - generic [ref=e828]:
+                      - generic [ref=e829]: Personalizado
+                      - combobox "Metodo de pago" [ref=e830]: Personalizado
+                    - generic: Metodo de pago
+                  - generic [ref=e832]: arrow_drop_down
+                - generic [ref=e835]: Metodo de pago del gasto
+            - generic [ref=e866]:
+              - generic [ref=e870]:
+                - generic [ref=e872]: payments
+                - generic [ref=e873]:
+                  - spinbutton "Monto en Efectivo" [ref=e874]: "0.16"
+                  - generic: Monto en Efectivo
+              - generic [ref=e878]:
+                - generic [ref=e880]: qr_code
+                - generic [ref=e881]:
+                  - spinbutton "Monto en QR" [ref=e882]: "0.2"
+                  - generic: Monto en QR
+              - generic [ref=e883]:
+                - generic [ref=e884]: info
+                - text: "Pago Dividido: La suma debe ser exactamente 0.36 Bs."
+            - button "Generar QR por 0.2 Bs." [ref=e887]:
+              - generic:
+                - img: qr_code_2
+                - generic: Generar QR por 0.2 Bs.
+              - img [ref=e892]
           - separator [ref=e836]
           - generic [ref=e838]:
             - button "Realizar venta" [ref=e840] [cursor=pointer]:
@@ -602,15 +622,3 @@
               - generic [ref=e846]:
                 - img [ref=e847]: undo
                 - generic [ref=e848]: Atras
-  - listbox [ref=e849]:
-    - generic [ref=e850]:
-      - option "Efectivo" [selected] [ref=e851] [cursor=pointer]:
-        - generic [ref=e853]: Efectivo
-      - option "Tarjeta" [ref=e854] [cursor=pointer]:
-        - generic [ref=e856]: Tarjeta
-      - option "Transferencia" [ref=e857] [cursor=pointer]:
-        - generic [ref=e859]: Transferencia
-      - option "Qr" [ref=e860] [cursor=pointer]:
-        - generic [ref=e862]: Qr
-      - option "Personalizado" [ref=e863] [cursor=pointer]:
-        - generic [ref=e865]: Personalizado

@@ -1,4 +1,4 @@
-- generic [ref=e1]:
+- generic [active] [ref=e1]:
   - generic [ref=e3]:
     - banner [ref=e4]:
       - toolbar [ref=e5]:
@@ -602,15 +602,15 @@
               - generic [ref=e878]:
                 - generic [ref=e880]: qr_code
                 - generic [ref=e881]:
-                  - spinbutton "Monto en QR" [active] [ref=e882]: "0.20"
+                  - spinbutton "Monto en QR" [ref=e882]: "0.2"
                   - generic: Monto en QR
               - generic [ref=e883]:
                 - generic [ref=e884]: info
                 - text: "Pago Dividido: La suma debe ser exactamente 0.36 Bs."
-            - button "Generar QR por 0.2 Bs." [ref=e887] [cursor=pointer]:
-              - generic [ref=e888]:
-                - img [ref=e889]: qr_code_2
-                - generic [ref=e890]: Generar QR por 0.2 Bs.
+            - button "Generar QR por 0.2 Bs." [ref=e908] [cursor=pointer]:
+              - generic [ref=e909]:
+                - img [ref=e910]: qr_code_2
+                - generic [ref=e911]: Generar QR por 0.2 Bs.
           - separator [ref=e836]
           - generic [ref=e838]:
             - button "Realizar venta" [ref=e840] [cursor=pointer]:
