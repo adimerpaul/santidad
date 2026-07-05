@@ -1,0 +1,3 @@
+[     355ms] [LOG] [vite] connecting... @ http://localhost:9000/@vite/client:183
+[     702ms] [LOG] [vite] connected. @ http://localhost:9000/@vite/client:211
+[     879ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:9000/login:0

@@ -28,6 +28,7 @@ class Sales extends Model
         "metodoPago",
         "montoEfectivo",
         "montoQr",
+        "qrId",
         "codigoDocumentoSector",
         "leyenda",
         "venta",

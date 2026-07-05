@@ -449,6 +449,44 @@
               </div>
             </div>
 
+            <!-- Pago con QR (Baneco) -->
+            <div v-if="metodoPago === 'Qr'" class="row q-col-gutter-sm q-mt-sm q-pa-sm bg-blue-1 rounded-borders items-center">
+              <div class="col-12" v-if="!qrId">
+                <q-btn
+                  class="full-width"
+                  color="primary"
+                  icon="qr_code_2"
+                  no-caps
+                  label="Generar QR"
+                  :loading="qrGenerando"
+                  :disable="parseFloat(totalFinal) <= 0"
+                  @click="generarQr"
+                />
+              </div>
+              <template v-else>
+                <div class="col-12 col-md-4 text-center">
+                  <img :src="qrImage" alt="QR de pago" style="max-width: 180px; width: 100%;" />
+                </div>
+                <div class="col-12 col-md-8">
+                  <div class="text-blue-9 text-bold q-mb-xs flex items-center">
+                    <q-spinner-dots color="primary" size="20px" class="q-mr-xs" />
+                    Esperando confirmación de pago...
+                  </div>
+                  <div class="text-caption text-grey-8 q-mb-sm">
+                    El cliente debe escanear el código QR con su app bancaria.
+                  </div>
+                  <q-btn
+                    color="negative"
+                    icon="cancel"
+                    no-caps
+                    label="Cancelar QR"
+                    :loading="qrCancelando"
+                    @click="cancelarQr"
+                  />
+                </div>
+              </template>
+            </div>
+
             <!-- Información del descuento aplicado -->
             <div class="row q-mt-sm" v-if="descuento > 0">
               <div class="col-12">
@@ -474,7 +512,8 @@
           <q-card-section>
             <div class="row">
               <div class="col-6">
-                <q-btn type="submit" class="full-width" icon="o_add_circle" label="Realizar venta" :loading="loading" no-caps color="green"  />
+                <q-btn type="submit" class="full-width" icon="o_add_circle" label="Realizar venta" :loading="loading"
+                       :disable="metodoPago === 'Qr' && !!qrId" no-caps color="green"  />
               </div>
               <div class="col-6">
                 <q-btn class="full-width" icon="undo" v-close-popup label="Atras" no-caps color="red" :loading="loading" />
@@ -505,6 +544,10 @@ export default {
       descuento: 0,
       descuentoPorcentaje: 0,
       qr: false,
+      qrId: null,
+      qrImage: null,
+      qrGenerando: false,
+      qrCancelando: false,
       documents: [],
       metodoPago: 'Efectivo',
       montoEfectivoPersonalizado: 0,
@@ -558,12 +601,12 @@ export default {
     }
   },
   watch: {
-    'client.numeroDocumento' () { if (this.clientDisplayVisible) this.syncClientDisplay(true) },
-    'client.complemento' () { if (this.clientDisplayVisible) this.syncClientDisplay(true) },
-    'client.nombreRazonSocial' () { if (this.clientDisplayVisible) this.syncClientDisplay(true) },
-    'client.email' () { if (this.clientDisplayVisible) this.syncClientDisplay(true) },
+    'client.numeroDocumento' () { this.syncClientDisplayDebounced() },
+    'client.complemento' () { this.syncClientDisplayDebounced() },
+    'client.nombreRazonSocial' () { this.syncClientDisplayDebounced() },
+    'client.email' () { this.syncClientDisplayDebounced() },
     document: {
-      handler () { if (this.clientDisplayVisible) this.syncClientDisplay(true) },
+      handler () { this.syncClientDisplayDebounced() },
       deep: true
     },
 
@@ -577,13 +620,17 @@ export default {
           this.clientDisplayVisible = false
           this.clearClientDisplayData()
         }
+        this.resetQrState()
       }
     },
 
-    metodoPago (val) {
+    metodoPago (val, oldVal) {
       if (val === 'Personalizado') {
         this.montoEfectivoPersonalizado = parseFloat(this.totalFinal || 0)
         this.montoQrPersonalizado = 0
+      }
+      if (oldVal === 'Qr' && val !== 'Qr' && this.qrId) {
+        this.cancelarQr()
       }
     },
 
@@ -609,7 +656,7 @@ export default {
   },
   beforeUnmount () {
     this.closeClientDisplay()
-    this.stopHeartbeat()
+    this.detenerPollingQr()
   },
   computed: {
     // ✅ PRODUCTOS QUE SOBREPASARON STOCK (se muestra en tiempo real)
@@ -794,6 +841,7 @@ export default {
 
     saleInsert () {
       this.loading = true
+      this.detenerPollingQr()
       this.client.codigoTipoDocumentoIdentidad = this.document.codigoClasificador
       this.$store.productosVenta.forEach(p => {
         p.subTotal = p.cantidadPedida * p.precioVenta
@@ -804,6 +852,7 @@ export default {
         aporte: this.aporte,
         descuento: this.descuento,
         qr: this.qr,
+        qrId: this.qrId,
         efectivo: this.efectivo,
         products: this.$store.productosVenta,
         metodoPago: this.metodoPago,
@@ -830,6 +879,7 @@ export default {
         this.descuentoPorcentaje = 0
         this.montoEfectivoPersonalizado = 0
         this.montoQrPersonalizado = 0
+        this.resetQrState()
         this.products.forEach(p => {
           p.cantidadPedida = 0
         })
@@ -839,6 +889,86 @@ export default {
         this.loading = false
         this.$alert.error(err.response.data.message)
       })
+    },
+
+    // ===== PAGO CON QR (Baneco) =====
+    generarQr () {
+      const amount = parseFloat(this.totalFinal)
+      if (!amount || amount <= 0) return
+
+      this.qrGenerando = true
+      this.$axios.post('qr/generar', {
+        amount,
+        description: `Venta ${this.client?.nombreRazonSocial || ''}`.trim()
+      }).then(res => {
+        this.qrGenerando = false
+        this.qrId = res.data.qrId
+        this.qrImage = res.data.qrImage
+        this.iniciarPollingQr()
+        // Mostrar el QR también en la pantalla del cliente (pantallaCobro)
+        this.notifySocket('clienteQrData', { qrImage: this.qrImage, monto: amount, visible: true })
+      }).catch(err => {
+        this.qrGenerando = false
+        this.$alert.error(err.response?.data?.message || 'No se pudo generar el QR')
+      })
+    },
+
+    iniciarPollingQr () {
+      this.detenerPollingQr()
+      // Consultar cada 3 segundos si el QR ya fue pagado
+      this._qrPollInterval = setInterval(() => {
+        this.consultarEstadoQr()
+      }, 3000)
+    },
+
+    detenerPollingQr () {
+      if (this._qrPollInterval) {
+        clearInterval(this._qrPollInterval)
+        this._qrPollInterval = null
+      }
+    },
+
+    consultarEstadoQr () {
+      if (!this.qrId) return
+      this.$axios.get(`qr/estado/${this.qrId}`).then(res => {
+        const statusQrCode = res.data.statusQrCode
+        if (statusQrCode === 1) {
+          // Pagado: la venta se realiza directamente
+          this.detenerPollingQr()
+          this.metodoPago = 'Qr'
+          this.saleInsert()
+        } else if (statusQrCode === 9) {
+          // Anulado (desde el banco o por otro medio)
+          this.$alert.error('El QR fue anulado')
+          this.resetQrState()
+        }
+      }).catch(err => {
+        console.warn('Error consultando estado de QR:', err)
+      })
+    },
+
+    cancelarQr () {
+      if (!this.qrId) return
+      this.qrCancelando = true
+      this.$axios.post('qr/cancelar', { qrId: this.qrId }).then(() => {
+        this.qrCancelando = false
+        this.resetQrState()
+      }).catch(err => {
+        this.qrCancelando = false
+        this.$alert.error(err.response?.data?.message || 'No se pudo cancelar el QR')
+      })
+    },
+
+    resetQrState () {
+      this.detenerPollingQr()
+      const teniaQr = !!this.qrId
+      this.qrId = null
+      this.qrImage = null
+      this.qrGenerando = false
+      this.qrCancelando = false
+      if (teniaQr) {
+        this.notifySocket('clienteQrData', { qrImage: '', monto: '', visible: false })
+      }
     },
 
     clientSearch () {
@@ -1191,7 +1321,6 @@ export default {
     // ===== PANTALLA CLIENTE =====
     async openClientDisplay () {
       this.clientDisplayVisible = true
-      this.startHeartbeat()
       this.syncClientDisplay(true)
     },
 
@@ -1209,9 +1338,18 @@ export default {
       this.notifySocket('clienteDisplayData', payload)
     },
 
+    // Evita mandar un notify por cada tecla presionada: espera 350ms de inactividad
+    syncClientDisplayDebounced () {
+      if (!this.clientDisplayVisible) return
+      clearTimeout(this._clientSyncDebounce)
+      this._clientSyncDebounce = setTimeout(() => {
+        this.syncClientDisplay(true)
+      }, 350)
+    },
+
     clearClientDisplayData () {
+      clearTimeout(this._clientSyncDebounce)
       this.clientDisplayVisible = false
-      this.stopHeartbeat()
       const payload = {
         numeroDocumento: '',
         complemento: '',
@@ -1226,22 +1364,6 @@ export default {
     closeClientDisplay () {
       if (this.clientDisplayVisible) {
         this.clearClientDisplayData()
-      }
-      this.stopHeartbeat()
-    },
-
-    startHeartbeat () {
-      this.stopHeartbeat()
-      // Enviar heartbeat cada 3 segundos para que la ventana del cliente sepa que seguimos activos
-      this._heartbeatInterval = setInterval(() => {
-        this.notifySocket('clienteDisplayHeartbeat', Date.now().toString())
-      }, 3000)
-    },
-
-    stopHeartbeat () {
-      if (this._heartbeatInterval) {
-        clearInterval(this._heartbeatInterval)
-        this._heartbeatInterval = null
       }
     },
 

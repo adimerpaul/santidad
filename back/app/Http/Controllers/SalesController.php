@@ -99,6 +99,7 @@ class SalesController extends Controller
                 'metodoPago'    => $request->metodoPago,
                 'montoEfectivo' => $montoEfectivoVal,
                 'montoQr'       => $montoQrVal,
+                'qrId'          => $request->qrId,
                 'client_id'     => $client->id,
                 'aporte'        => $request->aporte,
                 'descuento'     => $request->descuento,

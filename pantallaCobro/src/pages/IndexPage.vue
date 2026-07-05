@@ -47,8 +47,8 @@
     ></video>
 
     <!-- ===== SUPERPOSICIÓN DE VERIFICACIÓN DE CLIENTE (PRIMER PLANO) ===== -->
-    <div class="overlay-container" v-if="clientData.visible || showThanks">
-      
+    <div class="overlay-container" v-if="clientData.visible || showThanks || qrData.visible">
+
       <!-- Pantalla de Gracias -->
       <div class="thanks-screen" v-if="showThanks">
         <div class="thanks-check q-mx-auto">
@@ -61,6 +61,40 @@
         <div class="thanks-sub">Farmacia SANTIDAD-DIVINA S.R.L. le desea un excelente día</div>
         <div class="thanks-dots">
           <span class="dot" v-for="n in 3" :key="n" :style="{ animationDelay: (n * 0.2) + 's' }"></span>
+        </div>
+      </div>
+
+      <!-- Pantalla de Pago con QR (Baneco) -->
+      <div class="client-card qr-card" v-else-if="qrData.visible">
+        <div class="display-header q-mb-md">
+          <div class="pharmacy-logo">
+            <q-icon name="local_pharmacy" size="38px" color="white" />
+          </div>
+          <div class="pharmacy-info">
+            <div class="pharmacy-name">SANTIDAD-DIVINA S.R.L.</div>
+            <div class="pharmacy-tag">FARMACIA</div>
+          </div>
+        </div>
+
+        <div class="card-title-container q-mb-sm">
+          <q-icon name="qr_code_2" size="22px" style="color: #1b3a5c" />
+          <span class="card-title">Pago con Código QR</span>
+        </div>
+
+        <div class="card-line q-mb-md"></div>
+
+        <div class="qr-payment-body">
+          <img :src="qrData.qrImage" alt="Código QR de pago" class="qr-payment-image" />
+          <div class="qr-payment-amount">Bs. {{ qrData.monto }}</div>
+          <div class="qr-payment-hint">Escanee el código con su aplicación bancaria para pagar</div>
+        </div>
+
+        <div class="display-footer q-mt-lg">
+          <div class="footer-left">
+            <q-icon name="verified" size="14px" />
+            Esperando confirmación de pago...
+          </div>
+          <div class="footer-right">{{ currentTime }}</div>
         </div>
       </div>
 
@@ -261,6 +295,13 @@ const clientData = ref({
   nombreRazonSocial: '',
   email: '',
   tipoDocumento: '',
+  visible: false
+})
+
+// Datos del QR de pago (Baneco) generado en caja
+const qrData = ref({
+  qrImage: '',
+  monto: '',
   visible: false
 })
 const showThanks = ref(false)
@@ -545,6 +586,15 @@ function initSocket () {
     }
   })
 
+  // Escuchar datos del QR de pago (Baneco) generado en caja
+  socketConn.on('clienteQrData', (data) => {
+    console.log('Datos de QR recibidos por socket:', data)
+    if (data) {
+      qrData.value = data
+      if (data.visible) resetWatchdog()
+    }
+  })
+
   // Escuchar finalización de venta exitosa
   socketConn.on('clienteSaleComplete', () => {
     console.log('Venta completada con éxito!')
@@ -555,11 +605,6 @@ function initSocket () {
   socketConn.on('clienteDisplayClose', () => {
     console.log('Cierre gracefully solicitado')
     closeGracefully()
-  })
-
-  // Escuchar latido del cajero
-  socketConn.on('clienteDisplayHeartbeat', () => {
-    resetWatchdog()
   })
 }
 
@@ -589,13 +634,16 @@ async function sendStatusHeartbeat () {
   })
 }
 
-// Watchdog para ocultar la tarjeta de cliente si el cajero se desconecta o cierra de golpe
+// Watchdog para ocultar la tarjeta de cliente si el cajero se desconecta o cierra de golpe.
+// Ya no hay heartbeat periódico del front (solo se resetea con cambios reales o un QR
+// recién generado), asi que sirve solo como red de seguridad ante caidas del front,
+// no como mecanismo activo: debe tolerar una espera larga de pago con QR.
 function resetWatchdog () {
   if (watchdogTimer) clearTimeout(watchdogTimer)
   watchdogTimer = setTimeout(() => {
     console.log('Watchdog expirado, cerrando pantalla de cliente por inactividad')
     closeGracefully()
-  }, 10000) // 10 segundos de tolerancia sin heartbeat
+  }, 600000) // 10 minutos de tolerancia sin cambios ni cierre explícito
 }
 
 function closeGracefully () {
@@ -625,6 +673,11 @@ function clearClientState () {
     nombreRazonSocial: '',
     email: '',
     tipoDocumento: '',
+    visible: false
+  }
+  qrData.value = {
+    qrImage: '',
+    monto: '',
     visible: false
   }
 }
@@ -1010,6 +1063,35 @@ onBeforeUnmount(() => {
   font-size: 13px;
   color: #a7c1d6;
   margin-top: 4px;
+}
+
+/* Pago con QR (Baneco) */
+.qr-payment-body {
+  text-align: center;
+  padding: 8px 0 16px;
+}
+
+.qr-payment-image {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+  border-radius: 16px;
+  border: 1px solid rgba(27, 58, 92, 0.1);
+  background: #fff;
+  padding: 8px;
+}
+
+.qr-payment-amount {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1b3a5c;
+  margin-top: 16px;
+}
+
+.qr-payment-hint {
+  font-size: 14px;
+  color: #7da5c4;
+  margin-top: 6px;
 }
 
 /* Footer de pantalla */

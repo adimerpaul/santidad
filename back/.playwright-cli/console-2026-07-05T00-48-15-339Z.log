@@ -1,0 +1,7 @@
+[      31ms] [LOG] [vite] connecting... @ http://localhost:9000/@vite/client:183
+[     339ms] [LOG] [vite] connected. @ http://localhost:9000/@vite/client:211
+[  288265ms] [LOG] [vite] hot updated: /src/pages/SalePage.vue @ http://localhost:9000/@vite/client:463
+[  293442ms] [LOG] [vite] hot updated: /src/pages/SalePage.vue @ http://localhost:9000/@vite/client:463
+[  300556ms] [LOG] [vite] hot updated: /src/pages/SalePage.vue @ http://localhost:9000/@vite/client:463
+[  317405ms] [LOG] [vite] connecting... @ http://localhost:9000/@vite/client:183
+[  317774ms] [LOG] [vite] connected. @ http://localhost:9000/@vite/client:211

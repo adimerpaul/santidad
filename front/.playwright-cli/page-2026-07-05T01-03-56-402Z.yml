@@ -1,0 +1,23 @@
+- main [ref=e5]:
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - img [ref=e9]:
+        - img [ref=e12]
+        - img [ref=e14]
+      - generic [ref=e16]: Bienvenido
+      - generic [ref=e17]: Farmacia Santidad Divina
+    - generic [ref=e19]:
+      - generic [ref=e22]:
+        - generic [ref=e24]: person_outline
+        - generic [ref=e25]:
+          - textbox "Usuario / Email" [ref=e26]
+          - generic: Usuario / Email
+      - generic [ref=e30]:
+        - generic [ref=e32]: lock_outline
+        - generic [ref=e33]:
+          - textbox "Contraseña" [ref=e34]
+          - generic: Contraseña
+        - generic [ref=e36] [cursor=pointer]: visibility
+      - button "INGRESAR AL SISTEMA" [ref=e39] [cursor=pointer]:
+        - generic [ref=e41]: INGRESAR AL SISTEMA
+    - generic [ref=e43]: © 2026 Sistema de Inventario

@@ -31,4 +31,13 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'baneco' => [
+        'base_url' => env('BANECO_BASE_URL', 'https://apimktdesa.baneco.com.bo/ApiGateway'),
+        'aes_key' => env('BANECO_AES_KEY'),
+        'username' => env('BANECO_USERNAME'),
+        'password' => env('BANECO_PASSWORD'),
+        'account_credit' => env('BANECO_ACCOUNT_CREDIT'),
+        'branch_code' => env('BANECO_BRANCH_CODE'),
+    ],
+
 ];

@@ -21,6 +21,7 @@ use App\Http\Controllers\UploadController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\SiatController;
+use App\Http\Controllers\QrPagoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -122,6 +123,10 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('/salesAnular/{id}', [SalesController::class,'salesAnular']);
     Route::get('/salesRevertir/{id}', [SalesController::class,'salesRevertir']);
     Route::post('/salesEnviarPaquete/{id}', [SalesController::class,'salesEnviarPaquete']);
+
+    Route::post('/qr/generar', [QrPagoController::class,'generar']);
+    Route::get('/qr/estado/{qrId}', [QrPagoController::class,'estado']);
+    Route::post('/qr/cancelar', [QrPagoController::class,'cancelar']);
 
     Route::resource('/buys', BuyController::class);
     Route::get('/indexVencidos', [BuyController::class,'indexVencidos']);
