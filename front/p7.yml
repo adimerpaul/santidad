@@ -1,0 +1,503 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - toolbar [ref=e5]:
+      - button "Menu" [ref=e6] [cursor=pointer]:
+        - img [ref=e8]: menu
+      - generic [ref=e10]:
+        - generic [ref=e14]: local_pharmacy
+        - generic [ref=e15]:
+          - generic [ref=e16]: Administrador
+          - generic [ref=e17]:
+            - generic [ref=e18]:
+              - generic [ref=e19]: apartment
+              - generic [ref=e20]: CASA MATRIZ - VELASCO
+            - generic [ref=e21]: v8.0.1
+      - button [ref=e22] [cursor=pointer]:
+        - generic [ref=e23]:
+          - img [ref=e24]: notifications_none
+          - status [ref=e309]: "12"
+      - button [ref=e25] [cursor=pointer]:
+        - img [ref=e27]: logout
+  - complementary [ref=e28]:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e33]: medication
+        - generic [ref=e34]:
+          - generic [ref=e35]: Administrador
+          - generic [ref=e36]: CASA MATRIZ - VELASCO
+      - generic [ref=e37]: Navegación
+      - generic [ref=e38]:
+        - generic [ref=e40]:
+          - button "Ocultar \"Operación\"" [expanded] [ref=e41] [cursor=pointer]:
+            - generic [ref=e43]: point_of_sale
+            - generic [ref=e45]: Operación
+            - generic [ref=e47]: arrow_drop_down
+          - generic [ref=e49]:
+            - listitem [ref=e50] [cursor=pointer]:
+              - generic [ref=e52]: space_dashboard
+              - generic [ref=e54]: Movimientos
+            - listitem [ref=e55] [cursor=pointer]:
+              - generic [ref=e57]: point_of_sale
+              - generic [ref=e59]: Venta
+            - listitem [ref=e60] [cursor=pointer]:
+              - generic [ref=e62]: shopping_bag
+              - generic [ref=e64]: Compras
+            - listitem [ref=e65] [cursor=pointer]:
+              - generic [ref=e67]: assignment
+              - generic [ref=e69]: Pedidos
+            - listitem [ref=e70] [cursor=pointer]:
+              - generic [ref=e72]: history
+              - generic [ref=e74]: Historial de pedidos
+            - listitem [ref=e75] [cursor=pointer]:
+              - generic [ref=e77]: swap_horiz
+              - generic [ref=e79]: Transferencias
+            - listitem [ref=e80] [cursor=pointer]:
+              - generic [ref=e82]: receipt_long
+              - generic [ref=e84]: Facturas
+          - separator [ref=e85]
+          - separator [ref=e86]
+        - generic [ref=e88]:
+          - button "Ocultar \"Inventario\"" [expanded] [ref=e89] [cursor=pointer]:
+            - generic [ref=e91]: inventory_2
+            - generic [ref=e93]: Inventario
+            - generic [ref=e95]: arrow_drop_down
+          - generic [ref=e97]:
+            - listitem [ref=e98] [cursor=pointer]:
+              - generic [ref=e100]: inventory_2
+              - generic [ref=e102]: Productos
+            - listitem [ref=e103] [cursor=pointer]:
+              - generic [ref=e105]: category
+              - generic [ref=e107]: Subcategorías
+            - listitem [ref=e108] [cursor=pointer]:
+              - generic [ref=e110]: straighten
+              - generic [ref=e112]: Unidades
+            - listitem [ref=e113] [cursor=pointer]:
+              - generic [ref=e115]: warning_amber
+              - generic [ref=e117]: Por vencer
+            - listitem [ref=e118] [cursor=pointer]:
+              - generic [ref=e120]: report_gmailerrorred
+              - generic [ref=e122]: Vencidos
+            - listitem [ref=e123] [cursor=pointer]:
+              - generic [ref=e125]: description
+              - generic [ref=e127]: Informes de bajas
+            - listitem [ref=e128] [cursor=pointer]:
+              - generic [ref=e130]: remove_shopping_cart
+              - generic [ref=e132]: Retirados
+          - separator [ref=e133]
+          - separator [ref=e134]
+        - generic [ref=e136]:
+          - button "Ocultar \"Gestión\"" [expanded] [ref=e137] [cursor=pointer]:
+            - generic [ref=e139]: manage_accounts
+            - generic [ref=e141]: Gestión
+            - generic [ref=e143]: arrow_drop_down
+          - generic [ref=e145]:
+            - listitem [ref=e146] [cursor=pointer]:
+              - generic [ref=e148]: groups
+              - generic [ref=e150]: Clientes
+            - listitem [ref=e151] [cursor=pointer]:
+              - generic [ref=e153]: local_shipping
+              - generic [ref=e155]: Proveedores
+            - listitem [ref=e156] [cursor=pointer]:
+              - generic [ref=e158]: badge
+              - generic [ref=e160]: Vendedores
+            - listitem [ref=e161] [cursor=pointer]:
+              - generic [ref=e163]: manage_accounts
+              - generic [ref=e165]: Usuarios
+            - listitem [ref=e166] [cursor=pointer]:
+              - generic [ref=e168]: apartment
+              - generic [ref=e170]: Agencias
+            - listitem [ref=e171] [cursor=pointer]:
+              - generic [ref=e173]: insert_chart
+              - generic [ref=e175]: Reportes
+            - listitem [ref=e176] [cursor=pointer]:
+              - generic [ref=e178]: verified
+              - generic [ref=e180]: SIAT
+            - listitem [ref=e181] [cursor=pointer]:
+              - generic [ref=e183]: view_carousel
+              - generic [ref=e185]: Carousel
+            - listitem [ref=e186] [cursor=pointer]:
+              - generic [ref=e188]: tv
+              - generic [ref=e190]: Publicidad TV
+          - separator [ref=e191]
+          - separator [ref=e192]
+      - listitem [ref=e193] [cursor=pointer]:
+        - generic [ref=e195]: exit_to_app
+        - generic [ref=e197]: Salir
+  - main [ref=e199]:
+    - generic [ref=e200]:
+      - generic [ref=e202]:
+        - generic [ref=e206]:
+          - generic [ref=e208] [cursor=pointer]: search
+          - generic [ref=e209]:
+            - textbox "Buscar producto" [ref=e210]
+            - generic: Buscar producto
+        - generic [ref=e211]:
+          - button "Actualizar" [ref=e212] [cursor=pointer]:
+            - generic [ref=e310]:
+              - img [ref=e311]: refresh
+              - generic [ref=e312]: Actualizar
+          - button "Pedido Online" [ref=e216] [cursor=pointer]:
+            - generic [ref=e217]:
+              - img [ref=e218]: cloud_download
+              - generic [ref=e219]: Pedido Online
+        - generic [ref=e223] [cursor=pointer]:
+          - generic [ref=e225]:
+            - generic [ref=e226]: Ver todas las categorias
+            - combobox "Ver todas las categorias" [ref=e227]
+          - generic [ref=e229]: arrow_drop_down
+        - generic [ref=e233] [cursor=pointer]:
+          - generic [ref=e234]:
+            - combobox "Subcategoria" [ref=e236]
+            - generic: Subcategoria
+          - generic [ref=e238]: arrow_drop_down
+        - generic [ref=e242] [cursor=pointer]:
+          - generic [ref=e243]:
+            - generic [ref=e244]:
+              - generic [ref=e245]: Mayor cantidad
+              - combobox "Ordenar" [ref=e246]: Mayor cantidad
+            - generic: Ordenar
+          - generic [ref=e248]: arrow_drop_down
+        - generic [ref=e252] [cursor=pointer]:
+          - generic [ref=e253]:
+            - generic [ref=e254]:
+              - generic [ref=e255]: CASA MATRIZ - VELASCO
+              - combobox "Agencia" [ref=e256]: CASA MATRIZ - VELASCO
+            - generic: Agencia
+          - generic [ref=e258]: arrow_drop_down
+        - navigation [ref=e260]:
+          - generic [ref=e261]:
+            - button "1" [ref=e313] [cursor=pointer]:
+              - generic [ref=e315]: "1"
+            - generic [ref=e262]:
+              - button "2" [ref=e316] [cursor=pointer]:
+                - generic [ref=e318]: "2"
+              - button "3" [ref=e319] [cursor=pointer]:
+                - generic [ref=e321]: "3"
+              - button "4" [ref=e322] [cursor=pointer]:
+                - generic [ref=e324]: "4"
+              - button "5" [ref=e325] [cursor=pointer]:
+                - generic [ref=e327]: "5"
+            - button "6" [ref=e328] [cursor=pointer]:
+              - generic [ref=e330]: …
+            - button "299" [ref=e331] [cursor=pointer]:
+              - generic [ref=e333]: "299"
+        - generic [ref=e334] [cursor=pointer]:
+          - generic [ref=e336]:
+            - img [ref=e337]:
+              - img [ref=e340]
+              - generic:
+                - status [ref=e341]: 8%
+                - generic [ref=e342]: CURITAS DOCTOR CURE X UNIDAD
+            - generic [ref=e343]:
+              - generic [ref=e344]: 0.21 0.19 (0.02 Bs) Bs
+              - generic [ref=e345]: 1335 Disponible
+              - generic [ref=e346]: "Stock Almacén: 0"
+          - generic [ref=e348]:
+            - img [ref=e349]:
+              - img [ref=e352]
+              - generic:
+                - status [ref=e353]: 8%
+                - generic [ref=e354]: CIPROFAR 500MG X COMP. RECUBIERTO
+            - generic [ref=e355]:
+              - generic [ref=e356]: 3.29 3.03 (0.26 Bs) Bs
+              - generic [ref=e357]: 1041 Disponible
+              - generic [ref=e358]: "Stock Almacén: 0"
+          - generic [ref=e360]:
+            - img [ref=e361]:
+              - img [ref=e364]
+              - generic:
+                - status [ref=e365]: 8%
+                - generic [ref=e366]: MUFLACIS 600 MG X SOBRE
+            - generic [ref=e367]:
+              - generic [ref=e368]: 8.7 8.00 (0.70 Bs) Bs
+              - generic [ref=e369]: 963 Disponible
+              - generic [ref=e370]: "Stock Almacén: 0"
+          - generic [ref=e372]:
+            - img [ref=e373]:
+              - img [ref=e376]
+              - generic:
+                - status [ref=e377]: 8%
+                - generic [ref=e378]: LANCETAS CON TAPA GIRATORIA PRODIGY
+            - generic [ref=e379]:
+              - generic [ref=e380]: 0.8 0.74 (0.06 Bs) Bs
+              - generic [ref=e381]: 744 Disponible
+              - generic [ref=e382]: "Stock Almacén: 0"
+          - generic [ref=e384]:
+            - img [ref=e385]:
+              - img [ref=e388]
+              - generic:
+                - status [ref=e389]: 8%
+                - generic [ref=e390]: LOSARTAN POTASICO 50MG X TABLETA RECUB QM PHARMA
+            - generic [ref=e391]:
+              - generic [ref=e392]: 1 0.92 (0.08 Bs) Bs
+              - generic [ref=e393]: 680 Disponible
+              - generic [ref=e394]: "Stock Almacén: 0"
+          - generic [ref=e396]:
+            - img [ref=e397]:
+              - img [ref=e400]
+              - generic:
+                - status [ref=e401]: 8%
+                - generic [ref=e402]: GASTROXELL/OMEPRAZOL ROXELL 20 MG X CAPSULA
+            - generic [ref=e403]:
+              - generic [ref=e404]: 0.67 0.62 (0.05 Bs) Bs
+              - generic [ref=e405]: 664 Disponible
+              - generic [ref=e406]: "Stock Almacén: 3000"
+          - generic [ref=e408]:
+            - img [ref=e409]:
+              - img [ref=e412]
+              - generic:
+                - status [ref=e413]: 8%
+                - generic [ref=e414]: METOCLOPRAMIDA 10 MG - HAHNEMANN
+            - generic [ref=e415]:
+              - generic [ref=e416]: 1 0.92 (0.08 Bs) Bs
+              - generic [ref=e417]: 662 Disponible
+              - generic [ref=e418]: "Stock Almacén: 0"
+          - generic [ref=e420]:
+            - img [ref=e421]:
+              - img [ref=e424]
+              - generic:
+                - status [ref=e425]: 8%
+                - generic [ref=e426]: BRONCOTOS X COMPRIMIDO
+            - generic [ref=e427]:
+              - generic [ref=e428]: 1 0.92 (0.08 Bs) Bs
+              - generic [ref=e429]: 652 Disponible
+              - generic [ref=e430]: "Stock Almacén: 0"
+          - generic [ref=e432]:
+            - img [ref=e433]:
+              - img [ref=e436]
+              - generic:
+                - status [ref=e437]: 8%
+                - generic [ref=e438]: CLOFENAC 50 MG X COMPRIMIDO
+            - generic [ref=e439]:
+              - generic [ref=e440]: 1.73 1.59 (0.14 Bs) Bs
+              - generic [ref=e441]: 594 Disponible
+              - generic [ref=e442]: "Stock Almacén: 580"
+          - generic [ref=e444]:
+            - img [ref=e445]:
+              - img [ref=e448]
+              - generic:
+                - status [ref=e449]: 8%
+                - generic [ref=e450]: ENALAPRIL MALEATO 10 MG X COMP. - HAHNEMANN
+            - generic [ref=e451]:
+              - generic [ref=e452]: 0.39 0.36 (0.03 Bs) Bs
+              - generic [ref=e453]: 590 Disponible
+              - generic [ref=e454]: "Stock Almacén: 500"
+          - generic [ref=e456]:
+            - img [ref=e457]:
+              - img [ref=e460]
+              - generic:
+                - status [ref=e461]: 8%
+                - generic [ref=e462]: FLAGON/DICLOFENACO 100 MG X TAB - UNICURE
+            - generic [ref=e463]:
+              - generic [ref=e464]: 0.39 0.36 (0.03 Bs) Bs
+              - generic [ref=e465]: 563 Disponible
+              - generic [ref=e466]: "Stock Almacén: 700"
+          - generic [ref=e468]:
+            - img [ref=e469]:
+              - img [ref=e472]
+              - generic:
+                - status [ref=e473]: 8%
+                - generic [ref=e474]: MELOXICAM 15 MG X COMPRIMIDO SANAT
+            - generic [ref=e475]:
+              - generic [ref=e476]: 1.2 1.10 (0.10 Bs) Bs
+              - generic [ref=e477]: 539 Disponible
+              - generic [ref=e478]: "Stock Almacén: 0"
+          - generic [ref=e480]:
+            - img [ref=e481]:
+              - img [ref=e484]
+              - generic:
+                - status [ref=e485]: 8%
+                - generic [ref=e486]: FUROSEMIDA 40 MG X COMP. - HAHNEMANN
+            - generic [ref=e487]:
+              - generic [ref=e488]: 0.53 0.49 (0.04 Bs) Bs
+              - generic [ref=e489]: 532 Disponible
+              - generic [ref=e490]: "Stock Almacén: 0"
+          - generic [ref=e492]:
+            - img [ref=e493]:
+              - img [ref=e496]
+              - generic:
+                - status [ref=e497]: 8%
+                - generic [ref=e498]: COTRIMOXAZOL FORTE SANAT
+            - generic [ref=e499]:
+              - generic [ref=e500]: 1.13 1.04 (0.09 Bs) Bs
+              - generic [ref=e501]: 496 Disponible
+              - generic [ref=e502]: "Stock Almacén: 0"
+          - generic [ref=e504]:
+            - img [ref=e505]:
+              - img [ref=e508]
+              - generic:
+                - status [ref=e509]: 15%
+                - generic [ref=e510]: KETOROX (KETOROLACO 20 MG) X COMP.
+            - generic [ref=e511]:
+              - generic [ref=e512]: 1.99 1.69 (0.30 Bs) Bs
+              - generic [ref=e513]: 494 Disponible
+              - generic [ref=e514]: "Stock Almacén: 0"
+          - generic [ref=e516]:
+            - img [ref=e517]:
+              - img [ref=e520]
+              - generic:
+                - status [ref=e521]: 8%
+                - generic [ref=e522]: DIOXADOL 500 MG X COMP.
+            - generic [ref=e523]:
+              - generic [ref=e524]: 3.68 3.39 (0.29 Bs) Bs
+              - generic [ref=e525]: 493 Disponible
+              - generic [ref=e526]: "Stock Almacén: 0"
+          - generic [ref=e528]:
+            - img [ref=e529]:
+              - img [ref=e532]
+              - generic:
+                - status [ref=e533]: 8%
+                - generic [ref=e534]: UROFAR FUERTE X CAPSULA
+            - generic [ref=e535]:
+              - generic [ref=e536]: 3.68 3.39 (0.29 Bs) Bs
+              - generic [ref=e537]: 485 Disponible
+              - generic [ref=e538]: "Stock Almacén: 400"
+          - generic [ref=e540]:
+            - img [ref=e541]:
+              - img [ref=e544]
+              - generic:
+                - status [ref=e545]: 8%
+                - generic [ref=e546]: COTRIMOXAZOL FORTE X COMP. - SAE
+            - generic [ref=e547]:
+              - generic [ref=e548]: 1.03 0.95 (0.08 Bs) Bs
+              - generic [ref=e549]: 482 Disponible
+              - generic [ref=e550]: "Stock Almacén: 0"
+          - generic [ref=e552]:
+            - img [ref=e553]:
+              - img [ref=e556]
+              - generic:
+                - status [ref=e557]: 8%
+                - generic [ref=e558]: AMOXICILINA 1 GR X COMP COFAR
+            - generic [ref=e559]:
+              - generic [ref=e560]: 2.21 2.03 (0.18 Bs) Bs
+              - generic [ref=e561]: 468 Disponible
+              - generic [ref=e562]: "Stock Almacén: 0"
+          - generic [ref=e564]:
+            - img [ref=e565]:
+              - img [ref=e568]
+              - generic:
+                - status [ref=e569]: 8%
+                - generic [ref=e570]: CIPROFLOXACINA 500MG X COMP - HAHNEMANN
+            - generic [ref=e571]:
+              - generic [ref=e572]: 2.05 1.89 (0.16 Bs) Bs
+              - generic [ref=e573]: 460 Disponible
+              - generic [ref=e574]: "Stock Almacén: 0"
+          - generic [ref=e576]:
+            - img [ref=e577]:
+              - img [ref=e580]
+              - generic:
+                - status [ref=e581]: 8%
+                - generic [ref=e582]: IBUSEC 800 MG - UNICURE
+            - generic [ref=e583]:
+              - generic [ref=e584]: 1 0.92 (0.08 Bs) Bs
+              - generic [ref=e585]: 424 Disponible
+              - generic [ref=e586]: "Stock Almacén: 0"
+          - generic [ref=e588]:
+            - img [ref=e589]:
+              - img [ref=e592]
+              - generic:
+                - status [ref=e593]: 8%
+                - generic [ref=e594]: LOSARTAN 50 MG X COMPRIMIDO - COFAR
+            - generic [ref=e595]:
+              - generic [ref=e596]: 1.63 1.50 (0.13 Bs) Bs
+              - generic [ref=e597]: 419 Disponible
+              - generic [ref=e598]: "Stock Almacén: 0"
+          - generic [ref=e600]:
+            - img [ref=e601]:
+              - img [ref=e604]
+              - generic:
+                - status [ref=e605]: 8%
+                - generic [ref=e606]: AMOXICILINA 500 MG X CAPSULAS DELTA
+            - generic [ref=e607]:
+              - generic [ref=e608]: 1.13 1.04 (0.09 Bs) Bs
+              - generic [ref=e609]: 407 Disponible
+              - generic [ref=e610]: "Stock Almacén: 0"
+          - generic [ref=e612]:
+            - img [ref=e613]:
+              - img [ref=e616]
+              - generic:
+                - status [ref=e617]: 8%
+                - generic [ref=e618]: ASPIRINA X COMPRIMIDO
+            - generic [ref=e619]:
+              - generic [ref=e620]: 0.64 0.59 (0.05 Bs) Bs
+              - generic [ref=e621]: 404 Disponible
+              - generic [ref=e622]: "Stock Almacén: 0"
+          - generic [ref=e624]:
+            - img [ref=e625]:
+              - img [ref=e628]
+              - generic:
+                - status [ref=e629]: 8%
+                - generic [ref=e630]: INDOFAR 25 MG X CAPSULA
+            - generic [ref=e631]:
+              - generic [ref=e632]: 0.73 0.67 (0.06 Bs) Bs
+              - generic [ref=e633]: 402 Disponible
+              - generic [ref=e634]: "Stock Almacén: 0"
+          - generic [ref=e636]:
+            - img [ref=e637]:
+              - img [ref=e640]
+              - generic:
+                - status [ref=e641]: 8%
+                - generic [ref=e642]: NOVADOL 50 MG X CAPSULAS
+            - generic [ref=e643]:
+              - generic [ref=e644]: 4.89 4.50 (0.39 Bs) Bs
+              - generic [ref=e645]: 397 Disponible
+              - generic [ref=e646]: "Stock Almacén: 0"
+          - generic [ref=e648]:
+            - img [ref=e649]:
+              - img [ref=e652]
+              - generic:
+                - status [ref=e653]: 8%
+                - generic [ref=e654]: CARBAMAZEPINA 200 MG X COMP - LCH
+            - generic [ref=e655]:
+              - generic [ref=e656]: 2.04 1.88 (0.16 Bs) Bs
+              - generic [ref=e657]: 394 Disponible
+              - generic [ref=e658]: "Stock Almacén: 0"
+          - generic [ref=e660]:
+            - img [ref=e661]:
+              - img [ref=e664]
+              - generic:
+                - status [ref=e665]: 8%
+                - generic [ref=e666]: BAJA LENGUA ADULTO GOODWOOD
+            - generic [ref=e667]:
+              - generic [ref=e668]: 0.45 0.41 (0.04 Bs) Bs
+              - generic [ref=e669]: 394 Disponible
+              - generic [ref=e670]: "Stock Almacén: 0"
+          - generic [ref=e672]:
+            - img [ref=e673]:
+              - img [ref=e676]
+              - generic:
+                - status [ref=e677]: 8%
+                - generic [ref=e678]: BIOFAR 0.80 MG X COMPRIMIDO
+            - generic [ref=e679]:
+              - generic [ref=e680]: 0.87 0.80 (0.07 Bs) Bs
+              - generic [ref=e681]: 391 Disponible
+              - generic [ref=e682]: "Stock Almacén: 0"
+          - generic [ref=e684]:
+            - img [ref=e685]:
+              - img [ref=e688]
+              - generic:
+                - status [ref=e689]: 8%
+                - generic [ref=e690]: VENDITAS INFANTILES POCOYO DOCTOR CURE
+            - generic [ref=e691]:
+              - generic [ref=e692]: 0.5 0.46 (0.04 Bs) Bs
+              - generic [ref=e693]: 384 Disponible
+              - generic [ref=e694]: "Stock Almacén: 0"
+      - generic [ref=e280]:
+        - generic [ref=e282]:
+          - generic [ref=e283]: Canasta (0)
+          - button "Vaciar canasta" [ref=e285] [cursor=pointer]:
+            - generic [ref=e287]: Vaciar canasta
+        - separator [ref=e288]
+        - generic [ref=e904]:
+          - generic [ref=e905]: shopping_basket
+          - generic [ref=e906]: Aún no tienes productos en tu canasta. Haz clic sobre un producto para agregarlo.
+        - generic [ref=e293]:
+          - generic [ref=e296]:
+            - button "Expandir \"Total\"" [ref=e297] [cursor=pointer]:
+              - generic [ref=e298]: Total
+              - generic [ref=e300]: Bs 0.00
+              - generic [ref=e302]: arrow_drop_down
+            - separator [ref=e303]
+            - separator [ref=e304]
+          - button "Confirmar venta" [disabled] [ref=e305]:
+            - generic [ref=e696]: Confirmar venta

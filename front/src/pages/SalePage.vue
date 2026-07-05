@@ -450,16 +450,17 @@
             </div>
 
             <!-- Pago con QR (Baneco) -->
-            <div v-if="metodoPago === 'Qr'" class="row q-col-gutter-sm q-mt-sm q-pa-sm bg-blue-1 rounded-borders items-center">
+            <div v-if="metodoPago === 'Qr' || (metodoPago === 'Personalizado' && montoQrPersonalizado > 0)"
+                 class="row q-col-gutter-sm q-mt-sm q-pa-sm bg-blue-1 rounded-borders items-center">
               <div class="col-12" v-if="!qrId">
                 <q-btn
                   class="full-width"
                   color="primary"
                   icon="qr_code_2"
                   no-caps
-                  label="Generar QR"
+                  :label="`Generar QR por ${montoParaQr} Bs.`"
                   :loading="qrGenerando"
-                  :disable="parseFloat(totalFinal) <= 0"
+                  :disable="montoParaQr <= 0"
                   @click="generarQr"
                 />
               </div>
@@ -473,7 +474,7 @@
                     Esperando confirmación de pago...
                   </div>
                   <div class="text-caption text-grey-8 q-mb-sm">
-                    El cliente debe escanear el código QR con su app bancaria.
+                    El cliente debe escanear el código QR con su app bancaria para pagar {{ montoParaQr }} Bs.
                   </div>
                   <q-btn
                     color="negative"
@@ -513,7 +514,7 @@
             <div class="row">
               <div class="col-6">
                 <q-btn type="submit" class="full-width" icon="o_add_circle" label="Realizar venta" :loading="loading"
-                       :disable="metodoPago === 'Qr' && !!qrId" no-caps color="green"  />
+                       :disable="!!qrId" no-caps color="green"  />
               </div>
               <div class="col-6">
                 <q-btn class="full-width" icon="undo" v-close-popup label="Atras" no-caps color="red" :loading="loading" />
@@ -629,7 +630,8 @@ export default {
         this.montoEfectivoPersonalizado = parseFloat(this.totalFinal || 0)
         this.montoQrPersonalizado = 0
       }
-      if (oldVal === 'Qr' && val !== 'Qr' && this.qrId) {
+      // El QR generado quedó atado a un monto/modo anterior: se invalida al cambiar
+      if (oldVal !== val && this.qrId) {
         this.cancelarQr()
       }
     },
@@ -736,6 +738,14 @@ export default {
     // Mantener compatibilidad con código existente
     total () {
       return this.totalConDescuentoSistema
+    },
+
+    // Monto a cobrar por QR: el total completo, o solo la parte QR en pago dividido
+    montoParaQr () {
+      if (this.metodoPago === 'Personalizado') {
+        return parseFloat(this.montoQrPersonalizado || 0)
+      }
+      return parseFloat(this.totalFinal || 0)
     }
   },
   methods: {
@@ -783,12 +793,16 @@ export default {
       const total = parseFloat(this.totalFinal || 0)
       const efe = parseFloat(val || 0)
       this.montoQrPersonalizado = Math.max(0, parseFloat((total - efe).toFixed(2)))
+      // El monto del QR cambió: el QR ya generado quedó desactualizado
+      if (this.qrId) this.cancelarQr()
     },
 
     onMontoQrChange (val) {
       const total = parseFloat(this.totalFinal || 0)
       const qr = parseFloat(val || 0)
       this.montoEfectivoPersonalizado = Math.max(0, parseFloat((total - qr).toFixed(2)))
+      // El monto del QR cambió: el QR ya generado quedó desactualizado
+      if (this.qrId) this.cancelarQr()
     },
 
     // Actualizar descuento desde monto fijo
@@ -893,7 +907,7 @@ export default {
 
     // ===== PAGO CON QR (Baneco) =====
     generarQr () {
-      const amount = parseFloat(this.totalFinal)
+      const amount = this.montoParaQr
       if (!amount || amount <= 0) return
 
       this.qrGenerando = true
@@ -933,9 +947,8 @@ export default {
       this.$axios.get(`qr/estado/${this.qrId}`).then(res => {
         const statusQrCode = res.data.statusQrCode
         if (statusQrCode === 1) {
-          // Pagado: la venta se realiza directamente
+          // Pagado: la venta se realiza directamente (metodoPago ya es 'Qr' o 'Personalizado')
           this.detenerPollingQr()
-          this.metodoPago = 'Qr'
           this.saleInsert()
         } else if (statusQrCode === 9) {
           // Anulado (desde el banco o por otro medio)
