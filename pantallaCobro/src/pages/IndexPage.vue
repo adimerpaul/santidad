@@ -242,8 +242,8 @@ const showConfigModal = ref(false)
 const loadingAgencias = ref(false)
 
 const config = ref({
-  serverIp: 'http://192.168.100.2:8000',
-  socketIp: 'http://192.168.100.2:3000',
+  serverIp: process.env.SERVER_IP || 'http://192.168.100.2:8000',
+  socketIp: process.env.SOCKET_IP || 'http://192.168.100.2:3000',
   agencia: null
 })
 

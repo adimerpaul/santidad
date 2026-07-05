@@ -1,6 +1,15 @@
 const { configure } = require('quasar/wrappers')
+const { existsSync } = require('node:fs')
+const path = require('node:path')
+const dotenv = require('dotenv')
 
-module.exports = configure(function (/* ctx */) {
+module.exports = configure(function (ctx) {
+  const envFile = ctx.prod ? '.env.production' : '.env.development'
+  const envPath = path.resolve(__dirname, envFile)
+  if (existsSync(envPath)) {
+    dotenv.config({ path: envPath })
+  }
+
   return {
     // https://legacy-app.quasar.dev/quasar-cli-vite-v2/prefetch-feature
     // preFetch: true,
@@ -44,7 +53,10 @@ module.exports = configure(function (/* ctx */) {
 
       // publicPath: '/',
       // analyze: true,
-      // env: {},
+      env: {
+        SERVER_IP: process.env.SERVER_IP,
+        SOCKET_IP: process.env.SOCKET_IP
+      },
       // rawDefine: {}
       // ignorePublicFolder: true,
       // minify: false,
