@@ -1,6 +1,12 @@
 <?php
 declare(strict_types=1);
 
+// Bundle de certificados raiz (Mozilla/curl.se) incluido junto a este script.
+// Necesario en Windows: PHP no siempre trae un CA bundle configurado en php.ini,
+// lo que provoca "SSL certificate problem: self-signed certificate in certificate chain"
+// al conectar a CUALQUIER sitio HTTPS, no solo a Baneco.
+define('BANECO_CA_CERT', __DIR__ . DIRECTORY_SEPARATOR . 'cacert.pem');
+
 $baseUrl = 'https://apimktdesa.baneco.com.bo/ApiGateway';
 $aesKey = '40A318B299F245C2B697176723088629';
 $plainText = '1234';
@@ -29,6 +35,7 @@ function banecoGet(string $baseUrl, string $path, array $query = []): string
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
         CURLOPT_TIMEOUT => 30,
+        CURLOPT_CAINFO => BANECO_CA_CERT,
     ]);
 
     $response = curl_exec($ch);
@@ -62,6 +69,7 @@ function banecoPost(string $baseUrl, string $path, array $body): array
         CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
         CURLOPT_POSTFIELDS => $payload,
         CURLOPT_TIMEOUT => 30,
+        CURLOPT_CAINFO => BANECO_CA_CERT,
     ]);
 
     $response = curl_exec($ch);
@@ -103,6 +111,7 @@ function banecoPostAuth(string $baseUrl, string $path, array $body, string $toke
         ],
         CURLOPT_POSTFIELDS => $payload,
         CURLOPT_TIMEOUT => 30,
+        CURLOPT_CAINFO => BANECO_CA_CERT,
     ]);
 
     $response = curl_exec($ch);
@@ -137,6 +146,7 @@ function banecoGetAuth(string $baseUrl, string $path, string $token): array
             'Authorization: Bearer ' . $token,
         ],
         CURLOPT_TIMEOUT => 30,
+        CURLOPT_CAINFO => BANECO_CA_CERT,
     ]);
 
     $response = curl_exec($ch);
