@@ -16,8 +16,9 @@ class Pedido extends Model
         'agencia_id', 
         'user_id', 
         'proveedor_id', 
-        'fecha_pedido', 
-        'estado', 
+        'fecha_pedido',
+        'estado',
+        'prioridad',
         'observacion',
         'vendedor_id'
     ];

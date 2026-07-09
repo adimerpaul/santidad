@@ -22,6 +22,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\SiatController;
 use App\Http\Controllers\QrPagoController;
+use App\Http\Controllers\AppMovilController;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,6 +73,12 @@ Route::get('/productsSale', [ProductController::class,'productsSale'])
     ->middleware('throttle:120,1');
 
 Route::get('/publicidad-actual', [App\Http\Controllers\PublicidadController::class, 'publicidadActual']);
+
+// --- App móvil (catálogo público, los pedidos se envían por WhatsApp) ---
+Route::get('/app/config', [AppMovilController::class, 'config'])
+    ->middleware('throttle:120,1');
+Route::get('/app/productos', [AppMovilController::class, 'productos'])
+    ->middleware('throttle:120,1');
 
 
 // --- PROTEGIDAS ---
@@ -187,6 +194,13 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     // Ruta especial para el select del HistorialPedidos (WhatsApp)
     Route::get('vendedores-por-proveedor/{id}', [App\Http\Controllers\VendedorController::class, 'getByProvider']);
 
+
+    // --- App móvil: gestión de pedidos (para uso futuro del panel) ---
+    Route::prefix('app')->group(function () {
+        Route::get('pedidos', [AppMovilController::class, 'pedidos']);
+        Route::post('pedidos', [AppMovilController::class, 'pedidoStore']);
+        Route::post('pedidos/{id}/recuperar', [AppMovilController::class, 'pedidoRecuperar']);
+    });
 
     Route::get('siat/dashboard', [SiatController::class, 'dashboard']);
     Route::get('siat/cuis', [SiatController::class, 'cuisIndex']);
