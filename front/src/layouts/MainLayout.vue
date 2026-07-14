@@ -38,6 +38,29 @@
           </div>
         </q-toolbar-title>
 
+        <!-- Estado de Caja Dinámico y Animado -->
+        <q-btn
+          v-if="cajaStatus"
+          flat
+          dense
+          no-caps
+          :color="cajaStatus === 'ABIERTO' ? 'green-4' : 'red-4'"
+          class="q-mr-sm rounded-borders q-px-sm"
+          style="border: 1px solid rgba(255,255,255,0.15);"
+          @click="clickEstadoCaja"
+        >
+          <div class="row items-center no-wrap">
+            <q-icon :name="cajaStatus === 'ABIERTO' ? 'point_of_sale' : 'lock'" size="16px" class="q-mr-xs" />
+            <span class="text-caption text-weight-bold" style="font-size: 11px;">
+              {{ cajaStatus === 'ABIERTO' ? 'Caja Abierta' : 'Caja Cerrada' }}
+            </span>
+            <span v-if="cajaStatus === 'ABIERTO'" class="pulse-indicator q-ml-xs"></span>
+          </div>
+          <q-tooltip>
+            {{ cajaStatus === 'ABIERTO' ? 'Turno activo. Clic para Cerrar Caja.' : 'Sin turno activo. Clic para Aperturar Caja.' }}
+          </q-tooltip>
+        </q-btn>
+
         <q-btn flat dense round icon="notifications_none" color="grey-3">
           <q-badge v-if="conteoNoLeidas > 0" color="red" floating>
             {{ conteoNoLeidas }}
@@ -202,6 +225,138 @@
       <router-view />
     </q-page-container>
 
+    <!-- Diálogo de Cierre de Caja -->
+    <q-dialog v-model="dialogCierreCaja" persistent @hide="resetCierreDialog">
+      <q-card style="min-width: 360px; max-width: 450px; border-radius: 12px;">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-subtitle1 text-bold text-primary">
+            <q-icon name="point_of_sale" size="24px" class="q-mr-xs"/>
+            Cierre de Caja (Turno)
+          </div>
+          <q-space/>
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pt-md">
+          <div class="bg-blue-grey-1 rounded-borders q-pa-sm q-mb-md">
+            <div class="row q-col-gutter-xs text-caption">
+              <div class="col-6"><b>Sucursal:</b> {{ infoCierre.agencia_nombre }}</div>
+              <div class="col-6"><b>Responsable:</b> {{ infoCierre.responsable }}</div>
+              <div class="col-12"><b>Inicio de Turno (Apertura):</b> {{ formatDate(infoCierre.fecha_apertura) }}</div>
+              <div class="col-12"><b>Fecha/Hora del Cierre:</b> {{ formatDate(infoCierre.fecha_cierre) }}</div>
+            </div>
+          </div>
+
+          <q-form @submit.prevent="guardarCierreCaja">
+            <!-- Solo visible para Admin -->
+            <div v-if="isAdmin && infoCierre" class="q-mb-md q-pa-sm bg-orange-1 border-orange text-orange-9 rounded-borders" style="border: 1px solid #ffe0b2;">
+              <div class="text-bold text-subtitle2 q-mb-xs"><q-icon name="lock" class="q-mr-xs"/>Monto Calculado por Sistema</div>
+              <div class="row text-caption">
+                <div class="col-6">💻 Sistema Efectivo:</div>
+                <div class="col-6 text-bold text-right">{{ infoCierre.monto_sistema_efectivo }} Bs</div>
+                <div class="col-6">📱 Sistema Digital (QR/Otros):</div>
+                <div class="col-6 text-bold text-right">{{ infoCierre.monto_sistema_digital }} Bs</div>
+                <div class="col-12 q-my-xs"><q-separator color="orange-3"/></div>
+                <div class="col-6 text-subtitle2">Total Ventas:</div>
+                <div class="col-6 text-bold text-subtitle2 text-right">{{ infoCierre.monto_sistema_total }} Bs</div>
+              </div>
+            </div>
+
+            <!-- Input Monto Físico en caja -->
+            <q-input
+              v-model.number="formCierre.monto_fisico"
+              outlined
+              label="Efectivo Físico en Caja (Bs.) *"
+              type="number"
+              step="0.01"
+              required
+              class="q-mb-sm"
+              prefix="Bs."
+              :rules="[val => val !== null && val >= 0 || 'El monto físico debe ser mayor o igual a 0']"
+            />
+
+            <!-- Observaciones -->
+            <q-input
+              v-model="formCierre.observaciones"
+              outlined
+              type="textarea"
+              label="Observaciones / Novedades"
+              rows="3"
+              class="q-mb-sm"
+            />
+
+            <div class="text-caption text-red text-center q-mb-sm">
+              <q-icon name="warning" class="q-mr-xs"/>
+              Al guardar el cierre de caja, se cerrará tu sesión automáticamente.
+            </div>
+
+            <div class="row justify-end q-mt-md">
+              <q-btn flat label="Cancelar" color="grey" v-close-popup no-caps />
+              <q-btn unelevated label="Confirmar y Cerrar Caja" color="primary" type="submit" no-caps :loading="loadingCierre" class="q-ml-sm" />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- Diálogo de Apertura de Caja (Iniciar Turno) -->
+    <q-dialog v-model="dialogAperturaCaja" :persistent="!isAdmin">
+      <q-card style="min-width: 360px; max-width: 450px; border-radius: 12px;">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-subtitle1 text-bold text-primary">
+            <q-icon name="meeting_room" size="24px" class="q-mr-xs"/>
+            Apertura de Caja (Iniciar Turno)
+          </div>
+          <q-space/>
+          <q-btn icon="close" flat round dense v-close-popup v-if="isAdmin" />
+          <q-btn icon="logout" color="red-5" flat round dense @click="ejecutarLogout" v-if="!isAdmin">
+            <q-tooltip>Salir / Cerrar Sesión</q-tooltip>
+          </q-btn>
+        </q-card-section>
+
+        <q-card-section class="q-pt-md" v-if="infoApertura">
+          <div class="bg-blue-grey-1 rounded-borders q-pa-sm q-mb-md">
+            <div class="row q-col-gutter-xs text-caption">
+              <div class="col-12"><b>Sucursal:</b> {{ infoApertura.agencia_nombre }}</div>
+              <div class="col-12"><b>Responsable:</b> {{ infoApertura.responsable }}</div>
+              <div class="col-12"><b>Fecha/Hora de Apertura:</b> {{ formatDate(infoApertura.fecha_apertura) }}</div>
+            </div>
+          </div>
+
+          <q-form @submit.prevent="guardarAperturaCaja">
+            <!-- Selector de fecha/hora de apertura editable (por si abrieron minutos antes/después) -->
+            <q-input
+              v-model="formApertura.fecha_apertura"
+              outlined
+              dense
+              type="datetime-local"
+              label="Fecha/Hora de Apertura del Turno"
+              class="q-mb-md"
+              required
+            />
+
+            <!-- Observaciones -->
+            <q-input
+              v-model="formApertura.observaciones_apertura"
+              outlined
+              type="textarea"
+              label="Observaciones de Apertura (opcional)"
+              rows="3"
+              class="q-mb-md"
+            />
+
+            <div class="text-caption text-grey-7 text-center q-mb-md">
+              Para comenzar a realizar ventas y registrar movimientos, debes iniciar el turno de caja.
+            </div>
+
+            <div class="row justify-end q-mt-md">
+              <q-btn unelevated label="Iniciar Turno y Aperturar Caja" color="green" type="submit" no-caps :loading="loadingApertura" class="full-width" />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
     <div id="myElement" style="display: none;" />
   </q-layout>
 </template>
@@ -226,7 +381,37 @@ export default {
         last_page: 1
       },
       notificacionActiva: null,
-      prevNotificaciones: []
+      prevNotificaciones: [],
+      dialogCierreCaja: false,
+      loadingCierre: false,
+      infoCierre: {
+        agencia_nombre: '',
+        responsable: '',
+        fecha_apertura: '',
+        fecha_cierre: '',
+        monto_sistema_efectivo: 0,
+        monto_sistema_digital: 0,
+        monto_sistema_total: 0
+      },
+      formCierre: {
+        monto_fisico: 0,
+        observaciones: ''
+      },
+      dialogAperturaCaja: false,
+      cajaStatus: '',
+      cajaInterval: null,
+      notifInterval: null,
+      forceLogoutTimeout: null,
+      loadingApertura: false,
+      infoApertura: {
+        agencia_nombre: '',
+        responsable: '',
+        fecha_apertura: ''
+      },
+      formApertura: {
+        fecha_apertura: '',
+        observaciones_apertura: ''
+      }
     }
   },
   computed: {
@@ -241,7 +426,8 @@ export default {
         { to: '/pedidos', label: 'Pedidos', icon: 'assignment' },
         { to: '/historial-pedidos', label: 'Historial de pedidos', icon: 'history' },
         { to: '/transferencias', label: 'Transferencias', icon: 'swap_horiz' },
-        { to: '/facturas', label: 'Facturas', icon: 'receipt_long' }
+        { to: '/facturas', label: 'Facturas', icon: 'receipt_long' },
+        { to: '/cierres-caja', label: 'Cierres de Caja', icon: 'lock' }
       ]
 
       const inventario = [
@@ -280,7 +466,22 @@ export default {
   },
   mounted () {
     this.getNotificaciones(1)
-    setInterval(() => this.getNotificaciones(1, true), 120000)
+    this.notifInterval = setInterval(() => this.getNotificaciones(1, true), 120000)
+    this.verificarEstadoCaja()
+    this.cajaInterval = setInterval(() => {
+      this.verificarEstadoCaja()
+    }, 180000)
+  },
+  beforeUnmount () {
+    if (this.cajaInterval) {
+      clearInterval(this.cajaInterval)
+    }
+    if (this.notifInterval) {
+      clearInterval(this.notifInterval)
+    }
+    if (this.forceLogoutTimeout) {
+      clearTimeout(this.forceLogoutTimeout)
+    }
   },
   methods: {
     linkIsActive (item) {
@@ -290,22 +491,73 @@ export default {
       return section.items.some(item => this.linkIsActive(item))
     },
     logout () {
-      this.$q.dialog({
-        message: '¿Quieres cerrar sesión?',
-        title: 'Salir',
-        ok: { push: true },
-        cancel: { push: true, color: 'negative' }
-      }).onOk(() => {
-        this.$q.loading.show()
-        this.$axios.post('logout').then(() => {
-          this.$axios.defaults.headers.common.Authorization = ''
-          this.$store.user = {}
-          localStorage.removeItem('tokenSantidad')
-          localStorage.removeItem('agencia_id')
-          this.$store.isLoggedIn = false
-          this.$q.loading.hide()
-          this.$router.push('/login')
+      if (this.cajaStatus === 'ABIERTO') {
+        this.$q.dialog({
+          title: 'Turno de Caja Activo',
+          message: 'Tienes un turno de caja abierto en esta sucursal. ¿Deseas realizar el Cierre de Caja antes de cerrar sesión?',
+          options: {
+            type: 'radio',
+            model: 'cierre',
+            isValid: val => val !== null,
+            items: [
+              { label: 'Realizar Cierre de Caja y Salir (Recomendado)', value: 'cierre', color: 'green' },
+              { label: 'Solo Cerrar Sesión (Mantener Caja Abierta)', value: 'logout_only', color: 'orange' }
+            ]
+          },
+          cancel: { label: 'Cancelar', color: 'grey', flat: true },
+          persistent: true
+        }).onOk(data => {
+          if (data === 'cierre') {
+            this.abrirModalCierreCaja()
+          } else if (data === 'logout_only') {
+            this.ejecutarLogout()
+          }
         })
+      } else {
+        this.$q.dialog({
+          message: '¿Quieres cerrar sesión?',
+          title: 'Salir',
+          ok: { label: 'Aceptar', color: 'primary' },
+          cancel: { label: 'Cancelar', color: 'negative', flat: true }
+        }).onOk(() => {
+          this.ejecutarLogout()
+        })
+      }
+    },
+    ejecutarLogout () {
+      if (this.cajaInterval) {
+        clearInterval(this.cajaInterval)
+        this.cajaInterval = null
+      }
+      if (this.notifInterval) {
+        clearInterval(this.notifInterval)
+        this.notifInterval = null
+      }
+      if (this.forceLogoutTimeout) {
+        clearTimeout(this.forceLogoutTimeout)
+        this.forceLogoutTimeout = null
+      }
+      this.cajaStatus = ''
+      this.dialogAperturaCaja = false
+      this.dialogCierreCaja = false
+
+      this.$q.loading.show()
+      this.$axios.post('logout').then(() => {
+        this.$axios.defaults.headers.common.Authorization = ''
+        this.$store.user = {}
+        localStorage.removeItem('tokenSantidad')
+        localStorage.removeItem('agencia_id')
+        this.$store.isLoggedIn = false
+        this.$q.loading.hide()
+        this.$router.push('/login')
+      }).catch(() => {
+        this.$axios.defaults.headers.common.Authorization = ''
+        this.$store.user = {}
+        localStorage.removeItem('tokenSantidad')
+        localStorage.removeItem('agencia_id')
+        this.$store.isLoggedIn = false
+        this.$q.loading.hide()
+        this.$router.push('/login')
       })
     },
     getNotificaciones (page = 1, isBackgroundCheck = false) {
@@ -446,6 +698,133 @@ export default {
           })
         }
       })
+    },
+    verificarEstadoCaja () {
+      if (!this.$store.isLoggedIn) return
+      this.$axios.get('cash-closures/current-status').then(res => {
+        const prevStatus = this.cajaStatus
+        this.cajaStatus = res.data.status
+
+        // Dynamic multidevice closing lock:
+        if (prevStatus === 'ABIERTO' && res.data.status === 'CERRADO') {
+          this.dialogAperturaCaja = false
+          this.dialogCierreCaja = false
+
+          if (this.forceLogoutTimeout) {
+            clearTimeout(this.forceLogoutTimeout)
+          }
+
+          this.$q.dialog({
+            title: 'Turno Finalizado',
+            message: 'El turno de caja de esta sucursal ha sido cerrado desde otro dispositivo. Tu sesión se cerrará automáticamente.',
+            persistent: true,
+            ok: { label: 'Entendido', color: 'primary' }
+          }).onDismiss(() => {
+            if (this.forceLogoutTimeout) {
+              clearTimeout(this.forceLogoutTimeout)
+              this.forceLogoutTimeout = null
+            }
+            this.ejecutarLogout()
+          })
+
+          this.forceLogoutTimeout = setTimeout(() => {
+            this.forceLogoutTimeout = null
+            if (this.$store.isLoggedIn) {
+              this.ejecutarLogout()
+            }
+          }, 6000)
+          return
+        }
+
+        if (res.data.status === 'CERRADO') {
+          this.infoApertura = {
+            agencia_nombre: res.data.agencia_nombre,
+            responsable: res.data.responsable,
+            fecha_apertura: res.data.fecha_apertura
+          }
+          this.formApertura.fecha_apertura = res.data.fecha_apertura
+          this.formApertura.observaciones_apertura = ''
+          this.dialogAperturaCaja = true
+        } else {
+          this.dialogAperturaCaja = false
+        }
+      }).catch(err => {
+        console.error('Error al verificar estado de caja:', err)
+      })
+    },
+    guardarAperturaCaja () {
+      this.loadingApertura = true
+      this.$axios.post('cash-closures/open', {
+        fecha_apertura: this.formApertura.fecha_apertura,
+        observaciones_apertura: this.formApertura.observaciones_apertura
+      }).then(() => {
+        this.$alert.success('Caja aperturada con éxito. Turno iniciado.')
+        this.cajaStatus = 'ABIERTO'
+        this.dialogAperturaCaja = false
+      }).catch(err => {
+        this.$alert.error(err.response?.data?.message || 'Error al aperturar caja')
+      }).finally(() => {
+        this.loadingApertura = false
+      })
+    },
+    abrirModalCierreCaja () {
+      this.loadingCierre = true
+      this.$axios.get('cash-closures/current-status').then(res => {
+        this.cajaStatus = res.data.status
+        if (res.data.status === 'CERRADO') {
+          this.$alert.warning('La caja ya se encuentra cerrada.')
+          this.verificarEstadoCaja()
+        } else {
+          this.infoCierre = res.data
+          this.formCierre.monto_fisico = 0
+          this.formCierre.observaciones = ''
+          this.dialogCierreCaja = true
+        }
+      }).catch(err => {
+        this.$alert.error(err.response?.data?.message || 'Error al obtener estado de caja')
+      }).finally(() => {
+        this.loadingCierre = false
+      })
+    },
+    guardarCierreCaja () {
+      if (this.formCierre.monto_fisico === 0) {
+        this.$q.dialog({
+          title: 'Monto Físico en 0 Bs.',
+          message: 'Estás registrando que hay exactamente 0.00 Bs de efectivo en caja. ¿Estás seguro?',
+          ok: { label: 'Sí, estoy seguro', color: 'negative' },
+          cancel: { label: 'Cancelar', color: 'grey', flat: true },
+          persistent: true
+        }).onOk(() => {
+          this.ejecutarCierreCaja()
+        })
+      } else {
+        this.ejecutarCierreCaja()
+      }
+    },
+    ejecutarCierreCaja () {
+      this.loadingCierre = true
+      this.$axios.post('cash-closures/close', this.formCierre).then(() => {
+        this.$alert.success('Cierre de caja registrado con éxito')
+        this.dialogCierreCaja = false
+        this.cajaStatus = 'CERRADO'
+        this.ejecutarLogout()
+      }).catch(err => {
+        this.$alert.error(err.response?.data?.message || 'Error al registrar cierre de caja')
+      }).finally(() => {
+        this.loadingCierre = false
+      })
+    },
+    resetCierreDialog () {
+      this.loadingCierre = false
+      this.formCierre.monto_fisico = 0
+      this.formCierre.observaciones = ''
+    },
+    clickEstadoCaja () {
+      if (this.cajaStatus === 'ABIERTO') {
+        this.abrirModalCierreCaja()
+      } else {
+        this.verificarEstadoCaja()
+      }
     }
   }
 }
@@ -573,5 +952,31 @@ export default {
   background: rgba(244, 67, 54, 0.18) !important;
   color: #ffd5d2 !important;
   min-height: 38px !important;
+}
+
+.pulse-indicator {
+  width: 8px;
+  height: 8px;
+  background-color: #4caf50;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+  box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+  animation: pulse-green 1.8s infinite;
+}
+
+@keyframes pulse-green {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(76, 175, 80, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
 }
 </style>

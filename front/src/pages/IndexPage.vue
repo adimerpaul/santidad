@@ -60,7 +60,8 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-subtitle2 text-grey">Total referencia</q-item-label>
-                <q-item-label class="text-bold text-h6">{{totalGanancias}} Bs</q-item-label>
+                <q-item-label v-if="isAdmin" class="text-bold text-h6">{{totalGanancias}} Bs</q-item-label>
+                <q-item-label v-else class="text-bold text-h6 text-grey-4"><q-icon name="lock" size="18px" class="q-mr-xs"/>Restringido</q-item-label>
               </q-item-section>
             </q-item>
           </q-card-section>
@@ -78,7 +79,8 @@
               </q-item-section>
               <q-item-section>
                 <q-item-label class="text-subtitle2 text-grey">Ventas totales</q-item-label>
-                <q-item-label :class="`text-bold text-h6 text-green`">{{totalIngresos}} Bs</q-item-label>
+                <q-item-label v-if="isAdmin" :class="`text-bold text-h6 text-green`">{{totalIngresos}} Bs</q-item-label>
+                <q-item-label v-else class="text-bold text-h6 text-grey-4"><q-icon name="lock" size="18px" class="q-mr-xs"/>Restringido</q-item-label>
               </q-item-section>
             </q-item>
           </q-card-section>
@@ -96,7 +98,8 @@
                   <div class="text-caption text-weight-bold">
                     <q-icon name="payments" class="q-mr-xs"/>Efectivo
                   </div>
-                  <div class="text-subtitle2 text-weight-bold">{{totalEfectivo}}</div>
+                  <div v-if="isAdmin" class="text-subtitle2 text-weight-bold">{{totalEfectivo}}</div>
+                  <div v-else class="text-subtitle2 text-weight-bold text-grey-4"><q-icon name="lock" size="14px"/></div>
                 </div>
               </div>
 
@@ -105,7 +108,8 @@
                   <div class="text-caption text-weight-bold">
                     <q-icon name="qr_code_2" class="q-mr-xs"/>Digital
                   </div>
-                  <div class="text-subtitle2 text-weight-bold">{{totalDigital}}</div>
+                  <div v-if="isAdmin" class="text-subtitle2 text-weight-bold">{{totalDigital}}</div>
+                  <div v-else class="text-subtitle2 text-weight-bold text-grey-4"><q-icon name="lock" size="14px"/></div>
                 </div>
               </div>
             </div>
@@ -202,8 +206,16 @@
                 </div>
               </q-td>
               <q-td key="montoTotal" :props="props">
-                <span class="text-grey">{{ (props.row.montoTotal).toFixed(2) }} Bs</span>
-                <span v-if="props.row.descuento > 0" class="text-red-7 text-bold"> - {{ props.row.descuento.toFixed(2) }} Bs</span>
+                <template v-if="isAdmin">
+                  <span class="text-grey">{{ (props.row.montoTotal).toFixed(2) }} Bs</span>
+                  <span v-if="props.row.descuento > 0" class="text-red-7 text-bold"> - {{ props.row.descuento.toFixed(2) }} Bs</span>
+                </template>
+                <template v-else>
+                  <span class="text-grey-4">---</span>
+                  <q-badge v-if="props.row.descuento > 0" color="orange-8" text-color="white" class="q-ml-xs" style="font-size:10px;">
+                    <q-icon name="sell" size="12px" class="q-mr-xs"/>-{{ props.row.descuento.toFixed(2) }} Bs
+                  </q-badge>
+                </template>
               </q-td>
               <q-td key="agencia" :props="props" class="text-grey">
                 <div class="text-caption" style="width: 100px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">{{ props.row.agencia?.nombre }}</div>
@@ -338,8 +350,8 @@
                 <tr>
                   <th>Producto</th>
                   <th>Cantidad</th>
-                  <th>Precio unitario</th>
-                  <th>Subtotal</th>
+                  <th v-if="isAdmin">Precio unitario</th>
+                  <th v-if="isAdmin">Subtotal</th>
                 </tr>
               </thead>
               <tbody>
@@ -353,14 +365,21 @@
                   <td>
                     <q-input v-model="detail.cantidad" dense outlined type="number" style="width: 70px;"/>
                   </td>
-                  <td>{{detail.precioUnitario}}</td>
-                  <td>
+                  <td v-if="isAdmin">{{detail.precioUnitario}}</td>
+                  <td v-if="isAdmin">
                     {{detail.cantidad*detail.precioUnitario}}
                   </td>
                 </tr>
-              <tr>
+              <tr v-if="isAdmin">
                 <td colspan="3" class="text-right">Total</td>
                 <td>{{montoTotalUpdate}}</td>
+              </tr>
+              <tr v-else-if="saleUpate.descuento > 0">
+                <td colspan="2" class="text-right">
+                  <q-badge color="orange-8" text-color="white" style="font-size: 12px; padding: 4px 10px;">
+                    <q-icon name="sell" size="14px" class="q-mr-xs"/>Descuento: {{ saleUpate.descuento.toFixed(2) }} Bs
+                  </q-badge>
+                </td>
               </tr>
               </tbody>
             </q-markup-table>
@@ -645,6 +664,9 @@ export default {
           return a
         }, 0)
       return Math.round(monto * 100) / 100
+    },
+    isAdmin () {
+      return String(this.$store.user?.id) === '1'
     }
   }
 }

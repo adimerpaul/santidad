@@ -156,7 +156,7 @@ class WithdrawalReportController extends Controller
                 }
 
                 if ($item->estado === 'ACEPTADO' || $item->estado === 'SUBSANADO') {
-                    $product = $item->product;
+                    $product = Product::lockForUpdate()->findOrFail($item->product_id);
                     $actualAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
 
                     if (!$this->hasEnoughStock($product, $actualAgenciaId, $item->cantidad)) {
@@ -215,21 +215,23 @@ class WithdrawalReportController extends Controller
         $report = WithdrawalReport::findOrFail($id);
         $user = auth()->user();
 
-        if ($user->id !== 1 && $report->agencia_id !== $user->agencia_id) {
-            return response()->json(['message' => 'No tiene permiso para eliminar este informe.'], 403);
+        if ($user->id !== 1 && $report->estado !== 'ABIERTO' && $report->estado !== 'OBSERVADO') {
+            return response()->json(['message' => 'No se puede eliminar un informe que ya ha sido enviado para revisión.'], 403);
         }
-        
+
         if ($report->estado === 'REVISADO' && $user->id !== 1) {
             return response()->json(['message' => 'Solo el administrador puede eliminar informes revisados.'], 403);
         }
-        
+
         DB::beginTransaction();
         try {
             if ($report->estado === 'REVISADO') {
                 foreach ($report->items as $item) {
-                    $actualAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
-                    // To restore, we subtract the amount (reversing addition/withdrawal)
-                    $this->updateStock($item->product, $actualAgenciaId, -$item->cantidad);
+                    if ($item->estado === 'ACEPTADO' || $item->estado === 'SUBSANADO') {
+                        $product = Product::lockForUpdate()->findOrFail($item->product_id);
+                        $actualAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
+                        $this->updateStock($product, $actualAgenciaId, -$item->cantidad);
+                    }
                 }
             }
             
@@ -282,11 +284,43 @@ class WithdrawalReportController extends Controller
             return response()->json(['message' => 'Este lote/compra ya se encuentra registrado en el informe. Edite el registro existente si desea modificar la cantidad.'], 422);
         }
 
-        $product = $buy->product;
-        $actualAgenciaId = $request->agencia_id ?? ($buy->agencia_id ?? 0);
+        // Security check: restrict non-admins from modifying other branches' stocks
+        if ($user->id !== 1) {
+            if ($user->agencia_id == 1) {
+                if ($request->has('agencia_id')) {
+                    $selected = $request->agencia_id;
+                    if ($selected != 1 && $selected != 0 && $selected !== null) {
+                        return response()->json(['message' => 'No tiene permiso para seleccionar esta sucursal.'], 403);
+                    }
+                }
+            } else {
+                if ($request->has('agencia_id') && $request->agencia_id != $user->agencia_id) {
+                    return response()->json(['message' => 'No tiene permiso para seleccionar otra sucursal.'], 403);
+                }
+            }
+        }
+
+        // Determine target agency id
+        if ($request->has('agencia_id')) {
+            $reqAgenciaId = $request->agencia_id;
+            if ($reqAgenciaId === 0 || $reqAgenciaId === '0') {
+                $reqAgenciaId = null;
+            }
+            $actualAgenciaId = $reqAgenciaId ?? 0;
+        } else {
+            $reqAgenciaId = $report->agencia_id;
+            $actualAgenciaId = $report->agencia_id;
+        }
 
         $cantidad = $request->cantidad;
-        if ($report->tipo !== 'CONTEO FISICO') {
+        if ($report->tipo === 'CONTEO FISICO') {
+            if ($request->has('conteo_fisico') && $request->has('stock_sistema')) {
+                $expectedCantidad = (int)$request->conteo_fisico - (int)$request->stock_sistema;
+                if ((int)$cantidad !== $expectedCantidad) {
+                    return response()->json(['message' => 'La cantidad debe ser la diferencia entre el conteo físico y el stock del sistema.'], 422);
+                }
+            }
+        } else {
             $cantidad = -abs($cantidad);
         }
 
@@ -298,7 +332,7 @@ class WithdrawalReportController extends Controller
             'withdrawal_report_id' => $report->id,
             'buy_id' => $buy->id,
             'product_id' => $buy->product_id,
-            'agencia_id' => $request->agencia_id,
+            'agencia_id' => $reqAgenciaId,
             'cantidad' => $cantidad,
             'stock_sistema' => $request->stock_sistema,
             'conteo_fisico' => $request->conteo_fisico,
@@ -337,6 +371,31 @@ class WithdrawalReportController extends Controller
             'lote' => 'nullable|string',
         ]);
 
+        if ($request->cantidad == 0) {
+            return response()->json(['message' => 'La cantidad no puede ser cero.'], 422);
+        }
+
+        $newAgenciaId = $item->agencia_id;
+        if ($request->has('agencia_id')) {
+            $newAgenciaId = $request->agencia_id;
+            if ($newAgenciaId === 0 || $newAgenciaId === '0') {
+                $newAgenciaId = null;
+            }
+        }
+
+        // Security check: restrict non-admins from modifying other branches' stocks
+        if ($user->id !== 1) {
+            if ($user->agencia_id == 1) {
+                if ($newAgenciaId !== null && $newAgenciaId != 1) {
+                    return response()->json(['message' => 'No tiene permiso para seleccionar esta sucursal.'], 403);
+                }
+            } else {
+                if ($newAgenciaId != $user->agencia_id) {
+                    return response()->json(['message' => 'No tiene permiso para seleccionar otra sucursal.'], 403);
+                }
+            }
+        }
+
         DB::beginTransaction();
         try {
             $this->trackChanges($item, $request);
@@ -349,17 +408,27 @@ class WithdrawalReportController extends Controller
             }
 
             $cantidad = $request->cantidad;
-            if ($report->tipo !== 'CONTEO FISICO') {
+            if ($report->tipo === 'CONTEO FISICO') {
+                $conteo = $request->has('conteo_fisico') ? $request->conteo_fisico : $item->conteo_fisico;
+                $sistema = $request->has('stock_sistema') ? $request->stock_sistema : $item->stock_sistema;
+                if ($conteo !== null && $sistema !== null) {
+                    $expectedCantidad = (int)$conteo - (int)$sistema;
+                    if ((int)$cantidad !== $expectedCantidad) {
+                        return response()->json(['message' => 'La cantidad debe ser la diferencia entre el conteo físico y el stock del sistema.'], 422);
+                    }
+                }
+            } else {
                 $cantidad = -abs($cantidad);
             }
 
-            $updateFields = ['tipo', 'agencia_id', 'admin_descripcion', 'stock_sistema', 'conteo_fisico'];
+            $updateFields = ['tipo', 'admin_descripcion', 'stock_sistema', 'conteo_fisico'];
             if ($user->id === 1) {
                 $updateFields[] = 'estado';
                 $updateFields[] = 'prorroga_hasta';
             }
 
             $updateData = $request->only($updateFields);
+            $updateData['agencia_id'] = $newAgenciaId;
             $updateData['cantidad'] = $cantidad;
             if ($user->id !== 1) {
                 $updateData['user_id'] = $user->id;
@@ -367,7 +436,7 @@ class WithdrawalReportController extends Controller
 
             // Stock validation for normal reports
             if ($report->tipo !== 'CONTEO FISICO') {
-                $actualAgenciaId = $request->agencia_id ?? ($item->agencia_id ?? ($item->buy->agencia_id ?? 0));
+                $actualAgenciaId = $newAgenciaId ?? ($item->buy->agencia_id ?? 0);
                 $product = Product::findOrFail($item->product_id);
                 if (!$this->hasEnoughStock($product, $actualAgenciaId, $cantidad)) {
                     return response()->json(['message' => 'Stock insuficiente en la sucursal seleccionada.'], 422);
@@ -386,16 +455,16 @@ class WithdrawalReportController extends Controller
 
             if ($report->estado === 'REVISADO') {
                 $oldAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
-                $this->updateStock($item->product, $oldAgenciaId, -$item->cantidad);
+                $product = Product::lockForUpdate()->findOrFail($item->product_id);
+                $this->updateStock($product, $oldAgenciaId, -$item->cantidad);
 
-                $newAgenciaId = $request->agencia_id;
-                $product = Product::findOrFail($item->product_id);
-                if (!$this->hasEnoughStock($product, $newAgenciaId, $cantidad)) {
+                $newAgenciaStockId = $newAgenciaId ?? ($item->buy->agencia_id ?? 0);
+                if (!$this->hasEnoughStock($product, $newAgenciaStockId, $cantidad)) {
                      throw new \Exception("Stock insuficiente en la nueva sucursal seleccionada.");
                 }
 
                 $item->update($updateData);
-                $this->updateStock($product, $newAgenciaId, $item->cantidad);
+                $this->updateStock($product, $newAgenciaStockId, $item->cantidad);
             } else {
                 $item->update($updateData);
             }
@@ -460,7 +529,9 @@ class WithdrawalReportController extends Controller
 
     private function getAgenciaStockField($agenciaId)
     {
-        if ($agenciaId == 0) return 'cantidadAlmacen';
+        if ($agenciaId === 0 || $agenciaId === '0' || $agenciaId === null) {
+            return 'cantidadAlmacen';
+        }
         return 'cantidadSucursal' . $agenciaId;
     }
 
@@ -470,8 +541,30 @@ class WithdrawalReportController extends Controller
         $user = $request->user();
         
         $agencia_id = $request->input('agencia_id');
-        if ($user->id !== 1) {
-            $agencia_id = $user->agencia_id;
+        $report_id = $request->input('report_id');
+
+        if ($user->id !== 1 && $report_id) {
+            $report = WithdrawalReport::find($report_id);
+            if ($report) {
+                $isMonthly = in_array($report->tipo, [
+                    'VENCIMIENTO', 'DEVOLUCION', 'VENCIMIENTO/DEVOLUCION', 'VENCIDOS/DEVOLUCIONES'
+                ]);
+
+                if ($isMonthly) {
+                    if ($user->agencia_id !== 1) {
+                        $agencia_id = $user->agencia_id;
+                    }
+                } else {
+                    // In Conteo Físico, respect request's agencia_id if present (could be null for all branches, or other branch ID)
+                    if (!$request->has('agencia_id')) {
+                        $agencia_id = $user->agencia_id;
+                    }
+                }
+            }
+        }
+
+        if ($agencia_id === 'all') {
+            $agencia_id = null;
         }
 
         $limit_lotes = $request->input('limit_lotes', '7');
@@ -524,28 +617,15 @@ class WithdrawalReportController extends Controller
             $limitValue = intval($limit_lotes);
             if ($limitValue <= 0) $limitValue = 3;
 
-            // Get all matching product IDs
-            $productIds = (clone $queryBuilder)->distinct()->pluck('product_id')->toArray();
-            
-            // For each product, get only the latest N buy IDs
-            $buyIds = [];
-            foreach ($productIds as $productId) {
-                $latestBuyIds = Buy::where('product_id', $productId)
-                    ->where(function($q) use ($agencia_id) {
-                        if ($agencia_id !== null && $agencia_id !== '') {
-                            if ($agencia_id == 1) {
-                                $q->where('agencia_id', 1)->orWhereNull('agencia_id');
-                            } else {
-                                $q->where('agencia_id', $agencia_id);
-                            }
-                        }
-                    })
-                    ->orderBy('id', 'desc')
-                    ->limit($limitValue)
-                    ->pluck('id')
-                    ->toArray();
-                $buyIds = array_merge($buyIds, $latestBuyIds);
-            }
+            // Retrieve the latest N buy IDs in a single query using window functions
+            $subQuery = (clone $queryBuilder)
+                ->select('id', DB::raw('ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY id DESC) as rn'));
+
+            $buyIds = DB::table(DB::raw("({$subQuery->toSql()}) as temp"))
+                ->mergeBindings($subQuery->getQuery())
+                ->where('rn', '<=', $limitValue)
+                ->pluck('id')
+                ->toArray();
 
             // Return only those buys, sorted by dateExpiry ascending
             return Buy::with(['product', 'proveedor', 'agencia', 'user'])

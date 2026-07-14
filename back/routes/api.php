@@ -23,6 +23,7 @@ use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\SiatController;
 use App\Http\Controllers\QrPagoController;
 use App\Http\Controllers\AppMovilController;
+use App\Http\Controllers\CashClosureController;
 
 /*
 |--------------------------------------------------------------------------
@@ -91,6 +92,13 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/logout', [UserController::class,'logout']);
 
     Route::resource('/user', UserController::class);
+
+    // Cash Closures
+    Route::get('/cash-closures/current-status', [CashClosureController::class, 'currentStatus']);
+    Route::get('/cash-closures/gaps', [CashClosureController::class, 'gaps']);
+    Route::post('/cash-closures/open', [CashClosureController::class, 'open']);
+    Route::post('/cash-closures/close', [CashClosureController::class, 'close']);
+    Route::apiResource('/cash-closures', CashClosureController::class)->only(['index']);
 
     // Categories: escritura protegida (index/show ya públicos)
     Route::resource('/categories', CategoryController::class)->except(['index','show']);

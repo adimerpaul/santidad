@@ -184,7 +184,12 @@
                        :columns="columnsProductosVenta"
                        :rows-per-page-options="[0]">
                 <template v-slot:body="props">
-                  <q-tr :props="props">
+                  <q-tr :props="props"
+                        :class="{
+                          'destino-row-almacen': isSucursal1User && props.row.agencia_destino === 0,
+                          'destino-row-sucursal': isSucursal1User && props.row.agencia_destino === 1,
+                          'destino-row-override': isSucursal1User && props.row.agencia_destino !== agencia_id
+                        }">
                     <q-td key="borrar" :props="props" style="padding: 0px;margin: 0px" auto-width>
                       <q-btn flat dense @click="deleteProductosVenta(props.row,props.pageIndex)"
                              icon="delete" color="red" size="10px" class="q-pa-none q-ma-none" />
@@ -199,6 +204,23 @@
                           <div class="text-caption" style="max-width:170px; white-space:normal; overflow-wrap:break-word; line-height:.9;">
                             {{props.row.nombre}}
                           </div>
+                          <!-- Toggle destino debajo del nombre -->
+                          <div v-if="isSucursal1User" class="q-mt-xs">
+                            <q-btn-toggle
+                              v-model="props.row.agencia_destino"
+                              dense
+                              no-caps
+                              rounded
+                              unelevated
+                              toggle-color="primary"
+                              size="xs"
+                              class="destino-btn-toggle"
+                              :options="[
+                                { label: '📦 Almacén', value: 0 },
+                                { label: '🏪 Sucursal', value: 1 }
+                              ]"
+                            />
+                          </div>
                         </div>
                       </div>
                     </q-td>
@@ -207,7 +229,6 @@
                       <div class="td-venta">
                         <input v-model="props.row.lote" placeholder="Lote" style="width: 170px;"/><br>
 
-                        <!-- Fila del input de fecha con el texto a la DERECHA (sin empujar nada) -->
                         <div class="date-row">
                           <input type="date"
                                  v-model="props.row.fechaVencimiento"
@@ -236,7 +257,6 @@
 
                         <div><b>Subtotal:</b> {{(props.row.price*props.row.cantidadCompra).toFixed(2)}} Bs</div>
 
-                        <!-- Alerta debajo del Subtotal: SOLO tras modificar la fecha -->
                         <q-badge
                           v-if="props.row._tocoFecha && esCortoVencimiento(props.row.fechaVencimiento)"
                           class="alert-under-subtotal q-mt-xs"
@@ -264,7 +284,7 @@
                   <div class="col-4 text-grey flex flex-center">Agencia</div>
                   <div class="col-8 text-right">
                     <q-select class="bg-white" dense outlined v-model="agencia_id"
-                              :options="agencias" map-options emit-value
+                              :options="agenciasDestino" map-options emit-value
                               option-value="id" option-label="nombre"
                               :disable="!($store.user?.agencia_id==1)"/>
                   </div>
@@ -708,7 +728,8 @@ export default {
               fechaVencimiento: p.fechaVencimiento,
               cantidadCompra: p.cantidadCompra,
               price: p.price,
-              nombre: p.nombre
+              nombre: p.nombre,
+              agencia_destino: p.agencia_destino !== undefined ? p.agencia_destino : this.agencia_id
             })),
             factura: this.factura,
             agencia_id: this.agencia_id,
@@ -882,7 +903,8 @@ export default {
         _precioError: false,
         _tocoFecha: false,
         price: product.precioVenta,
-        cantidadReal: product.cantidad
+        cantidadReal: product.cantidad,
+        agencia_destino: this.agencia_id
       })
       // Actualizar total de factura
       this.calcularTotalFactura()
@@ -1023,7 +1045,8 @@ export default {
                   _precioError: false,
                   _tocoFecha: false,
                   price: productoInfo.precio,
-                  cantidadReal: productoInfo.cantidad
+                  cantidadReal: productoInfo.cantidad,
+                  agencia_destino: this.agencia_id
                 })
               }
               productosAgregados++
@@ -1106,6 +1129,18 @@ export default {
     }
   },
   computed: {
+    isSucursal1User () {
+      return String(this.$store.user?.agencia_id) === '1' || String(this.$store.user?.id) === '1'
+    },
+    agenciasDestino () {
+      if (this.isSucursal1User) {
+        return [
+          { nombre: 'Almacen', id: 0 },
+          { nombre: 'Casa Matriz Velasco', id: 1 }
+        ]
+      }
+      return this.agencias
+    },
     nombreProveedorActual () {
       if (!this.facturaData.proveedor_id) return ''
       const prov = this.proveedoresAll.find(p => p.id === this.facturaData.proveedor_id)
@@ -1159,6 +1194,13 @@ export default {
           this.facturaData.proveedor = proveedor.nombreRazonSocial
           this.facturaData.proveedor_id = newVal
         }
+      }
+    },
+    agencia_id (newVal) {
+      if (this.isSucursal1User) {
+        this.$store.productosCompra.forEach(p => {
+          p.agencia_destino = newVal
+        })
       }
     },
     '$store.productosCompra': {
@@ -1216,5 +1258,44 @@ input[type="number"].invalid-date {
   padding: 4px 10px;
   border-radius: 9999px;
   box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+
+/* Colores y bordes indicadores para las filas del carrito según destino */
+.destino-row-almacen td {
+  background-color: #f0f7ff !important; /* Celeste suave */
+}
+
+.destino-row-sucursal td {
+  background-color: #f2faf3 !important; /* Verde suave */
+}
+
+.destino-row-override td {
+  background-color: #fff9e6 !important; /* Ámbar/Amarillo suave para destacar diferencia */
+}
+
+/* Indicador grueso a la izquierda en la primera celda de la fila */
+.destino-row-almacen td:first-child {
+  border-left: 4px solid #1976d2 !important;
+}
+
+.destino-row-sucursal td:first-child {
+  border-left: 4px solid #2e7d32 !important;
+}
+
+.destino-row-override td:first-child {
+  border-left: 5px solid #ef6c00 !important;
+}
+
+.destino-btn-toggle {
+  border: 1px solid #e0e0e0;
+  border-radius: 20px !important;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+.destino-btn-toggle .q-btn {
+  font-size: 10px !important;
+  padding: 2px 8px !important;
+  min-height: 22px !important;
 }
 </style>

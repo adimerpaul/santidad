@@ -305,7 +305,8 @@ class BuyController extends Controller{
                 $buyNew->price = $buy['price'];
                 $buyNew->total = $buy['cantidadCompra'] * $buy['price'];
                 $buyNew->dateExpiry = $buy['fechaVencimiento'];
-                $buyNew->agencia_id = $request->agencia_id == 0 ? null : $request->agencia_id;
+                $itemDestino = isset($buy['agencia_destino']) ? $buy['agencia_destino'] : $request->agencia_id;
+                $buyNew->agencia_id = ($itemDestino == 0) ? null : $itemDestino;
                 $buyNew->factura = isset($request->factura) ? $request->factura : 0;
                 $buyNew->date = date("Y-m-d");
                 $buyNew->time = date("H:i:s");
@@ -318,27 +319,30 @@ class BuyController extends Controller{
                 $product = Product::find($buy['id']);
                 $product->cantidad = $product->cantidad + $buy['cantidadCompra'];
 
-                if ($request->agencia_id == 0) {
+                // Determinar destino efectivo: per-item o global
+                $destinoEfectivo = isset($buy['agencia_destino']) ? $buy['agencia_destino'] : $request->agencia_id;
+
+                if ($destinoEfectivo == 0 || $destinoEfectivo === null) {
                     $product->cantidadAlmacen = $product->cantidadAlmacen + $buy['cantidadCompra'];
-                } elseif ($request->agencia_id == 1) {
+                } elseif ($destinoEfectivo == 1) {
                     $product->cantidadSucursal1 = $product->cantidadSucursal1 + $buy['cantidadCompra'];
-                } elseif ($request->agencia_id == 2) {
+                } elseif ($destinoEfectivo == 2) {
                     $product->cantidadSucursal2 = $product->cantidadSucursal2 + $buy['cantidadCompra'];
-                } elseif ($request->agencia_id == 3) {
+                } elseif ($destinoEfectivo == 3) {
                     $product->cantidadSucursal3 = $product->cantidadSucursal3 + $buy['cantidadCompra'];
-                } elseif ($request->agencia_id == 4) {
+                } elseif ($destinoEfectivo == 4) {
                     $product->cantidadSucursal4 = $product->cantidadSucursal4 + $buy['cantidadCompra'];
-                } elseif ($request->agencia_id == 5) {
+                } elseif ($destinoEfectivo == 5) {
                     $product->cantidadSucursal5 = $product->cantidadSucursal5 + $buy['cantidadCompra'];
-                } elseif ($request->agencia_id == 6) {
+                } elseif ($destinoEfectivo == 6) {
                     $product->cantidadSucursal6 = $product->cantidadSucursal6 + $buy['cantidadCompra'];
-                } elseif ($request->agencia_id == 7) {
+                } elseif ($destinoEfectivo == 7) {
                     $product->cantidadSucursal7 = $product->cantidadSucursal7 + $buy['cantidadCompra'];
-                } elseif ($request->agencia_id == 8) {
+                } elseif ($destinoEfectivo == 8) {
                     $product->cantidadSucursal8 = $product->cantidadSucursal8 + $buy['cantidadCompra'];
-                } elseif ($request->agencia_id == 9) {
+                } elseif ($destinoEfectivo == 9) {
                     $product->cantidadSucursal9 = $product->cantidadSucursal9 + $buy['cantidadCompra'];
-                } elseif ($request->agencia_id == 10) {
+                } elseif ($destinoEfectivo == 10) {
                     $product->cantidadSucursal10 = $product->cantidadSucursal10 + $buy['cantidadCompra'];
                 }
 

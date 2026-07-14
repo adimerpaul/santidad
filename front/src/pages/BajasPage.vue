@@ -56,7 +56,7 @@
               use-chips
               clearable
               @update:model-value="fetchData"
-              :disable="String($store.user?.id) !== '1' && String($store.user?.agencia_id) !== '1'"
+              :disable="isAgenciaFilterDisabled"
             >
               <template v-slot:prepend>
                 <q-icon name="apartment" />
@@ -610,23 +610,67 @@ export default {
     },
     isCentralOrAdmin () {
       return String(this.$store.user?.id) === '1' || String(this.$store.user?.agencia_id) === '1'
+    },
+    isAgenciaFilterDisabled () {
+      const userId = String(this.$store.user?.id)
+      const userAgenciaId = String(this.$store.user?.agencia_id)
+
+      if (userId === '1') return false
+
+      if (userAgenciaId === '1') {
+        return this.tab !== 'devoluciones_central'
+      }
+
+      return true
+    }
+  },
+  watch: {
+    '$store.user': {
+      handler (newUser) {
+        if (newUser && newUser.id) {
+          this.applyUserSessionRules()
+        }
+      },
+      deep: true
     }
   },
   created () {
     this.getAgencias()
-    this.fetchData()
+    if (this.$store.user && this.$store.user.id) {
+      this.applyUserSessionRules()
+    }
   },
   methods: {
+    applyUserSessionRules () {
+      if (this.$store && this.$store.user && this.$store.user.id) {
+        const userId = String(this.$store.user.id)
+        const userAgenciaId = String(this.$store.user.agencia_id)
+
+        if (userId !== '1') {
+          if (userAgenciaId === '1') {
+            if (this.tab === 'devoluciones_central') {
+              this.filter.agencia_id = []
+            } else {
+              this.filter.agencia_id = [1]
+            }
+          } else {
+            this.filter.agencia_id = [this.$store.user.agencia_id]
+          }
+        } else {
+          this.filter.agencia_id = []
+        }
+        this.fetchData()
+      }
+    },
     getAgencias () {
       this.$axios.get('agencias').then(res => {
-        this.agencias = [{ id: null, nombre: 'Todas las sucursales' }, ...res.data]
+        this.agencias = res.data
         if (this.$store && this.$store.user && this.$store.user.agencia_id) {
           this.newReport.agencia_id = this.$store.user.agencia_id
-          if (String(this.$store.user.id) !== '1' && String(this.$store.user.agencia_id) !== '1') {
-            this.filter.agencia_id = [this.$store.user.agencia_id]
-            this.fetchData()
-          }
         }
+      }).catch(err => {
+        console.error('Error al cargar agencias:', err)
+        this.$q.notify({ color: 'negative', message: 'Error al cargar el listado de sucursales' })
       })
     },
     getReportRowClass (row) {
@@ -634,7 +678,32 @@ export default {
       return ''
     },
     fetchData () {
+      this.pagination.page = 1
+      this.paginationProductos.page = 1
+      this.paginationDevoluciones.page = 1
+
       localStorage.setItem('bajas_active_tab', this.tab)
+
+      if (this.$store && this.$store.user) {
+        const userId = String(this.$store.user.id)
+        const userAgenciaId = String(this.$store.user.agencia_id)
+
+        if (userId !== '1') {
+          if (userAgenciaId === '1') {
+            if (this.tab === 'devoluciones_central') {
+              if (this._lastTab !== 'devoluciones_central') {
+                this.filter.agencia_id = []
+              }
+            } else {
+              this.filter.agencia_id = [1]
+            }
+          } else {
+            this.filter.agencia_id = [this.$store.user.agencia_id]
+          }
+        }
+      }
+      this._lastTab = this.tab
+
       if (this.tab === 'devoluciones_central') {
         this.getDevoluciones()
       } else if (this.tab === 'informes' || this.tab === 'inventario' || this.tab === 'motivos_sanitarios') {
@@ -749,6 +818,7 @@ export default {
       }
     },
     createControlInventario () {
+      if (this.loading) return
       this.loading = true
       const userAgenciaId = this.$store?.user?.agencia_id
       const payload = {
@@ -791,6 +861,7 @@ export default {
       this.showCreateDialog = true
     },
     createReport () {
+      if (this.loading) return
       this.loading = true
       const payload = { ...this.newReport }
       delete payload.customTipo
@@ -884,13 +955,11 @@ export default {
         })
         .catch(err => {
           this.$q.notify({ color: 'negative', message: err.response?.data?.message || 'Error al eliminar informe' })
-        })
-        .finally(() => {
           this.loading = false
         })
     },
     exportProductosCSV () {
-      let content = 'Inf. #,Agencia,Producto,Lote,Cantidad,Precio Fact.,Total,Motivo,Fecha/Hora\n'
+      let content = '\ufeffInf. #,Agencia,Producto,Lote,Cantidad,Precio Fact.,Total,Motivo,Fecha/Hora\n'
       this.productos.forEach(row => {
         const reportId = row.withdrawal_report_id || ''
         const agencia = row.agencia?.nombre || (row.buy?.agencia?.nombre || 'Almacen')
@@ -1060,3 +1129,15 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.bg-aceptado {
+  background-color: #e8f5e9 !important;
+}
+.bg-rechazado {
+  background-color: #ffebee !important;
+}
+.bg-report-observado {
+  background-color: #ffe0b2 !important;
+}
+</style>

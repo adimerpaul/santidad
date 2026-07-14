@@ -52,7 +52,8 @@ const routes = [
       { path: 'carousel', component: () => import('pages/Carousel/CarouselPage.vue'), meta: { requiresAuth: true } },
       { path: 'vendedores', component: () => import('pages/VendedoresPage.vue'), meta: { requiresAuth: true } },
       { path: 'publicidad', component: PublicidadPage, meta: { requiresAuth: true } },
-      { path: 'siat', component: SiatPage, meta: { requiresAuth: true } }
+      { path: 'siat', component: SiatPage, meta: { requiresAuth: true } },
+      { path: 'cierres-caja', component: () => import('pages/CierresCajaPage.vue'), meta: { requiresAuth: true } }
 
     ]
   },

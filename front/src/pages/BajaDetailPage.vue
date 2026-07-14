@@ -28,7 +28,7 @@
           </q-chip>
         </div>
       </div>
-      <div class="col-auto q-gutter-sm">
+      <div class="col-12 col-md-auto text-right flex justify-end q-gutter-sm">
         <q-btn
           v-if="(report.estado === 'ABIERTO' || report.estado === 'OBSERVADO') && report.items && report.items.length > 0 && String($store.user?.id) !== '1'"
           color="primary"
@@ -37,6 +37,7 @@
           @click="confirmSend"
           no-caps
           unelevated
+          :disable="loading"
         />
         <template v-if="(report.estado === 'PENDIENTE' || report.estado === 'OBSERVADO') && String($store.user?.id) === '1'">
           <q-btn
@@ -46,6 +47,7 @@
             @click="confirmClose"
             no-caps
             unelevated
+            :disable="loading"
           />
           <q-btn
             v-if="report.estado === 'PENDIENTE'"
@@ -55,6 +57,7 @@
             @click="confirmReopen"
             no-caps
             unelevated
+            :disable="loading"
           />
         </template>
         <template v-if="String($store.user?.id) === '1' && (report.estado === 'PENDIENTE' || report.estado === 'OBSERVADO')">
@@ -65,6 +68,7 @@
             @click="confirmMarkAllAsReviewed"
             no-caps
             unelevated
+            :disable="loading"
           />
         </template>
         <template v-if="report.estado === 'REVISADO'">
@@ -76,6 +80,7 @@
             @click="generatePDF(false)"
             no-caps
             unelevated
+            :disable="loading"
           />
           <q-btn
             v-if="String($store.user?.id) === '1'"
@@ -85,6 +90,7 @@
             @click="shareWhatsApp"
             no-caps
             unelevated
+            :disable="loading"
           />
         </template>
       </div>
@@ -169,7 +175,7 @@
                   option-label="nombre"
                   class="bg-white"
                   @update:model-value="searchInventory"
-                  :disable="String($store.user?.id) !== '1'"
+                  :disable="isAgencyFilterDisabled"
                 >
                   <template v-slot:prepend>
                     <q-icon name="apartment" />
@@ -236,8 +242,30 @@
               </template>
               <template v-slot:body-cell-producto="props">
                 <q-td :props="props">
-                  <div class="text-weight-bold" style="white-space: normal; min-width: 220px; max-width: 380px; word-break: break-word; line-height: 1.2;">
-                    {{ props.row.product?.nombre }}
+                  <div class="row items-center no-wrap">
+                    <q-avatar size="32px" class="q-mr-sm bg-grey-3 rounded-borders overflow-hidden">
+                      <q-img
+                        v-if="props.row.product?.imagen"
+                        :src="props.row.product.imagen.includes('http') ? props.row.product.imagen : ($url + '../images/' + props.row.product.imagen)"
+                        spinner-color="primary"
+                        fit="cover"
+                        style="height: 100%; width: 100%;"
+                        loading="lazy"
+                      >
+                        <template v-slot:error>
+                          <q-icon name="image" size="xs" color="grey-5" />
+                        </template>
+                      </q-img>
+                      <q-icon v-else name="image" size="xs" color="grey-5" />
+                    </q-avatar>
+                    <div>
+                      <div class="text-weight-bold" style="white-space: normal; min-width: 180px; max-width: 340px; word-break: break-word; line-height: 1.2;">
+                        {{ props.row.product?.nombre }}
+                      </div>
+                      <div class="text-caption text-grey-6" style="font-size: 10px;" v-if="props.row.product?.barra">
+                        Cod. Barra: {{ props.row.product.barra }}
+                      </div>
+                    </div>
                   </div>
                 </q-td>
               </template>
@@ -313,8 +341,36 @@
         <template v-slot:body="props">
           <q-tr :props="props" :class="getRowClass(props.row)">
             <q-td v-for="col in props.cols" :key="col.name" :props="props">
+              <!-- producto -->
+              <template v-if="col.name === 'producto'">
+                <div class="row items-center no-wrap">
+                  <q-avatar size="32px" class="q-mr-sm bg-grey-3 rounded-borders overflow-hidden">
+                    <q-img
+                      v-if="props.row.product?.imagen"
+                      :src="props.row.product.imagen.includes('http') ? props.row.product.imagen : ($url + '../images/' + props.row.product.imagen)"
+                      spinner-color="primary"
+                      fit="cover"
+                      style="height: 100%; width: 100%;"
+                      loading="lazy"
+                    >
+                      <template v-slot:error>
+                        <q-icon name="image" size="xs" color="grey-5" />
+                      </template>
+                    </q-img>
+                    <q-icon v-else name="image" size="xs" color="grey-5" />
+                  </q-avatar>
+                  <div>
+                    <div class="text-weight-bold" style="white-space: normal; min-width: 180px; max-width: 340px; word-break: break-word; line-height: 1.2;">
+                      {{ props.row.product?.nombre }}
+                    </div>
+                    <div class="text-caption text-grey-6" style="font-size: 10px;" v-if="props.row.product?.barra">
+                      Cod. Barra: {{ props.row.product.barra }}
+                    </div>
+                  </div>
+                </div>
+              </template>
               <!-- agencia -->
-              <template v-if="col.name === 'agencia'">
+              <template v-else-if="col.name === 'agencia'">
                 <div>
                   <div class="text-bold text-grey-9">{{ props.row.agencia?.nombre || (props.row.buy?.agencia?.nombre || 'Almacen') }}</div>
                   <div class="text-caption text-grey-6 flex items-center q-mt-xs" style="font-size: 11px;">
@@ -606,10 +662,11 @@
                   label="Conteo Físico *"
                   v-model.number="bajaForm.fisico"
                   type="number"
+                  min="0"
                   outlined
                   dense
                   autofocus
-                  :rules="[val => val !== null && val >= 0 || 'Inválido']"
+                  :rules="[val => val !== null && val >= 0 || 'Debe ser mayor o igual a 0']"
                   @update:model-value="calculateFromFisico"
                 />
               </div>
@@ -747,9 +804,10 @@
                   label="Conteo Físico"
                   v-model.number="editItemForm.conteo_fisico"
                   type="number"
+                  min="0"
                   outlined
                   dense
-                  :rules="[val => val !== null && val >= 0 || 'Inválido']"
+                  :rules="[val => val !== null && val >= 0 || 'Debe ser mayor o igual a 0']"
                   @update:model-value="calculateEditFromFisico"
                 />
               </div>
@@ -947,6 +1005,10 @@
           <div class="q-mb-sm text-weight-bold text-primary">
             {{ subsanarItem.product?.nombre }} (Lote: {{ subsanarItem.buy?.lote }})
           </div>
+          <div class="q-mb-md text-subtitle2 text-grey-8 flex items-center">
+            <q-icon name="store" class="q-mr-xs" color="blue-8" size="18px" />
+            Sucursal: <span class="text-bold text-blue-10 q-ml-xs">{{ subsanarItem.agencia?.nombre || 'Almacén' }}</span>
+          </div>
           <div class="text-caption text-red-9 q-mb-md" v-if="subsanarItem.admin_descripcion">
             <strong>Observación del Administrador:</strong> {{ subsanarItem.admin_descripcion }}
           </div>
@@ -960,10 +1022,11 @@
                 label="Conteo Físico *"
                 v-model.number="subsanarForm.conteo_fisico"
                 type="number"
+                min="0"
                 outlined
                 dense
                 autofocus
-                :rules="[val => val !== null && val >= 0 || 'Inválido']"
+                :rules="[val => val !== null && val >= 0 || 'Debe ser mayor o igual a 0']"
               />
             </div>
             <div class="col-12">
@@ -1157,6 +1220,10 @@ export default {
     }
   },
   computed: {
+    isAgencyFilterDisabled () {
+      // Allow changing search agency filter to find products in other sucursales
+      return false
+    },
     isMonthlyReport () {
       if (!this.report) return false
       const tipo = this.report.tipo
@@ -1274,19 +1341,25 @@ export default {
           { id: 1, nombre: 'Casa Matriz Velasco + Almacén' },
           ...otrasAgencias
         ]
-
-        if (this.$store && this.$store.user) {
-          if (String(this.$store.user.id) !== '1') {
-            this.searchAgenciaId = this.$store.user.agencia_id
-            this.agenciasOptions = this.agenciasOptions.filter(a => a.id === this.$store.user.agencia_id)
-          }
-        }
+        this.applyAgencyFilterSettings()
+      }).catch(err => {
+        console.error('Error al cargar agencias:', err)
+        this.$q.notify({ color: 'negative', message: 'Error al cargar el listado de sucursales' })
       })
+    },
+    applyAgencyFilterSettings () {
+      if (!this.report || this.agenciasOptions.length === 0) return
+
+      if (this.$store && this.$store.user) {
+        // Default the search filter to the user's logged-in agency, but keep all options enabled
+        this.searchAgenciaId = this.$store.user.agencia_id
+      }
     },
     getReport () {
       this.loading = true
       this.$axios.get(`withdrawal-reports/${this.id}`).then(res => {
         this.report = res.data
+        this.applyAgencyFilterSettings()
       }).catch(err => {
         console.error(err)
         this.$q.notify({ color: 'negative', message: 'Error al cargar informe' })
@@ -1304,13 +1377,17 @@ export default {
       this.searchInventory()
     },
     searchInventory () {
-      if (this.search.length < 3 && this.searchAgenciaId === null) return
+      if (!this.search || this.search.trim().length < 3) {
+        this.inventory = []
+        return
+      }
       this.loadingInventory = true
       this.$axios.get('withdrawal-reports/search-products', {
         params: {
           search: this.search,
-          agencia_id: this.searchAgenciaId,
-          limit_lotes: this.limitLotes
+          agencia_id: this.searchAgenciaId === null ? 'all' : this.searchAgenciaId,
+          limit_lotes: this.limitLotes,
+          report_id: this.id
         }
       }).then(res => {
         this.inventory = res.data.data
@@ -1389,7 +1466,7 @@ export default {
       this.bajaForm.cantidad = (val || 0) - this.selectedStock
     },
     getAgenciaStock (product, agenciaId) {
-      if (agenciaId === 0 || agenciaId === null) return product.cantidadAlmacen
+      if (agenciaId === 0 || agenciaId === null) return product.cantidadAlmacen || 0
       return product['cantidadSucursal' + agenciaId] || 0
     },
     formatDate (dateString) {
@@ -1563,7 +1640,7 @@ export default {
       this.editingItem = item
       this.editItemForm = {
         agencia_id: item.agencia_id === null ? 0 : item.agencia_id,
-        cantidad: item.cantidad,
+        cantidad: this.report?.tipo === 'CONTEO FISICO' ? item.cantidad : Math.abs(item.cantidad),
         tipo: item.tipo,
         admin_descripcion: item.admin_descripcion || '',
         stock_sistema: item.stock_sistema || 0,
@@ -1600,7 +1677,7 @@ export default {
       const data = {
         cantidad: calculoCantidad,
         tipo: 'CONTEO FISICO',
-        agencia_id: this.subsanarItem.agencia_id === null ? 0 : this.subsanarItem.agencia_id,
+        agencia_id: (this.subsanarItem.agencia_id === 0 || this.subsanarItem.agencia_id === null) ? null : this.subsanarItem.agencia_id,
         conteo_fisico: this.subsanarForm.conteo_fisico,
         stock_sistema: this.subsanarItem.stock_sistema,
         descripcion: razonDesc
@@ -1625,11 +1702,41 @@ export default {
     },
     updateEditStock (val) {
       this.selectedStock = this.getAgenciaStock(this.editingItem.product, val)
+      if (this.report?.tipo === 'CONTEO FISICO') {
+        this.editItemForm.stock_sistema = this.selectedStock
+        this.calculateEditFromFisico()
+      }
     },
     updateItem () {
+      if (this.loading) return
+
+      const isConteo = this.report?.tipo === 'CONTEO FISICO'
+      const qty = Number(this.editItemForm.cantidad)
+      const physicalQty = this.editItemForm.conteo_fisico
+
+      if (isConteo) {
+        if (physicalQty === null || physicalQty === undefined || physicalQty < 0) {
+          this.$q.notify({ color: 'negative', message: 'Debe ingresar un conteo físico válido mayor o igual a 0' })
+          return
+        }
+        if (qty === 0) {
+          this.$q.notify({ color: 'warning', message: 'No hay diferencia en el conteo físico' })
+          return
+        }
+      } else {
+        if (qty <= 0) {
+          this.$q.notify({ color: 'negative', message: 'La cantidad debe ser mayor a 0' })
+          return
+        }
+        if (qty > this.selectedStock) {
+          this.$q.notify({ color: 'negative', message: 'Stock insuficiente en la sucursal seleccionada' })
+          return
+        }
+      }
+
       this.loading = true
       const data = { ...this.editItemForm }
-      if (this.report?.tipo !== 'CONTEO FISICO') {
+      if (!isConteo) {
         data.cantidad = -Math.abs(data.cantidad)
       }
       if (data.agencia_id === 0) {
@@ -1641,12 +1748,9 @@ export default {
           this.$q.notify({ color: 'positive', message: 'Ítem actualizado correctamente' })
           this.showEditItemDialog = false
           this.getReport()
-        })
-        .catch(err => {
+        }).catch(err => {
           console.error(err)
           this.$q.notify({ color: 'negative', message: err.response?.data?.message || 'Error al actualizar ítem' })
-        })
-        .finally(() => {
           this.loading = false
         })
     },
@@ -1953,15 +2057,17 @@ export default {
       window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')
     },
     getExpiryColor (date) {
-      if (!date) return 'grey-7'
+      if (!date || date === 'N/A') return 'grey-7'
       const expiry = moment(date)
+      if (!expiry.isValid()) return 'grey-7'
       if (expiry.isBefore(moment())) return 'red-9'
       if (expiry.diff(moment(), 'months') < 3) return 'orange-9'
       return 'green-8'
     },
     getExpiryIcon (date) {
-      if (!date) return 'help_outline'
+      if (!date || date === 'N/A') return 'help_outline'
       const expiry = moment(date)
+      if (!expiry.isValid()) return 'help_outline'
       if (expiry.isBefore(moment())) return 'report_gmailerrorred'
       if (expiry.diff(moment(), 'months') < 3) return 'warning_amber'
       return 'check_circle_outline'
@@ -2048,5 +2154,21 @@ export default {
   .q-header, .q-drawer, .q-btn, .q-tabs, .q-tab-panels, .q-breadcrumbs {
     display: none !important;
   }
+}
+
+.bg-aceptado {
+  background-color: #e8f5e9 !important; /* Soft green */
+}
+.bg-observado {
+  background-color: #fff3e0 !important; /* Soft orange */
+}
+.bg-rechazado {
+  background-color: #ffebee !important; /* Soft red */
+}
+.bg-prorrogado {
+  background-color: #e3f2fd !important; /* Soft blue */
+}
+.bg-subsanado {
+  background-color: #e0f2f1 !important; /* Soft teal */
 }
 </style>
