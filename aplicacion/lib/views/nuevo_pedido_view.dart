@@ -6,10 +6,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/app_theme.dart';
 import '../core/formatters.dart';
 import '../data/models/sucursal.dart';
+import '../data/repositories/catalogo_repository.dart';
 import '../viewmodels/carrito_viewmodel.dart';
 import '../viewmodels/catalogo_viewmodel.dart';
 import '../viewmodels/pedidos_viewmodel.dart';
 import 'widgets/ui_widgets.dart';
+
+/// Decisión del vendedor cuando hay productos sin stock en la sucursal.
+enum _AccionSinStock { cancelar, editar, eliminarYEnviar }
 
 class NuevoPedidoView extends StatefulWidget {
   final VoidCallback onExplorar;
@@ -27,6 +31,7 @@ class NuevoPedidoView extends StatefulWidget {
 
 class _NuevoPedidoViewState extends State<NuevoPedidoView> {
   final _obsCtl = TextEditingController();
+  bool _enviando = false;
 
   @override
   void dispose() {
@@ -49,10 +54,51 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
       return;
     }
 
-    // Número de la sucursal; si no tiene, el WhatsApp general del .env
-    var destino = sucursal.whatsapp.replaceAll(RegExp(r'\D'), '');
+    // Verificación de stock en la sucursal contra el servidor,
+    // igual que la tienda pública antes de pedir por WhatsApp
+    setState(() => _enviando = true);
+    List<ProductoSinStock> sinStock;
+    try {
+      sinStock = await catalogo.repo.verificarStockSucursal(
+        sucursalId: sucursal.id,
+        cantidades: {for (final i in carrito.items) i.product.id: i.qty},
+      );
+    } catch (_) {
+      if (mounted) {
+        setState(() => _enviando = false);
+        showToast(context, 'Error verificando disponibilidad',
+            icon: Icons.error_outline);
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _enviando = false);
+
+    if (sinStock.isNotEmpty) {
+      final accion = await _dialogoSinStock(sucursal, sinStock);
+      if (!mounted) return;
+      if (accion == _AccionSinStock.cancelar || accion == null) {
+        showToast(context, 'Pedido cancelado', icon: Icons.info_outline);
+        return;
+      }
+      if (accion == _AccionSinStock.editar) {
+        showToast(context, 'Puedes ajustar las cantidades del pedido',
+            icon: Icons.edit_outlined);
+        return;
+      }
+      carrito.quitarProductos(sinStock.map((p) => p.productoId));
+      if (carrito.vacio) {
+        showToast(context, 'Todos los productos fueron removidos por falta de stock',
+            icon: Icons.warning_amber_rounded);
+        return;
+      }
+    }
+
+    // El pedido va al WhatsApp de la agencia seleccionada (con prefijo 591);
+    // si la agencia no tiene número, se usa el general del .env
+    var destino = numeroWhatsApp(sucursal.whatsapp);
     if (destino.isEmpty) {
-      destino = (dotenv.env['WHATSAPP'] ?? '').replaceAll(RegExp(r'\D'), '');
+      destino = numeroWhatsApp(dotenv.env['WHATSAPP'] ?? '');
     }
     if (destino.isEmpty) {
       showToast(context, 'No hay un número de WhatsApp configurado',
@@ -60,7 +106,27 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
       return;
     }
 
-    final codigo = await pedidosVM.siguienteCodigo();
+    // El pedido se registra en la tabla `orders` del backend y el número
+    // que genera el servidor (PEDIDOWEB_Nº…) es el código del pedido:
+    // con ese mismo número caja lo recupera en Ventas (/sale) del panel.
+    setState(() => _enviando = true);
+    var codigo = '';
+    try {
+      codigo = await catalogo.repo.crearOrden(
+        items: carrito.items,
+        sucursalId: sucursal.id,
+        sucursalNombre: sucursal.nombre,
+      );
+    } catch (_) {
+      // sin conexión igual se envía por WhatsApp con un código local
+    }
+    if (!mounted) return;
+    setState(() => _enviando = false);
+    if (codigo.isEmpty) {
+      codigo = await pedidosVM.siguienteCodigo();
+      if (!mounted) return;
+    }
+
     final pedido = carrito.construirPedido(
       sucursal: sucursal,
       codigo: codigo,
@@ -84,6 +150,164 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
     if (!mounted) return;
     showToast(context, 'Pedido $codigo enviado por WhatsApp');
     widget.onVerPedidos();
+  }
+
+  /// Diálogo con los productos que no tienen stock suficiente en la
+  /// sucursal, con las mismas opciones que la tienda pública.
+  Future<_AccionSinStock?> _dialogoSinStock(
+    Sucursal sucursal,
+    List<ProductoSinStock> sinStock,
+  ) {
+    return showDialog<_AccionSinStock>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded,
+                color: AppColors.warnFg, size: 22),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Productos sin stock disponible',
+                style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text.rich(
+                  TextSpan(
+                    text:
+                        'Los siguientes productos no tienen stock suficiente en la sucursal ',
+                    children: [
+                      TextSpan(
+                        text: '${sucursal.nombre}:',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                  style: const TextStyle(fontSize: 12.5, height: 1.4),
+                ),
+                const SizedBox(height: 10),
+                ...sinStock.map(
+                  (p) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF5F5),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFFCDD2)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                p.nombre,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Stock disponible: ${p.stockDisponible} | Pedido: ${p.cantidadSolicitada}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.muted2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.badFg,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'Faltan: ${p.faltan}',
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '¿Qué deseas hacer?',
+                  style: TextStyle(fontSize: 11.5, color: AppColors.muted),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, _AccionSinStock.cancelar),
+            child: const Text(
+              'Cancelar todo',
+              style: TextStyle(
+                color: AppColors.badFg,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, _AccionSinStock.editar),
+            child: const Text(
+              'Editar cantidades',
+              style: TextStyle(
+                color: AppColors.primaryDark,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () =>
+                Navigator.pop(ctx, _AccionSinStock.eliminarYEnviar),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.waDark,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              'Eliminar sin stock y enviar',
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -142,7 +366,19 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
                       ),
                     )
                     .toList(),
-                onChanged: (v) => carrito.setAgencia(v),
+                onChanged: (v) {
+                  carrito.setAgencia(v);
+                  final faltan = carrito.itemsSinStockEnSucursal;
+                  if (faltan.isNotEmpty) {
+                    showToast(
+                      context,
+                      faltan.length == 1
+                          ? '1 producto sin stock suficiente en esta sucursal'
+                          : '${faltan.length} productos sin stock suficiente en esta sucursal',
+                      icon: Icons.warning_amber_rounded,
+                    );
+                  }
+                },
                 icon: const Icon(Icons.keyboard_arrow_down,
                     color: AppColors.muted2),
                 hint: const Text('Selecciona una sucursal'),
@@ -282,6 +518,23 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
                             color: AppColors.primaryDark,
                           ),
                         ),
+                        // Disponibilidad en la sucursal seleccionada
+                        if (carrito.stockEnSucursal(item.product)
+                            case final int stockSuc) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            stockSuc >= item.qty
+                                ? 'Disponible en la sucursal'
+                                : 'Stock disponible: $stockSuc | Pedido: ${item.qty}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: stockSuc >= item.qty
+                                  ? AppColors.okFg
+                                  : AppColors.badFg,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -341,8 +594,10 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
                 ),
                 const SizedBox(height: 12),
                 GradientButton(
-                  texto: 'Enviar pedido por WhatsApp',
-                  icon: Icons.send,
+                  texto: 'Pedir por WhatsApp',
+                  iconWidget: const WhatsAppIcon(size: 19),
+                  colores: const [AppColors.wa, AppColors.waDark],
+                  cargando: _enviando,
                   onPressed: _enviarPorWhatsApp,
                 ),
               ],

@@ -61,6 +61,33 @@ class CarritoViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Quita del carrito los productos indicados (p. ej. los que quedaron
+  /// sin stock en la sucursal elegida).
+  void quitarProductos(Iterable<int> productIds) {
+    final ids = productIds.toSet();
+    items.removeWhere((i) => ids.contains(i.product.id));
+    notifyListeners();
+  }
+
+  /// Stock del producto en la sucursal seleccionada según los datos que
+  /// trae el catálogo. Null si aún no se eligió sucursal.
+  int? stockEnSucursal(Product p) {
+    final id = agenciaId;
+    if (id == null) return null;
+    for (final s in p.stocks) {
+      if (s.agenciaId == id) return s.cantidad;
+    }
+    return 0;
+  }
+
+  /// Ítems cuya cantidad pedida supera el stock de la sucursal seleccionada.
+  List<CartItem> get itemsSinStockEnSucursal {
+    if (agenciaId == null) return const [];
+    return items
+        .where((i) => (stockEnSucursal(i.product) ?? 0) < i.qty)
+        .toList();
+  }
+
   /// Arma el pedido con el contenido actual del carrito.
   Pedido construirPedido({
     required Sucursal sucursal,

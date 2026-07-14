@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_theme.dart';
+import '../core/formatters.dart';
 import '../data/models/sucursal.dart';
 import '../viewmodels/catalogo_viewmodel.dart';
 import 'widgets/leaflet_map.dart';
@@ -19,7 +20,7 @@ class _SucursalesViewState extends State<SucursalesView> {
   final _mapCtl = LeafletMapController();
 
   Future<void> _abrirWhatsApp(String numero) async {
-    final limpio = numero.replaceAll(RegExp(r'\D'), '');
+    final limpio = numeroWhatsApp(numero);
     if (limpio.isEmpty) {
       showToast(context, 'Esta sucursal no tiene WhatsApp registrado',
           icon: Icons.error_outline);

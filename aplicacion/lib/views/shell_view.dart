@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_theme.dart';
+import '../core/formatters.dart';
 import '../viewmodels/carrito_viewmodel.dart';
 import '../viewmodels/catalogo_viewmodel.dart';
 import '../viewmodels/pedidos_viewmodel.dart';
@@ -12,6 +13,7 @@ import 'nuevo_pedido_view.dart';
 import 'pedidos_view.dart';
 import 'productos_view.dart';
 import 'sucursales_view.dart';
+import 'widgets/ui_widgets.dart';
 
 /// Contenedor principal: header, pestañas y navegación inferior con FAB.
 class ShellView extends StatefulWidget {
@@ -56,8 +58,7 @@ class _ShellViewState extends State<ShellView> {
   }
 
   Future<void> _abrirWhatsAppGeneral() async {
-    final numero =
-        (dotenv.env['WHATSAPP'] ?? '').replaceAll(RegExp(r'\D'), '');
+    final numero = numeroWhatsApp(dotenv.env['WHATSAPP'] ?? '');
     if (numero.isEmpty) return;
     await launchUrl(
       Uri.parse('https://wa.me/$numero'),
@@ -123,8 +124,7 @@ class _ShellViewState extends State<ShellView> {
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.chat,
-                              color: Colors.white, size: 24),
+                          child: const Center(child: WhatsAppIcon(size: 27)),
                         ),
                       ),
                     ),
@@ -187,20 +187,20 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Santidad',
+                'Santidad-Divina',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 17,
                   fontWeight: FontWeight.w800,
                   height: 1.1,
                   letterSpacing: -.2,
                 ),
               ),
               Text(
-                'FARMACIA',
+                'FARMACIAS S.R.L.',
                 style: TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 3.5,
+                  letterSpacing: 2.5,
                   color: AppColors.primaryDark,
                 ),
               ),

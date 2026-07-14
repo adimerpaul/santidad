@@ -38,7 +38,7 @@ class SantidadApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Farmacia Santidad',
+      title: 'Farmacias Santidad-Divina S.R.L.',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       home: const ShellView(),

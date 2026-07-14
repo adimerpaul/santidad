@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import '../../core/app_theme.dart';
 import '../../core/formatters.dart';
 
-void showToast(BuildContext context, String msg,
-    {IconData icon = Icons.check_circle}) {
+void showToast(
+  BuildContext context,
+  String msg, {
+  IconData icon = Icons.check_circle,
+}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
@@ -55,8 +58,11 @@ class ProductThumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = urlImagenProducto(imagen);
-    final icono = Icon(iconoCategoria(categoria),
-        color: AppColors.skyInk, size: iconSize);
+    final icono = Icon(
+      iconoCategoria(categoria),
+      color: AppColors.skyInk,
+      size: iconSize,
+    );
 
     return Container(
       width: size,
@@ -82,6 +88,33 @@ class ProductThumb extends StatelessWidget {
 }
 
 /// Chip de estado de stock (En stock / Stock bajo / Agotado).
+/// Chip de disponibilidad por sucursal: no muestra cantidades,
+/// solo "Disponible" o "Sin stock" (igual que en frontTienda).
+class DisponibleChip extends StatelessWidget {
+  final bool disponible;
+
+  const DisponibleChip({super.key, required this.disponible});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: disponible ? AppColors.okBg : AppColors.cream2,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        disponible ? 'Disponible' : 'Sin stock',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: disponible ? AppColors.okFg : AppColors.muted,
+        ),
+      ),
+    );
+  }
+}
+
 class StockChip extends StatelessWidget {
   final int total;
   final int umbral;
@@ -104,7 +137,7 @@ class StockChip extends StatelessWidget {
     } else {
       bg = AppColors.okBg;
       fg = AppColors.okFg;
-      texto = 'En stock: $total';
+      texto = total > 100 ? 'En stock' : 'En stock: $total';
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
@@ -116,6 +149,59 @@ class StockChip extends StatelessWidget {
         texto,
         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg),
       ),
+    );
+  }
+}
+
+/// Fila de precios: original tachado, precio con descuento y etiqueta -X%.
+class PriceRow extends StatelessWidget {
+  final double precio;
+  final double precioAntes;
+  final int descuento;
+  final double fontSize;
+
+  const PriceRow({
+    super.key,
+    required this.precio,
+    this.precioAntes = 0,
+    this.descuento = 0,
+    this.fontSize = 14,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        if (precioAntes > precio) ...[
+          Flexible(
+            child: Text(
+              bs(precioAntes),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: fontSize - 2.5,
+                color: AppColors.muted,
+                decoration: TextDecoration.lineThrough,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+        ],
+        Text(
+          bs(precio),
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primaryDark,
+          ),
+        ),
+        if (descuento > 0) ...[
+          const SizedBox(width: 6),
+          OfferTag(descuento: descuento),
+        ],
+      ],
     );
   }
 }
@@ -175,10 +261,70 @@ class EmptyState extends StatelessWidget {
   }
 }
 
+/// Logo de WhatsApp dibujado a mano (Material Icons no incluye marcas):
+/// globo de chat con cola y auricular punzonado (transparente).
+class WhatsAppIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const WhatsAppIcon({super.key, this.size = 18, this.color = Colors.white});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _WhatsAppPainter(color),
+    );
+  }
+}
+
+class _WhatsAppPainter extends CustomPainter {
+  final Color color;
+
+  _WhatsAppPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    canvas.saveLayer(Offset.zero & size, Paint());
+
+    final globo = Path()
+      ..addOval(
+        Rect.fromCircle(center: Offset(w * .53, h * .47), radius: w * .43),
+      )
+      ..moveTo(w * .20, h * .62)
+      ..lineTo(w * .05, h * .97)
+      ..lineTo(w * .45, h * .88)
+      ..close();
+    canvas.drawPath(globo, Paint()..color = color);
+
+    final auricular = Path()
+      ..moveTo(w * .40, h * .28)
+      ..quadraticBezierTo(w * .40, h * .58, w * .70, h * .62);
+    canvas.drawPath(
+      auricular,
+      Paint()
+        ..blendMode = BlendMode.clear
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * .14
+        ..strokeCap = StrokeCap.round,
+    );
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _WhatsAppPainter old) => old.color != color;
+}
+
 /// Botón principal con degradado azul (`.btn-gold` del diseño).
+/// Admite otro degradado e icono personalizado (p. ej. verde + WhatsApp).
 class GradientButton extends StatelessWidget {
   final String texto;
   final IconData? icon;
+  final Widget? iconWidget;
+  final List<Color>? colores;
   final VoidCallback? onPressed;
   final bool cargando;
 
@@ -186,23 +332,26 @@ class GradientButton extends StatelessWidget {
     super.key,
     required this.texto,
     this.icon,
+    this.iconWidget,
+    this.colores,
     this.onPressed,
     this.cargando = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final gradiente = colores ?? const [AppColors.primary, AppColors.primaryDark];
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryDark],
+        gradient: LinearGradient(
+          colors: gradiente,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryDark.withValues(alpha: .4),
+            color: gradiente.last.withValues(alpha: .4),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -232,7 +381,10 @@ class GradientButton extends StatelessWidget {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (icon != null) ...[
+                  if (iconWidget != null) ...[
+                    iconWidget!,
+                    const SizedBox(width: 8),
+                  ] else if (icon != null) ...[
                     Icon(icon, size: 17),
                     const SizedBox(width: 8),
                   ],

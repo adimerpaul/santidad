@@ -21,6 +21,7 @@ class CatalogoViewModel extends ChangeNotifier {
   List<Sucursal> sucursales = [];
   int umbralStockBajo = 20;
   List<Product> ofertas = [];
+  List<String> carrusel = [];
   bool cargandoInicio = false;
   String? errorInicio;
 
@@ -50,6 +51,11 @@ class CatalogoViewModel extends ChangeNotifier {
       umbralStockBajo = config.umbralStockBajo;
       final pagOfertas = await repo.productos(ofertas: true, perPage: 10);
       ofertas = pagOfertas.items;
+      try {
+        carrusel = await repo.carousels();
+      } catch (_) {
+        // el carrusel es decorativo: si falla, el inicio sigue funcionando
+      }
     } catch (e) {
       errorInicio = e.toString();
     } finally {
@@ -110,6 +116,44 @@ class CatalogoViewModel extends ChangeNotifier {
         ofertas: filtro == FiltroCatalogo.ofertas,
         page: page,
       );
+
+  /// Detalle completo de un producto con sus relacionados.
+  /// El backend calcula los relacionados por principio activo (misma dosis
+  /// y composición similar), igual que la tienda pública; si el endpoint
+  /// devuelve vacío se respeta (no hay productos con composición similar).
+  /// Solo si el endpoint falla (backend sin actualizar) se hace una búsqueda
+  /// local por composición/nombre como último recurso.
+  Future<DetalleProducto> detalleConRelacionados(Product p) async {
+    try {
+      final det = await repo.detalle(p.id);
+      return det;
+    } catch (_) {
+      // el endpoint puede no existir aún en el servidor
+    }
+
+    var relacionados = <Product>[];
+    try {
+      final pag = await repo.productos(
+        search: _terminoRelacionado(p),
+        perPage: 12,
+      );
+      relacionados = pag.items.where((x) => x.id != p.id).toList();
+    } catch (_) {}
+
+    return DetalleProducto(producto: p, similares: relacionados);
+  }
+
+  /// Primera palabra significativa de la composición (principio activo)
+  /// o, en su defecto, del nombre del producto.
+  String _terminoRelacionado(Product p) {
+    final base = p.composicion.isNotEmpty ? p.composicion : p.nombre;
+    final tokens = base
+        .toUpperCase()
+        .split(RegExp(r'[^A-ZÁÉÍÓÚÜÑ]+'))
+        .where((t) => t.length >= 4);
+    if (tokens.isNotEmpty) return tokens.first;
+    return p.nombre.split(' ').first;
+  }
 
   /// Sugerencias rápidas para el buscador del inicio.
   Future<List<Product>> sugerencias(String q) async {

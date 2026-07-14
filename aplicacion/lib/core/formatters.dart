@@ -20,10 +20,32 @@ String? urlImagenProducto(String? imagen) {
   return '$base/images/$nombre';
 }
 
+/// Convierte la descripción HTML del producto en texto plano legible.
+String textoPlano(String html) {
+  return html
+      .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+      .replaceAll(RegExp(r'</p>', caseSensitive: false), '\n\n')
+      .replaceAll(RegExp(r'<[^>]*>'), '')
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+      .trim();
+}
+
+/// Normaliza un número para WhatsApp: deja solo dígitos y antepone el
+/// código de país 591 (Bolivia) si no lo tiene. Devuelve '' si no hay número.
+String numeroWhatsApp(String numero) {
+  final limpio = numero.replaceAll(RegExp(r'\D'), '');
+  if (limpio.isEmpty) return '';
+  return limpio.startsWith('591') ? limpio : '591$limpio';
+}
+
 /// Texto del pedido que se envía por WhatsApp.
 String mensajeWhatsAppPedido(Pedido pd) {
   final b = StringBuffer()
-    ..writeln('🧾 *Pedido ${pd.codigo} — Farmacia Santidad*')
+    ..writeln('🧾 *Pedido ${pd.codigo} — Farmacias Santidad-Divina S.R.L.*')
     ..writeln('📍 Sucursal: ${pd.sucursal}');
   if (pd.urgente) b.writeln('⚡ Prioridad: *URGENTE*');
   if (pd.observacion != null && pd.observacion!.isNotEmpty) {

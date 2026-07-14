@@ -8,6 +8,8 @@ import '../core/formatters.dart';
 import '../data/models/product.dart';
 import '../viewmodels/carrito_viewmodel.dart';
 import '../viewmodels/catalogo_viewmodel.dart';
+import 'producto_detalle_view.dart';
+import 'widgets/hero_carousel.dart';
 import 'widgets/ui_widgets.dart';
 
 class HomeView extends StatefulWidget {
@@ -54,7 +56,14 @@ class _HomeViewState extends State<HomeView> {
   void _irASugerencia(Product p) {
     _searchCtl.clear();
     setState(() => _sugerencias = []);
-    widget.onExplorar(FiltroCatalogo.todo, busqueda: p.nombre);
+    _verDetalle(p);
+  }
+
+  void _verDetalle(Product p) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ProductoDetalleView(product: p)),
+    );
   }
 
   @override
@@ -84,14 +93,15 @@ class _HomeViewState extends State<HomeView> {
         TextField(
           controller: _searchCtl,
           onChanged: _onBuscar,
-          onSubmitted: (q) => widget.onExplorar(
-            FiltroCatalogo.todo,
-            busqueda: q.trim(),
-          ),
+          onSubmitted: (q) =>
+              widget.onExplorar(FiltroCatalogo.todo, busqueda: q.trim()),
           decoration: const InputDecoration(
             hintText: 'Buscar producto, categoría…',
-            prefixIcon: Icon(Icons.search,
-                size: 19, color: AppColors.primaryDark),
+            prefixIcon: Icon(
+              Icons.search,
+              size: 19,
+              color: AppColors.primaryDark,
+            ),
           ),
         ),
         if (_sugerencias.isNotEmpty)
@@ -116,7 +126,9 @@ class _HomeViewState extends State<HomeView> {
                       onTap: () => _irASugerencia(p),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 9),
+                          horizontal: 14,
+                          vertical: 9,
+                        ),
                         child: Row(
                           children: [
                             ProductThumb(
@@ -150,13 +162,11 @@ class _HomeViewState extends State<HomeView> {
                                 ],
                               ),
                             ),
-                            Text(
-                              bs(p.precio),
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primaryDark,
-                              ),
+                            PriceRow(
+                              precio: p.precio,
+                              precioAntes: p.precioAntes,
+                              descuento: p.descuento,
+                              fontSize: 12.5,
                             ),
                           ],
                         ),
@@ -168,6 +178,12 @@ class _HomeViewState extends State<HomeView> {
           ),
 
         const SizedBox(height: 14),
+
+        // Carrusel principal (mismas imágenes que la tienda pública)
+        if (catalogo.carrusel.isNotEmpty) ...[
+          HeroCarousel(imagenes: catalogo.carrusel),
+          const SizedBox(height: 14),
+        ],
 
         // Banner de ofertas
         InkWell(
@@ -202,8 +218,11 @@ class _HomeViewState extends State<HomeView> {
                       color: AppColors.primary.withValues(alpha: .45),
                     ),
                   ),
-                  child: const Icon(Icons.sell,
-                      color: AppColors.primaryLight, size: 20),
+                  child: const Icon(
+                    Icons.sell,
+                    color: AppColors.primaryLight,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 const Expanded(
@@ -226,8 +245,11 @@ class _HomeViewState extends State<HomeView> {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right,
-                    color: AppColors.primaryLight, size: 20),
+                const Icon(
+                  Icons.chevron_right,
+                  color: AppColors.primaryLight,
+                  size: 20,
+                ),
               ],
             ),
           ),
@@ -301,90 +323,76 @@ class _HomeViewState extends State<HomeView> {
               separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (_, i) {
                 final p = catalogo.ofertas[i];
-                return Container(
-                  width: 156,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.line),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          ProductThumb(
-                              categoria: p.categoria, imagen: p.imagen),
-                          if (p.descuento > 0)
-                            OfferTag(descuento: p.descuento),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: Text(
-                          p.nombre,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            height: 1.25,
+                return GestureDetector(
+                  onTap: () => _verDetalle(p),
+                  child: Container(
+                    width: 156,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.line),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            ProductThumb(
+                              categoria: p.categoria,
+                              imagen: p.imagen,
+                            ),
+                            if (p.descuento > 0)
+                              OfferTag(descuento: p.descuento),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Expanded(
+                          child: Text(
+                            p.nombre,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              height: 1.25,
+                            ),
                           ),
                         ),
-                      ),
-                      Row(
-                        children: [
-                          if (p.precioAntes > p.precio)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: Text(
-                                bs(p.precioAntes),
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.muted,
-                                  decoration: TextDecoration.lineThrough,
-                                ),
+                        PriceRow(
+                          precio: p.precio,
+                          precioAntes: p.precioAntes,
+                          fontSize: 13.5,
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 34,
+                          child: TextButton.icon(
+                            onPressed: () {
+                              carrito.agregar(p);
+                              showToast(context, 'Añadido al pedido');
+                            },
+                            style: TextButton.styleFrom(
+                              backgroundColor: AppColors.primarySoft,
+                              foregroundColor: AppColors.primaryDeep,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                          Text(
-                            bs(p.precio),
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primaryDark,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 34,
-                        child: TextButton.icon(
-                          onPressed: () {
-                            carrito.agregar(p);
-                            showToast(context, 'Añadido al pedido');
-                          },
-                          style: TextButton.styleFrom(
-                            backgroundColor: AppColors.primarySoft,
-                            foregroundColor: AppColors.primaryDeep,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: const Icon(Icons.add, size: 14),
-                          label: const Text(
-                            'Añadir',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w700,
+                            icon: const Icon(Icons.add, size: 14),
+                            label: const Text(
+                              'Añadir',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               },
@@ -470,9 +478,11 @@ class _QuickButton extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon,
-                size: 20,
-                color: gradiente ? Colors.white : AppColors.skyInk),
+            Icon(
+              icon,
+              size: 20,
+              color: gradiente ? Colors.white : AppColors.skyInk,
+            ),
             const Spacer(),
             Text(
               titulo,

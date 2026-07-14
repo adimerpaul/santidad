@@ -28,6 +28,11 @@ class Product {
   final bool enOferta;
   final double porcentaje;
   final String? imagen;
+  final String descripcion;
+  final String registroSanitario;
+  final String origen;
+  final String composicion;
+  final String distribuidora;
   final List<StockSucursal> stocks;
   final int stockTotal;
 
@@ -43,6 +48,11 @@ class Product {
     required this.enOferta,
     required this.porcentaje,
     this.imagen,
+    this.descripcion = '',
+    this.registroSanitario = '',
+    this.origen = '',
+    this.composicion = '',
+    this.distribuidora = '',
     required this.stocks,
     required this.stockTotal,
   });
@@ -56,21 +66,42 @@ class Product {
     return 0;
   }
 
-  factory Product.fromJson(Map<String, dynamic> json) => Product(
-        id: json['id'] ?? 0,
-        nombre: json['nombre'] ?? '',
-        categoria: json['categoria'] ?? 'General',
-        categoryId: json['category_id'],
-        presentacion: json['presentacion'] ?? '',
-        marca: json['marca'] ?? '',
-        precio: double.tryParse('${json['precio']}') ?? 0,
-        precioAntes: double.tryParse('${json['precio_antes']}') ?? 0,
-        enOferta: json['en_oferta'] == true,
-        porcentaje: double.tryParse('${json['porcentaje']}') ?? 0,
-        imagen: json['imagen'],
-        stocks: (json['stocks'] as List? ?? [])
-            .map((s) => StockSucursal.fromJson(Map<String, dynamic>.from(s)))
-            .toList(),
-        stockTotal: json['stock_total'] ?? 0,
+  factory Product.fromJson(Map<String, dynamic> json) {
+    var precio = double.tryParse('${json['precio']}') ?? 0;
+    var precioAntes = double.tryParse('${json['precio_antes']}') ?? 0;
+    final porcentaje = double.tryParse('${json['porcentaje']}') ?? 0;
+
+    // Si el backend aún no aplicó el descuento (precio_antes no viene mayor
+    // al precio), se calcula aquí para mostrar siempre el monto original,
+    // el monto con descuento y el porcentaje.
+    if (porcentaje > 0 && precioAntes <= precio) {
+      precioAntes = precio;
+      precio = double.parse(
+        (precio - (precio * porcentaje / 100)).toStringAsFixed(2),
       );
+    }
+
+    return Product(
+      id: json['id'] ?? 0,
+      nombre: json['nombre'] ?? '',
+      categoria: json['categoria'] ?? 'General',
+      categoryId: json['category_id'],
+      presentacion: json['presentacion'] ?? '',
+      marca: json['marca'] ?? '',
+      precio: precio,
+      precioAntes: precioAntes,
+      enOferta: json['en_oferta'] == true,
+      porcentaje: porcentaje,
+      imagen: json['imagen'],
+      descripcion: json['descripcion'] ?? '',
+      registroSanitario: json['registro_sanitario'] ?? '',
+      origen: json['origen'] ?? '',
+      composicion: json['composicion'] ?? '',
+      distribuidora: json['distribuidora'] ?? '',
+      stocks: (json['stocks'] as List? ?? [])
+          .map((s) => StockSucursal.fromJson(Map<String, dynamic>.from(s)))
+          .toList(),
+      stockTotal: json['stock_total'] ?? 0,
+    );
+  }
 }
