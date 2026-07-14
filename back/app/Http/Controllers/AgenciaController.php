@@ -11,9 +11,9 @@ class AgenciaController extends Controller
 {
     public function index()
     {
-        return Cache::rememberForever('agencias_list', function () {
+//        return Cache::rememberForever('agencias_list', function () {
             return Agencia::all();
-        });
+//        });
     }
 
     public function store(StoreAgenciaRequest $request)

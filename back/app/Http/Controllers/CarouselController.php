@@ -41,6 +41,17 @@ class CarouselController extends Controller
     }
 
     /**
+     * Carrusel de la app móvil (tipo: Aplicacion)
+     */
+    public function carouselsAplicacion()
+    {
+        return Carousel::where('status', 'active')
+            ->where('tipo', 'Aplicacion')
+            ->orderBy('id', 'desc')
+            ->get();
+    }
+
+    /**
      * Listado total (admin)
      */
     public function index()

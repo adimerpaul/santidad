@@ -49,6 +49,7 @@ Route::get('/sucursales', [TiendaController::class,'sucursales']);
 Route::get('/productos/{id}', [TiendaController::class,'productosId']);
 Route::get('/top-sellers', [SalesController::class, 'topSellers']);
 Route::get('carouselsMedio', [CarouselController::class, 'carouselsMedio']);
+Route::get('carouselsAplicacion', [CarouselController::class, 'carouselsAplicacion']);
 
 Route::post('/orders', [OrderController::class, 'store']);                  // crear pedido
 Route::get('/orders/{orderNumber}', [OrderController::class, 'showByNumber']); // recuperar por número (para “ventas” luego)
@@ -79,6 +80,8 @@ Route::get('/publicidad-actual', [App\Http\Controllers\PublicidadController::cla
 Route::get('/app/config', [AppMovilController::class, 'config'])
     ->middleware('throttle:120,1');
 Route::get('/app/productos', [AppMovilController::class, 'productos'])
+    ->middleware('throttle:120,1');
+Route::get('/app/productos/{id}', [AppMovilController::class, 'productoDetalle'])
     ->middleware('throttle:120,1');
 
 

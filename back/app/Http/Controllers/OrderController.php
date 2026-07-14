@@ -22,6 +22,9 @@ class OrderController extends Controller
       'customer.name' => 'nullable|string',
       'customer.phone' => 'nullable|string',
       'customer.address' => 'nullable|string',
+      'source' => 'nullable|string|max:50',
+      'sucursal_id' => 'nullable|integer',
+      'sucursal_nombre' => 'nullable|string',
     ]);
 
     $order = DB::transaction(function () use ($data) {
@@ -39,7 +42,13 @@ class OrderController extends Controller
         'shipping'        => 0,
         'total'           => $subtotal,
         'status'          => 'pending',
-        'source'          => 'web',
+        'source'          => $data['source'] ?? 'web',
+        'meta'            => isset($data['sucursal_id']) || isset($data['sucursal_nombre'])
+          ? [
+              'sucursal_id'     => $data['sucursal_id'] ?? null,
+              'sucursal_nombre' => $data['sucursal_nombre'] ?? null,
+            ]
+          : null,
       ]);
 
       // 2) Número de pedido estable y único usando el ID autoincremental
