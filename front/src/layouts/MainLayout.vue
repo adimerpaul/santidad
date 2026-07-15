@@ -417,7 +417,7 @@ export default {
   },
   computed: {
     isAdmin () {
-      return String(this.$store.user.id) === '1'
+      return this.$store.user && String(this.$store.user.id) === '1'
     },
     menuSections () {
       const operacion = [
@@ -463,6 +463,17 @@ export default {
       }
 
       return sections
+    }
+  },
+  watch: {
+    '$store.user': {
+      handler (newVal) {
+        if (newVal && newVal.id) {
+          this.verificarEstadoCaja()
+        }
+      },
+      deep: true,
+      immediate: true
     }
   },
   mounted () {
@@ -702,7 +713,8 @@ export default {
     },
     verificarEstadoCaja () {
       if (!this.$store.isLoggedIn) return
-      if (this.$store.user && String(this.$store.user.id) === '1') {
+      if (!this.$store.user || !this.$store.user.id) return
+      if (String(this.$store.user.id) === '1') {
         this.cajaStatus = ''
         this.dialogAperturaCaja = false
         this.dialogCierreCaja = false
