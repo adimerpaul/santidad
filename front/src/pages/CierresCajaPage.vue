@@ -77,10 +77,23 @@
                   size="10px"
                   :color="day.sin_cierre ? 'red' : (day.has_closure ? 'green' : 'grey-5')"
                   text-color="white"
-                  class="q-px-xs"
+                  class="q-px-xs q-mb-xs"
                 >
                   {{ day.sin_cierre ? 'Sin Cierre' : (day.has_closure ? 'Cerrado' : 'Sin Ventas') }}
                 </q-chip>
+
+                <!-- Resumen de Cuentas y Montos -->
+                <div v-if="day.closures && day.closures.length > 0" class="q-mt-xs text-left full-width" style="font-size: 9px; line-height: 1.2;">
+                   <q-separator class="q-my-xs" />
+                   <div v-for="(c, idx) in day.closures" :key="idx" class="text-grey-9 text-weight-medium">
+                     <div class="row items-center no-wrap">
+                       <q-icon name="account_balance_wallet" size="9px" class="q-mr-xs text-primary" />
+                       <span class="text-grey-7 ellipsis" style="font-size: 8px; max-width: 50px;">{{ c.closed_by }}:</span>
+                       <q-space />
+                       <span class="text-weight-bold">{{ parseFloat(c.monto_fisico || 0).toFixed(2) }} Bs</span>
+                     </div>
+                   </div>
+                </div>
               </div>
             </div>
           </div>
@@ -308,12 +321,13 @@ export default {
 .gap-card {
   border: 1px solid #e0e0e0;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  min-height: 75px;
+  min-height: 95px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   background-color: #fafafa;
+  border-radius: 8px;
 }
 
 .gap-card:hover {

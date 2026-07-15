@@ -94,6 +94,24 @@
             </q-input>
           </div>
 
+          <div v-if="tab === 'inventario' || tab === 'informes' || tab === 'motivos_sanitarios'" class="col-12 col-sm-3">
+            <q-select
+              v-model="filter.estado"
+              :options="estadosReporteOptions"
+              label="Estado"
+              outlined
+              dense
+              emit-value
+              map-options
+              clearable
+              @update:model-value="fetchData"
+            >
+              <template v-slot:prepend>
+                <q-icon name="check_circle" />
+              </template>
+            </q-select>
+          </div>
+
           <div v-if="tab === 'productos'" class="col-12 col-sm-3">
             <q-select
               v-model="filter.tipo"
@@ -510,7 +528,8 @@ export default {
         agencia_id: [],
         mes: (new Date().getMonth() + 1),
         anio: new Date().getFullYear(),
-        tipo: null
+        tipo: null,
+        estado: null
       },
       newReport: {
         agencia_id: null,
@@ -526,6 +545,12 @@ export default {
         { label: 'Informe de PRODUCTOS DAÑADOS', value: 'PRODUCTOS DAÑADOS' },
         { label: 'Informe de MOTIVOS SANITARIOS', value: 'MOTIVOS SANITARIOS' },
         { label: 'Otro (Ingresar manualmente)', value: 'OTROS' }
+      ],
+      estadosReporteOptions: [
+        { label: 'Abierto', value: 'ABIERTO' },
+        { label: 'Pendiente', value: 'PENDIENTE' },
+        { label: 'Observado', value: 'OBSERVADO' },
+        { label: 'Revisado', value: 'REVISADO' }
       ],
       columns: [
         { name: 'id', align: 'left', label: 'ID', field: 'id', sortable: true },
@@ -734,7 +759,8 @@ export default {
           agencia_id: this.filter.agencia_id,
           mes: this.filter.mes,
           anio: this.filter.anio,
-          tipo: tipoFiltro
+          tipo: tipoFiltro,
+          estado: this.filter.estado
         }
       }).then(res => {
         this.reports = res.data.data

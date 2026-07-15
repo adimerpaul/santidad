@@ -281,26 +281,34 @@ class CashClosureController extends Controller
             ->pluck('count', 'date')
             ->toArray();
 
-        // 2. Fetch closures count grouped by date in a single query
-        $closuresCounts = CashClosure::where('agencia_id', $agenciaId)
+        // 2. Fetch closures in the search range with user relations
+        $closures = CashClosure::with(['user', 'closedByUser'])
+            ->where('agencia_id', $agenciaId)
             ->where('fecha_cierre', '>=', $startDate)
             ->where('fecha_cierre', '<=', $endDate)
-            ->selectRaw('DATE(fecha_cierre) as date, count(*) as count')
-            ->groupByRaw('DATE(fecha_cierre)')
-            ->pluck('count', 'date')
-            ->toArray();
+            ->get();
+
+        $closuresByDate = [];
+        foreach ($closures as $closure) {
+            $dateKey = Carbon::parse($closure->fecha_cierre)->format('Y-m-d');
+            $closuresByDate[$dateKey][] = [
+                'closed_by' => $closure->closedByUser->name ?? ($closure->user->name ?? 'N/A'),
+                'monto_fisico' => (float)$closure->monto_fisico
+            ];
+        }
 
         $gaps = [];
         for ($i = 14; $i >= 0; $i--) {
             $date = Carbon::now()->subDays($i)->format('Y-m-d');
             $salesCount = $salesCounts[$date] ?? 0;
-            $closuresCount = $closuresCounts[$date] ?? 0;
+            $dayClosures = $closuresByDate[$date] ?? [];
 
             $gaps[] = [
                 'date' => $date,
                 'has_sales' => $salesCount > 0,
-                'has_closure' => $closuresCount > 0,
-                'sin_cierre' => ($salesCount > 0 && $closuresCount == 0),
+                'has_closure' => count($dayClosures) > 0,
+                'sin_cierre' => ($salesCount > 0 && count($dayClosures) == 0),
+                'closures' => $dayClosures
             ];
         }
 

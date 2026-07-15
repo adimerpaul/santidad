@@ -45,6 +45,10 @@ class WithdrawalReportController extends Controller
             }
         }
 
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
         $rowsPerPage = $request->input('rowsPerPage', 20);
         if ($rowsPerPage <= 0) {
             $rowsPerPage = $query->count() ?: 20;
@@ -283,6 +287,8 @@ class WithdrawalReportController extends Controller
         if ($exists) {
             return response()->json(['message' => 'Este lote/compra ya se encuentra registrado en el informe. Edite el registro existente si desea modificar la cantidad.'], 422);
         }
+
+        $product = $buy->product;
 
         // Security check: restrict non-admins from modifying other branches' stocks
         if ($user->id !== 1) {

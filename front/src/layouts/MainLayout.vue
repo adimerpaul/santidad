@@ -40,7 +40,7 @@
 
         <!-- Estado de Caja Dinámico y Animado -->
         <q-btn
-          v-if="cajaStatus"
+          v-if="cajaStatus && String($store.user?.id) !== '1'"
           flat
           dense
           no-caps
@@ -324,7 +324,7 @@
           </div>
 
           <q-form @submit.prevent="guardarAperturaCaja">
-            <!-- Selector de fecha/hora de apertura editable (por si abrieron minutos antes/después) -->
+            <!-- Fecha/Hora de apertura no modificable (se toma la hora del sistema) -->
             <q-input
               v-model="formApertura.fecha_apertura"
               outlined
@@ -332,7 +332,8 @@
               type="datetime-local"
               label="Fecha/Hora de Apertura del Turno"
               class="q-mb-md"
-              required
+              readonly
+              disable
             />
 
             <!-- Observaciones -->
@@ -701,6 +702,12 @@ export default {
     },
     verificarEstadoCaja () {
       if (!this.$store.isLoggedIn) return
+      if (this.$store.user && String(this.$store.user.id) === '1') {
+        this.cajaStatus = ''
+        this.dialogAperturaCaja = false
+        this.dialogCierreCaja = false
+        return
+      }
       this.$axios.get('cash-closures/current-status').then(res => {
         const prevStatus = this.cajaStatus
         this.cajaStatus = res.data.status
@@ -820,6 +827,7 @@ export default {
       this.formCierre.observaciones = ''
     },
     clickEstadoCaja () {
+      if (this.$store.user && String(this.$store.user.id) === '1') return
       if (this.cajaStatus === 'ABIERTO') {
         this.abrirModalCierreCaja()
       } else {
