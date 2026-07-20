@@ -358,6 +358,127 @@
       </q-card>
     </q-dialog>
 
+    <!-- Diálogo de Confirmar Cierre Pendiente (Arqueo Obligatorio Posterior) -->
+    <q-dialog v-model="dialogConfirmarPendiente" persistent>
+      <q-card style="min-width: 360px; max-width: 450px; border-radius: 12px;">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-subtitle1 text-bold text-orange-9">
+            <q-icon name="pending_actions" size="24px" class="q-mr-xs"/>
+            Finalizar Cierre de Caja (Arqueo Pendiente)
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-md" v-if="infoPendiente">
+          <div class="bg-orange-1 text-orange-9 rounded-borders q-pa-sm q-mb-md" style="border: 1px solid #ffe0b2;">
+            <div class="row q-col-gutter-xs text-caption">
+              <div class="col-12"><b>Sucursal:</b> {{ infoPendiente.agencia_nombre }}</div>
+              <div class="col-12"><b>Responsable:</b> {{ infoPendiente.responsable }}</div>
+              <div class="col-12"><b>Fecha de Apertura:</b> {{ formatDate(infoPendiente.fecha_apertura) }}</div>
+            </div>
+          </div>
+
+          <div class="text-caption text-grey-8 q-mb-md">
+            Tienes un turno de caja que fue cerrado rápidamente para relevo. Por favor, <b>ingresa el monto físico de dinero en efectivo</b> que arqueaste de ese turno para finalizarlo.
+          </div>
+
+          <q-form @submit.prevent="guardarCierrePendiente">
+            <!-- Monto Físico -->
+            <q-input
+              v-model.number="formPendiente.monto_fisico"
+              outlined
+              dense
+              type="number"
+              step="0.01"
+              min="0"
+              label="Monto Físico en Efectivo (Bs) *"
+              class="q-mb-md text-bold"
+              required
+              suffix="Bs"
+            />
+
+            <!-- Observaciones -->
+            <q-input
+              v-model="formPendiente.observaciones"
+              outlined
+              type="textarea"
+              label="Observaciones del Arqueo (opcional)"
+              rows="3"
+              class="q-mb-md"
+            />
+
+            <div class="row justify-end q-mt-md">
+              <q-btn unelevated label="Registrar Arqueo y Finalizar Turno" color="orange-9" type="submit" :loading="loadingPendiente" class="full-width text-bold" no-caps />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <!-- Diálogo Moderno de Cierre de Sesión con Caja Activa -->
+    <q-dialog v-model="dialogLogoutCaja" persistent>
+      <q-card style="min-width: 380px; max-width: 440px; border-radius: 16px; overflow: hidden;">
+        <!-- Header con gradiente -->
+        <q-card-section class="text-white text-center q-py-md" style="background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);">
+          <q-icon name="point_of_sale" size="36px" class="q-mb-xs" />
+          <div class="text-subtitle1 text-bold">Turno de Caja Activo</div>
+          <div class="text-caption" style="opacity: 0.85;">Tienes un turno abierto en esta sucursal</div>
+        </q-card-section>
+
+        <q-card-section class="q-pa-md">
+          <!-- Opción 1: Cierre Normal -->
+          <div
+            class="logout-option-card q-pa-sm q-mb-sm rounded-borders cursor-pointer"
+            style="border: 2px solid #e8f5e9; background: #f1f8e9;"
+            @click="dialogLogoutCaja = false; abrirModalCierreCaja()"
+          >
+            <div class="row items-center no-wrap">
+              <q-avatar size="40px" color="green-6" text-color="white" icon="lock" class="q-mr-sm" />
+              <div class="col">
+                <div class="text-bold text-green-9" style="font-size: 13px;">Realizar Cierre Completo y Salir</div>
+                <div class="text-caption text-grey-7">Contar efectivo ahora, registrar el monto e irte</div>
+              </div>
+              <q-chip dense square size="10px" color="green" text-color="white" class="q-ml-xs">Recomendado</q-chip>
+            </div>
+          </div>
+
+          <!-- Opción 2: Cierre Rápido -->
+          <div
+            class="logout-option-card q-pa-sm q-mb-sm rounded-borders cursor-pointer"
+            style="border: 2px solid #fff3e0; background: #fff8e1;"
+            @click="dialogLogoutCaja = false; ejecutarCierreRapido()"
+          >
+            <div class="row items-center no-wrap">
+              <q-avatar size="40px" color="orange-8" text-color="white" icon="flash_on" class="q-mr-sm" />
+              <div class="col">
+                <div class="text-bold text-orange-9" style="font-size: 13px;">Cierre Rápido para Relevo</div>
+                <div class="text-caption text-grey-7">Liberar caja ahora, contar el efectivo después</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Opción 3: Solo cerrar sesión -->
+          <div
+            class="logout-option-card q-pa-sm q-mb-sm rounded-borders cursor-pointer"
+            style="border: 2px solid #eceff1; background: #fafafa;"
+            @click="dialogLogoutCaja = false; ejecutarLogout()"
+          >
+            <div class="row items-center no-wrap">
+              <q-avatar size="40px" color="grey-5" text-color="white" icon="logout" class="q-mr-sm" />
+              <div class="col">
+                <div class="text-bold text-grey-8" style="font-size: 13px;">Solo Cerrar Sesión</div>
+                <div class="text-caption text-grey-6">La caja seguirá abierta para este turno</div>
+              </div>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-separator />
+        <q-card-actions align="center" class="q-pa-sm">
+          <q-btn flat no-caps label="Cancelar" color="grey-7" icon="arrow_back" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
     <div id="myElement" style="display: none;" />
   </q-layout>
 </template>
@@ -412,7 +533,20 @@ export default {
       formApertura: {
         fecha_apertura: '',
         observaciones_apertura: ''
-      }
+      },
+      dialogConfirmarPendiente: false,
+      loadingPendiente: false,
+      infoPendiente: {
+        id: null,
+        agencia_nombre: '',
+        responsable: '',
+        fecha_apertura: ''
+      },
+      formPendiente: {
+        monto_fisico: 0,
+        observaciones: ''
+      },
+      dialogLogoutCaja: false
     }
   },
   computed: {
@@ -504,27 +638,7 @@ export default {
     },
     logout () {
       if (this.cajaStatus === 'ABIERTO') {
-        this.$q.dialog({
-          title: 'Turno de Caja Activo',
-          message: 'Tienes un turno de caja abierto en esta sucursal. ¿Deseas realizar el Cierre de Caja antes de cerrar sesión?',
-          options: {
-            type: 'radio',
-            model: 'cierre',
-            isValid: val => val !== null,
-            items: [
-              { label: 'Realizar Cierre de Caja y Salir (Recomendado)', value: 'cierre', color: 'green' },
-              { label: 'Solo Cerrar Sesión (Mantener Caja Abierta)', value: 'logout_only', color: 'orange' }
-            ]
-          },
-          cancel: { label: 'Cancelar', color: 'grey', flat: true },
-          persistent: true
-        }).onOk(data => {
-          if (data === 'cierre') {
-            this.abrirModalCierreCaja()
-          } else if (data === 'logout_only') {
-            this.ejecutarLogout()
-          }
-        })
+        this.dialogLogoutCaja = true
       } else {
         this.$q.dialog({
           message: '¿Quieres cerrar sesión?',
@@ -535,6 +649,35 @@ export default {
           this.ejecutarLogout()
         })
       }
+    },
+    ejecutarCierreRapido () {
+      this.$q.dialog({
+        title: 'Cierre Rápido (Relevo)',
+        message: '¿Deseas agregar alguna observación de relevo rápido? (Opcional)',
+        prompt: {
+          model: '',
+          type: 'text',
+          outlined: true,
+          dense: true,
+          label: 'Observaciones'
+        },
+        cancel: { label: 'Cancelar', color: 'grey', flat: true },
+        ok: { label: 'Confirmar Relevo Rápido', color: 'orange-9' },
+        persistent: true
+      }).onOk(observaciones => {
+        this.$q.loading.show({ message: 'Registrando relevo rápido...' })
+        this.$axios.post('cash-closures/close', {
+          is_fast: true,
+          observaciones
+        }).then(() => {
+          this.$alert.success('Cierre rápido registrado. Caja liberada para relevo.')
+          this.ejecutarLogout()
+        }).catch(err => {
+          this.$alert.error(err.response?.data?.message || 'Error al procesar el cierre rápido')
+        }).finally(() => {
+          this.$q.loading.hide()
+        })
+      })
     },
     ejecutarLogout () {
       if (this.cajaInterval) {
@@ -552,6 +695,7 @@ export default {
       this.cajaStatus = ''
       this.dialogAperturaCaja = false
       this.dialogCierreCaja = false
+      this.dialogConfirmarPendiente = false
 
       this.$q.loading.show()
       this.$axios.post('logout').then(() => {
@@ -718,24 +862,26 @@ export default {
         this.cajaStatus = ''
         this.dialogAperturaCaja = false
         this.dialogCierreCaja = false
+        this.dialogConfirmarPendiente = false
         return
       }
       this.$axios.get('cash-closures/current-status').then(res => {
         const prevStatus = this.cajaStatus
         this.cajaStatus = res.data.status
 
-        // Dynamic multidevice closing lock:
-        if (prevStatus === 'ABIERTO' && res.data.status === 'CERRADO') {
+        // Dynamic multidevice closing lock (if status changes from ABIERTO to CERRADO/PENDIENTE):
+        if (prevStatus === 'ABIERTO' && res.data.status !== 'ABIERTO') {
           this.dialogAperturaCaja = false
           this.dialogCierreCaja = false
+          this.dialogConfirmarPendiente = false
 
           if (this.forceLogoutTimeout) {
             clearTimeout(this.forceLogoutTimeout)
           }
 
           this.$q.dialog({
-            title: 'Turno Finalizado',
-            message: 'El turno de caja de esta sucursal ha sido cerrado desde otro dispositivo. Tu sesión se cerrará automáticamente.',
+            title: 'Turno de Caja Relevado / Cerrado',
+            message: 'El turno de caja de esta sucursal ha sido relevado o cerrado desde otro dispositivo. Tu sesión se cerrará automáticamente.',
             persistent: true,
             ok: { label: 'Entendido', color: 'primary' }
           }).onDismiss(() => {
@@ -755,7 +901,19 @@ export default {
           return
         }
 
-        if (res.data.status === 'CERRADO') {
+        if (res.data.status === 'PENDIENTE') {
+          this.infoPendiente = {
+            id: res.data.id,
+            agencia_nombre: res.data.agencia_nombre,
+            responsable: res.data.responsable,
+            fecha_apertura: res.data.fecha_apertura
+          }
+          this.formPendiente.monto_fisico = 0
+          this.formPendiente.observaciones = ''
+          this.dialogConfirmarPendiente = true
+          this.dialogAperturaCaja = false
+          this.dialogCierreCaja = false
+        } else if (res.data.status === 'CERRADO') {
           this.infoApertura = {
             agencia_nombre: res.data.agencia_nombre,
             responsable: res.data.responsable,
@@ -763,12 +921,33 @@ export default {
           }
           this.formApertura.fecha_apertura = res.data.fecha_apertura
           this.formApertura.observaciones_apertura = ''
+          this.dialogConfirmarPendiente = false
           this.dialogAperturaCaja = true
         } else {
+          this.dialogConfirmarPendiente = false
           this.dialogAperturaCaja = false
         }
       }).catch(err => {
         console.error('Error al verificar estado de caja:', err)
+      })
+    },
+    guardarCierrePendiente () {
+      if (this.formPendiente.monto_fisico < 0) {
+        this.$alert.error('El monto físico no puede ser negativo')
+        return
+      }
+      this.loadingPendiente = true
+      this.$axios.post(`cash-closures/${this.infoPendiente.id}/confirm-pending`, {
+        monto_fisico: this.formPendiente.monto_fisico,
+        observaciones: this.formPendiente.observaciones
+      }).then(() => {
+        this.$alert.success('Cierre de caja finalizado con éxito. Se cerrará tu sesión.')
+        this.dialogConfirmarPendiente = false
+        this.ejecutarLogout()
+      }).catch(err => {
+        this.$alert.error(err.response?.data?.message || 'Error al confirmar el cierre de caja')
+      }).finally(() => {
+        this.loadingPendiente = false
       })
     },
     guardarAperturaCaja () {
@@ -998,5 +1177,14 @@ export default {
     transform: scale(0.95);
     box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
   }
+}
+
+.logout-option-card {
+  transition: all 0.2s ease;
+}
+
+.logout-option-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 </style>

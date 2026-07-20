@@ -13,6 +13,7 @@ use App\Models\Sales;
 use App\Http\Requests\StoreSalesRequest;
 use App\Http\Requests\UpdateSalesRequest;
 use App\Services\FacturacionSiatService;
+use App\Models\CashClosure;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,20 @@ class SalesController extends Controller
 
     public function store(StoreSalesRequest $request)
     {
+        // Verificar que la caja esté abierta antes de procesar cualquier venta
+        $user = $request->user();
+        if ($user && $user->agencia_id && (string)$user->id !== '1') {
+            $cajaAbierta = CashClosure::where('agencia_id', $user->agencia_id)
+                ->where('estado', 'ABIERTO')
+                ->exists();
+
+            if (!$cajaAbierta) {
+                return response()->json([
+                    'message' => 'La caja de esta sucursal se encuentra cerrada o en proceso de relevo. Debe aperturar turno para vender.',
+                ], 400);
+            }
+        }
+
         error_log('cliente numeroDocumento: ' . $request->client['numeroDocumento']);
 
         if ($request->client['numeroDocumento'] !== '0') {

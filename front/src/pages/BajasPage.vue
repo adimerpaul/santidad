@@ -515,8 +515,18 @@ import { exportFile } from 'quasar'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
+function getTwoMonthsAgoDate () {
+  const d = new Date()
+  d.setMonth(d.getMonth() - 2)
+  return {
+    mes: d.getMonth() + 1,
+    anio: d.getFullYear()
+  }
+}
+
 export default {
   data () {
+    const twoMonthsAgo = getTwoMonthsAgoDate()
     return {
       tab: localStorage.getItem('bajas_active_tab') || 'informes',
       loading: false,
@@ -526,15 +536,15 @@ export default {
       showCreateDialog: false,
       filter: {
         agencia_id: [],
-        mes: (new Date().getMonth() + 1),
-        anio: new Date().getFullYear(),
+        mes: twoMonthsAgo.mes,
+        anio: twoMonthsAgo.anio,
         tipo: null,
         estado: null
       },
       newReport: {
         agencia_id: null,
-        mes: (new Date().getMonth() + 1),
-        anio: new Date().getFullYear(),
+        mes: twoMonthsAgo.mes,
+        anio: twoMonthsAgo.anio,
         observaciones: '',
         tipo: 'VENCIMIENTO/DEVOLUCION',
         customTipo: ''
@@ -847,10 +857,11 @@ export default {
       if (this.loading) return
       this.loading = true
       const userAgenciaId = this.$store?.user?.agencia_id
+      const defaultDate = getTwoMonthsAgoDate()
       const payload = {
         agencia_id: userAgenciaId || 1,
-        mes: (new Date().getMonth() + 1),
-        anio: new Date().getFullYear(),
+        mes: defaultDate.mes,
+        anio: defaultDate.anio,
         tipo: 'CONTEO FISICO',
         observaciones: 'Control de Inventario automático'
       }
@@ -876,10 +887,11 @@ export default {
         tipoReporte = 'MOTIVOS SANITARIOS'
       }
 
+      const defaultDate = getTwoMonthsAgoDate()
       this.newReport = {
         agencia_id: this.$store?.user?.agencia_id || null,
-        mes: (new Date().getMonth() + 1),
-        anio: new Date().getFullYear(),
+        mes: defaultDate.mes,
+        anio: defaultDate.anio,
         observaciones: '',
         tipo: tipoReporte,
         customTipo: ''

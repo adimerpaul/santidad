@@ -21,7 +21,24 @@ class CashClosureController extends Controller
             return response()->json(['message' => 'El usuario no tiene una agencia asignada.'], 400);
         }
 
-        // Check if there is an active open shift
+        // 1. Check if the current user has a pending shift to close
+        $pendingShift = CashClosure::where('user_id', $user->id)
+            ->where('estado', 'PENDIENTE')
+            ->first();
+
+        if ($pendingShift) {
+            return response()->json([
+                'status' => 'PENDIENTE',
+                'id' => $pendingShift->id,
+                'agencia_id' => $pendingShift->agencia_id,
+                'agencia_nombre' => $pendingShift->agencia ? $pendingShift->agencia->nombre : 'Sin nombre',
+                'responsable' => $pendingShift->user ? $pendingShift->user->name : $user->name,
+                'fecha_apertura' => Carbon::parse($pendingShift->fecha_apertura)->format('Y-m-d\TH:i'),
+                'observaciones_apertura' => $pendingShift->observaciones_apertura,
+            ]);
+        }
+
+        // 2. Check if there is an active open shift in the branch
         $openShift = CashClosure::where('agencia_id', $agenciaId)
             ->where('estado', 'ABIERTO')
             ->first();
@@ -39,7 +56,7 @@ class CashClosureController extends Controller
         $startTime = Carbon::parse($openShift->fecha_apertura);
         $endTime = Carbon::now();
 
-        // 2. Fetch sales inside this timeframe
+        // Fetch sales inside this timeframe
         $sales = Sales::where('agencia_id', $agenciaId)
             ->where('tipoVenta', 'Ingreso')
             ->where('estado', 'ACTIVO')
@@ -97,7 +114,16 @@ class CashClosureController extends Controller
             return response()->json(['message' => 'El usuario no tiene una agencia asignada.'], 400);
         }
 
-        // Check if there is an active open shift
+        // 1. Block opening if the current user has a pending shift
+        $pendingShift = CashClosure::where('user_id', $user->id)
+            ->where('estado', 'PENDIENTE')
+            ->first();
+
+        if ($pendingShift) {
+            return response()->json(['message' => 'Debe finalizar su cierre de caja pendiente antes de abrir un nuevo turno.'], 400);
+        }
+
+        // 2. Check if there is an active open shift in the branch
         $existingOpen = CashClosure::where('agencia_id', $agenciaId)
             ->where('estado', 'ABIERTO')
             ->first();
@@ -112,18 +138,6 @@ class CashClosureController extends Controller
         ]);
 
         $fechaApe = Carbon::parse($request->fecha_apertura);
-        if ($fechaApe->isFuture()) {
-            return response()->json(['message' => 'La fecha de apertura no puede ser una fecha futura.'], 400);
-        }
-
-        // Validate that fecha_apertura is not earlier than the last closed shift's fecha_cierre
-        $lastClosure = CashClosure::where('agencia_id', $agenciaId)
-            ->where('estado', 'CERRADO')
-            ->orderBy('fecha_cierre', 'desc')
-            ->first();
-        if ($lastClosure && $fechaApe->lt(Carbon::parse($lastClosure->fecha_cierre))) {
-            return response()->json(['message' => 'La fecha de apertura no puede ser anterior al último cierre de caja (' . Carbon::parse($lastClosure->fecha_cierre)->format('d/m/Y H:i') . ').'], 400);
-        }
 
         $closure = CashClosure::create([
             'agencia_id' => $agenciaId,
@@ -141,10 +155,18 @@ class CashClosureController extends Controller
      */
     public function close(Request $request)
     {
-        $request->validate([
-            'monto_fisico' => 'required|numeric|min:0',
-            'observaciones' => 'nullable|string',
-        ]);
+        $isFast = $request->boolean('is_fast', false);
+
+        if (!$isFast) {
+            $request->validate([
+                'monto_fisico' => 'required|numeric|min:0',
+                'observaciones' => 'nullable|string',
+            ]);
+        } else {
+            $request->validate([
+                'observaciones' => 'nullable|string',
+            ]);
+        }
 
         $user = $request->user();
         $agenciaId = $user->agencia_id;
@@ -188,23 +210,80 @@ class CashClosureController extends Controller
         }
 
         $totalSistema = $totalEfectivo + $totalDigital;
-        $montoFisico = (float) $request->monto_fisico;
-        $diferencia = $montoFisico - $totalEfectivo;
 
-        // Save closure details and mark closed
-        $openShift->update([
-            'fecha_cierre' => $endTime,
-            'closed_by_user_id' => $user->id,
-            'monto_fisico' => $montoFisico,
-            'monto_sistema_efectivo' => $totalEfectivo,
-            'monto_sistema_digital' => $totalDigital,
-            'monto_sistema_total' => $totalSistema,
-            'diferencia' => $diferencia,
-            'observaciones' => $request->observaciones,
-            'estado' => 'CERRADO',
-        ]);
+        if (!$isFast) {
+            $montoFisico = (float) $request->monto_fisico;
+            $diferencia = $montoFisico - $totalEfectivo;
+
+            // Save closure details and mark closed
+            $openShift->update([
+                'fecha_cierre' => $endTime,
+                'closed_by_user_id' => $user->id,
+                'monto_fisico' => $montoFisico,
+                'monto_sistema_efectivo' => $totalEfectivo,
+                'monto_sistema_digital' => $totalDigital,
+                'monto_sistema_total' => $totalSistema,
+                'diferencia' => $diferencia,
+                'observaciones' => $request->observaciones,
+                'estado' => 'CERRADO',
+            ]);
+        } else {
+            // Cierre Rápido (Relevo)
+            $openShift->update([
+                'fecha_cierre' => $endTime,
+                'closed_by_user_id' => $user->id,
+                'monto_sistema_efectivo' => $totalEfectivo,
+                'monto_sistema_digital' => $totalDigital,
+                'monto_sistema_total' => $totalSistema,
+                'observaciones' => $request->observaciones,
+                'estado' => 'PENDIENTE',
+            ]);
+        }
 
         return response()->json($openShift);
+    }
+
+    /**
+     * Finalize a fast/pending shift closure by providing the physical amount.
+     */
+    public function confirmPending(Request $request, $id)
+    {
+        $user = $request->user();
+        $shift = CashClosure::findOrFail($id);
+
+        if ($shift->estado !== 'PENDIENTE') {
+            return response()->json(['message' => 'Este turno no se encuentra en estado pendiente de arqueo.'], 400);
+        }
+
+        // Restrict to the owner or admin
+        if ((string)$shift->user_id !== (string)$user->id && (string)$user->id !== '1') {
+            return response()->json(['message' => 'No tiene permisos para finalizar este cierre.'], 403);
+        }
+
+        $request->validate([
+            'monto_fisico' => 'required|numeric|min:0',
+            'observaciones' => 'nullable|string',
+        ]);
+
+        $montoFisico = (float)$request->monto_fisico;
+        $totalEfectivo = (float)($shift->monto_sistema_efectivo ?? 0);
+        $diferencia = $montoFisico - $totalEfectivo;
+
+        $updateData = [
+            'monto_fisico' => $montoFisico,
+            'diferencia' => round($diferencia, 2),
+            'estado' => 'CERRADO',
+        ];
+
+        if ($request->filled('observaciones')) {
+            $updateData['observaciones'] = $shift->observaciones
+                ? $shift->observaciones . ' | ' . $request->observaciones
+                : $request->observaciones;
+        }
+
+        $shift->update($updateData);
+
+        return response()->json($shift);
     }
 
     /**

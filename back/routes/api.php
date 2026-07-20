@@ -101,6 +101,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('/cash-closures/gaps', [CashClosureController::class, 'gaps']);
     Route::post('/cash-closures/open', [CashClosureController::class, 'open']);
     Route::post('/cash-closures/close', [CashClosureController::class, 'close']);
+    Route::post('/cash-closures/{id}/confirm-pending', [CashClosureController::class, 'confirmPending']);
     Route::apiResource('/cash-closures', CashClosureController::class)->only(['index']);
 
     // Categories: escritura protegida (index/show ya públicos)
