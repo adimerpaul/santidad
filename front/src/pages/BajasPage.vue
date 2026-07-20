@@ -526,9 +526,15 @@ function getTwoMonthsAgoDate () {
 
 export default {
   data () {
+    const initialTab = localStorage.getItem('bajas_active_tab') || 'informes'
     const twoMonthsAgo = getTwoMonthsAgoDate()
+    const isInventario = initialTab === 'inventario'
+
+    const initialMes = isInventario ? (new Date().getMonth() + 1) : twoMonthsAgo.mes
+    const initialAnio = isInventario ? new Date().getFullYear() : twoMonthsAgo.anio
+
     return {
-      tab: localStorage.getItem('bajas_active_tab') || 'informes',
+      tab: initialTab,
       loading: false,
       reports: [],
       productos: [],
@@ -536,15 +542,15 @@ export default {
       showCreateDialog: false,
       filter: {
         agencia_id: [],
-        mes: twoMonthsAgo.mes,
-        anio: twoMonthsAgo.anio,
+        mes: initialMes,
+        anio: initialAnio,
         tipo: null,
         estado: null
       },
       newReport: {
         agencia_id: null,
-        mes: twoMonthsAgo.mes,
-        anio: twoMonthsAgo.anio,
+        mes: initialMes,
+        anio: initialAnio,
         observaciones: '',
         tipo: 'VENCIMIENTO/DEVOLUCION',
         customTipo: ''
@@ -737,6 +743,16 @@ export default {
           }
         }
       }
+      if (this._lastTab !== this.tab) {
+        if (this.tab === 'inventario') {
+          this.filter.mes = (new Date().getMonth() + 1)
+          this.filter.anio = new Date().getFullYear()
+        } else if (this.tab === 'informes') {
+          const d = getTwoMonthsAgoDate()
+          this.filter.mes = d.mes
+          this.filter.anio = d.anio
+        }
+      }
       this._lastTab = this.tab
 
       if (this.tab === 'devoluciones_central') {
@@ -857,11 +873,10 @@ export default {
       if (this.loading) return
       this.loading = true
       const userAgenciaId = this.$store?.user?.agencia_id
-      const defaultDate = getTwoMonthsAgoDate()
       const payload = {
         agencia_id: userAgenciaId || 1,
-        mes: defaultDate.mes,
-        anio: defaultDate.anio,
+        mes: (new Date().getMonth() + 1),
+        anio: new Date().getFullYear(),
         tipo: 'CONTEO FISICO',
         observaciones: 'Control de Inventario automático'
       }
@@ -881,17 +896,25 @@ export default {
     },
     openCreateDialog () {
       let tipoReporte = 'VENCIMIENTO/DEVOLUCION'
+      let dateObj = getTwoMonthsAgoDate()
+
       if (this.tab === 'inventario') {
         tipoReporte = 'CONTEO FISICO'
+        dateObj = {
+          mes: (new Date().getMonth() + 1),
+          anio: new Date().getFullYear()
+        }
       } else if (this.tab === 'motivos_sanitarios') {
         tipoReporte = 'MOTIVOS SANITARIOS'
+        dateObj = getTwoMonthsAgoDate()
+      } else {
+        dateObj = getTwoMonthsAgoDate()
       }
 
-      const defaultDate = getTwoMonthsAgoDate()
       this.newReport = {
         agencia_id: this.$store?.user?.agencia_id || null,
-        mes: defaultDate.mes,
-        anio: defaultDate.anio,
+        mes: dateObj.mes,
+        anio: dateObj.anio,
         observaciones: '',
         tipo: tipoReporte,
         customTipo: ''
