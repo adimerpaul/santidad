@@ -550,22 +550,8 @@ class WithdrawalReportController extends Controller
         $report_id = $request->input('report_id');
 
         if ($user->id !== 1 && $report_id) {
-            $report = WithdrawalReport::find($report_id);
-            if ($report) {
-                $isMonthly = in_array($report->tipo, [
-                    'VENCIMIENTO', 'DEVOLUCION', 'VENCIMIENTO/DEVOLUCION', 'VENCIDOS/DEVOLUCIONES'
-                ]);
-
-                if ($isMonthly) {
-                    if ($user->agencia_id !== 1) {
-                        $agencia_id = $user->agencia_id;
-                    }
-                } else {
-                    // In Conteo Físico, respect request's agencia_id if present (could be null for all branches, or other branch ID)
-                    if (!$request->has('agencia_id')) {
-                        $agencia_id = $user->agencia_id;
-                    }
-                }
+            if (!$request->has('agencia_id')) {
+                $agencia_id = $user->agencia_id;
             }
         }
 

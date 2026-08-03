@@ -46,12 +46,13 @@ class SalesController extends Controller
         $user = $request->user();
         if ($user && $user->agencia_id && (string)$user->id !== '1') {
             $cajaAbierta = CashClosure::where('agencia_id', $user->agencia_id)
+                ->where('user_id', $user->id)
                 ->where('estado', 'ABIERTO')
                 ->exists();
 
             if (!$cajaAbierta) {
                 return response()->json([
-                    'message' => 'La caja de esta sucursal se encuentra cerrada o en proceso de relevo. Debe aperturar turno para vender.',
+                    'message' => 'Usted no cuenta con un turno de caja abierto a su nombre. Debe aperturar su turno para vender.',
                 ], 400);
             }
         }

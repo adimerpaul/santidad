@@ -38,19 +38,70 @@ class CashClosureController extends Controller
             ]);
         }
 
-        // 2. Check if there is an active open shift in the branch
+        // 2. Check if the current user has an active open shift
         $openShift = CashClosure::where('agencia_id', $agenciaId)
+            ->where('user_id', $user->id)
             ->where('estado', 'ABIERTO')
             ->first();
 
-        if (!$openShift) {
-            return response()->json([
-                'status' => 'CERRADO',
+        if ($openShift) {
+            // Calculate shift bounds and sales for this user
+            $startTime = Carbon::parse($openShift->fecha_apertura);
+            $endTime = Carbon::now();
+
+            // Fetch sales inside this timeframe for this user
+            $sales = Sales::where('agencia_id', $agenciaId)
+                ->where('user_id', $user->id)
+                ->where('tipoVenta', 'Ingreso')
+                ->where('estado', 'ACTIVO')
+                ->where('created_at', '>=', $startTime)
+                ->where('created_at', '<=', $endTime)
+                ->get();
+
+            $totalEfectivo = 0.0;
+            $totalDigital = 0.0;
+
+            foreach ($sales as $sale) {
+                if ($sale->metodoPago === 'Efectivo') {
+                    $totalEfectivo += (float) ($sale->montoTotal ?? 0);
+                } elseif ($sale->metodoPago === 'Personalizado') {
+                    $totalEfectivo += (float) ($sale->montoEfectivo ?? 0);
+                    $totalDigital += (float) ($sale->montoQr ?? 0);
+                } else {
+                    $totalDigital += (float) ($sale->montoTotal ?? 0);
+                }
+            }
+
+            $totalSistema = $totalEfectivo + $totalDigital;
+            $isAdmin = (string)$user->id === '1';
+
+            $response = [
+                'status' => 'ABIERTO',
+                'id' => $openShift->id,
+                'agencia_id' => $agenciaId,
                 'agencia_nombre' => $user->agencia ? $user->agencia->nombre : 'Sin nombre',
-                'responsable' => $user->name,
-                'fecha_apertura' => Carbon::now()->format('Y-m-d\TH:i'), // Pre-filled default opening date
-            ]);
+                'responsable' => $openShift->user ? $openShift->user->name : $user->name,
+                'fecha_apertura' => $startTime->format('Y-m-d\TH:i'),
+                'fecha_cierre' => $endTime->format('Y-m-d\TH:i'),
+                'observaciones_apertura' => $openShift->observaciones_apertura,
+            ];
+
+            // System details only visible to Admin
+            if ($isAdmin) {
+                $response['monto_sistema_efectivo'] = round((float)$totalEfectivo, 2);
+                $response['monto_sistema_digital'] = round((float)$totalDigital, 2);
+                $response['monto_sistema_total'] = round((float)$totalSistema, 2);
+            }
+
+            return response()->json($response);
         }
+
+        return response()->json([
+            'status' => 'CERRADO',
+            'agencia_nombre' => $user->agencia ? $user->agencia->nombre : 'Sin nombre',
+            'responsable' => $user->name,
+            'fecha_apertura' => Carbon::now()->format('Y-m-d\TH:i'),
+        ]);
 
         // Calculate shift bounds and sales
         $startTime = Carbon::parse($openShift->fecha_apertura);
@@ -114,22 +165,14 @@ class CashClosureController extends Controller
             return response()->json(['message' => 'El usuario no tiene una agencia asignada.'], 400);
         }
 
-        // 1. Block opening if the current user has a pending shift
-        $pendingShift = CashClosure::where('user_id', $user->id)
-            ->where('estado', 'PENDIENTE')
-            ->first();
-
-        if ($pendingShift) {
-            return response()->json(['message' => 'Debe finalizar su cierre de caja pendiente antes de abrir un nuevo turno.'], 400);
-        }
-
-        // 2. Check if there is an active open shift in the branch
+        // Check if this user already has an active open shift
         $existingOpen = CashClosure::where('agencia_id', $agenciaId)
+            ->where('user_id', $user->id)
             ->where('estado', 'ABIERTO')
             ->first();
 
         if ($existingOpen) {
-            return response()->json(['message' => 'La caja ya se encuentra abierta para esta sucursal.'], 400);
+            return response()->json(['message' => 'Usted ya se encuentra con un turno abierto.'], 400);
         }
 
         $request->validate([
@@ -175,20 +218,49 @@ class CashClosureController extends Controller
             return response()->json(['message' => 'El usuario no tiene una agencia asignada.'], 400);
         }
 
-        // Find active open shift
-        $openShift = CashClosure::where('agencia_id', $agenciaId)
-            ->where('estado', 'ABIERTO')
-            ->first();
+        $closureId = $request->input('closure_id');
+        $openShift = null;
 
-        if (!$openShift) {
-            return response()->json(['message' => 'No existe un turno abierto para cerrar.'], 400);
+        if ($closureId) {
+            $openShift = CashClosure::where('id', $closureId)
+                ->where('agencia_id', $agenciaId)
+                ->first();
+
+            if (!$openShift) {
+                return response()->json(['message' => 'No existe el turno de caja especificado.'], 400);
+            }
+            if ($openShift->estado === 'CERRADO') {
+                return response()->json(['message' => 'Este turno de caja ya fue finalizado.'], 400);
+            }
+        } else {
+            // Check if user has a pending shift waiting for physical cash amount
+            $pendingShift = CashClosure::where('user_id', $user->id)
+                ->where('agencia_id', $agenciaId)
+                ->where('estado', 'PENDIENTE')
+                ->first();
+
+            if ($pendingShift && !$isFast) {
+                $openShift = $pendingShift;
+            } else {
+                // Fallback: Find active open shift for this user (or agency if admin)
+                $query = CashClosure::where('agencia_id', $agenciaId)->where('estado', 'ABIERTO');
+                if ((string)$user->id !== '1') {
+                    $query->where('user_id', $user->id);
+                }
+                $openShift = $query->first();
+
+                if (!$openShift) {
+                    return response()->json(['message' => 'No tiene un turno abierto a su nombre para cerrar.'], 400);
+                }
+            }
         }
 
         $startTime = Carbon::parse($openShift->fecha_apertura);
         $endTime = Carbon::now();
 
-        // Calculate shift sales
+        // Calculate shift sales for this shift's user
         $sales = Sales::where('agencia_id', $agenciaId)
+            ->where('user_id', $openShift->user_id)
             ->where('tipoVenta', 'Ingreso')
             ->where('estado', 'ACTIVO')
             ->where('created_at', '>=', $startTime)

@@ -409,6 +409,18 @@
             <div class="row justify-end q-mt-md">
               <q-btn unelevated label="Registrar Arqueo y Finalizar Turno" color="orange-9" type="submit" :loading="loadingPendiente" class="full-width text-bold" no-caps />
             </div>
+
+            <div class="row justify-center q-mt-xs">
+              <q-btn
+                flat
+                dense
+                no-caps
+                size="11px"
+                color="grey-6"
+                label="Posponer Arqueo e Iniciar Nuevo Turno"
+                @click="posponerArqueo"
+              />
+            </div>
           </q-form>
         </q-card-section>
       </q-card>
@@ -668,7 +680,8 @@ export default {
         this.$q.loading.show({ message: 'Registrando relevo rápido...' })
         this.$axios.post('cash-closures/close', {
           is_fast: true,
-          observaciones
+          observaciones,
+          closure_id: this.infoCierre?.id
         }).then(() => {
           this.$alert.success('Cierre rápido registrado. Caja liberada para relevo.')
           this.ejecutarLogout()
@@ -950,6 +963,10 @@ export default {
         this.loadingPendiente = false
       })
     },
+    posponerArqueo () {
+      this.dialogConfirmarPendiente = false
+      this.ejecutarLogout()
+    },
     guardarAperturaCaja () {
       this.loadingApertura = true
       this.$axios.post('cash-closures/open', {
@@ -1001,7 +1018,11 @@ export default {
     },
     ejecutarCierreCaja () {
       this.loadingCierre = true
-      this.$axios.post('cash-closures/close', this.formCierre).then(() => {
+      const payload = {
+        ...this.formCierre,
+        closure_id: this.infoCierre?.id
+      }
+      this.$axios.post('cash-closures/close', payload).then(() => {
         this.$alert.success('Cierre de caja registrado con éxito')
         this.dialogCierreCaja = false
         this.cajaStatus = 'CERRADO'
