@@ -1381,7 +1381,9 @@ export default {
     },
 
     notifySocket (event, data) {
-      const socketUrl = 'http://' + window.location.hostname + ':3000'
+      // const socketUrl = 'http://' + window.location.hostname + ':3000'
+      // env VITE_API_SOCKET
+      const socketUrl = import.meta.env.VITE_API_SOCKET || 'http://localhost:3000'
       fetch(`${socketUrl}/notify`, {
         method: 'POST',
         headers: {
