@@ -190,6 +190,12 @@ class CashClosureController extends Controller
             'observaciones_apertura' => $request->observaciones_apertura,
         ]);
 
+        $this->notifySocket('caja_estado', [
+            'agencia_id' => $agenciaId,
+            'estado' => 'ABIERTO',
+            'user_id' => $user->id,
+        ]);
+
         return response()->json($closure);
     }
 
@@ -312,6 +318,12 @@ class CashClosureController extends Controller
             ]);
         }
 
+        $this->notifySocket('caja_estado', [
+            'agencia_id' => $agenciaId,
+            'estado' => $openShift->estado,
+            'user_id' => $user->id,
+        ]);
+
         return response()->json($openShift);
     }
 
@@ -354,6 +366,12 @@ class CashClosureController extends Controller
         }
 
         $shift->update($updateData);
+
+        $this->notifySocket('caja_estado', [
+            'agencia_id' => $shift->agencia_id,
+            'estado' => 'CERRADO',
+            'user_id' => $user->id,
+        ]);
 
         return response()->json($shift);
     }
@@ -464,5 +482,17 @@ class CashClosureController extends Controller
         }
 
         return response()->json($gaps);
+    }
+
+    private function notifySocket($event, $data)
+    {
+        try {
+            \Illuminate\Support\Facades\Http::post(env('SOCKET_SERVER_URL') . '/notify', [
+                'event' => $event,
+                'data'  => $data
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Could not notify socket server: ' . $e->getMessage());
+        }
     }
 }

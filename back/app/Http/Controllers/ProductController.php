@@ -463,9 +463,11 @@ class ProductController extends Controller
         $agencia_origen = $request->agencia_origen_id;
         $agencia_destino = $request->agencia_destino_id;
 
+        $notificacion = null;
+
         try {
             // ✅ SOLUCIÓN: Envolver todo el proceso en DB::transaction()
-            DB::transaction(function () use ($productos, $agencia_origen, $agencia_destino, $request) {
+            DB::transaction(function () use ($productos, $agencia_origen, $agencia_destino, $request, &$notificacion) {
                 
                 foreach ($productos as $item) {
                     $producto = Product::find($item['id']);
@@ -514,7 +516,7 @@ class ProductController extends Controller
                 $origenModel = Agencia::find($agencia_origen);
                 $origenNombre = $origenModel ? $origenModel->nombre : 'Almacén Central';
 
-                Notificacion::create([
+                $notificacion = Notificacion::create([
                     'agencia_id' => $agencia_destino,
                     'agencia_origen_id' => $origenModel ? $origenModel->id : null,
                     'mensaje' => "Has recibido una transferencia de productos desde: $origenNombre.",
@@ -522,6 +524,14 @@ class ProductController extends Controller
                     'leida' => false
                 ]);
             });
+
+            // Notificamos por socket a la sucursal destino (tiempo real, sin polling)
+            if ($notificacion) {
+                $this->notifySocket('nueva_notificacion', [
+                    'agencia_id' => $notificacion->agencia_id,
+                    'mensaje' => $notificacion->mensaje
+                ]);
+            }
 
             // Si salimos de DB::transaction sin errores, respondemos éxito al frontend
             return response()->json(['message' => 'Transferencia múltiple exitosa']);
@@ -773,6 +783,18 @@ class ProductController extends Controller
             if (!$on) {
                 $request->merge(['en_oferta' => false]);
             }
+        }
+    }
+
+    private function notifySocket($event, $data)
+    {
+        try {
+            \Illuminate\Support\Facades\Http::post(env('SOCKET_SERVER_URL') . '/notify', [
+                'event' => $event,
+                'data'  => $data
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Could not notify socket server: ' . $e->getMessage());
         }
     }
 }

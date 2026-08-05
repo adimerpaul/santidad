@@ -496,6 +496,8 @@
 </template>
 
 <script>
+import { io } from 'socket.io-client'
+
 export default {
   name: 'MainLayout',
   data () {
@@ -533,8 +535,6 @@ export default {
       },
       dialogAperturaCaja: false,
       cajaStatus: '',
-      cajaInterval: null,
-      notifInterval: null,
       forceLogoutTimeout: null,
       loadingApertura: false,
       infoApertura: {
@@ -623,25 +623,35 @@ export default {
     }
   },
   mounted () {
+    // Carga inicial una sola vez; las actualizaciones llegan por socket (sin polling)
     this.getNotificaciones(1)
-    this.notifInterval = setInterval(() => this.getNotificaciones(1, true), 120000)
     this.verificarEstadoCaja()
-    this.cajaInterval = setInterval(() => {
-      this.verificarEstadoCaja()
-    }, 180000)
+    this.conectarSocket()
   },
   beforeUnmount () {
-    if (this.cajaInterval) {
-      clearInterval(this.cajaInterval)
-    }
-    if (this.notifInterval) {
-      clearInterval(this.notifInterval)
+    if (this.socket) {
+      this.socket.disconnect()
+      this.socket = null
     }
     if (this.forceLogoutTimeout) {
       clearTimeout(this.forceLogoutTimeout)
     }
   },
   methods: {
+    conectarSocket () {
+      const socketUrl = import.meta.env.VITE_API_SOCKET || 'http://localhost:3000'
+      this.socket = io(socketUrl)
+      this.socket.on('nueva_notificacion', (data) => {
+        if (String(data?.agencia_id) === String(this.$store.agencia_id)) {
+          this.getNotificaciones(1, true)
+        }
+      })
+      this.socket.on('caja_estado', (data) => {
+        if (String(data?.agencia_id) === String(this.$store.agencia_id)) {
+          this.verificarEstadoCaja()
+        }
+      })
+    },
     linkIsActive (item) {
       return this.$route.path === item.to
     },
@@ -693,13 +703,9 @@ export default {
       })
     },
     ejecutarLogout () {
-      if (this.cajaInterval) {
-        clearInterval(this.cajaInterval)
-        this.cajaInterval = null
-      }
-      if (this.notifInterval) {
-        clearInterval(this.notifInterval)
-        this.notifInterval = null
+      if (this.socket) {
+        this.socket.disconnect()
+        this.socket = null
       }
       if (this.forceLogoutTimeout) {
         clearTimeout(this.forceLogoutTimeout)
