@@ -498,6 +498,11 @@
 <script>
 import { io } from 'socket.io-client'
 
+// Ventana mínima entre consultas de estado de caja. Acota el gasto pase lo que
+// pase: aunque algo dispare la verificación en bucle, no sale más de una
+// petición por ventana. Los cambios reales llegan por socket y usan force.
+const CAJA_CHECK_MIN_INTERVAL = 5000
+
 export default {
   name: 'MainLayout',
   data () {
@@ -535,6 +540,11 @@ export default {
       },
       dialogAperturaCaja: false,
       cajaStatus: '',
+      // Deduplicación de current-status: petición en vuelo, momento de la
+      // última respuesta y si quedó un cambio real por revalidar.
+      cajaCheckInFlight: null,
+      cajaCheckLastAt: 0,
+      cajaCheckPendiente: false,
       forceLogoutTimeout: null,
       loadingApertura: false,
       infoApertura: {
@@ -612,20 +622,21 @@ export default {
     }
   },
   watch: {
-    '$store.user': {
-      handler (newVal) {
-        if (newVal && newVal.id) {
+    // Solo el id: con `deep` el watcher se disparaba ante cualquier mutación
+    // anidada de user. `immediate` cubre la carga inicial, por eso mounted()
+    // ya no vuelve a pedir el estado de caja.
+    '$store.user.id': {
+      handler (id) {
+        if (id) {
           this.verificarEstadoCaja()
         }
       },
-      deep: true,
       immediate: true
     }
   },
   mounted () {
     // Carga inicial una sola vez; las actualizaciones llegan por socket (sin polling)
     this.getNotificaciones(1)
-    this.verificarEstadoCaja()
     this.conectarSocket()
   },
   beforeUnmount () {
@@ -642,13 +653,22 @@ export default {
       const socketUrl = import.meta.env.VITE_API_SOCKET || 'http://localhost:3000'
       this.socket = io(socketUrl)
       this.socket.on('nueva_notificacion', (data) => {
-        if (String(data?.agencia_id) === String(this.$store.agencia_id)) {
+        if (String(data?.agencia_id) !== String(this.$store.agencia_id)) return
+
+        // El evento trae la notificación completa: se inserta en el listado sin
+        // pedir /notificaciones otra vez. Si no viene (backend anterior al
+        // cambio), se cae al recargado de siempre.
+        if (data.notificacion) {
+          this.insertarNotificacion(data.notificacion, data.total_no_leidas)
+        } else {
           this.getNotificaciones(1, true)
         }
       })
       this.socket.on('caja_estado', (data) => {
         if (String(data?.agencia_id) === String(this.$store.agencia_id)) {
-          this.verificarEstadoCaja()
+          // Cambio real de estado: salta el antirebote, pero sigue compartiendo
+          // la petición en vuelo si ya hay una.
+          this.verificarEstadoCaja({ force: true })
         }
       })
     },
@@ -785,6 +805,34 @@ export default {
           console.error('Error notificaciones', err)
         })
     },
+    // Inserta en vivo una notificación llegada por socket, sin tocar la API.
+    insertarNotificacion (notif, totalNoLeidas) {
+      if (this.prevNotificacionesIds.has(notif.id)) return
+      this.prevNotificacionesIds.add(notif.id)
+
+      if (typeof totalNoLeidas === 'number') {
+        this.conteoNoLeidas = totalNoLeidas
+      } else if (!notif.leida) {
+        this.conteoNoLeidas++
+      }
+
+      // Solo se refleja en el listado si se está viendo la primera página;
+      // en otra página el orden cambiaría bajo los pies del usuario.
+      if (this.pagination.current_page <= 1) {
+        this.notificaciones.unshift(notif)
+        if (this.notificaciones.length > 15) {
+          this.notificaciones.pop()
+        }
+      }
+
+      this.$q.notify({
+        type: 'info',
+        color: 'primary',
+        icon: 'notifications_active',
+        message: 'Tienes 1 transferencia nueva.',
+        position: 'top-right'
+      })
+    },
     cambiarPagina (page) {
       if (page >= 1 && page <= this.pagination.last_page) {
         this.getNotificaciones(page)
@@ -874,81 +922,109 @@ export default {
         }
       })
     },
-    verificarEstadoCaja () {
-      if (!this.$store.isLoggedIn) return
-      if (!this.$store.user || !this.$store.user.id) return
+    verificarEstadoCaja ({ force = false } = {}) {
+      if (!this.$store.isLoggedIn) return Promise.resolve()
+      if (!this.$store.user || !this.$store.user.id) return Promise.resolve()
       if (String(this.$store.user.id) === '1') {
         this.cajaStatus = ''
         this.dialogAperturaCaja = false
         this.dialogCierreCaja = false
         this.dialogConfirmarPendiente = false
-        return
+        return Promise.resolve()
       }
-      this.$axios.get('cash-closures/current-status').then(res => {
-        const prevStatus = this.cajaStatus
-        this.cajaStatus = res.data.status
 
-        // Dynamic multidevice closing lock (if status changes from ABIERTO to CERRADO/PENDIENTE):
-        if (prevStatus === 'ABIERTO' && res.data.status !== 'ABIERTO') {
-          this.dialogAperturaCaja = false
-          this.dialogCierreCaja = false
-          this.dialogConfirmarPendiente = false
+      // Una sola petición en vuelo: los disparos simultáneos la comparten.
+      if (this.cajaCheckInFlight) {
+        if (force) this.cajaCheckPendiente = true
+        return this.cajaCheckInFlight
+      }
 
-          if (this.forceLogoutTimeout) {
-            clearTimeout(this.forceLogoutTimeout)
-          }
+      // Antirebote: sin force, ignora repeticiones dentro de la ventana.
+      if (!force && Date.now() - this.cajaCheckLastAt < CAJA_CHECK_MIN_INTERVAL) {
+        return Promise.resolve()
+      }
 
-          this.$q.dialog({
-            title: 'Turno de Caja Relevado / Cerrado',
-            message: 'El turno de caja de esta sucursal ha sido relevado o cerrado desde otro dispositivo. Tu sesión se cerrará automáticamente.',
-            persistent: true,
-            ok: { label: 'Entendido', color: 'primary' }
-          }).onDismiss(() => {
-            if (this.forceLogoutTimeout) {
-              clearTimeout(this.forceLogoutTimeout)
-              this.forceLogoutTimeout = null
-            }
-            this.ejecutarLogout()
-          })
-
-          this.forceLogoutTimeout = setTimeout(() => {
-            this.forceLogoutTimeout = null
-            if (this.$store.isLoggedIn) {
-              this.ejecutarLogout()
-            }
-          }, 6000)
-          return
-        }
-
-        if (res.data.status === 'PENDIENTE') {
-          this.infoPendiente = {
-            id: res.data.id,
-            agencia_nombre: res.data.agencia_nombre,
-            responsable: res.data.responsable,
-            fecha_apertura: res.data.fecha_apertura
-          }
-          this.formPendiente.monto_fisico = 0
-          this.formPendiente.observaciones = ''
-          this.dialogConfirmarPendiente = true
-          this.dialogAperturaCaja = false
-          this.dialogCierreCaja = false
-        } else if (res.data.status === 'CERRADO') {
-          this.infoApertura = {
-            agencia_nombre: res.data.agencia_nombre,
-            responsable: res.data.responsable,
-            fecha_apertura: res.data.fecha_apertura
-          }
-          this.formApertura.fecha_apertura = res.data.fecha_apertura
-          this.formApertura.observaciones_apertura = ''
-          this.dialogConfirmarPendiente = false
-          this.dialogAperturaCaja = true
-        } else {
-          this.dialogConfirmarPendiente = false
-          this.dialogAperturaCaja = false
-        }
+      this.cajaCheckInFlight = this.$axios.get('cash-closures/current-status').then(res => {
+        this.cajaCheckLastAt = Date.now()
+        this.aplicarEstadoCaja(res.data)
       }).catch(err => {
         console.error('Error al verificar estado de caja:', err)
+      }).finally(() => {
+        this.cajaCheckInFlight = null
+        // Si llegó un cambio real mientras había una petición en curso,
+        // revalidar exactamente una vez.
+        if (this.cajaCheckPendiente) {
+          this.cajaCheckPendiente = false
+          this.verificarEstadoCaja({ force: true })
+        }
       })
+
+      return this.cajaCheckInFlight
+    },
+    // Aplica una respuesta de current-status al estado del layout. Separado de
+    // la petición para poder reutilizar una respuesta ya obtenida.
+    aplicarEstadoCaja (data) {
+      const prevStatus = this.cajaStatus
+      this.cajaStatus = data.status
+
+      // Dynamic multidevice closing lock (if status changes from ABIERTO to CERRADO/PENDIENTE):
+      if (prevStatus === 'ABIERTO' && data.status !== 'ABIERTO') {
+        this.dialogAperturaCaja = false
+        this.dialogCierreCaja = false
+        this.dialogConfirmarPendiente = false
+
+        if (this.forceLogoutTimeout) {
+          clearTimeout(this.forceLogoutTimeout)
+        }
+
+        this.$q.dialog({
+          title: 'Turno de Caja Relevado / Cerrado',
+          message: 'El turno de caja de esta sucursal ha sido relevado o cerrado desde otro dispositivo. Tu sesión se cerrará automáticamente.',
+          persistent: true,
+          ok: { label: 'Entendido', color: 'primary' }
+        }).onDismiss(() => {
+          if (this.forceLogoutTimeout) {
+            clearTimeout(this.forceLogoutTimeout)
+            this.forceLogoutTimeout = null
+          }
+          this.ejecutarLogout()
+        })
+
+        this.forceLogoutTimeout = setTimeout(() => {
+          this.forceLogoutTimeout = null
+          if (this.$store.isLoggedIn) {
+            this.ejecutarLogout()
+          }
+        }, 6000)
+        return
+      }
+
+      if (data.status === 'PENDIENTE') {
+        this.infoPendiente = {
+          id: data.id,
+          agencia_nombre: data.agencia_nombre,
+          responsable: data.responsable,
+          fecha_apertura: data.fecha_apertura
+        }
+        this.formPendiente.monto_fisico = 0
+        this.formPendiente.observaciones = ''
+        this.dialogConfirmarPendiente = true
+        this.dialogAperturaCaja = false
+        this.dialogCierreCaja = false
+      } else if (data.status === 'CERRADO') {
+        this.infoApertura = {
+          agencia_nombre: data.agencia_nombre,
+          responsable: data.responsable,
+          fecha_apertura: data.fecha_apertura
+        }
+        this.formApertura.fecha_apertura = data.fecha_apertura
+        this.formApertura.observaciones_apertura = ''
+        this.dialogConfirmarPendiente = false
+        this.dialogAperturaCaja = true
+      } else {
+        this.dialogConfirmarPendiente = false
+        this.dialogAperturaCaja = false
+      }
     },
     guardarCierrePendiente () {
       if (this.formPendiente.monto_fisico < 0) {
@@ -991,10 +1067,12 @@ export default {
     abrirModalCierreCaja () {
       this.loadingCierre = true
       this.$axios.get('cash-closures/current-status').then(res => {
+        this.cajaCheckLastAt = Date.now()
         this.cajaStatus = res.data.status
         if (res.data.status === 'CERRADO') {
           this.$alert.warning('La caja ya se encuentra cerrada.')
-          this.verificarEstadoCaja()
+          // Reutiliza la respuesta recién obtenida en vez de volver a pedirla.
+          this.aplicarEstadoCaja(res.data)
         } else {
           this.infoCierre = res.data
           this.formCierre.monto_fisico = 0

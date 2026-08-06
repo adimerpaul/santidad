@@ -49,31 +49,39 @@ class CashClosureController extends Controller
             $startTime = Carbon::parse($openShift->fecha_apertura);
             $endTime = Carbon::now();
 
-            // Fetch sales inside this timeframe for this user
-            $sales = Sales::where('agencia_id', $agenciaId)
-                ->where('user_id', $user->id)
-                ->where('tipoVenta', 'Ingreso')
-                ->where('estado', 'ACTIVO')
-                ->where('created_at', '>=', $startTime)
-                ->where('created_at', '<=', $endTime)
-                ->get();
-
             $totalEfectivo = 0.0;
             $totalDigital = 0.0;
+            $isAdmin = (string)$user->id === '1';
 
-            foreach ($sales as $sale) {
-                if ($sale->metodoPago === 'Efectivo') {
-                    $totalEfectivo += (float) ($sale->montoTotal ?? 0);
-                } elseif ($sale->metodoPago === 'Personalizado') {
-                    $totalEfectivo += (float) ($sale->montoEfectivo ?? 0);
-                    $totalDigital += (float) ($sale->montoQr ?? 0);
-                } else {
-                    $totalDigital += (float) ($sale->montoTotal ?? 0);
-                }
+            // Los montos del sistema solo se exponen al admin (ver más abajo), así que
+            // para el resto ni siquiera se consultan las ventas del turno: antes se
+            // cargaban todas en memoria y se sumaban en PHP para luego descartarlas.
+            if ($isAdmin) {
+                $totales = Sales::where('agencia_id', $agenciaId)
+                    ->where('user_id', $user->id)
+                    ->where('tipoVenta', 'Ingreso')
+                    ->where('estado', 'ACTIVO')
+                    ->where('created_at', '>=', $startTime)
+                    ->where('created_at', '<=', $endTime)
+                    ->selectRaw("
+                        COALESCE(SUM(CASE
+                            WHEN metodoPago = 'Efectivo' THEN montoTotal
+                            WHEN metodoPago = 'Personalizado' THEN montoEfectivo
+                            ELSE 0
+                        END), 0) as total_efectivo,
+                        COALESCE(SUM(CASE
+                            WHEN metodoPago = 'Efectivo' THEN 0
+                            WHEN metodoPago = 'Personalizado' THEN montoQr
+                            ELSE montoTotal
+                        END), 0) as total_digital
+                    ")
+                    ->first();
+
+                $totalEfectivo = (float) ($totales->total_efectivo ?? 0);
+                $totalDigital = (float) ($totales->total_digital ?? 0);
             }
 
             $totalSistema = $totalEfectivo + $totalDigital;
-            $isAdmin = (string)$user->id === '1';
 
             $response = [
                 'status' => 'ABIERTO',

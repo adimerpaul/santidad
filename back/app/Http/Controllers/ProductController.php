@@ -526,11 +526,17 @@ class ProductController extends Controller
                 ]);
             });
 
-            // Notificamos por socket a la sucursal destino (tiempo real, sin polling)
+            // Notificamos por socket a la sucursal destino (tiempo real, sin polling).
+            // Va la notificación completa y el contador de no leídas para que el
+            // front la inserte en el listado sin volver a pedir /notificaciones.
             if ($notificacion) {
                 $this->notifySocket('nueva_notificacion', [
                     'agencia_id' => $notificacion->agencia_id,
-                    'mensaje' => $notificacion->mensaje
+                    'mensaje' => $notificacion->mensaje,
+                    'notificacion' => $notificacion->toArray(),
+                    'total_no_leidas' => Notificacion::where('agencia_id', $notificacion->agencia_id)
+                        ->where('leida', false)
+                        ->count(),
                 ]);
             }
 

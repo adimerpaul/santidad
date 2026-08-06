@@ -441,10 +441,8 @@ export default {
     this.proveedores = [{ id: 0, nombreRazonSocial: 'Busca o selecciona un proveedor' }]
     const agencia = localStorage.getItem('agencia_id')
     this.agencia = parseInt(agencia)
-    this.proveedorGet()
     this.salesGet()
-    this.agenciasGet()
-    this.usersGet()
+    this.catalogosGet()
   },
   methods: {
     saleModificar () {
@@ -459,17 +457,17 @@ export default {
         this.$alert.error(err.response.data.message)
       })
     },
-    usersGet () {
-      this.$axios.get('user').then(res => {
-        this.users = res.data
-      })
-    },
-    agenciasGet () {
-      this.agencias = [{ id: '', nombre: 'TODO' }]
-      this.$axios.get('agencias').then(res => {
-        // this.agencias = res.data
-        this.agencias = [...this.agencias, ...res.data]
-      })
+    // Proveedores, agencias y usuarios en una sola petición, cacheada en el
+    // store: al volver a esta página ya no se pide nada.
+    async catalogosGet () {
+      await this.$store.fetchCatalogos(this.$axios, ['providers', 'agencias', 'users'])
+
+      this.proveedores = [
+        { id: 0, nombreRazonSocial: 'Busca o selecciona un proveedor' },
+        ...this.$store.providers
+      ]
+      this.agencias = [{ id: '', nombre: 'TODO' }, ...this.$store.agencias]
+      this.users = this.$store.users
     },
     reportTotal (title) {
       this.loading = true
@@ -561,11 +559,14 @@ export default {
         })
       })
     },
-    proveedorGet () {
-      this.proveedores = [{ id: 0, nombreRazonSocial: 'Busca o selecciona un proveedor' }]
-      this.$axios.get('providers').then(res => {
-        this.proveedores = [...this.proveedores, ...res.data]
-      })
+    // Recarga la lista de proveedores tras crear uno nuevo.
+    async proveedorGet () {
+      this.$store.invalidarCatalogos('providers')
+      await this.$store.fetchCatalogos(this.$axios, ['providers'])
+      this.proveedores = [
+        { id: 0, nombreRazonSocial: 'Busca o selecciona un proveedor' },
+        ...this.$store.providers
+      ]
     },
     addProveedor () {
       this.loading = true

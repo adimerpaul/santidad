@@ -645,16 +645,7 @@ export default {
   },
   mounted () {
     this.productsGet()
-    this.categoriesGet()
-    this.agenciasGet()
-    this.subcategoriesGet()
-    this.$axios.get('documents').then(res => {
-      res.data.forEach(r => {
-        r.label = r.descripcion
-      })
-      this.documents = res.data
-      this.document = this.documents[0]
-    })
+    this.catalogosGet()
   },
   beforeUnmount () {
     this.closeClientDisplay()
@@ -845,12 +836,23 @@ export default {
       return '0.00'
     },
 
-    subcategoriesGet () {
-      this.$axios.get('subcategories').then(response => {
-        this.subcategories = response.data
-      }).catch(error => {
-        console.log(error)
-      })
+    // Categorías, subcategorías, agencias y documentos en una sola petición,
+    // cacheada en el store: al volver a esta página ya no se pide nada.
+    async catalogosGet () {
+      await this.$store.fetchCatalogos(this.$axios, [
+        'categories',
+        'subcategories',
+        'agencias',
+        'documents'
+      ])
+
+      this.categories = [{ name: 'Ver todas las categorias', id: 0 }, ...this.$store.categories]
+      this.categoriesTable = this.$store.categories
+      this.subcategories = this.$store.subcategories
+      this.agencias = [{ nombre: 'Selecciona una agencia', id: 0 }, ...this.$store.agencias]
+
+      this.documents = this.$store.documents.map(r => ({ ...r, label: r.descripcion }))
+      this.document = this.documents[0]
     },
 
     saleInsert () {
@@ -1187,25 +1189,6 @@ export default {
         p.cantidadPedida = 0
       })
       this.$store.productosVenta = []
-    },
-
-    agenciasGet () {
-      this.agencias = [{ nombre: 'Selecciona una agencia', id: 0 }]
-      this.$store.fetchAgencias(this.$axios).then(data => {
-        this.agencias = this.agencias.concat(data)
-      }).catch(error => {
-        this.$alert.error(error.response?.data?.message || 'Error al cargar agencias')
-      })
-    },
-
-    categoriesGet () {
-      this.categories = [{ name: 'Ver todas las categorias', id: 0 }]
-      this.$store.fetchCategories(this.$axios).then(data => {
-        this.categories = this.categories.concat(data)
-        this.categoriesTable = data
-      }).catch(error => {
-        console.log(error)
-      })
     },
 
     productsGet () {

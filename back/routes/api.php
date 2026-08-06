@@ -96,6 +96,9 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
 
     Route::resource('/user', UserController::class);
 
+    // Catálogos agrupados: una sola petición en vez de una por lista
+    Route::get('/catalogos', [App\Http\Controllers\CatalogoController::class, 'index']);
+
     // Cash Closures
     Route::get('/cash-closures/current-status', [CashClosureController::class, 'currentStatus']);
     Route::get('/cash-closures/gaps', [CashClosureController::class, 'gaps']);
