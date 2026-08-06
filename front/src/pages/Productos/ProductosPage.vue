@@ -290,7 +290,7 @@ export default {
     },
     productsGet () {
       this.loading = true
-      this.$axios.get(`products?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&subcategory=${this.subcategoria}&agencia=${this.agencia}&distribuidora=${this.distribuidora || ''}`).then(res => {
+      this.$axios.get(`products?page=${this.current_page}&paginate=18&search=${this.search}&order=${this.order}&category=${this.category}&subcategory=${this.subcategoria}&agencia=${this.agencia}&distribuidora=${this.distribuidora || ''}`).then(res => {
         this.loading = false
         this.loading = false
         // console.log(res.data.products)

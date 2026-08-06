@@ -1211,7 +1211,7 @@ export default {
     productsGet () {
       this.loading = true
       this.products = []
-      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}&subcategory=${this.subcategoria}`).then(res => {
+      this.$axios.get(`productsSale?page=${this.current_page}&paginate=18&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}&subcategory=${this.subcategoria}`).then(res => {
         this.loading = false
         this.totalProducts = res.data.products.total
         this.last_page = res.data.products.last_page

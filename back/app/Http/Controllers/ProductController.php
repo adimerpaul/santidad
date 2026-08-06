@@ -168,7 +168,6 @@ class ProductController extends Controller
         error_log('orderRaw: '.$ordenarRaw);
 
         $products = $query->orderByRaw($ordenarRaw)
-            ->with(['category', 'agencia'])
             ->paginate($paginate);
 
         $costoTotal = $query->select(DB::raw('sum(costo*cantidad)'))
@@ -305,11 +304,13 @@ class ProductController extends Controller
         $query = Product::query()
             ->with([
                 'buys' => function ($q) {
-                    $q->where('cantidadVendida', '>', 0)
+                    // Solo las columnas que consume el front (lotes en la venta);
+                    // product_id es obligatorio para hidratar la relación
+                    $q->select(['id', 'product_id', 'lote', 'price', 'dateExpiry', 'cantidadVendida'])
+                        ->where('cantidadVendida', '>', 0)
                         ->orderBy('created_at', 'desc')
                         ->limit(7);
-                },
-                'category', 'agencia'
+                }
             ])
             ->where('nombre', 'like', $searchLike);
 
