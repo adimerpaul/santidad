@@ -21,10 +21,14 @@ class PaginaProductos {
   final int paginaActual;
   final int ultimaPagina;
 
+  /// Total de productos que coinciden con la búsqueda (todas las páginas).
+  final int total;
+
   PaginaProductos({
     required this.items,
     required this.paginaActual,
     required this.ultimaPagina,
+    required this.total,
   });
 
   bool get hayMas => paginaActual < ultimaPagina;
@@ -115,12 +119,15 @@ class CatalogoRepository {
       'per_page': '$perPage',
     });
 
+    final items = (data['data'] as List? ?? [])
+        .map((p) => Product.fromJson(Map<String, dynamic>.from(p)))
+        .toList();
+
     return PaginaProductos(
-      items: (data['data'] as List? ?? [])
-          .map((p) => Product.fromJson(Map<String, dynamic>.from(p)))
-          .toList(),
+      items: items,
       paginaActual: data['current_page'] ?? 1,
       ultimaPagina: data['last_page'] ?? 1,
+      total: data['total'] ?? items.length,
     );
   }
 

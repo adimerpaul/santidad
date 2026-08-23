@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../core/app_theme.dart';
 import '../../core/formatters.dart';
@@ -261,8 +262,8 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-/// Logo de WhatsApp dibujado a mano (Material Icons no incluye marcas):
-/// globo de chat con cola y auricular punzonado (transparente).
+/// Logo oficial de WhatsApp (Font Awesome Brands; Material Icons no
+/// incluye íconos de marca).
 class WhatsAppIcon extends StatelessWidget {
   final double size;
   final Color color;
@@ -271,51 +272,8 @@ class WhatsAppIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size.square(size),
-      painter: _WhatsAppPainter(color),
-    );
+    return FaIcon(FontAwesomeIcons.whatsapp, size: size, color: color);
   }
-}
-
-class _WhatsAppPainter extends CustomPainter {
-  final Color color;
-
-  _WhatsAppPainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    canvas.saveLayer(Offset.zero & size, Paint());
-
-    final globo = Path()
-      ..addOval(
-        Rect.fromCircle(center: Offset(w * .53, h * .47), radius: w * .43),
-      )
-      ..moveTo(w * .20, h * .62)
-      ..lineTo(w * .05, h * .97)
-      ..lineTo(w * .45, h * .88)
-      ..close();
-    canvas.drawPath(globo, Paint()..color = color);
-
-    final auricular = Path()
-      ..moveTo(w * .40, h * .28)
-      ..quadraticBezierTo(w * .40, h * .58, w * .70, h * .62);
-    canvas.drawPath(
-      auricular,
-      Paint()
-        ..blendMode = BlendMode.clear
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = w * .14
-        ..strokeCap = StrokeCap.round,
-    );
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _WhatsAppPainter old) => old.color != color;
 }
 
 /// Botón principal con degradado azul (`.btn-gold` del diseño).

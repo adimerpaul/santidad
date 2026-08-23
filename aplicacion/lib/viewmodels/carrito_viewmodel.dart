@@ -36,12 +36,13 @@ class CarritoViewModel extends ChangeNotifier {
     return null;
   }
 
-  void agregar(Product p) {
+  void agregar(Product p, {int cantidad = 1}) {
+    final qty = cantidad < 1 ? 1 : cantidad;
     final existente = _buscar(p.id);
     if (existente != null) {
-      existente.qty++;
+      existente.qty += qty;
     } else {
-      items.add(CartItem(product: p));
+      items.add(CartItem(product: p, qty: qty));
     }
     notifyListeners();
   }
