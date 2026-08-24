@@ -463,19 +463,19 @@ class SalesController extends Controller
                     return null;
                 }
 
-                $precio       = (float) $p->precio;
+                $precio       = round((float) $p->precio, 1);
                 $precioNormal = null;
                 if (!empty($p->porcentaje) && (int) $p->porcentaje > 0) {
                     $precioNormal = $precio;
-                    $precio       = round($precio - ($precio * $p->porcentaje / 100), 2);
+                    $precio       = round($precio - ($precio * $p->porcentaje / 100), 1);
                 }
 
                 return [
                     'id'           => (int) $p->id,
                     'nombre'       => $p->nombre,
                     'imagen'       => $p->imagen ?: 'productDefault.jpg',
-                    'precio'       => number_format($precio, 2, '.', ''),
-                    'precioNormal' => $precioNormal,
+                    'precio'       => number_format($precio, 1, '.', ''),
+                    'precioNormal' => $precioNormal ? number_format($precioNormal, 1, '.', '') : null,
                     'porcentaje'   => (int) ($p->porcentaje ?? 0),
                     'cantidad'     => (int) ($p->cantidad ?? 0),
                     'vendido'      => (int) $r->cantidad_total,

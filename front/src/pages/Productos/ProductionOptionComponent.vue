@@ -129,16 +129,17 @@
         <div class="row">
           <div class="col-12 col-md-5">
             <q-input
-        label-color="black"
-        outlined
-        type="number"
-        step="0.01"
-        v-model="product.precio"
-        label="Precio*"
-        dense
-        hint="Valor que le cobras a tus clientes por el producto"
-        :disable="!isAdmin"
-      />
+              label-color="black"
+              outlined
+              type="number"
+              step="0.1"
+              v-model="product.precio"
+              @blur="product.precio = product.precio ? (Math.round(Number(product.precio) * 10) / 10) : product.precio"
+              label="Precio*"
+              dense
+              hint="Valor que le cobras a tus clientes por el producto"
+              :disable="!isAdmin"
+            />
           </div>
           <div class="col-12 col-md-3">
 <!--            <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>-->
@@ -595,6 +596,9 @@ export default {
     },
     productSave () {
       this.loading = true
+      if (this.product.precio !== null && this.product.precio !== '') {
+        this.product.precio = Math.round(Number(this.product.precio) * 10) / 10
+      }
       if (this.productAction === 'create') {
         this.$axios.post('products', this.product).then(res => {
           this.loading = false
@@ -625,9 +629,9 @@ export default {
   },
   computed: {
     precioVenta () {
-      const precio = this.product.precio == null ? 0 : this.product.precio
-      const porcentaje = this.product.porcentaje == null ? 0 : this.product.porcentaje
-      const precioVenta = (precio - (precio * porcentaje / 100)).toFixed(2)
+      const precio = this.product.precio == null ? 0 : Number(this.product.precio)
+      const porcentaje = this.product.porcentaje == null ? 0 : Number(this.product.porcentaje)
+      const precioVenta = (Math.round((precio - (precio * porcentaje / 100)) * 10) / 10).toFixed(1)
       return precioVenta
     },
     porcentaje () {

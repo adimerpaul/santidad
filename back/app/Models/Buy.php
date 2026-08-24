@@ -32,6 +32,11 @@ class Buy extends Model
     ];
     protected $appends = ['diasPorVencer'];
 
+    public function setPriceAttribute($value)
+    {
+        $this->attributes['price'] = ($value !== null && $value !== '') ? round((float) $value, 1) : null;
+    }
+
     public function userBaja(){
         return $this->belongsTo(User::class,'user_baja_id');
     }

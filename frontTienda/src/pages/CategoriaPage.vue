@@ -244,6 +244,11 @@ export default {
           this.productos = items.map(p => {
             const x = { ...p }
 
+            x.precio = x.precio ? (Math.round(Number(x.precio) * 10) / 10).toFixed(1) : x.precio
+            if (x.precioNormal != null && x.precioNormal !== '') {
+              x.precioNormal = (Math.round(Number(x.precioNormal) * 10) / 10).toFixed(1)
+            }
+
             // Verificamos si alguna sucursal tiene stock mayor a 0
             const stockDisponible = [
               p.cantidadSucursal1,

@@ -61,6 +61,16 @@ class Product extends Model
         $this->attributes['activo'] = $on ? 'ACTIVO' : 'INACTIVO';
     }
 
+    public function setPrecioAttribute($value)
+    {
+        $this->attributes['precio'] = ($value !== null && $value !== '') ? round((float) $value, 1) : null;
+    }
+
+    public function setPrecioAntesAttribute($value)
+    {
+        $this->attributes['precioAntes'] = ($value !== null && $value !== '') ? round((float) $value, 1) : null;
+    }
+
     public function getActivoAttribute($value)
     {
         // Siempre devolver 'ACTIVO' o 'INACTIVO' de forma consistente

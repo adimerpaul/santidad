@@ -43,8 +43,8 @@ export default boot(({ app, router }) => {
       return value.charAt(0).toUpperCase() + lower.slice(1)
     },
     precioRebajaVenta (monto, porcentaje) {
-      const precio = monto - (monto * porcentaje / 100)
-      return precio.toFixed(2)
+      const precio = Number(monto) - (Number(monto) * Number(porcentaje) / 100)
+      return (Math.round(precio * 10) / 10).toFixed(1)
     }
   }
   // app.config.globalProperties.$store = useCounterStore()

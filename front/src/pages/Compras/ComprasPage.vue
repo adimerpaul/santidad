@@ -51,7 +51,7 @@
                       :options="agencias" map-options emit-value
                       option-value="id" option-label="nombre"
                       @update:model-value="productsGet"
-                      :disable="!($store.user?.agencia_id==1)"/>
+                      :disable="!isAdmin && !($store.user?.agencia_id==1)"/>
           </div>
 
           <div class="col-12 flex flex-center">
@@ -114,7 +114,7 @@
                       </q-img>
                       <q-card-section class="q-pa-none q-ma-none">
                         <div class="text-center text-subtitle2">
-                          {{ p.precio }}
+                          {{ p.precio ? (Math.round(Number(p.precio) * 10) / 10).toFixed(1) : p.precio }}
                           <span class="text-red" v-if="p.porcentaje">
                             {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
                           </span>
@@ -251,11 +251,12 @@
                         <input v-model="props.row.cantidadCompra" type="number" min="1" placeholder="Cantidad" style="width: 170px;"
                                :class="{'invalid-date': props.row._cantidadError}"
                                @input="props.row._cantidadError=false"/><br>
-                        <input v-model="props.row.price" type="number" step="0.01" min="0" placeholder="Precio" style="width: 170px;"
+                        <input v-model="props.row.price" type="number" step="0.1" min="0" placeholder="Precio" style="width: 170px;"
                                :class="{'invalid-date': props.row._precioError}"
+                               @blur="props.row.price = (props.row.price !== '' && props.row.price !== null) ? (Math.round(Number(props.row.price) * 10) / 10) : props.row.price"
                                @input="props.row._precioError=false"/><br>
 
-                        <div><b>Subtotal:</b> {{(props.row.price*props.row.cantidadCompra).toFixed(2)}} Bs</div>
+                        <div><b>Subtotal:</b> {{(Math.round((props.row.price*props.row.cantidadCompra)*10)/10).toFixed(1)}} Bs</div>
 
                         <q-badge
                           v-if="props.row._tocoFecha && esCortoVencimiento(props.row.fechaVencimiento)"
@@ -286,7 +287,7 @@
                     <q-select class="bg-white" dense outlined v-model="agencia_id"
                               :options="agenciasDestino" map-options emit-value
                               option-value="id" option-label="nombre"
-                              :disable="!($store.user?.agencia_id==1)"/>
+                              :disable="!isAdmin && !($store.user?.agencia_id==1)"/>
                   </div>
 
                   <div class="col-4 text-grey flex flex-center">Proveedor</div>
@@ -646,6 +647,9 @@ export default {
         p._fechaVencimientoError = false
         p._cantidadError = false
         p._precioError = false
+        if (p.price !== '' && p.price !== null) {
+          p.price = Math.round(Number(p.price) * 10) / 10
+        }
         if (
           p.lote === '' || p.fechaVencimiento === '' || p.cantidadCompra === '' || p.price === '' ||
           p.lote === null || p.fechaVencimiento === null || p.cantidadCompra === null || p.price === null
@@ -902,7 +906,7 @@ export default {
         _cantidadError: false,
         _precioError: false,
         _tocoFecha: false,
-        price: product.precioVenta,
+        price: product.precio ? (Math.round(Number(product.precio) * 10) / 10) : (product.precioVenta ? (Math.round(Number(product.precioVenta) * 10) / 10) : 0),
         cantidadReal: product.cantidad,
         agencia_destino: this.agencia_id
       })
@@ -1129,10 +1133,16 @@ export default {
     }
   },
   computed: {
+    isAdmin () {
+      return String(this.$store.user?.id) === '1' || this.$store.user?.role === 'Admin'
+    },
     isSucursal1User () {
-      return String(this.$store.user?.agencia_id) === '1' || String(this.$store.user?.id) === '1'
+      return !this.isAdmin && String(this.$store.user?.agencia_id) === '1'
     },
     agenciasDestino () {
+      if (this.isAdmin) {
+        return this.agencias
+      }
       if (this.isSucursal1User) {
         return [
           { nombre: 'Almacen', id: 0 },
@@ -1197,11 +1207,9 @@ export default {
       }
     },
     agencia_id (newVal) {
-      if (this.isSucursal1User) {
-        this.$store.productosCompra.forEach(p => {
-          p.agencia_destino = newVal
-        })
-      }
+      this.$store.productosCompra.forEach(p => {
+        p.agencia_destino = newVal
+      })
     },
     '$store.productosCompra': {
       handler () {

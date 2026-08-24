@@ -723,7 +723,7 @@ class ProductController extends Controller
             if ($porcentaje > 0) {
                 $baseAntes   = ($precioAntes && $precioAntes > 0) ? $precioAntes : $precioBase;
                 $precio_antes = $baseAntes;
-                $precio_ahora = $baseAntes * (1 - $porcentaje / 100);
+                $precio_ahora = round($baseAntes * (1 - $porcentaje / 100), 1);
             } else {
                 if ($precioAntes && $precioAntes > 0) {
                     $precio_antes = $precioAntes;
@@ -743,12 +743,12 @@ class ProductController extends Controller
                 'id'     => $p->id,
                 'title'  => $p->nombre,
                 'imagen' => $img,
-                'precio'        => (float) $precioBase,
-                'precio_antes'  => $precio_antes ? round($precio_antes, 2) : null,
-                'precio_ahora'  => round($precio_ahora, 2),
+                'precio'        => round((float) $precioBase, 1),
+                'precio_antes'  => $precio_antes ? round($precio_antes, 1) : null,
+                'precio_ahora'  => round($precio_ahora, 1),
                 'porcentaje'    => (int) $porcentaje,
-                'precio_sin_descuento' => round($precio_sin_descuento, 2),
-                'precio_con_descuento' => round($precio_con_descuento, 2),
+                'precio_sin_descuento' => round($precio_sin_descuento, 1),
+                'precio_con_descuento' => round($precio_con_descuento, 1),
                 'stock'         => $stock,
             ];
         });

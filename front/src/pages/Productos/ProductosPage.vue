@@ -132,7 +132,7 @@
                   </q-img>
                   <q-card-section class="q-pa-none q-ma-none">
                     <div class="text-center text-subtitle2">
-                      {{ p.precio }}
+                      {{ p.precio ? (Math.round(Number(p.precio) * 10) / 10).toFixed(1) : p.precio }}
                       <span class="text-red" v-if="p.porcentaje">
                         {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
                       </span>

@@ -118,15 +118,27 @@
                       </q-img>
                       <q-card-section class="q-pa-none q-ma-none">
                         <div class="text-center text-subtitle2">
-                          {{ p.precio }}
+                          {{ p.precio ? (Math.round(Number(p.precio) * 10) / 10).toFixed(1) : p.precio }}
                           <span class="text-red" v-if="p.porcentaje">
                             {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
-                            ({{ (p.precio - $filters.precioRebajaVenta(p.precio, p.porcentaje)).toFixed(2) }} Bs)
+                            ({{ (Math.round((p.precio - $filters.precioRebajaVenta(p.precio, p.porcentaje)) * 10) / 10).toFixed(1) }} Bs)
                           </span>
                           Bs
                         </div>
-                        <div :class="getStockTextClass(p)">
-                          {{ p.cantidadReal }} {{ $q.screen.lt.md?'Dis':'Disponible' }}
+                        <div :class="getStockTextClass(p)" class="flex items-center justify-center">
+                          <span>{{ p.cantidadReal }} {{ $q.screen.lt.md?'Dis':'Disponible' }}</span>
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            size="xs"
+                            color="primary"
+                            icon="zoom_in"
+                            class="q-ml-xs"
+                            @click.stop.prevent="verImagenCompleta($event, p)"
+                          >
+                            <q-tooltip>Ver foto / Zoom</q-tooltip>
+                          </q-btn>
                         </div>
                         <div v-if="$store.user?.agencia_id == 1 && p.cantidadAlmacen !== undefined"
                           class="text-center text-caption text-lead">
@@ -192,7 +204,7 @@
                           </div>
                           <div class="text-grey">Stock Real: {{props.row.cantidadReal}}
                             (
-                            <span style="font-size: 10px">{{props.row.precio}} Bs </span>
+                            <span style="font-size: 10px">{{props.row.precio ? (Math.round(Number(props.row.precio) * 10) / 10).toFixed(1) : props.row.precio}} Bs </span>
                             <span style="font-size: 10px" class="text-red text-bold" v-if="props.row.porcentaje">{{$filters.precioRebajaVenta(props.row.precio, props.row.porcentaje)}} Bs</span>
                             )
                           </div>
@@ -525,6 +537,70 @@
       </q-card>
     </q-dialog>
     <div id="myElement" class="hidden"></div>
+    <!-- Diálogo para ver imagen completa del producto con Zoom interactivo -->
+    <q-dialog v-model="dialogImagenCompleta" @show="resetZoom">
+      <q-card style="max-width: 92vw; max-height: 92vh; min-width: 320px; background: rgba(18, 18, 18, 0.95); color: white; border: 1px solid #333;" class="q-pa-sm text-center">
+        <q-bar class="bg-transparent text-white q-mb-xs">
+          <div class="text-subtitle1 text-bold ellipsis" style="max-width: 45vw;">{{ productoImagenSeleccionado?.nombre }}</div>
+          <q-space />
+
+          <!-- Controles de Zoom -->
+          <div class="row items-center q-gutter-xs q-mr-sm">
+            <q-btn dense flat round icon="zoom_out" color="white" size="sm" @click="zoomOut" :disable="zoomScale <= 0.6">
+              <q-tooltip>Alejar (-)</q-tooltip>
+            </q-btn>
+            <span class="text-caption text-grey-4 text-bold" style="min-width: 40px;">{{ Math.round(zoomScale * 100) }}%</span>
+            <q-btn dense flat round icon="zoom_in" color="white" size="sm" @click="zoomIn" :disable="zoomScale >= 4">
+              <q-tooltip>Acercar (+)</q-tooltip>
+            </q-btn>
+            <q-btn dense flat round icon="restart_alt" color="white" size="sm" @click="resetZoom">
+              <q-tooltip>Restablecer tamaño original</q-tooltip>
+            </q-btn>
+          </div>
+
+          <q-btn dense flat icon="close" v-close-popup color="white" round>
+            <q-tooltip>Cerrar</q-tooltip>
+          </q-btn>
+        </q-bar>
+
+        <!-- Contenedor con soporte de Rueda del mouse (Wheel Zoom), Arrastre (Drag) y Doble Clic -->
+        <div
+          class="img-zoom-container flex flex-center q-pa-xs"
+          @wheel.prevent="onWheelZoom"
+          @mousedown="startDrag"
+          @mousemove="onDrag"
+          @mouseup="stopDrag"
+          @mouseleave="stopDrag"
+          @dblclick="toggleDblClickZoom"
+          :style="{ cursor: zoomScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in' }"
+          style="overflow: hidden; max-height: 75vh; max-width: 86vw; min-height: 280px; position: relative; user-select: none;"
+        >
+          <img
+            :src="urlImagenCompleta"
+            :style="{
+              transform: `translate(${panX}px, ${panY}px) scale(${zoomScale})`,
+              transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+              maxHeight: '70vh',
+              maxWidth: '80vw',
+              objectFit: 'contain',
+              pointerEvents: 'none'
+            }"
+            class="rounded-borders"
+            alt="Producto"
+          />
+        </div>
+
+        <div class="q-mt-xs text-caption text-grey-5 row justify-between items-center q-px-sm">
+          <span>💡 <b>Rueda del mouse</b> o botones para Zoom • <b>Arrastra</b> para mover</span>
+          <span class="text-white text-bold">
+            Precio: {{ productoImagenSeleccionado?.precio ? (Math.round(Number(productoImagenSeleccionado.precio) * 10) / 10).toFixed(1) : productoImagenSeleccionado?.precio }} Bs
+            <span v-if="productoImagenSeleccionado?.porcentaje" class="text-red-4 q-ml-xs">
+              ({{ $filters.precioRebajaVenta(productoImagenSeleccionado.precio, productoImagenSeleccionado.porcentaje) }} Bs)
+            </span>
+          </span>
+        </div>
+      </q-card>
+    </q-dialog>
 </q-page>
 </template>
 
@@ -538,6 +614,14 @@ export default {
       agencia_id: parseInt(localStorage.getItem('agencia_id')),
       saleDialog: false,
       saleCompleted: false,
+      dialogImagenCompleta: false,
+      productoImagenSeleccionado: null,
+      zoomScale: 1,
+      panX: 0,
+      panY: 0,
+      isDragging: false,
+      dragStartX: 0,
+      dragStartY: 0,
       clientDisplayVisible: false,
       clientDisplayWindow: null,
       client: {},
@@ -652,6 +736,11 @@ export default {
     this.detenerPollingQr()
   },
   computed: {
+    urlImagenCompleta () {
+      if (!this.productoImagenSeleccionado?.imagen) return ''
+      const img = this.productoImagenSeleccionado.imagen
+      return img.includes('http') ? img : `${this.$url}../images/${img}`
+    },
     // ✅ PRODUCTOS QUE SOBREPASARON STOCK (se muestra en tiempo real)
     productosSobrepasaronStock () {
       const productos = []
@@ -674,36 +763,38 @@ export default {
     totalSinDescuentos () {
       let s = 0
       this.$store.productosVenta.forEach(p => {
-        s = s + parseFloat(p.precio * p.cantidadVenta)
+        const precio = p.precio ? (Math.round(Number(p.precio) * 10) / 10) : 0
+        s = s + parseFloat(precio * p.cantidadVenta)
       })
-      return s.toFixed(2)
+      return (Math.round(s * 10) / 10).toFixed(1)
     },
 
     // Descuento aplicado por el sistema (diferencia entre precio original y precio con descuento)
     totalDescuentoSistema () {
       let s = 0
       this.$store.productosVenta.forEach(p => {
-        const precioOriginal = parseFloat(p.precio)
-        const precioConDescuento = parseFloat(p.precioVenta)
+        const precioOriginal = p.precio ? (Math.round(Number(p.precio) * 10) / 10) : 0
+        const precioConDescuento = p.precioVenta ? (Math.round(Number(p.precioVenta) * 10) / 10) : 0
         s = s + ((precioOriginal - precioConDescuento) * p.cantidadVenta)
       })
-      return s.toFixed(2)
+      return (Math.round(s * 10) / 10).toFixed(1)
     },
 
     // Total CON descuento del sistema (lo que ya venías usando)
     totalConDescuentoSistema () {
       let s = 0
       this.$store.productosVenta.forEach(p => {
-        s = s + parseFloat(p.precioVenta * p.cantidadVenta)
+        const precioConDescuento = p.precioVenta ? (Math.round(Number(p.precioVenta) * 10) / 10) : 0
+        s = s + parseFloat(precioConDescuento * p.cantidadVenta)
       })
-      return s.toFixed(2)
+      return (Math.round(s * 10) / 10).toFixed(1)
     },
 
     // Total FINAL con descuento adicional aplicado
     totalFinal () {
       const totalConSistema = parseFloat(this.totalConDescuentoSistema)
-      const descAdicional = parseFloat(this.descuento)
-      return (totalConSistema - descAdicional).toFixed(2)
+      const descAdicional = parseFloat(this.descuento || 0)
+      return (Math.round((totalConSistema - descAdicional) * 10) / 10).toFixed(1)
     },
 
     // CAMBIO CALCULADO CORREGIDO
@@ -715,15 +806,16 @@ export default {
       // Fórmula corregida: (Efectivo - Aporte) - Total Final
       const cambio = (efectivo - aporte) - totalFinal
 
-      return Math.round(cambio * 100) / 100
+      return Math.round(cambio * 10) / 10
     },
 
     totalganancia () {
       let s = 0
       this.$store.productosVenta.forEach(p => {
-        s = s + (p.precio - this.$filters.precioRebajaVenta(p.precio, p.porcentaje)) * p.cantidadVenta
+        const precio = p.precio ? (Math.round(Number(p.precio) * 10) / 10) : 0
+        s = s + (precio - Number(this.$filters.precioRebajaVenta(p.precio, p.porcentaje))) * p.cantidadVenta
       })
-      return s.toFixed(2)
+      return (Math.round(s * 10) / 10).toFixed(1)
     },
 
     // Mantener compatibilidad con código existente
@@ -1123,6 +1215,8 @@ export default {
 
       if (product.porcentaje) {
         product.precioVenta = this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
+      } else {
+        product.precioVenta = product.precio ? (Math.round(Number(product.precio) * 10) / 10).toFixed(1) : product.precio
       }
 
       if (productoEnCanasta) {
@@ -1142,7 +1236,7 @@ export default {
     },
 
     redondeo (n) {
-      return Math.round(n * 100) / 100
+      return (Math.round(Number(n) * 10) / 10).toFixed(1)
     },
 
     addCantidad (n, i) {
@@ -1203,7 +1297,8 @@ export default {
         res.data.products.data.forEach(p => {
           p.cantidadPedida = 0
           p.cantidadReal = p.cantidad // ✅ Guardar stock real
-          p.precioVenta = p.precio
+          p.precio = p.precio ? (Math.round(Number(p.precio) * 10) / 10).toFixed(1) : p.precio
+          p.precioVenta = p.porcentaje ? this.$filters.precioRebajaVenta(p.precio, p.porcentaje) : p.precio
           p.cantidadAlmacen = p.cantidadAlmacen || 0
           this.products.push(p)
         })
@@ -1290,11 +1385,12 @@ export default {
         // Normaliza campos mínimos para que clickAddSale funcione igual que con el grid
         const base = {
           ...raw,
+          precio: raw.precio ? (Math.round(Number(raw.precio) * 10) / 10).toFixed(1) : raw.precio,
           // stock para las validaciones de clickAddSale
           cantidadReal: Number(raw.cantidadReal ?? raw.cantidad ?? raw.stock ?? 0),
           // precio se recalcula dentro de clickAddSale si hay porcentaje,
           // pero no molesta si lo dejamos así:
-          precioVenta: Number(raw.precio),
+          precioVenta: raw.precio ? (Math.round(Number(raw.precio) * 10) / 10) : 0,
           porcentaje: Number(raw.porcentaje ?? 0),
           cantidadVenta: 0,
           cantidadPedida: 0,
@@ -1374,6 +1470,71 @@ export default {
         },
         body: JSON.stringify({ event, data })
       }).catch(err => console.warn('Could not notify socket server:', err))
+    },
+
+    verImagenCompleta (e, product) {
+      if (e) {
+        if (typeof e.stopPropagation === 'function') e.stopPropagation()
+        if (typeof e.preventDefault === 'function') e.preventDefault()
+        if (e.cancelBubble !== undefined) e.cancelBubble = true
+      }
+      this.productoImagenSeleccionado = product
+      this.resetZoom()
+      this.dialogImagenCompleta = true
+    },
+
+    resetZoom () {
+      this.zoomScale = 1
+      this.panX = 0
+      this.panY = 0
+      this.isDragging = false
+    },
+
+    zoomIn () {
+      this.zoomScale = Math.min(4, Math.round((this.zoomScale + 0.25) * 100) / 100)
+    },
+
+    zoomOut () {
+      this.zoomScale = Math.max(0.6, Math.round((this.zoomScale - 0.25) * 100) / 100)
+      if (this.zoomScale <= 1) {
+        this.panX = 0
+        this.panY = 0
+      }
+    },
+
+    onWheelZoom (e) {
+      const delta = e.deltaY < 0 ? 0.2 : -0.2
+      const newScale = Math.min(4, Math.max(0.6, Math.round((this.zoomScale + delta) * 100) / 100))
+      this.zoomScale = newScale
+      if (this.zoomScale <= 1) {
+        this.panX = 0
+        this.panY = 0
+      }
+    },
+
+    toggleDblClickZoom () {
+      if (this.zoomScale > 1.2) {
+        this.resetZoom()
+      } else {
+        this.zoomScale = 2.2
+      }
+    },
+
+    startDrag (e) {
+      if (this.zoomScale <= 1) return
+      this.isDragging = true
+      this.dragStartX = e.clientX - this.panX
+      this.dragStartY = e.clientY - this.panY
+    },
+
+    onDrag (e) {
+      if (!this.isDragging) return
+      this.panX = e.clientX - this.dragStartX
+      this.panY = e.clientY - this.dragStartY
+    },
+
+    stopDrag () {
+      this.isDragging = false
     }
 
   }

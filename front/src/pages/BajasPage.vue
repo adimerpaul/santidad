@@ -112,7 +112,25 @@
             </q-select>
           </div>
 
-          <div v-if="tab === 'productos'" class="col-12 col-sm-3">
+          <div v-if="tab === 'productos'" class="col-12 col-sm-3 col-md-2">
+            <q-select
+              v-model="filter.tipo_reporte"
+              :options="origenesReporteFiltro"
+              label="Origen Informe"
+              outlined
+              dense
+              emit-value
+              map-options
+              clearable
+              @update:model-value="fetchData"
+            >
+              <template v-slot:prepend>
+                <q-icon name="category" />
+              </template>
+            </q-select>
+          </div>
+
+          <div v-if="tab === 'productos'" class="col-12 col-sm-3 col-md-2">
             <q-select
               v-model="filter.tipo"
               :options="tiposBajaFiltro"
@@ -121,12 +139,30 @@
               dense
               emit-value
               map-options
+              clearable
               @update:model-value="fetchData"
             >
               <template v-slot:prepend>
                 <q-icon name="label" />
               </template>
             </q-select>
+          </div>
+
+          <div v-if="tab === 'productos'" class="col-12 col-sm-4 col-md-3">
+            <q-input
+              v-model="filter.search"
+              label="Buscar por producto o lote..."
+              placeholder="Nombre del producto, lote..."
+              outlined
+              dense
+              clearable
+              debounce="400"
+              @update:model-value="fetchData"
+            >
+              <template v-slot:prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
           </div>
 
           <div class="col-auto">
@@ -269,6 +305,20 @@
         @request="onRequestProductos"
         class="shadow-1"
       >
+        <template v-slot:body-cell-origen_reporte="props">
+          <q-td :props="props" class="text-center">
+            <q-chip
+              :color="getTipoReporteColor(props.row.report?.tipo)"
+              :text-color="getTipoReporteTextColor(props.row.report?.tipo)"
+              :icon="getTipoReporteIcon(props.row.report?.tipo)"
+              dense
+              size="sm"
+              class="text-weight-bold"
+            >
+              {{ formatTipoReporte(props.row.report?.tipo) }}
+            </q-chip>
+          </q-td>
+        </template>
         <template v-slot:body-cell-cantidad="props">
           <q-td :props="props" class="text-center">
             <span :class="props.row.cantidad > 0 ? 'text-positive text-bold' : 'text-negative text-bold'">
@@ -545,6 +595,8 @@ export default {
         mes: initialMes,
         anio: initialAnio,
         tipo: null,
+        tipo_reporte: null,
+        search: '',
         estado: null
       },
       newReport: {
@@ -582,6 +634,7 @@ export default {
       ],
       columnsProductos: [
         { name: 'report_id', align: 'left', label: 'Inf. #', field: 'withdrawal_report_id', sortable: true },
+        { name: 'origen_reporte', align: 'center', label: 'Origen Informe', field: row => row.report?.tipo || 'N/A', sortable: true },
         { name: 'agencia', align: 'left', label: 'Agencia', field: row => row.agencia?.nombre || (row.buy?.agencia?.nombre || 'Almacen') },
         { name: 'producto', align: 'left', label: 'Producto', field: row => row.product?.nombre },
         { name: 'lote', align: 'left', label: 'Lote', field: row => row.buy?.lote || 'N/A' },
@@ -611,6 +664,12 @@ export default {
         { label: 'Abril', value: 4 }, { label: 'Mayo', value: 5 }, { label: 'Junio', value: 6 },
         { label: 'Julio', value: 7 }, { label: 'Agosto', value: 8 }, { label: 'Septiembre', value: 9 },
         { label: 'Octubre', value: 10 }, { label: 'Noviembre', value: 11 }, { label: 'Diciembre', value: 12 }
+      ],
+      origenesReporteFiltro: [
+        { label: 'Todos los orígenes', value: null },
+        { label: '📁 Informes Mensuales', value: 'VENCIMIENTO/DEVOLUCION' },
+        { label: '📋 Inventario (Conteo Físico)', value: 'CONTEO FISICO' },
+        { label: '🩺 Bajas Motivos Sanitarios', value: 'MOTIVOS SANITARIOS' }
       ],
       tiposBajaFiltro: [
         { label: 'Todos los motivos', value: null },
@@ -814,7 +873,9 @@ export default {
           agencia_id: this.filter.agencia_id,
           mes: this.filter.mes,
           anio: this.filter.anio,
-          tipo: this.filter.tipo
+          tipo: this.filter.tipo,
+          tipo_reporte: this.filter.tipo_reporte,
+          search: this.filter.search
         }
       }).then(res => {
         this.productos = res.data.data
@@ -941,6 +1002,14 @@ export default {
           this.loading = false
         })
     },
+    formatTipoReporte (tipo) {
+      if (!tipo) return 'N/A'
+      if (tipo.includes('VENCIMIENTO') || tipo.includes('VENCIDOS') || tipo.includes('DEVOLUCION')) return 'Informe Mensual'
+      if (tipo.includes('CONTEO')) return 'Inventario'
+      if (tipo.includes('DAÑADOS') || tipo.includes('DANADO')) return 'Productos Dañados'
+      if (tipo.includes('SANITARIOS')) return 'Motivos Sanitarios'
+      return tipo
+    },
     getTipoReporteColor (tipo) {
       if (!tipo) return 'indigo-1'
       if (tipo.includes('VENCIMIENTO') || tipo.includes('VENCIDOS') || tipo.includes('DEVOLUCION')) return 'red-1'
@@ -1020,9 +1089,10 @@ export default {
         })
     },
     exportProductosCSV () {
-      let content = '\ufeffInf. #,Agencia,Producto,Lote,Cantidad,Precio Fact.,Total,Motivo,Fecha/Hora\n'
+      let content = '\ufeffInf. #,Origen,Agencia,Producto,Lote,Cantidad,Precio Fact.,Total,Motivo,Fecha/Hora\n'
       this.productos.forEach(row => {
         const reportId = row.withdrawal_report_id || ''
+        const origen = this.formatTipoReporte(row.report?.tipo)
         const agencia = row.agencia?.nombre || (row.buy?.agencia?.nombre || 'Almacen')
         const producto = row.product?.nombre || ''
         const lote = row.buy?.lote || 'N/A'
@@ -1033,7 +1103,7 @@ export default {
         const fecha = this.formatDate(row.created_at)
 
         const safeStr = (str) => `"${String(str).replace(/"/g, '""')}"`
-        content += `${reportId},${safeStr(agencia)},${safeStr(producto)},${safeStr(lote)},${cantidad},${precioFact},${total},${tipo},${fecha}\n`
+        content += `${reportId},${safeStr(origen)},${safeStr(agencia)},${safeStr(producto)},${safeStr(lote)},${cantidad},${precioFact},${total},${tipo},${fecha}\n`
       })
 
       const status = exportFile('productos_retirados.csv', content, 'text/csv')
@@ -1058,6 +1128,7 @@ export default {
         const total = row.product?.precio ? (row.cantidad * (row.product.precio / 1.3)).toFixed(2) : '0.00'
         return [
           row.withdrawal_report_id,
+          this.formatTipoReporte(row.report?.tipo),
           row.agencia?.nombre || (row.buy?.agencia?.nombre || 'Almacen'),
           row.product?.nombre,
           row.buy?.lote || 'N/A',
@@ -1071,12 +1142,12 @@ export default {
 
       autoTable(doc, {
         startY: 50,
-        head: [['INF. #', 'AGENCIA', 'PRODUCTO', 'LOTE', 'CANT.', 'PRECIO FACT.', 'TOTAL', 'MOTIVO', 'FECHA/HORA']],
+        head: [['INF. #', 'ORIGEN', 'AGENCIA', 'PRODUCTO', 'LOTE', 'CANT.', 'PRECIO FACT.', 'TOTAL', 'MOTIVO', 'FECHA/HORA']],
         body: tableData,
         theme: 'grid',
         headStyles: { fillColor: [41, 128, 185], fontSize: 8, fontStyle: 'bold', halign: 'center', lineColor: [255, 255, 255], lineWidth: 0.1 },
         bodyStyles: { fontSize: 7.5, lineColor: [220, 220, 220], lineWidth: 0.1 },
-        columnStyles: { 4: { cellWidth: 12 }, 5: { cellWidth: 18 }, 6: { cellWidth: 16 }, 7: { cellWidth: 26 }, 8: { cellWidth: 25 } },
+        columnStyles: { 5: { cellWidth: 12 }, 6: { cellWidth: 16 }, 7: { cellWidth: 16 }, 8: { cellWidth: 24 }, 9: { cellWidth: 25 } },
         didDrawPage: (data) => {
           doc.setFontSize(8)
           doc.setTextColor(150)

@@ -303,14 +303,14 @@ class AppMovilController extends Controller
             $img = null;
         }
 
-        $precio     = (float) $p->precio;
+        $precio     = round((float) $p->precio, 1);
         $porcentaje = (float) ($p->porcentaje ?? 0);
         if ($porcentaje > 0) {
-            $precioFinal = round($precio - ($precio * $porcentaje / 100), 2);
+            $precioFinal = round($precio - ($precio * $porcentaje / 100), 1);
             $precioAntes = $precio;
         } else {
             $precioFinal = $precio;
-            $precioAntes = (float) ($p->precioAntes ?? 0);
+            $precioAntes = $p->precioAntes ? round((float) $p->precioAntes, 1) : 0;
         }
 
         return [

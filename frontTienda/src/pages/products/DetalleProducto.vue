@@ -281,14 +281,14 @@ export default {
       return base
     },
     ahorro () {
-      if (!this.es_porcentaje) return '0.00'
+      if (!this.es_porcentaje) return '0.0'
       const before = Number(this.product?.precioNormal || 0)
       const now = Number(this.product?.precio || 0)
-      return (before - now).toFixed(2)
+      return (Math.round((before - now) * 10) / 10).toFixed(1)
     },
     total () {
       const p = Number(this.product?.precio || 0)
-      return (p * (Number(this.cantidad) || 0)).toFixed(2)
+      return (Math.round((p * (Number(this.cantidad) || 0)) * 10) / 10).toFixed(1)
     },
     availableStock () {
       return this.sucursales.reduce((acc, s) => acc + Number(s.cantidad || 0), 0)
@@ -473,7 +473,7 @@ export default {
         offers: {
           '@type': 'Offer',
           priceCurrency: 'BOB',
-          price: price,
+          price,
           availability: inStock,
           url: canonical,
           seller: {
@@ -631,10 +631,12 @@ export default {
         // precio / porcentaje
         if (Number(this.product.porcentaje) > 0) {
           this.es_porcentaje = true
-          this.product.precioNormal = this.product.precio
-          this.product.precio = (this.product.precio - (this.product.precio * this.product.porcentaje / 100)).toFixed(2)
+          this.product.precioNormal = (Math.round(Number(this.product.precio) * 10) / 10).toFixed(1)
+          const precioFinal = Number(this.product.precio) - (Number(this.product.precio) * Number(this.product.porcentaje) / 100)
+          this.product.precio = (Math.round(precioFinal * 10) / 10).toFixed(1)
         } else {
           this.es_porcentaje = false
+          this.product.precio = this.product.precio ? (Math.round(Number(this.product.precio) * 10) / 10).toFixed(1) : this.product.precio
         }
 
         // cantidades por sucursal
@@ -760,9 +762,13 @@ export default {
           if (!pass || seen.has(p.id)) continue
 
           const np = { ...p }
+          const precioBase = Number(np.precio ?? 0)
           if (Number(np.porcentaje) > 0) {
-            np.precioNormal = np.precio
-            np.precio = (np.precio - (np.precio * np.porcentaje / 100)).toFixed(2)
+            np.precioNormal = (Math.round(precioBase * 10) / 10).toFixed(1)
+            const nuevo = precioBase - (precioBase * Number(np.porcentaje) / 100)
+            np.precio = (Math.round(nuevo * 10) / 10).toFixed(1)
+          } else {
+            np.precio = (Math.round(precioBase * 10) / 10).toFixed(1)
           }
           list.push(np)
           seen.add(p.id)
@@ -884,7 +890,8 @@ export default {
     async addCart (product, cantidad) {
       const ok = await this.checkStockBeforeAdd(cantidad)
       if (!ok) return
-      const text = `Deseo comprar ${cantidad} ${product.nombre} a Bs. ${product.precio} c/u. Total Bs. ${(product.precio * cantidad).toFixed(2)}`
+      const subtotal = Math.round((Number(product.precio) * cantidad) * 10) / 10
+      const text = `Deseo comprar ${cantidad} ${product.nombre} a Bs. ${product.precio} c/u. Total Bs. ${subtotal.toFixed(1)}`
       window.open(`https://wa.me/59172319869?text=${encodeURIComponent(text)}`)
     },
     async checkStockBeforeAdd (cant) {

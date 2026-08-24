@@ -148,10 +148,13 @@ export default {
 
         this.productos = items.map(p => {
           const x = { ...p }
+          const precioBase = Number(x.precio ?? 0)
           if (Number(x.porcentaje) > 0) {
-            x.precioNormal = x.precio
-            const nuevo = x.precio - (x.precio * x.porcentaje / 100)
-            x.precio = Number(nuevo).toFixed(2)
+            x.precioNormal = (Math.round(precioBase * 10) / 10).toFixed(1)
+            const nuevo = precioBase - (precioBase * Number(x.porcentaje) / 100)
+            x.precio = (Math.round(nuevo * 10) / 10).toFixed(1)
+          } else {
+            x.precio = (Math.round(precioBase * 10) / 10).toFixed(1)
           }
           return x
         })

@@ -431,9 +431,11 @@ export default defineComponent({
     panelStyle () { return { width: this.panelWidth ? `${this.panelWidth}px` : '100%' } },
     subtotal () {
       if (!this.$store?.carrito.length) return 0
-      return this.$store.carrito.reduce((total, item) => {
-        return total + (Number(item.precio) * Number(item.cantidad))
+      const total = this.$store.carrito.reduce((acc, item) => {
+        const p = Math.round(Number(item.precio || 0) * 10) / 10
+        return acc + (p * Number(item.cantidad || 0))
       }, 0)
+      return (Math.round(total * 10) / 10).toFixed(1)
     }
   },
   mounted () {
@@ -675,11 +677,11 @@ export default defineComponent({
 
           if (x.porcentaje > 0) {
             const baseAntes = (precioAntes && precioAntes > 0) ? precioAntes : precioBase
-            x.precio_antes = baseAntes
-            x.precio_ahora = Number(baseAntes * (1 - x.porcentaje / 100))
+            x.precio_antes = Math.round(baseAntes * 10) / 10
+            x.precio_ahora = Math.round(baseAntes * (1 - x.porcentaje / 100) * 10) / 10
           } else {
-            x.precio_antes = (precioAntes && precioAntes > 0) ? precioAntes : null
-            x.precio_ahora = precioBase
+            x.precio_antes = (precioAntes && precioAntes > 0) ? (Math.round(precioAntes * 10) / 10) : null
+            x.precio_ahora = Math.round(precioBase * 10) / 10
           }
 
           if ((!x.porcentaje || x.porcentaje === 0) && x.precio_antes && x.precio_ahora) {
@@ -787,7 +789,7 @@ export default defineComponent({
     },
 
     // ===== Utils =====
-    formatPrice (v) { return Number(v ?? 0).toFixed(2) },
+    formatPrice (v) { return (Math.round(Number(v ?? 0) * 10) / 10).toFixed(1) },
     espacioCambioGuion (text) { return text.replace(/ |\/|\./g, '-').replace(/,/g, '') }
   }
 })

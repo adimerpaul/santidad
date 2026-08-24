@@ -256,8 +256,8 @@ class BuyController extends Controller{
         $buy->product_id= $request->product_id;
         $buy->lote= $request->lote;
         $buy->quantity= $request->quantity;
-        $buy->price= $request->price;
-        $buy->total= $request->quantity * $request->price;
+        $buy->price= round((float) $request->price, 1);
+        $buy->total= round((float) ($request->quantity * $buy->price), 1);
         $buy->dateExpiry= $request->dateExpiry;
         $buy->agencia_id= $request->user()->agencia_id;
         $buy->date= date("Y-m-d");
@@ -302,8 +302,8 @@ class BuyController extends Controller{
                 $buyNew->lote = $buy['lote'];
                 $buyNew->quantity = $buy['cantidadCompra'];
                 $buyNew->cantidadVendida = $buy['cantidadCompra'];
-                $buyNew->price = $buy['price'];
-                $buyNew->total = $buy['cantidadCompra'] * $buy['price'];
+                $buyNew->price = round((float) $buy['price'], 1);
+                $buyNew->total = round((float) ($buy['cantidadCompra'] * $buyNew->price), 1);
                 $buyNew->dateExpiry = $buy['fechaVencimiento'];
                 $itemDestino = isset($buy['agencia_destino']) ? $buy['agencia_destino'] : $request->agencia_id;
                 $buyNew->agencia_id = ($itemDestino == 0) ? null : $itemDestino;
@@ -346,8 +346,8 @@ class BuyController extends Controller{
                     $product->cantidadSucursal10 = $product->cantidadSucursal10 + $buy['cantidadCompra'];
                 }
 
-                $product->precio = $buy['price'];
-                $product->costo = $buy['price']/1.3;
+                $product->precio = round((float) $buy['price'], 1);
+                $product->costo = round((float) ($buyNew->price / 1.3), 1);
                 $product->save();
             }
             // --- AGREGAR ESTO: ACTUALIZAR ESTADO DEL PEDIDO ---

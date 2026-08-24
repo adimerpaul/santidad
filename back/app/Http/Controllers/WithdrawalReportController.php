@@ -80,10 +80,35 @@ class WithdrawalReportController extends Controller
                 if ($request->filled('anio')) {
                     $q->where('anio', $request->anio);
                 }
+
+                if ($request->filled('tipo_reporte')) {
+                    if ($request->tipo_reporte === 'VENCIMIENTO/DEVOLUCION' || $request->tipo_reporte === 'INFORMES_MENSUALES') {
+                        $q->whereIn('tipo', ['VENCIMIENTO/DEVOLUCION', 'VENCIMIENTO', 'DEVOLUCION', 'VENCIDOS/DEVOLUCIONES']);
+                    } elseif ($request->tipo_reporte === 'CONTEO FISICO' || $request->tipo_reporte === 'INVENTARIO') {
+                        $q->where('tipo', 'CONTEO FISICO');
+                    } elseif ($request->tipo_reporte === 'MOTIVOS SANITARIOS') {
+                        $q->where('tipo', 'MOTIVOS SANITARIOS');
+                    } else {
+                        $q->where('tipo', $request->tipo_reporte);
+                    }
+                }
             });
 
         if ($request->filled('tipo')) {
             $query->where('tipo', $request->tipo);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('product', function ($pq) use ($search) {
+                    $pq->where('nombre', 'like', "%{$search}%");
+                })
+                ->orWhereHas('buy', function ($bq) use ($search) {
+                    $bq->where('lote', 'like', "%{$search}%");
+                })
+                ->orWhere('descripcion', 'like', "%{$search}%");
+            });
         }
 
         $rowsPerPage = $request->input('rowsPerPage', 20);
@@ -91,7 +116,17 @@ class WithdrawalReportController extends Controller
             $rowsPerPage = $query->count() ?: 20;
         }
 
-        return $query->orderBy('id', 'desc')->paginate($rowsPerPage);
+        $sortBy = $request->input('sortBy', 'id');
+        $descending = $request->boolean('descending', true);
+        $direction = $descending ? 'desc' : 'asc';
+
+        if (in_array($sortBy, ['id', 'cantidad', 'created_at', 'tipo'])) {
+            $query->orderBy($sortBy, $direction);
+        } else {
+            $query->orderBy('id', 'desc');
+        }
+
+        return $query->paginate($rowsPerPage);
     }
 
     public function store(Request $request)
@@ -161,7 +196,7 @@ class WithdrawalReportController extends Controller
 
                 if ($item->estado === 'ACEPTADO' || $item->estado === 'SUBSANADO') {
                     $product = Product::lockForUpdate()->findOrFail($item->product_id);
-                    $actualAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
+                    $actualAgenciaId = $item->agencia_id;
 
                     if (!$this->hasEnoughStock($product, $actualAgenciaId, $item->cantidad)) {
                         throw new \Exception("Stock insuficiente para el producto: {$product->nombre} en la sucursal seleccionada.");
@@ -233,7 +268,7 @@ class WithdrawalReportController extends Controller
                 foreach ($report->items as $item) {
                     if ($item->estado === 'ACEPTADO' || $item->estado === 'SUBSANADO') {
                         $product = Product::lockForUpdate()->findOrFail($item->product_id);
-                        $actualAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
+                        $actualAgenciaId = $item->agencia_id;
                         $this->updateStock($product, $actualAgenciaId, -$item->cantidad);
                     }
                 }
@@ -442,7 +477,7 @@ class WithdrawalReportController extends Controller
 
             // Stock validation for normal reports
             if ($report->tipo !== 'CONTEO FISICO') {
-                $actualAgenciaId = $newAgenciaId ?? ($item->buy->agencia_id ?? 0);
+                $actualAgenciaId = $newAgenciaId;
                 $product = Product::findOrFail($item->product_id);
                 if (!$this->hasEnoughStock($product, $actualAgenciaId, $cantidad)) {
                     return response()->json(['message' => 'Stock insuficiente en la sucursal seleccionada.'], 422);
@@ -460,11 +495,11 @@ class WithdrawalReportController extends Controller
             }
 
             if ($report->estado === 'REVISADO') {
-                $oldAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
+                $oldAgenciaId = $item->agencia_id;
                 $product = Product::lockForUpdate()->findOrFail($item->product_id);
                 $this->updateStock($product, $oldAgenciaId, -$item->cantidad);
 
-                $newAgenciaStockId = $newAgenciaId ?? ($item->buy->agencia_id ?? 0);
+                $newAgenciaStockId = $newAgenciaId;
                 if (!$this->hasEnoughStock($product, $newAgenciaStockId, $cantidad)) {
                      throw new \Exception("Stock insuficiente en la nueva sucursal seleccionada.");
                 }

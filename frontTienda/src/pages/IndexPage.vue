@@ -366,7 +366,7 @@ export default {
   },
   methods: {
     /* ==== Utils ==== */
-    formatPrice (v) { return Number(v ?? 0).toFixed(2) },
+    formatPrice (v) { return (Math.round(Number(v ?? 0) * 10) / 10).toFixed(1) },
     clickDetalleProducto (p) {
       this.$router.push('/detalle-producto/' + p.id + '/' + this.espacioCambioGuion(p.nombre))
     },
@@ -408,19 +408,19 @@ export default {
             ? Number(p.precioAntes) : null
           if (x.porcentaje > 0) {
             if (precioAntes != null && precioAntes > 0) {
-              x.precioNormal = Number(precioAntes).toFixed(2)
-              x.precio = (precioAntes * (1 - x.porcentaje / 100)).toFixed(2)
+              x.precioNormal = (Math.round(Number(precioAntes) * 10) / 10).toFixed(1)
+              x.precio = (Math.round((precioAntes * (1 - x.porcentaje / 100)) * 10) / 10).toFixed(1)
             } else {
-              x.precioNormal = Number(precioBase).toFixed(2)
-              x.precio = (precioBase * (1 - x.porcentaje / 100)).toFixed(2)
+              x.precioNormal = (Math.round(Number(precioBase) * 10) / 10).toFixed(1)
+              x.precio = (Math.round((precioBase * (1 - x.porcentaje / 100)) * 10) / 10).toFixed(1)
             }
           } else {
             if (precioAntes != null && precioAntes > 0) {
-              x.precioNormal = Number(precioAntes).toFixed(2)
-              x.precio = Number(precioBase).toFixed(2)
+              x.precioNormal = (Math.round(Number(precioAntes) * 10) / 10).toFixed(1)
+              x.precio = (Math.round(Number(precioBase) * 10) / 10).toFixed(1)
             } else {
               x.precioNormal = null
-              x.precio = Number(precioBase).toFixed(2)
+              x.precio = (Math.round(Number(precioBase) * 10) / 10).toFixed(1)
             }
           }
           return x
@@ -438,8 +438,8 @@ export default {
         this.topVendidos = (data || []).map(p => {
           const x = { ...p }
           x.porcentaje = Number(x.porcentaje || 0)
-          x.precio = Number(x.precio)
-          if (x.precioNormal != null) x.precioNormal = Number(x.precioNormal)
+          x.precio = (Math.round(Number(x.precio) * 10) / 10).toFixed(1)
+          if (x.precioNormal != null) x.precioNormal = (Math.round(Number(x.precioNormal) * 10) / 10).toFixed(1)
           return x
         })
       } catch (e) {
