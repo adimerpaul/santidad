@@ -29,10 +29,14 @@ dependencies:
   intl: ^0.20.2
   google_fonts: ^6.3.2
 
+  # Íconos de marca (logo oficial de WhatsApp)
+  font_awesome_flutter: ^11.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
@@ -40,3 +44,14 @@ flutter:
   assets:
     - .env
     - .env.production
+    - assets/logo.png
+
+# Íconos de la app (Android/iOS) generados desde el logo oficial:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/logo.png"
+  android: true
+  ios: false # el proyecto solo tiene plataforma Android
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/logo_foreground.png"

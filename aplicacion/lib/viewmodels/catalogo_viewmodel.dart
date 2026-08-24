@@ -11,6 +11,22 @@ class FiltroCatalogo {
   static const ofertas = 'OFERTAS';
 }
 
+/// Resultado del buscador rápido del inicio: las primeras coincidencias
+/// y cuántas hay en total.
+class Sugerencias {
+  final List<Product> items;
+  final int total;
+
+  const Sugerencias({required this.items, required this.total});
+
+  static const vacia = Sugerencias(items: [], total: 0);
+
+  bool get vacio => items.isEmpty;
+
+  /// Coincidencias que quedan fuera de la lista corta.
+  int get restantes => total - items.length;
+}
+
 class CatalogoViewModel extends ChangeNotifier {
   final CatalogoRepository repo;
 
@@ -155,14 +171,22 @@ class CatalogoViewModel extends ChangeNotifier {
     return p.nombre.split(' ').first;
   }
 
-  /// Sugerencias rápidas para el buscador del inicio.
-  Future<List<Product>> sugerencias(String q) async {
-    if (q.trim().length < 2) return [];
+  /// Cuántas coincidencias se muestran en el desplegable del buscador.
+  static const maxSugerencias = 5;
+
+  /// Sugerencias rápidas para el buscador del inicio: las primeras
+  /// [maxSugerencias] coincidencias y el total encontrado, para poder
+  /// ofrecer "ver todos" cuando hay más.
+  Future<Sugerencias> sugerencias(String q) async {
+    if (q.trim().length < 2) return Sugerencias.vacia;
     try {
-      final pag = await repo.productos(search: q.trim(), perPage: 5);
-      return pag.items;
+      final pag = await repo.productos(
+        search: q.trim(),
+        perPage: maxSugerencias,
+      );
+      return Sugerencias(items: pag.items, total: pag.total);
     } catch (_) {
-      return [];
+      return Sugerencias.vacia;
     }
   }
 }

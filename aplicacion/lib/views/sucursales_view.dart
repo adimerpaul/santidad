@@ -35,7 +35,9 @@ class _SucursalesViewState extends State<SucursalesView> {
     }
   }
 
-  void _verEnMapa(Sucursal s, List<Sucursal> sucursales) {
+  /// Centra el mapa de la pantalla en la sucursal y abre su ubicación en
+  /// Google Maps (la app si está instalada; si no, en el navegador).
+  Future<void> _verEnMapa(Sucursal s, List<Sucursal> sucursales) async {
     if (!s.tieneUbicacion) {
       showToast(context, 'Esta sucursal no tiene ubicación registrada',
           icon: Icons.error_outline);
@@ -46,6 +48,17 @@ class _SucursalesViewState extends State<SucursalesView> {
         sucursales.where((x) => x.tieneUbicacion).toList();
     final index = conUbicacion.indexWhere((x) => x.id == s.id);
     if (index >= 0) _mapCtl.centrarEn(index);
+
+    final uri = Uri.https('www.google.com', '/maps/search/', {
+      'api': '1',
+      'query': '${s.latitud},${s.longitud}',
+    });
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        showToast(context, 'No se pudo abrir Google Maps',
+            icon: Icons.error_outline);
+      }
+    }
   }
 
   @override

@@ -6,6 +6,7 @@ import '../core/formatters.dart';
 import '../data/models/product.dart';
 import '../viewmodels/carrito_viewmodel.dart';
 import '../viewmodels/catalogo_viewmodel.dart';
+import 'widgets/cantidad_sheet.dart';
 import 'widgets/ui_widgets.dart';
 
 /// Detalle de un producto: ficha completa, descripción y productos similares.
@@ -40,6 +41,14 @@ class _ProductoDetalleViewState extends State<ProductoDetalleView> {
       _similares = det.similares;
       _cargandoSimilares = false;
     });
+  }
+
+  /// Abre el modal de cantidad y, si se confirma, añade el producto al pedido.
+  Future<void> _agregarConCantidad(Product p) async {
+    final cantidad = await mostrarSelectorCantidad(context, p);
+    if (cantidad == null || !mounted) return;
+    context.read<CarritoViewModel>().agregar(p, cantidad: cantidad);
+    showToast(context, '$cantidad × ${p.nombre} añadido al pedido');
   }
 
   void _abrirSimilar(Product p) {
@@ -160,12 +169,67 @@ class _ProductoDetalleViewState extends State<ProductoDetalleView> {
               ),
               ('Origen', p.origen),
               ('Registro sanitario', p.registroSanitario),
-              ('Acción terapéutica', p.categoria),
+              ('Categoria', p.categoria),
               ('Principio activo', p.composicion),
               ('Laboratorio', p.marca),
               ('Distribuidora', p.distribuidora),
             ],
           ),
+          if (descripcion.isNotEmpty) ...[
+            const SectionHeader(titulo: 'Descripción'),
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.primarySoft, AppColors.cream],
+                ),
+                border: Border.all(color: AppColors.primaryPale),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: .10),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        width: 5,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [AppColors.primary, AppColors.primaryDeep],
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Text(
+                            descripcion,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              height: 1.55,
+                              color: AppColors.inkSoft,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
 
           // Stock por sucursal
           if (p.stocks.isNotEmpty) ...[
@@ -202,26 +266,7 @@ class _ProductoDetalleViewState extends State<ProductoDetalleView> {
           ],
 
           // Descripción
-          if (descripcion.isNotEmpty) ...[
-            const SectionHeader(titulo: 'Descripción'),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.line),
-              ),
-              child: Text(
-                descripcion,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  height: 1.5,
-                  color: AppColors.muted2,
-                ),
-              ),
-            ),
-          ],
+
 
           // Productos similares
           const SectionHeader(titulo: 'Productos relacionados'),
@@ -272,10 +317,7 @@ class _ProductoDetalleViewState extends State<ProductoDetalleView> {
           child: GradientButton(
             texto: 'Añadir al pedido',
             icon: Icons.add_shopping_cart,
-            onPressed: () {
-              carrito.agregar(p);
-              showToast(context, 'Añadido al pedido');
-            },
+            onPressed: () => _agregarConCantidad(p),
           ),
         ),
       ),

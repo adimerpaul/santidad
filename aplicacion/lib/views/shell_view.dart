@@ -164,23 +164,21 @@ class _Header extends StatelessWidget {
           Container(
             width: 38,
             height: 38,
+            padding: const EdgeInsets.all(2),
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, AppColors.primaryDark],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.line),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primaryDark.withValues(alpha: .35),
+                  color: AppColors.primaryDark.withValues(alpha: .18),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: const Icon(Icons.local_pharmacy,
-                color: Colors.white, size: 19),
+            child: Image.asset('assets/logo.png', fit: BoxFit.contain),
           ),
           const SizedBox(width: 10),
           const Column(

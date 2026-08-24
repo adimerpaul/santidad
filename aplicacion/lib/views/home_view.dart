@@ -31,7 +31,7 @@ class HomeView extends StatefulWidget {
 class _HomeViewState extends State<HomeView> {
   final _searchCtl = TextEditingController();
   Timer? _debounce;
-  List<Product> _sugerencias = [];
+  Sugerencias _sugerencias = Sugerencias.vacia;
 
   @override
   void dispose() {
@@ -43,7 +43,7 @@ class _HomeViewState extends State<HomeView> {
   void _onBuscar(String q) {
     _debounce?.cancel();
     if (q.trim().length < 2) {
-      setState(() => _sugerencias = []);
+      setState(() => _sugerencias = Sugerencias.vacia);
       return;
     }
     _debounce = Timer(const Duration(milliseconds: 350), () async {
@@ -54,9 +54,21 @@ class _HomeViewState extends State<HomeView> {
   }
 
   void _irASugerencia(Product p) {
-    _searchCtl.clear();
-    setState(() => _sugerencias = []);
+    _limpiarBusqueda();
     _verDetalle(p);
+  }
+
+  /// Abre el catálogo completo con el término buscado.
+  void _verTodos() {
+    final q = _searchCtl.text.trim();
+    _limpiarBusqueda();
+    widget.onExplorar(FiltroCatalogo.todo, busqueda: q);
+  }
+
+  void _limpiarBusqueda() {
+    _debounce?.cancel();
+    _searchCtl.clear();
+    setState(() => _sugerencias = Sugerencias.vacia);
   }
 
   void _verDetalle(Product p) {
@@ -104,7 +116,7 @@ class _HomeViewState extends State<HomeView> {
             ),
           ),
         ),
-        if (_sugerencias.isNotEmpty)
+        if (!_sugerencias.vacio)
           Container(
             margin: const EdgeInsets.only(top: 6),
             decoration: BoxDecoration(
@@ -120,60 +132,102 @@ class _HomeViewState extends State<HomeView> {
               ],
             ),
             child: Column(
-              children: _sugerencias
-                  .map(
-                    (p) => InkWell(
-                      onTap: () => _irASugerencia(p),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
-                        ),
-                        child: Row(
-                          children: [
-                            ProductThumb(
-                              categoria: p.categoria,
-                              imagen: p.imagen,
-                              size: 38,
-                              radius: 10,
-                              iconSize: 16,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    p.nombre,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+              children: [
+                ..._sugerencias.items.map(
+                  (p) => InkWell(
+                    onTap: () => _irASugerencia(p),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 9,
+                      ),
+                      child: Row(
+                        children: [
+                          ProductThumb(
+                            categoria: p.categoria,
+                            imagen: p.imagen,
+                            size: 38,
+                            radius: 10,
+                            iconSize: 16,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  p.nombre,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  Text(
-                                    p.categoria,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.muted,
-                                    ),
+                                ),
+                                Text(
+                                  p.categoria,
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.muted,
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            PriceRow(
-                              precio: p.precio,
-                              precioAntes: p.precioAntes,
-                              descuento: p.descuento,
-                              fontSize: 12.5,
-                            ),
-                          ],
-                        ),
+                          ),
+                          PriceRow(
+                            precio: p.precio,
+                            precioAntes: p.precioAntes,
+                            descuento: p.descuento,
+                            fontSize: 12.5,
+                          ),
+                        ],
                       ),
                     ),
-                  )
-                  .toList(),
+                  ),
+                ),
+
+                // Ver todos los resultados en el catálogo
+                const Divider(height: 1, color: AppColors.line),
+                InkWell(
+                  onTap: _verTodos,
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 11,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.grid_view_rounded,
+                          size: 16,
+                          color: AppColors.primaryDark,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _sugerencias.restantes > 0
+                                ? 'Ver todos los resultados (${_sugerencias.total})'
+                                : 'Ver todos en el catálogo',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primaryDark,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: AppColors.primaryDark,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
