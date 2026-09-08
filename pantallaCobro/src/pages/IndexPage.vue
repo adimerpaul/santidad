@@ -3,7 +3,11 @@
     <!-- ===== REPRODUCTOR MULTIMEDIA DE FONDO ===== -->
     <div class="media-container">
       <transition name="fade" mode="out-in">
-        <div v-if="playlist.length > 0 && currentAd" :key="currentAd.file_id" class="fullscreen-media-wrapper">
+        <div
+          v-if="playlist.length > 0 && currentAd"
+          :key="currentAd.file_id"
+          class="fullscreen-media-wrapper"
+        >
           <!-- Video Player -->
           <video
             v-if="currentAd.type === 'video'"
@@ -18,12 +22,7 @@
           ></video>
 
           <!-- Image Player -->
-          <img
-            v-else
-            class="fullscreen-media"
-            :src="currentAd.url"
-            alt="Publicidad"
-          />
+          <img v-else class="fullscreen-media" :src="currentAd.url" alt="Publicidad" />
         </div>
 
         <!-- Pantalla por defecto si no hay anuncios -->
@@ -38,29 +37,27 @@
     </div>
 
     <!-- Pre-carga silenciosa del próximo video para evitar retraso de carga -->
-    <video
-      v-if="nextAdUrl"
-      style="display: none;"
-      :src="nextAdUrl"
-      preload="auto"
-      muted
-    ></video>
+    <video v-if="nextAdUrl" style="display: none" :src="nextAdUrl" preload="auto" muted></video>
 
     <!-- ===== SUPERPOSICIÓN DE VERIFICACIÓN DE CLIENTE (PRIMER PLANO) ===== -->
     <div class="overlay-container" v-if="clientData.visible || showThanks || qrData.visible">
-
       <!-- Pantalla de Gracias -->
       <div class="thanks-screen" v-if="showThanks">
         <div class="thanks-check q-mx-auto">
           <svg viewBox="0 0 52 52" class="check-svg">
-            <circle class="check-circle" cx="26" cy="26" r="25" fill="none"/>
-            <path class="check-path" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+            <circle class="check-circle" cx="26" cy="26" r="25" fill="none" />
+            <path class="check-path" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
           </svg>
         </div>
         <div class="thanks-title">¡Gracias por su compra!</div>
         <div class="thanks-sub">Farmacia SANTIDAD-DIVINA S.R.L. le desea un excelente día</div>
         <div class="thanks-dots">
-          <span class="dot" v-for="n in 3" :key="n" :style="{ animationDelay: (n * 0.2) + 's' }"></span>
+          <span
+            class="dot"
+            v-for="n in 3"
+            :key="n"
+            :style="{ animationDelay: n * 0.2 + 's' }"
+          ></span>
         </div>
       </div>
 
@@ -182,14 +179,16 @@
       </div>
     </div>
 
-    <div v-if="!playlist.length && !isDownloading" class="flex flex-center" style="height: 100vh;">
-      <h1 class="text-white text-h2 text-weight-bold">
-        Esperando Publicidad...
-      </h1>
+    <div v-if="!playlist.length && !isDownloading" class="flex flex-center" style="height: 100vh">
+      <h1 class="text-white text-h2 text-weight-bold">Esperando Publicidad...</h1>
     </div>
 
     <!-- Indicador de Descarga -->
-    <div v-if="isDownloading" class="absolute-top-right q-pa-md text-white" style="z-index: 1000; background: rgba(0,0,0,0.5); border-radius: 0 0 0 10px;">
+    <div
+      v-if="isDownloading"
+      class="absolute-top-right q-pa-md text-white"
+      style="z-index: 1000; background: rgba(0, 0, 0, 0.5); border-radius: 0 0 0 10px"
+    >
       <q-spinner-dots size="2rem" color="primary" />
       <span class="q-ml-sm">Descargando medios...</span>
     </div>
@@ -200,7 +199,9 @@
         <q-card-section class="text-center">
           <q-icon name="settings" size="48px" color="primary" class="q-mb-sm" />
           <div class="text-h6 text-primary text-bold">Configuración del Terminal PC</div>
-          <div class="text-caption text-grey">Establezca los parámetros de red para el reproductor</div>
+          <div class="text-caption text-grey">
+            Establezca los parámetros de red para el reproductor
+          </div>
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
@@ -243,18 +244,38 @@
             :options="agencias"
             option-value="id"
             option-label="nombre"
-            label="Seleccionar Sucursal / Agencia"
+            label="Seleccionar Sucursal / Agencia *"
             filled
             dense
             emit-value
             map-options
             :loading="loadingAgencias"
-            hint="Opcional: Si se deja vacío, se mostrará publicidad global"
+            hint="Obligatorio: Identifica en qué sucursal se encuentra esta pantalla"
+            :rules="[val => !!val || 'Debe seleccionar una sucursal']"
+          />
+
+          <!-- Caja / Terminal selector -->
+          <q-select
+            v-model="config.caja"
+            :options="cajasOptions"
+            emit-value
+            map-options
+            label="Número de Caja / Terminal *"
+            filled
+            dense
+            hint="Caja a la que pertenece esta pantalla (Caja 1, Caja 2, etc.)"
+            class="q-mt-sm"
           />
         </q-card-section>
 
         <q-card-actions align="right" class="q-mt-md">
-          <q-btn label="Guardar y Ejecutar" color="primary" @click="saveConfiguration" class="full-width" />
+          <q-btn
+            label="Guardar y Ejecutar"
+            color="primary"
+            :disable="!config.agencia || !config.serverIp || !config.socketIp"
+            @click="saveConfiguration"
+            class="full-width"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -278,8 +299,16 @@ const loadingAgencias = ref(false)
 const config = ref({
   serverIp: process.env.SERVER_IP || 'http://192.168.100.2:8000',
   socketIp: process.env.SOCKET_IP || 'http://192.168.100.2:3000',
-  agencia: null
+  agencia: null,
+  caja: 1,
 })
+
+const cajasOptions = [
+  { label: 'Caja 1', value: 1 },
+  { label: 'Caja 2', value: 2 },
+  { label: 'Caja 3', value: 3 },
+  { label: 'Caja 4', value: 4 },
+]
 
 const agencias = ref([])
 
@@ -295,14 +324,14 @@ const clientData = ref({
   nombreRazonSocial: '',
   email: '',
   tipoDocumento: '',
-  visible: false
+  visible: false,
 })
 
 // Datos del QR de pago (Baneco) generado en caja
 const qrData = ref({
   qrImage: '',
   monto: '',
-  visible: false
+  visible: false,
 })
 const showThanks = ref(false)
 const isDownloading = ref(false)
@@ -330,25 +359,27 @@ const nextAdUrl = computed(() => {
 })
 
 const hasClientData = computed(() => {
-  return clientData.value.numeroDocumento &&
+  return (
+    clientData.value.numeroDocumento &&
     clientData.value.numeroDocumento !== '' &&
     clientData.value.numeroDocumento !== '0'
+  )
 })
 
 // === MÉTODOS ===
 
 // Hora de Bolivia
-function updateTime () {
+function updateTime() {
   const now = new Date()
   currentTime.value = now.toLocaleTimeString('es-BO', {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
   })
 }
 
 // Cargar agencias desde el backend Laravel
-async function fetchAgencias () {
+async function fetchAgencias() {
   if (!config.value.serverIp) return
   loadingAgencias.value = true
   try {
@@ -366,15 +397,17 @@ async function fetchAgencias () {
 }
 
 // Cargar datos locales de localStorage
-function loadLocalConfig () {
+function loadLocalConfig() {
   const savedServer = localStorage.getItem('pcpubli_server_ip')
   const savedSocket = localStorage.getItem('pcpubli_socket_ip')
   const savedAgencia = localStorage.getItem('pcpubli_agencia_id')
+  const savedCaja = localStorage.getItem('pcpubli_caja_numero')
 
-  if (savedServer && savedSocket) {
+  if (savedServer && savedSocket && savedAgencia && savedCaja) {
     config.value.serverIp = savedServer
     config.value.socketIp = savedSocket
     config.value.agencia = savedAgencia ? parseInt(savedAgencia, 10) : null
+    config.value.caja = parseInt(savedCaja, 10)
     configured.value = true
     return true
   }
@@ -382,8 +415,8 @@ function loadLocalConfig () {
 }
 
 // Guardar y aplicar configuración
-function saveConfiguration () {
-  if (!config.value.serverIp || !config.value.socketIp) return
+function saveConfiguration() {
+  if (!config.value.serverIp || !config.value.socketIp || !config.value.agencia || !config.value.caja) return
 
   localStorage.setItem('pcpubli_server_ip', config.value.serverIp)
   localStorage.setItem('pcpubli_socket_ip', config.value.socketIp)
@@ -392,6 +425,7 @@ function saveConfiguration () {
   } else {
     localStorage.removeItem('pcpubli_agencia_id')
   }
+  localStorage.setItem('pcpubli_caja_numero', (config.value.caja || 1).toString())
 
   configured.value = true
   showConfigModal.value = false
@@ -401,13 +435,13 @@ function saveConfiguration () {
   fetchPlaylist()
 }
 
-function openConfig () {
+function openConfig() {
   fetchAgencias()
   showConfigModal.value = true
 }
 
 // Obtener playlist de publicidad
-async function fetchPlaylist () {
+async function fetchPlaylist() {
   if (!configured.value) return
   if (isDownloading.value) return // Prevenir múltiples descargas simultáneas
   try {
@@ -424,8 +458,8 @@ async function fetchPlaylist () {
         // Guardar copia limpia en caché local para uso offline
         localStorage.setItem('pcpubli_playlist_cache', JSON.stringify(data))
 
-        const newIds = data.map(d => d.file_id)
-        const oldIds = playlist.value.map(d => d.file_id)
+        const newIds = data.map((d) => d.file_id)
+        const oldIds = playlist.value.map((d) => d.file_id)
 
         // Si la playlist cambió, procesar descargas
         if (newIds.join(',') !== oldIds.join(',')) {
@@ -475,7 +509,7 @@ async function fetchPlaylist () {
 }
 
 // Carga de respaldo offline desde almacenamiento local
-async function loadCachedPlaylist () {
+async function loadCachedPlaylist() {
   const cached = localStorage.getItem('pcpubli_playlist_cache')
   if (cached) {
     try {
@@ -501,7 +535,7 @@ async function loadCachedPlaylist () {
 }
 
 // Iniciar bucle de reproducción
-function playCurrentAd () {
+function playCurrentAd() {
   clearImageTimer()
   if (playlist.value.length === 0) return
 
@@ -513,7 +547,7 @@ function playCurrentAd () {
       const video = document.querySelector('video')
       if (video) {
         video.load()
-        video.play().catch(e => {
+        video.play().catch((e) => {
           console.log('Autoplay blocked:', e)
         })
       }
@@ -526,22 +560,22 @@ function playCurrentAd () {
   }
 }
 
-function nextAd () {
+function nextAd() {
   if (playlist.value.length === 0) return
   currentIndex.value = (currentIndex.value + 1) % playlist.value.length
   playCurrentAd()
 }
 
-function clearImageTimer () {
+function clearImageTimer() {
   if (imageTimer.value) {
     clearTimeout(imageTimer.value)
     imageTimer.value = null
   }
 }
 
-function onVideoError (e) {
+function onVideoError(e) {
   console.error('Video error playing ad:', e)
-  
+
   // Informar al backend vpc (vía socket) del fallo de reproducción
   if (socketConn && socketConn.connected && currentAd.value) {
     socketConn.emit('terminal_error', {
@@ -550,15 +584,33 @@ function onVideoError (e) {
       file_id: currentAd.value.file_id,
       url: currentAd.value.url,
       agencia_id: config.value.agencia,
-      message: `El video "${currentAd.value.name}" no es compatible o falló al reproducirse.`
+      message: `El video "${currentAd.value.name}" no es compatible o falló al reproducirse.`,
     })
   }
 
   nextAd()
 }
 
+// Verificar si un evento de cobro/QR va dirigido estrictamente a esta pantalla y caja
+function isTargetMe(data) {
+  // Debe ser un objeto válido (descarta strings de caché antiguo)
+  if (!data || typeof data !== 'object') return false
+
+  // Esta terminal DEBE tener sucursal y caja configuradas
+  if (!config.value.agencia || !config.value.caja) return false
+
+  // El evento DEBE incluir obligatoriamente agencia_id y caja
+  if (data.agencia_id == null || data.caja == null) return false
+
+  // Deben coincidir exactamente la sucursal y la caja
+  const matchAgencia = Number(data.agencia_id) === Number(config.value.agencia)
+  const matchCaja = Number(data.caja) === Number(config.value.caja)
+
+  return matchAgencia && matchCaja
+}
+
 // Configurar WebSockets
-function initSocket () {
+function initSocket() {
   if (socketConn) {
     socketConn.disconnect()
   }
@@ -568,6 +620,7 @@ function initSocket () {
 
   socketConn.on('connect', () => {
     console.log('Socket conectado con éxito:', socketConn.id)
+    registerTerminalRoom()
     sendStatusHeartbeat()
   })
 
@@ -579,37 +632,45 @@ function initSocket () {
 
   // Escuchar sincronización de datos de facturación
   socketConn.on('clienteDisplayData', (data) => {
-    console.log('Datos del cliente recibidos por socket:', data)
-    if (data) {
-      clientData.value = data
-      resetWatchdog()
-    }
+    if (!isTargetMe(data)) return
+    console.log('Datos del cliente recibidos por socket para esta caja:', data)
+    clientData.value = data
+    resetWatchdog()
   })
 
   // Escuchar datos del QR de pago (Baneco) generado en caja
   socketConn.on('clienteQrData', (data) => {
-    console.log('Datos de QR recibidos por socket:', data)
-    if (data) {
-      qrData.value = data
-      if (data.visible) resetWatchdog()
-    }
+    if (!isTargetMe(data)) return
+    console.log('Datos de QR recibidos por socket para esta caja:', data)
+    qrData.value = data
+    if (data.visible) resetWatchdog()
   })
 
   // Escuchar finalización de venta exitosa
-  socketConn.on('clienteSaleComplete', () => {
-    console.log('Venta completada con éxito!')
+  socketConn.on('clienteSaleComplete', (data) => {
+    if (!isTargetMe(data)) return
+    console.log('Venta completada con éxito para esta caja!')
     showThankYou()
   })
 
   // Escuchar cierre de la pantalla de facturación
-  socketConn.on('clienteDisplayClose', () => {
-    console.log('Cierre gracefully solicitado')
+  socketConn.on('clienteDisplayClose', (data) => {
+    if (!isTargetMe(data)) return
+    console.log('Cierre gracefully solicitado para esta caja')
     closeGracefully()
   })
 }
 
 // Latido periódico para monitoreo del terminal (liviano y seguro)
-async function sendStatusHeartbeat () {
+function registerTerminalRoom() {
+  if (!socketConn || !socketConn.connected || !config.value.agencia || !config.value.caja) return
+  socketConn.emit('register_terminal', {
+    agencia_id: config.value.agencia,
+    caja: config.value.caja,
+  })
+}
+
+async function sendStatusHeartbeat() {
   if (!socketConn || !socketConn.connected) return
 
   let disk = { free: 'N/A', total: 'N/A' }
@@ -624,13 +685,14 @@ async function sendStatusHeartbeat () {
   socketConn.emit('terminal_status', {
     socket_id: socketConn.id,
     agencia_id: config.value.agencia,
+    caja: config.value.caja || 1,
     current_ad: currentAd.value ? currentAd.value.name : 'Ninguno',
     current_ad_type: currentAd.value ? currentAd.value.type : 'N/A',
     playlist_count: playlist.value.length,
     disk_free: disk.free,
     disk_total: disk.total,
     online: true,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   })
 }
 
@@ -638,7 +700,7 @@ async function sendStatusHeartbeat () {
 // Ya no hay heartbeat periódico del front (solo se resetea con cambios reales o un QR
 // recién generado), asi que sirve solo como red de seguridad ante caidas del front,
 // no como mecanismo activo: debe tolerar una espera larga de pago con QR.
-function resetWatchdog () {
+function resetWatchdog() {
   if (watchdogTimer) clearTimeout(watchdogTimer)
   watchdogTimer = setTimeout(() => {
     console.log('Watchdog expirado, cerrando pantalla de cliente por inactividad')
@@ -646,9 +708,9 @@ function resetWatchdog () {
   }, 600000) // 10 minutos de tolerancia sin cambios ni cierre explícito
 }
 
-function closeGracefully () {
+function closeGracefully() {
   if (watchdogTimer) clearTimeout(watchdogTimer)
-  
+
   // Si había datos de cliente activos (venta completada con éxito)
   if (hasClientData.value && clientData.value.visible) {
     showThankYou()
@@ -658,7 +720,7 @@ function closeGracefully () {
   }
 }
 
-function showThankYou () {
+function showThankYou() {
   showThanks.value = true
   setTimeout(() => {
     showThanks.value = false
@@ -666,24 +728,24 @@ function showThankYou () {
   }, 5000)
 }
 
-function clearClientState () {
+function clearClientState() {
   clientData.value = {
     numeroDocumento: '',
     complemento: '',
     nombreRazonSocial: '',
     email: '',
     tipoDocumento: '',
-    visible: false
+    visible: false,
   }
   qrData.value = {
     qrImage: '',
     monto: '',
-    visible: false
+    visible: false,
   }
 }
 
 // Atajo de teclado (Esc) para abrir configuración
-function handleKeyPress (e) {
+function handleKeyPress(e) {
   if (e.key === 'Escape') {
     openConfig()
   }
@@ -758,8 +820,15 @@ onBeforeUnmount(() => {
 }
 
 @keyframes logoPulse {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.08); opacity: 1; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
 }
 
 /* ===== SUPERPOSICIONES EN PRIMER PLANO ===== */
@@ -780,8 +849,12 @@ onBeforeUnmount(() => {
 }
 
 @keyframes overlayFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Tarjeta del cliente */
@@ -799,8 +872,14 @@ onBeforeUnmount(() => {
 }
 
 @keyframes cardSlideUp {
-  from { opacity: 0; transform: translateY(30px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .display-header {
@@ -817,7 +896,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 6px 20px rgba(27,58,92,0.3);
+  box-shadow: 0 6px 20px rgba(27, 58, 92, 0.3);
 }
 
 .pharmacy-info {
@@ -886,8 +965,13 @@ onBeforeUnmount(() => {
 }
 
 @keyframes dotBreathe {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .card-line {
@@ -984,7 +1068,9 @@ onBeforeUnmount(() => {
 }
 
 @keyframes circleAnim {
-  to { stroke-dashoffset: 0; }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 .check-path {
@@ -998,7 +1084,9 @@ onBeforeUnmount(() => {
 }
 
 @keyframes checkAnim {
-  to { stroke-dashoffset: 0; }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 .thanks-title {
@@ -1032,8 +1120,16 @@ onBeforeUnmount(() => {
 }
 
 @keyframes dotPulse {
-  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1.2); }
+  0%,
+  80%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
 }
 
 /* Esperando estado */
@@ -1048,8 +1144,15 @@ onBeforeUnmount(() => {
 }
 
 @keyframes iconBreathe {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.08); opacity: 0.8; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.8;
+  }
 }
 
 .waiting-text {

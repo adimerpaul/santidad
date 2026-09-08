@@ -18,6 +18,8 @@ class Sales extends Model
         "codigoPuntoVenta",
         "fechaEmision",
         "montoTotal",
+        "montoCalculado",
+        "ajusteRedondeo",
         "usuario",
         "concepto",
         "codigoRecepcion",

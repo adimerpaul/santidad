@@ -48,6 +48,7 @@
               <q-badge v-if="p.porcentaje" color="red" floating>
                 -{{ p.porcentaje }}%
               </q-badge>
+              <PromotionTicket :promotion-id="p.promocionId" :name="p.promocion" overlay />
             </q-img>
 
             <q-card-section class="q-pa-sm text-center">
@@ -99,8 +100,12 @@
 </template>
 
 <script>
+import { formatCurrency, roundSalePrice } from 'src/utils/money'
+import PromotionTicket from 'components/PromotionTicket.vue'
+
 export default {
   name: 'BuscarResultados',
+  components: { PromotionTicket },
   data () {
     return {
       productos: [],
@@ -148,13 +153,14 @@ export default {
 
         this.productos = items.map(p => {
           const x = { ...p }
+          x.porcentaje = Number(p.porcentajeEfectivo ?? p.porcentaje ?? 0)
           const precioBase = Number(x.precio ?? 0)
           if (Number(x.porcentaje) > 0) {
-            x.precioNormal = (Math.round(precioBase * 10) / 10).toFixed(1)
-            const nuevo = precioBase - (precioBase * Number(x.porcentaje) / 100)
-            x.precio = (Math.round(nuevo * 10) / 10).toFixed(1)
+            x.precioNormal = formatCurrency(precioBase)
+            const nuevo = x.precioVenta ?? roundSalePrice(precioBase - (precioBase * Number(x.porcentaje) / 100))
+            x.precio = formatCurrency(nuevo)
           } else {
-            x.precio = (Math.round(precioBase * 10) / 10).toFixed(1)
+            x.precio = formatCurrency(precioBase)
           }
           return x
         })

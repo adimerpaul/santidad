@@ -41,6 +41,13 @@ class DetalleProducto {
   DetalleProducto({required this.producto, required this.similares});
 }
 
+class OrdenCreada {
+  final String numero;
+  final Map<int, double> precios;
+
+  const OrdenCreada({required this.numero, required this.precios});
+}
+
 /// Producto del carrito sin stock suficiente en la sucursal elegida.
 class ProductoSinStock {
   final int productoId;
@@ -80,11 +87,15 @@ class CatalogoRepository {
         .toList();
   }
 
-  Future<DetalleProducto> detalle(int id) async {
-    final data = await api.get('/app/productos/$id');
+  Future<DetalleProducto> detalle(int id, {int? agenciaId}) async {
+    final data = await api.get(
+      '/app/productos/$id',
+      query: {if (agenciaId != null) 'agencia_id': '$agenciaId'},
+    );
     return DetalleProducto(
-      producto:
-          Product.fromJson(Map<String, dynamic>.from(data['producto'] ?? {})),
+      producto: Product.fromJson(
+        Map<String, dynamic>.from(data['producto'] ?? {}),
+      ),
       similares: (data['similares'] as List? ?? [])
           .map((p) => Product.fromJson(Map<String, dynamic>.from(p)))
           .toList(),
@@ -110,14 +121,19 @@ class CatalogoRepository {
     bool ofertas = false,
     int page = 1,
     int perPage = 30,
+    int? agenciaId,
   }) async {
-    final data = await api.get('/app/productos', query: {
-      if (search.isNotEmpty) 'search': search,
-      if (categoryId > 0) 'category_id': '$categoryId',
-      if (ofertas) 'ofertas': '1',
-      'page': '$page',
-      'per_page': '$perPage',
-    });
+    final data = await api.get(
+      '/app/productos',
+      query: {
+        if (search.isNotEmpty) 'search': search,
+        if (categoryId > 0) 'category_id': '$categoryId',
+        if (ofertas) 'ofertas': '1',
+        if (agenciaId != null) 'agencia_id': '$agenciaId',
+        'page': '$page',
+        'per_page': '$perPage',
+      },
+    );
 
     final items = (data['data'] as List? ?? [])
         .map((p) => Product.fromJson(Map<String, dynamic>.from(p)))
@@ -138,12 +154,15 @@ class CatalogoRepository {
     required int sucursalId,
     required Map<int, int> cantidades,
   }) async {
-    final data = await api.post('/stock/verificar-sucursal', body: {
-      'sucursal_id': sucursalId,
-      'productos': cantidades.entries
-          .map((e) => {'producto_id': e.key, 'cantidad': e.value})
-          .toList(),
-    });
+    final data = await api.post(
+      '/stock/verificar-sucursal',
+      body: {
+        'sucursal_id': sucursalId,
+        'productos': cantidades.entries
+            .map((e) => {'producto_id': e.key, 'cantidad': e.value})
+            .toList(),
+      },
+    );
 
     return ((data as Map?)?['productos_sin_stock'] as List? ?? [])
         .map((p) => ProductoSinStock.fromJson(Map<String, dynamic>.from(p)))
@@ -153,26 +172,43 @@ class CatalogoRepository {
   /// Registra el pedido en la tabla `orders` del backend (la misma que usa
   /// la tienda pública) y devuelve el número generado por el servidor
   /// (p. ej. PEDIDOWEB_Nº7), con el que caja lo recupera en /sale.
-  Future<String> crearOrden({
+  Future<OrdenCreada> crearOrden({
     required List<CartItem> items,
     required int sucursalId,
     required String sucursalNombre,
   }) async {
-    final data = await api.post('/orders', body: {
-      'items': items
-          .map((i) => {
+    final data = await api.post(
+      '/orders',
+      body: {
+        'items': items
+            .map(
+              (i) => {
                 'product_id': i.product.id,
                 'nombre': i.product.nombre,
                 'precio': i.product.precio,
                 'cantidad': i.qty,
                 'imagen': i.product.imagen,
-              })
-          .toList(),
-      'source': 'app',
-      'sucursal_id': sucursalId,
-      'sucursal_nombre': sucursalNombre,
-    });
+              },
+            )
+            .toList(),
+        'source': 'app',
+        'sucursal_id': sucursalId,
+        'sucursal_nombre': sucursalNombre,
+      },
+    );
 
-    return '${(data as Map?)?['order_number'] ?? ''}';
+    final response = Map<String, dynamic>.from(data as Map? ?? {});
+    final precios = <int, double>{};
+    for (final raw in response['items'] as List? ?? const []) {
+      final item = Map<String, dynamic>.from(raw as Map);
+      final id = int.tryParse('${item['product_id'] ?? ''}');
+      final price = double.tryParse('${item['price'] ?? ''}');
+      if (id != null && price != null) precios[id] = price;
+    }
+
+    return OrdenCreada(
+      numero: '${response['order_number'] ?? ''}',
+      precios: precios,
+    );
   }
 }

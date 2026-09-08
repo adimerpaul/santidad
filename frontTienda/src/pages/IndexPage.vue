@@ -96,6 +96,7 @@
               <span class="out-of-stock-text">Sin Stock</span>
             </div>
             <q-badge v-if="p.porcentaje" color="red" floating>-{{ p.porcentaje }}%</q-badge>
+            <PromotionTicket :promotion-id="p.promocionId" :name="p.promocion" overlay />
           </q-img>
 
           <q-card-section class="q-pa-sm text-center">
@@ -224,6 +225,7 @@
               <span class="out-of-stock-text">Sin Stock</span>
             </div>
             <q-badge v-if="Number(p.porcentaje) > 0" color="red" floating>-{{ p.porcentaje }}%</q-badge>
+            <PromotionTicket :promotion-id="p.promocionId" :name="p.promocion" overlay />
           </q-img>
           <q-card-section class="q-pa-sm text-center">
             <div class="product-name">{{ p.nombre }}</div>
@@ -289,15 +291,17 @@
 
 <script>
 import { useMeta } from 'quasar'
+import { formatCurrency, roundCurrency, roundSalePrice } from 'src/utils/money'
 import { Swiper, SwiperSlide } from 'swiper/vue'
 import { Autoplay, Navigation, Pagination } from 'swiper/modules'
+import PromotionTicket from 'components/PromotionTicket.vue'
 import 'swiper/css'
 import 'swiper/css/navigation'
 import 'swiper/css/pagination'
 
 export default {
   name: 'IndexPage',
-  components: { Swiper, SwiperSlide },
+  components: { Swiper, SwiperSlide, PromotionTicket },
   setup () {
     useMeta({
       title: 'Inicio',
@@ -366,7 +370,7 @@ export default {
   },
   methods: {
     /* ==== Utils ==== */
-    formatPrice (v) { return (Math.round(Number(v ?? 0) * 10) / 10).toFixed(1) },
+    formatPrice (v) { return formatCurrency(v) },
     clickDetalleProducto (p) {
       this.$router.push('/detalle-producto/' + p.id + '/' + this.espacioCambioGuion(p.nombre))
     },
@@ -398,29 +402,29 @@ export default {
     async cargarDescuentosHome () {
       this.loading = true
       try {
-        const res = await this.$axios.get('productos', { params: { page: 1, per_page: 200 } })
+        const res = await this.$axios.get('productos', { params: { page: 1, per_page: 200, ofertas: 1 } })
         this.$store.products = (res.data?.data || res.data || []).map(p => {
           const x = { ...p }
           x.en_oferta = x.en_oferta === true || x.en_oferta === 'true' || Number(x.en_oferta) === 1
-          x.porcentaje = Number(p.porcentaje ?? 0)
+          x.porcentaje = Number(p.porcentajeEfectivo ?? p.porcentaje ?? 0)
           const precioBase = Number(p.precio ?? 0)
           const precioAntes = (p.precioAntes !== null && p.precioAntes !== undefined && p.precioAntes !== '')
             ? Number(p.precioAntes) : null
           if (x.porcentaje > 0) {
             if (precioAntes != null && precioAntes > 0) {
-              x.precioNormal = (Math.round(Number(precioAntes) * 10) / 10).toFixed(1)
-              x.precio = (Math.round((precioAntes * (1 - x.porcentaje / 100)) * 10) / 10).toFixed(1)
+              x.precioNormal = formatCurrency(precioAntes)
+              x.precio = formatCurrency(p.precioVenta ?? roundSalePrice(precioBase * (1 - x.porcentaje / 100)))
             } else {
-              x.precioNormal = (Math.round(Number(precioBase) * 10) / 10).toFixed(1)
-              x.precio = (Math.round((precioBase * (1 - x.porcentaje / 100)) * 10) / 10).toFixed(1)
+              x.precioNormal = formatCurrency(precioBase)
+              x.precio = formatCurrency(p.precioVenta ?? roundSalePrice(precioBase * (1 - x.porcentaje / 100)))
             }
           } else {
             if (precioAntes != null && precioAntes > 0) {
-              x.precioNormal = (Math.round(Number(precioAntes) * 10) / 10).toFixed(1)
-              x.precio = (Math.round(Number(precioBase) * 10) / 10).toFixed(1)
+              x.precioNormal = formatCurrency(precioAntes)
+              x.precio = formatCurrency(precioBase)
             } else {
               x.precioNormal = null
-              x.precio = (Math.round(Number(precioBase) * 10) / 10).toFixed(1)
+              x.precio = formatCurrency(precioBase)
             }
           }
           return x
@@ -438,8 +442,8 @@ export default {
         this.topVendidos = (data || []).map(p => {
           const x = { ...p }
           x.porcentaje = Number(x.porcentaje || 0)
-          x.precio = (Math.round(Number(x.precio) * 10) / 10).toFixed(1)
-          if (x.precioNormal != null) x.precioNormal = (Math.round(Number(x.precioNormal) * 10) / 10).toFixed(1)
+          x.precio = formatCurrency(roundCurrency(x.precio))
+          if (x.precioNormal != null) x.precioNormal = formatCurrency(x.precioNormal)
           return x
         })
       } catch (e) {

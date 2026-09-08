@@ -123,20 +123,36 @@
               <div class="col-4 col-md-2" v-for="p in products" :key="p.id">
                 <q-card @click="clickDetalleProducto(p)">
                   <q-img :src="p.imagen.includes('http')?p.imagen:`${$url}../images/${p.imagen}`" width="100%" height="100px">
-                    <q-badge color="red" floating style="padding: 10px 10px 5px 5px;margin: 0px" v-if="p.porcentaje">
-                      {{p.porcentaje}}%
+                    <q-badge color="red" floating style="padding: 10px 10px 5px 5px;margin: 0px" v-if="descuentoVisible(p)">
+                      {{ descuentoVisible(p) }}%
                     </q-badge>
                     <div class="absolute-bottom text-center text-subtitle2" style="padding: 0px 0px;line-height: 1;">
                       {{p.nombre}}
                     </div>
                   </q-img>
                   <q-card-section class="q-pa-none q-ma-none">
-                    <div class="text-center text-subtitle2">
-                      {{ p.precio ? (Math.round(Number(p.precio) * 10) / 10).toFixed(1) : p.precio }}
-                      <span class="text-red" v-if="p.porcentaje">
-                        {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
-                      </span>
-                      Bs
+                    <div
+                      class="product-sale-price-card"
+                      :class="{ 'product-sale-price-card--offer': descuentoVisible(p) > 0 }"
+                    >
+                      <div class="product-sale-price-card__heading">
+                        <q-icon name="point_of_sale" />
+                        <span>Precio de venta</span>
+                      </div>
+                      <div class="product-sale-price-card__amount">
+                        <small>Bs</small>
+                        <strong>{{ formatCurrency(p.precioVenta ?? p.precio) }}</strong>
+                      </div>
+                      <div v-if="descuentoVisible(p) > 0" class="product-sale-price-card__comparison">
+                        <span class="product-sale-price-card__metric">
+                          <small>Antes</small>
+                          <s>Bs {{ formatCurrency(p.precio) }}</s>
+                        </span>
+                        <span class="product-sale-price-card__metric product-sale-price-card__metric--saving">
+                          <small><q-icon name="savings" /> Ahorro</small>
+                          <strong>Bs {{ ahorroProducto(p) }}</strong>
+                        </span>
+                      </div>
                     </div>
                     <div :class="`text-center text-bold text-${p.cantidad<=10?'red':p.cantidad<=20?'yellow-9':'black'}`">{{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}</div>
                   </q-card-section>
@@ -178,6 +194,7 @@
 <script>
 import CategoriComponent from 'pages/Productos/CategoriComponent.vue'
 import ProductionOptionComponent from 'pages/Productos/ProductionOptionComponent.vue'
+import { formatCurrency as formatMoney } from 'src/utils/money'
 export default {
   name: 'ProductosPage',
   components: {
@@ -239,6 +256,18 @@ export default {
     this.unitsGet()
   },
   methods: {
+    formatCurrency (value) {
+      return formatMoney(value)
+    },
+    ahorroProducto (product) {
+      const precioAnterior = Number(product?.precio ?? 0)
+      const precioVenta = Number(product?.precioVenta ?? product?.precio ?? 0)
+      return formatMoney(Math.max(0, precioAnterior - precioVenta))
+    },
+    descuentoVisible (product) {
+      return Number(product?.porcentajeEfectivo ?? product?.porcentaje ?? 0)
+    },
+
     subcategoriesGet () {
       this.$axios.get('subcategories').then(response => {
         this.subcategories = response.data

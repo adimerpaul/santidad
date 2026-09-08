@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
     use HasFactory;
+
+    protected $appends = ['precioVenta'];
 
     protected $fillable = [
         'nombre',
@@ -69,6 +72,29 @@ class Product extends Model
     public function setPrecioAntesAttribute($value)
     {
         $this->attributes['precioAntes'] = ($value !== null && $value !== '') ? round((float) $value, 1) : null;
+    }
+
+    public function setCostoAttribute($value)
+    {
+        $this->attributes['costo'] = ($value !== null && $value !== '') ? round((float) $value, 1) : null;
+    }
+
+    /** Precio unitario efectivo que se cobra, redondeado a Bs 0,10. */
+    public function precioVentaRedondeado(): float
+    {
+        $precio = round((float) $this->precio, 1);
+        $porcentaje = max(0, min(100, (float) ($this->porcentaje ?? 0)));
+
+        return Money::roundToTenth($precio - ($precio * $porcentaje / 100));
+    }
+
+    public function getPrecioVentaAttribute($value = null): float
+    {
+        if (array_key_exists('precioVenta', $this->attributes)) {
+            return (float) $this->attributes['precioVenta'];
+        }
+
+        return $this->precioVentaRedondeado();
     }
 
     public function getActivoAttribute($value)

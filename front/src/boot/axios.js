@@ -5,6 +5,7 @@ import { Alert } from 'src/addons/Alert'
 import { Excel } from 'src/addons/Excel'
 import moment from 'moment'
 import { Imprimir } from 'src/addons/Imprimir'
+import { formatSalePrice } from 'src/utils/money'
 // Be careful when using SSR for cross-request state pollution
 // due to creating a Singleton instance here;
 // If any client changes this (global) instance, it might be a
@@ -44,7 +45,7 @@ export default boot(({ app, router }) => {
     },
     precioRebajaVenta (monto, porcentaje) {
       const precio = Number(monto) - (Number(monto) * Number(porcentaje) / 100)
-      return (Math.round(precio * 10) / 10).toFixed(1)
+      return formatSalePrice(precio)
     }
   }
   // app.config.globalProperties.$store = useCounterStore()

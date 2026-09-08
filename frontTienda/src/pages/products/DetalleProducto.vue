@@ -66,6 +66,11 @@
         <!-- Info -->
         <div class="col-12 col-md-7">
           <h1 class="product-title">{{ product?.nombre }}</h1>
+          <PromotionTicket
+            :promotion-id="product?.promocionId"
+            :name="product?.promocion"
+            class="q-mt-sm q-mb-xs"
+          />
 
           <!-- Precio / Stock -->
           <div class="price-card q-mt-sm q-mb-md">
@@ -197,6 +202,7 @@
                   <span class="out-of-stock-text">Sin Stock</span>
                 </div>
                 <q-badge v-if="Number(p.porcentaje) > 0" color="red" floating>-{{ p.porcentaje }}%</q-badge>
+                <PromotionTicket :promotion-id="p.promocionId" :name="p.promocion" overlay />
               </q-img>
 
               <q-card-section class="q-pa-sm text-center">
@@ -225,11 +231,14 @@
 import { nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useMeta } from 'quasar'
+import { formatCurrency, formatPayable, roundCurrency, roundSalePrice } from 'src/utils/money'
+import PromotionTicket from 'components/PromotionTicket.vue'
 
 const SITE = 'https://farmaciasantidaddivina.com'
 
 export default {
   name: 'DetalleProducto',
+  components: { PromotionTicket },
 
   data () {
     return {
@@ -281,14 +290,14 @@ export default {
       return base
     },
     ahorro () {
-      if (!this.es_porcentaje) return '0.0'
+      if (!this.es_porcentaje) return '0.00'
       const before = Number(this.product?.precioNormal || 0)
       const now = Number(this.product?.precio || 0)
-      return (Math.round((before - now) * 10) / 10).toFixed(1)
+      return formatCurrency(before - now)
     },
     total () {
       const p = Number(this.product?.precio || 0)
-      return (Math.round((p * (Number(this.cantidad) || 0)) * 10) / 10).toFixed(1)
+      return formatPayable(p * (Number(this.cantidad) || 0))
     },
     availableStock () {
       return this.sucursales.reduce((acc, s) => acc + Number(s.cantidad || 0), 0)
@@ -627,16 +636,17 @@ export default {
         if (myReq !== this.reqSeq) return
 
         this.product = { ...data }
+        this.product.porcentaje = Number(data.porcentajeEfectivo ?? data.porcentaje ?? 0)
 
         // precio / porcentaje
         if (Number(this.product.porcentaje) > 0) {
           this.es_porcentaje = true
-          this.product.precioNormal = (Math.round(Number(this.product.precio) * 10) / 10).toFixed(1)
-          const precioFinal = Number(this.product.precio) - (Number(this.product.precio) * Number(this.product.porcentaje) / 100)
-          this.product.precio = (Math.round(precioFinal * 10) / 10).toFixed(1)
+          this.product.precioNormal = formatCurrency(this.product.precio)
+          const precioFinal = this.product.precioVenta ?? roundSalePrice(Number(this.product.precio) - (Number(this.product.precio) * Number(this.product.porcentaje) / 100))
+          this.product.precio = formatCurrency(precioFinal)
         } else {
           this.es_porcentaje = false
-          this.product.precio = this.product.precio ? (Math.round(Number(this.product.precio) * 10) / 10).toFixed(1) : this.product.precio
+          this.product.precio = this.product.precio ? formatCurrency(this.product.precio) : this.product.precio
         }
 
         // cantidades por sucursal
@@ -762,13 +772,14 @@ export default {
           if (!pass || seen.has(p.id)) continue
 
           const np = { ...p }
+          np.porcentaje = Number(p.porcentajeEfectivo ?? p.porcentaje ?? 0)
           const precioBase = Number(np.precio ?? 0)
           if (Number(np.porcentaje) > 0) {
-            np.precioNormal = (Math.round(precioBase * 10) / 10).toFixed(1)
-            const nuevo = precioBase - (precioBase * Number(np.porcentaje) / 100)
-            np.precio = (Math.round(nuevo * 10) / 10).toFixed(1)
+            np.precioNormal = formatCurrency(precioBase)
+            const nuevo = np.precioVenta ?? roundSalePrice(precioBase - (precioBase * Number(np.porcentaje) / 100))
+            np.precio = formatCurrency(nuevo)
           } else {
-            np.precio = (Math.round(precioBase * 10) / 10).toFixed(1)
+            np.precio = formatCurrency(precioBase)
           }
           list.push(np)
           seen.add(p.id)
@@ -890,8 +901,8 @@ export default {
     async addCart (product, cantidad) {
       const ok = await this.checkStockBeforeAdd(cantidad)
       if (!ok) return
-      const subtotal = Math.round((Number(product.precio) * cantidad) * 10) / 10
-      const text = `Deseo comprar ${cantidad} ${product.nombre} a Bs. ${product.precio} c/u. Total Bs. ${subtotal.toFixed(1)}`
+      const subtotal = roundCurrency(Number(product.precio) * cantidad)
+      const text = `Deseo comprar ${cantidad} ${product.nombre} a Bs. ${formatCurrency(product.precio)} c/u. Total Bs. ${formatPayable(subtotal)}`
       window.open(`https://wa.me/59172319869?text=${encodeURIComponent(text)}`)
     },
     async checkStockBeforeAdd (cant) {

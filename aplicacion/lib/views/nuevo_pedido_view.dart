@@ -66,8 +66,11 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
     } catch (_) {
       if (mounted) {
         setState(() => _enviando = false);
-        showToast(context, 'Error verificando disponibilidad',
-            icon: Icons.error_outline);
+        showToast(
+          context,
+          'Error verificando disponibilidad',
+          icon: Icons.error_outline,
+        );
       }
       return;
     }
@@ -82,14 +85,20 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
         return;
       }
       if (accion == _AccionSinStock.editar) {
-        showToast(context, 'Puedes ajustar las cantidades del pedido',
-            icon: Icons.edit_outlined);
+        showToast(
+          context,
+          'Puedes ajustar las cantidades del pedido',
+          icon: Icons.edit_outlined,
+        );
         return;
       }
       carrito.quitarProductos(sinStock.map((p) => p.productoId));
       if (carrito.vacio) {
-        showToast(context, 'Todos los productos fueron removidos por falta de stock',
-            icon: Icons.warning_amber_rounded);
+        showToast(
+          context,
+          'Todos los productos fueron removidos por falta de stock',
+          icon: Icons.warning_amber_rounded,
+        );
         return;
       }
     }
@@ -101,8 +110,11 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
       destino = numeroWhatsApp(dotenv.env['WHATSAPP'] ?? '');
     }
     if (destino.isEmpty) {
-      showToast(context, 'No hay un número de WhatsApp configurado',
-          icon: Icons.error_outline);
+      showToast(
+        context,
+        'No hay un número de WhatsApp configurado',
+        icon: Icons.error_outline,
+      );
       return;
     }
 
@@ -111,12 +123,15 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
     // con ese mismo número caja lo recupera en Ventas (/sale) del panel.
     setState(() => _enviando = true);
     var codigo = '';
+    var preciosConfirmados = <int, double>{};
     try {
-      codigo = await catalogo.repo.crearOrden(
+      final orden = await catalogo.repo.crearOrden(
         items: carrito.items,
         sucursalId: sucursal.id,
         sucursalNombre: sucursal.nombre,
       );
+      codigo = orden.numero;
+      preciosConfirmados = orden.precios;
     } catch (_) {
       // sin conexión igual se envía por WhatsApp con un código local
     }
@@ -131,6 +146,7 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
       sucursal: sucursal,
       codigo: codigo,
       whatsappDestino: destino,
+      preciosConfirmados: preciosConfirmados,
     );
     final uri = Uri.parse(
       'https://wa.me/$destino?text=${Uri.encodeComponent(mensajeWhatsAppPedido(pedido))}',
@@ -139,8 +155,11 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
     final abierto = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!mounted) return;
     if (!abierto) {
-      showToast(context, 'No se pudo abrir WhatsApp',
-          icon: Icons.error_outline);
+      showToast(
+        context,
+        'No se pudo abrir WhatsApp',
+        icon: Icons.error_outline,
+      );
       return;
     }
 
@@ -167,8 +186,11 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
         contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
         title: const Row(
           children: [
-            Icon(Icons.warning_amber_rounded,
-                color: AppColors.warnFg, size: 22),
+            Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.warnFg,
+              size: 22,
+            ),
             SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -203,7 +225,9 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
                   (p) => Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 9),
+                      horizontal: 12,
+                      vertical: 9,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF5F5),
                       borderRadius: BorderRadius.circular(10),
@@ -236,7 +260,9 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.badFg,
                             borderRadius: BorderRadius.circular(999),
@@ -294,8 +320,7 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
               backgroundColor: AppColors.waDark,
               foregroundColor: Colors.white,
               elevation: 0,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -347,8 +372,8 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
               const _Label('SUCURSAL'),
               const SizedBox(height: 6),
               DropdownButtonFormField<int>(
-                initialValue: catalogo.sucursales
-                        .any((s) => s.id == carrito.agenciaId)
+                initialValue:
+                    catalogo.sucursales.any((s) => s.id == carrito.agenciaId)
                     ? carrito.agenciaId
                     : null,
                 items: catalogo.sucursales
@@ -368,6 +393,7 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
                     .toList(),
                 onChanged: (v) {
                   carrito.setAgencia(v);
+                  catalogo.setAgencia(v);
                   final faltan = carrito.itemsSinStockEnSucursal;
                   if (faltan.isNotEmpty) {
                     showToast(
@@ -379,8 +405,10 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
                     );
                   }
                 },
-                icon: const Icon(Icons.keyboard_arrow_down,
-                    color: AppColors.muted2),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down,
+                  color: AppColors.muted2,
+                ),
                 hint: const Text('Selecciona una sucursal'),
               ),
               const SizedBox(height: 14),
@@ -435,15 +463,15 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: const Color(0xFFC9D9EE),
-                width: 1.5,
-              ),
+              border: Border.all(color: const Color(0xFFC9D9EE), width: 1.5),
             ),
             child: Column(
               children: [
-                const Icon(Icons.shopping_basket_outlined,
-                    size: 26, color: Color(0xFFBCD2EC)),
+                const Icon(
+                  Icons.shopping_basket_outlined,
+                  size: 26,
+                  color: Color(0xFFBCD2EC),
+                ),
                 const SizedBox(height: 10),
                 const Text(
                   'Aún no añadiste productos',
@@ -461,15 +489,16 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 10),
+                      horizontal: 18,
+                      vertical: 10,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: const Text(
                     'Explorar productos',
-                    style:
-                        TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
@@ -479,8 +508,7 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
           ...carrito.items.map(
             (item) => Container(
               margin: const EdgeInsets.only(bottom: 8),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -540,8 +568,7 @@ class _NuevoPedidoViewState extends State<NuevoPedidoView> {
                   ),
                   _QtyBtn(
                     icon: Icons.remove,
-                    onTap: () =>
-                        carrito.cambiarCantidad(item.product.id, -1),
+                    onTap: () => carrito.cambiarCantidad(item.product.id, -1),
                   ),
                   SizedBox(
                     width: 30,

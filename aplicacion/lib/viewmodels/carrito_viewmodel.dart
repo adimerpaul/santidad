@@ -94,9 +94,19 @@ class CarritoViewModel extends ChangeNotifier {
     required Sucursal sucursal,
     required String codigo,
     required String whatsappDestino,
+    Map<int, double> preciosConfirmados = const {},
   }) {
     final ahora = DateTime.now();
     String dos(int n) => n.toString().padLeft(2, '0');
+    final detallesPedido = items
+        .map(
+          (i) => PedidoLinea(
+            producto: i.product.nombre,
+            cantidad: i.qty,
+            precio: preciosConfirmados[i.product.id] ?? i.product.precio,
+          ),
+        )
+        .toList();
     return Pedido(
       id: ahora.millisecondsSinceEpoch,
       codigo: codigo,
@@ -104,18 +114,15 @@ class CarritoViewModel extends ChangeNotifier {
       fecha:
           '${dos(ahora.day)}/${dos(ahora.month)}/${ahora.year} ${dos(ahora.hour)}:${dos(ahora.minute)}',
       items: totalUnidades,
-      total: total,
+      total: detallesPedido.fold<double>(
+        0,
+        (suma, item) => suma + item.subtotal,
+      ),
       estado: 'ENVIADO',
       prioridad: prioridad,
       observacion: observacion.isEmpty ? null : observacion,
       whatsapp: whatsappDestino,
-      detalles: items
-          .map((i) => PedidoLinea(
-                producto: i.product.nombre,
-                cantidad: i.qty,
-                precio: i.product.precio,
-              ))
-          .toList(),
+      detalles: detallesPedido,
     );
   }
 }

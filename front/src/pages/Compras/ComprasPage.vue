@@ -113,12 +113,28 @@
                         </div>
                       </q-img>
                       <q-card-section class="q-pa-none q-ma-none">
-                        <div class="text-center text-subtitle2">
-                          {{ p.precio ? (Math.round(Number(p.precio) * 10) / 10).toFixed(1) : p.precio }}
-                          <span class="text-red" v-if="p.porcentaje">
-                            {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
-                          </span>
-                          Bs
+                        <div
+                          class="product-sale-price-card"
+                          :class="{ 'product-sale-price-card--offer': Number(p.porcentaje) > 0 }"
+                        >
+                          <div class="product-sale-price-card__heading">
+                            <q-icon name="point_of_sale" />
+                            <span>Precio de venta</span>
+                          </div>
+                          <div class="product-sale-price-card__amount">
+                            <small>Bs</small>
+                            <strong>{{ formatCurrency(p.precioVenta ?? p.precio) }}</strong>
+                          </div>
+                          <div v-if="Number(p.porcentaje) > 0" class="product-sale-price-card__comparison">
+                            <span class="product-sale-price-card__metric">
+                              <small>Antes</small>
+                              <s>Bs {{ formatCurrency(p.precio) }}</s>
+                            </span>
+                            <span class="product-sale-price-card__metric product-sale-price-card__metric--saving">
+                              <small><q-icon name="savings" /> Ahorro</small>
+                              <strong>Bs {{ ahorroProducto(p) }}</strong>
+                            </span>
+                          </div>
                         </div>
                         <div :class="p.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">
                           {{ p.cantidad }} {{ $q.screen.lt.md?'Dis':'Disponible' }}
@@ -405,6 +421,8 @@
                 v-model="facturaData.monto_total"
                 label="Monto Total *"
                 type="number"
+                step="0.1"
+                @blur="facturaData.monto_total = Math.round(Number(facturaData.monto_total || 0) * 10) / 10"
                 outlined
                 dense
                 :rules="[val => !!val || 'Campo requerido']"
@@ -513,6 +531,7 @@
 
 <script>
 import { date } from 'quasar'
+import { formatCurrency as formatMoney } from 'src/utils/money'
 
 export default {
   name: 'ComprasPage',
@@ -614,6 +633,15 @@ export default {
     this.agenciasGet()
   },
   methods: {
+    formatCurrency (value) {
+      return formatMoney(value)
+    },
+    ahorroProducto (product) {
+      const precioAnterior = Number(product?.precio ?? 0)
+      const precioVenta = Number(product?.precioVenta ?? product?.precio ?? 0)
+      return formatMoney(Math.max(0, precioAnterior - precioVenta))
+    },
+
     subcategoriesGet () {
       this.subcategories = [{ name: 'Ver todas las sub categorias', id: 0 }]
       this.$axios.get('subcategories').then(response => {
@@ -856,14 +884,13 @@ export default {
       // returdir el 30 porciento
       let total = 0
       this.$store.productosCompra.forEach(p => {
-        const precio = parseFloat(p.price) || 0
+        const precio = Math.round((parseFloat(p.price) || 0) * 10) / 10
         const cantidad = parseFloat(p.cantidadCompra) || 0
-        total += precio * cantidad
+        total += Math.round(precio * cantidad * 10) / 10
       })
       // total = total - (total * 0.3)
       total = total / 1.3
-      // redonde a 2 decimales
-      return Math.round(total * 100) / 100
+      return Math.round(total * 10) / 10
     },
     calcularTotalFactura () {
       this.facturaData.monto_total = this.calcularTotalCompra()
@@ -945,11 +972,11 @@ export default {
         this.totalProducts = res.data.products.total
         this.last_page = res.data.products.last_page
         this.current_page = res.data.products.current_page
-        this.costoTotalProducts = parseFloat(res.data.costoTotal).toFixed(2)
+        this.costoTotalProducts = parseFloat(res.data.costoTotal).toFixed(1)
         res.data.products.data.forEach(p => {
           p.cantidadPedida = 0
           p.cantidadReal = p.cantidad
-          p.precioVenta = p.precio
+          p.porcentaje = Number(p.porcentajeEfectivo ?? p.porcentaje ?? 0)
           p.cantidadAlmacen = p.cantidadAlmacen || 0
           this.products.push(p)
         })
@@ -1159,7 +1186,7 @@ export default {
     cambio () {
       if (this.aporte === false) {
         const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
-        return Math.round(cambio * 100) / 100
+        return Math.round(cambio * 10) / 10
       } else {
         const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
         const entero = Math.floor(cambio)
@@ -1174,7 +1201,7 @@ export default {
         const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
         const entero = Math.floor(cambio)
         const decimal = cambio - entero
-        return this.cambio < 0 ? 'Aporte' : 'Bs.' + decimal.toFixed(2)
+        return this.cambio < 0 ? 'Aporte' : 'Bs.' + decimal.toFixed(1)
       }
     },
     cambioDecimal () {
@@ -1184,7 +1211,7 @@ export default {
         const cambio = parseFloat(this.efectivo === '' ? 0 : this.efectivo) - parseFloat(this.total)
         const entero = Math.floor(cambio)
         const decimal = cambio - entero
-        return this.cambio < 0 ? 0 : decimal.toFixed(2)
+        return this.cambio < 0 ? 0 : decimal.toFixed(1)
       }
     },
     total () {
@@ -1192,7 +1219,7 @@ export default {
       this.$store.productosCompra.forEach(p => {
         s = s + parseFloat(p.precioVenta * p.cantidadVenta)
       })
-      return s.toFixed(2)
+      return (Math.round(s * 10) / 10).toFixed(1)
     }
   },
   watch: {

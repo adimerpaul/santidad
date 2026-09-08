@@ -41,6 +41,7 @@ class _ShellViewState extends State<ShellView> {
       if (carrito.agenciaId == null && catalogo.sucursales.isNotEmpty) {
         carrito.setAgencia(catalogo.sucursales.first.id);
       }
+      catalogo.setAgencia(carrito.agenciaId);
     });
   }
 
@@ -213,8 +214,7 @@ class _Header extends StatelessWidget {
             ),
             child: const Row(
               children: [
-                Icon(Icons.location_on,
-                    size: 12, color: AppColors.primaryDeep),
+                Icon(Icons.location_on, size: 12, color: AppColors.primaryDeep),
                 SizedBox(width: 4),
                 Text(
                   'Oruro',
@@ -250,9 +250,7 @@ class _BottomNav extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cream.withValues(alpha: .94),
         border: Border(
-          top: BorderSide(
-            color: AppColors.primaryDark.withValues(alpha: .18),
-          ),
+          top: BorderSide(color: AppColors.primaryDark.withValues(alpha: .18)),
         ),
       ),
       child: SafeArea(
@@ -331,8 +329,11 @@ class _BottomNav extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.shopping_basket,
-                        color: Colors.white, size: 19),
+                    child: const Icon(
+                      Icons.shopping_basket,
+                      color: Colors.white,
+                      size: 19,
+                    ),
                   ),
                   if (badge > 0)
                     Positioned(
@@ -340,13 +341,14 @@ class _BottomNav extends StatelessWidget {
                       right: -6,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1),
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
                         constraints: const BoxConstraints(minWidth: 19),
                         decoration: BoxDecoration(
                           color: AppColors.badFg,
                           borderRadius: BorderRadius.circular(999),
-                          border:
-                              Border.all(color: AppColors.cream, width: 2),
+                          border: Border.all(color: AppColors.cream, width: 2),
                         ),
                         child: Text(
                           '$badge',

@@ -143,8 +143,15 @@
           </div>
           <div class="col-12 col-md-3">
 <!--            <q-input label-color="black" outlined type="number" step="0.01" v-model="product.precioAntes" label="Precio antes" dense hint="Valor que le cobrabas a tus clientes por el producto ANTES de la oferta"/>-->
-          <label for="" class="text-red text-caption text-bold">Precio venta</label><br>
-          <span class="text-bold">{{precioVenta}}</span>
+            <div class="product-sale-price-preview">
+              <div class="product-sale-price-preview__label">
+                <q-icon name="point_of_sale" />
+                Precio de venta
+              </div>
+              <div class="product-sale-price-preview__amount">
+                <small>Bs</small> {{precioVenta}}
+              </div>
+            </div>
           </div>
           <div class="col-12 col-md-4" style="line-height:1em;">
             <q-input
@@ -631,7 +638,7 @@ export default {
     precioVenta () {
       const precio = this.product.precio == null ? 0 : Number(this.product.precio)
       const porcentaje = this.product.porcentaje == null ? 0 : Number(this.product.porcentaje)
-      const precioVenta = (Math.round((precio - (precio * porcentaje / 100)) * 10) / 10).toFixed(1)
+      const precioVenta = (Math.round((precio - (precio * porcentaje / 100) + Number.EPSILON) * 10) / 10).toFixed(2)
       return precioVenta
     },
     porcentaje () {

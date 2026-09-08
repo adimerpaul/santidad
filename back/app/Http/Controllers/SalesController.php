@@ -13,7 +13,9 @@ use App\Models\Sales;
 use App\Http\Requests\StoreSalesRequest;
 use App\Http\Requests\UpdateSalesRequest;
 use App\Services\FacturacionSiatService;
+use App\Services\PromotionPricingService;
 use App\Models\CashClosure;
+use App\Support\Money;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +23,10 @@ use Illuminate\Support\Facades\Mail;
 
 class SalesController extends Controller
 {
-    public function __construct(private readonly FacturacionSiatService $facturacionService) {}
+    public function __construct(
+        private readonly FacturacionSiatService $facturacionService,
+        private readonly PromotionPricingService $promotionPricing,
+    ) {}
 
     public function index()
     {
@@ -67,48 +72,100 @@ class SalesController extends Controller
             }
         }
 
-        // Verificar stock antes de abrir transacción
-        foreach ($request->products as $product) {
-            $productModel = Product::find($product['id']);
-            if ($productModel->cantidad < $product['cantidadPedida']) {
-                return response()->json([
-                    'message' => 'No hay suficiente stock del producto ' . $productModel->nombre,
-                ], 400);
-            }
-        }
-
         DB::beginTransaction();
         try {
-            $client     = $this->insertUpdateClient($request);
-            $agencia_id = $request->agencia_id;
+            $agencia_id = (int) $request->agencia_id;
+            $productosProcesados = [];
+            $montoBaseCentavos = 0;
+            $descuentoProductoCentavos = 0;
+            $productIds = collect($request->products)->pluck('id')->sort()->values();
+            $productosBloqueados = Product::whereIn('id', $productIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
 
-            $montoBase  = array_reduce(
-                $request->products,
-                fn ($carry, $p) => $carry + $p['cantidadPedida'] * $p['precioVenta'],
-                0
-            );
-            $montoTotal = $montoBase + $request->aporte - $request->descuento;
+            // La base de datos define el precio unitario efectivo, ya redondeado
+            // a Bs 0,10. La canasta y el detalle usan exactamente ese precio.
+            foreach ($request->products as $product) {
+                $productModel = $productosBloqueados->get($product['id']);
+                if (!$productModel) {
+                    throw new \DomainException('Uno de los productos ya no se encuentra disponible.');
+                }
+                $cantidad = (int) $product['cantidadPedida'];
+                $campoStock = "cantidadSucursal{$agencia_id}";
+                $stockDisponible = (float) ($productModel->getAttribute($campoStock) ?? 0);
+
+                if ($stockDisponible < $cantidad || (float) $productModel->cantidad < $cantidad) {
+                    throw new \DomainException('No hay suficiente stock del producto ' . $productModel->nombre);
+                }
+
+                $pricing = $this->promotionPricing->resolve($productModel, 'physical', $agencia_id);
+                $precioOriginalCentavos = Money::toCents($pricing['precio_original']);
+                $precioVenta = $pricing['precio_venta'];
+                $precioVentaCentavos = Money::toCents($precioVenta);
+                if ($precioVentaCentavos <= 0) {
+                    throw new \DomainException('El precio de venta de ' . $productModel->nombre . ' debe ser mayor a 0.');
+                }
+
+                $subtotalCentavos = $cantidad * $precioVentaCentavos;
+                $descuentoLineaCentavos = $cantidad * ($precioOriginalCentavos - $precioVentaCentavos);
+                $montoBaseCentavos += $subtotalCentavos;
+                $descuentoProductoCentavos += $descuentoLineaCentavos;
+
+                $productosProcesados[] = [
+                    'datos' => $product,
+                    'modelo' => $productModel,
+                    'cantidad' => $cantidad,
+                    'precioVenta' => Money::fromCents($precioVentaCentavos),
+                    'subtotal' => Money::fromCents($subtotalCentavos),
+                    'pricing' => $pricing,
+                ];
+            }
+
+            $aporteCentavos = Money::toCents($request->aporte ?? 0);
+            $descuentoCentavos = Money::toCents($request->descuento ?? 0);
+            if ($descuentoCentavos > $montoBaseCentavos + $aporteCentavos) {
+                throw new \DomainException('El descuento no puede ser mayor al total de la venta.');
+            }
+            $montoCalculadoCentavos = $montoBaseCentavos + $aporteCentavos - $descuentoCentavos;
+            $montoTotalCentavos = Money::roundCentsToTenth($montoCalculadoCentavos);
+
+            $aporte = Money::fromCents($aporteCentavos);
+            $descuento = Money::fromCents($descuentoCentavos);
+            $montoCalculado = Money::fromCents($montoCalculadoCentavos);
+            $montoTotal = Money::fromCents($montoTotalCentavos);
+            $ajusteRedondeo = Money::fromCents($montoTotalCentavos - $montoCalculadoCentavos);
 
             $montoEfectivoVal = 0.0;
             $montoQrVal = 0.0;
 
             if ($request->metodoPago === 'Personalizado') {
-                $montoEfectivoVal = (double) ($request->montoEfectivo ?? 0.0);
-                $montoQrVal = (double) ($request->montoQr ?? 0.0);
+                $montoEfectivoCentavos = Money::toCents($request->montoEfectivo ?? 0);
+                $montoQrCentavos = Money::toCents($request->montoQr ?? 0);
+                if ($montoEfectivoCentavos + $montoQrCentavos !== $montoTotalCentavos) {
+                    throw new \DomainException('La suma del pago en efectivo y QR debe ser igual al total de la venta.');
+                }
+                $montoEfectivoVal = Money::fromCents($montoEfectivoCentavos);
+                $montoQrVal = Money::fromCents($montoQrCentavos);
             } elseif ($request->metodoPago === 'Efectivo') {
-                $montoEfectivoVal = (double) $montoTotal;
+                $montoEfectivoVal = $montoTotal;
                 $montoQrVal = 0.0;
             } else {
                 // 'Qr', 'Tarjeta', 'Transferencia'
-                $montoQrVal = (double) $montoTotal;
+                $montoQrVal = $montoTotal;
                 $montoEfectivoVal = 0.0;
             }
+
+            $client = $this->insertUpdateClient($request);
 
             $sale = new Sales();
             $sale->fill([
                 'numeroFactura' => 0,
                 'fechaEmision'  => date('Y-m-d H:i:s'),
                 'montoTotal'    => $montoTotal,
+                'montoCalculado'=> $montoCalculado,
+                'ajusteRedondeo'=> $ajusteRedondeo,
                 'usuario'       => $request->user()->name,
                 'venta'         => 'R',
                 'tipoVenta'     => 'Ingreso',
@@ -117,54 +174,63 @@ class SalesController extends Controller
                 'montoQr'       => $montoQrVal,
                 'qrId'          => $request->qrId,
                 'client_id'     => $client->id,
-                'aporte'        => $request->aporte,
-                'descuento'     => $request->descuento,
+                'aporte'        => $aporte,
+                'descuento'     => $descuento,
                 'user_id'       => $request->user()->id,
                 'agencia_id'    => $agencia_id,
             ]);
             $sale->save();
 
-            $concepto           = '';
-            $descuento_producto = 0;
+            $concepto = '';
 
-            foreach ($request->products as $product) {
+            foreach ($productosProcesados as $productoProcesado) {
+                $product = $productoProcesado['datos'];
+                $productSale = $productoProcesado['modelo'];
+                $cantidad = $productoProcesado['cantidad'];
+                $precioVenta = $productoProcesado['precioVenta'];
                 $detail = new Detail();
                 $detail->fill([
-                    'cantidad'       => $product['cantidadPedida'],
-                    'precioUnitario' => $product['precioVenta'],
-                    'subTotal'       => $product['cantidadPedida'] * $product['precioVenta'],
+                    'cantidad'       => $cantidad,
+                    'precioUnitario' => $precioVenta,
+                    'precioOriginal' => $productoProcesado['pricing']['precio_original'],
+                    'promocion_id' => $productoProcesado['pricing']['promocion_id'],
+                    'promocion_nombre' => $productoProcesado['pricing']['promocion_nombre'],
+                    'promocion_porcentaje' => $productoProcesado['pricing']['porcentaje'],
+                    'subTotal'       => $productoProcesado['subtotal'],
                     'sale_id'        => $sale->id,
-                    'descripcion'    => $product['nombre'],
+                    'descripcion'    => $productSale->nombre,
                     'user_id'        => $request->user()->id,
-                    'product_id'     => $product['id'],
+                    'product_id'     => $productSale->id,
                 ]);
                 $detail->save();
 
-                $concepto .= $product['cantidadPedida'] . $product['nombre'] . ',';
+                $concepto .= $cantidad . $productSale->nombre . ',';
 
-                $productSale = Product::find($product['id']);
-                $productSale->cantidad -= $product['cantidadPedida'];
-                $this->ajustarStockSucursal($productSale, $agencia_id, -$product['cantidadPedida']);
-
-                if ($productSale->porcentaje > 0) {
-                    $descuento_producto += $product['cantidadPedida'] * $productSale->precio * $productSale->porcentaje / 100;
-                }
+                $productSale->cantidad -= $cantidad;
+                $this->ajustarStockSucursal($productSale, $agencia_id, -$cantidad);
                 $productSale->save();
 
-                foreach ($product['buys'] as $buy) {
+                foreach (($product['buys'] ?? []) as $buy) {
                     if (isset($buy['cantidadAVender']) && $buy['cantidadAVender'] > 0) {
-                        $buyModel                   = Buy::find($buy['id']);
-                        $buyModel->cantidadVendida -= $buy['cantidadAVender'];
+                        $buyModel                   = Buy::lockForUpdate()->findOrFail($buy['id']);
+                        $cantidadLote = (float) $buy['cantidadAVender'];
+                        if ((int) $buyModel->product_id !== (int) $productSale->id || (float) $buyModel->cantidadVendida < $cantidadLote) {
+                            throw new \DomainException('El lote seleccionado ya no tiene stock suficiente para ' . $productSale->nombre . '.');
+                        }
+                        $buyModel->cantidadVendida -= $cantidadLote;
                         $buyModel->save();
                     }
                 }
             }
 
             $sale->concepto           = rtrim($concepto, ',');
-            $sale->descuento_producto = $descuento_producto;
+            $sale->descuento_producto = Money::fromCents($descuentoProductoCentavos);
             $sale->save();
 
             DB::commit();
+        } catch (\DomainException $e) {
+            DB::rollBack();
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['message' => $e->getMessage()], 500);
@@ -195,18 +261,21 @@ class SalesController extends Controller
 
             Detail::whereSaleId($sale->id)->delete();
 
-            $montoTotal = 0;
+            $montoCalculadoCentavos = 0;
             $concepto   = '';
 
             foreach ($request->details as $product) {
+                $precioUnitario = Money::roundToCents($product['precioUnitario']);
+                $subTotalCentavos = Money::toCents((float) $product['cantidad'] * $precioUnitario);
+                $subTotal = Money::fromCents($subTotalCentavos);
                 $concepto   .= $product['cantidad'] . $product['descripcion'] . ',';
-                $montoTotal += $product['cantidad'] * $product['precioUnitario'];
+                $montoCalculadoCentavos += $subTotalCentavos;
 
                 $detail = new Detail();
                 $detail->fill([
                     'cantidad'       => $product['cantidad'],
-                    'precioUnitario' => $product['precioUnitario'],
-                    'subTotal'       => round($product['cantidad'] * $product['precioUnitario'], 2),
+                    'precioUnitario' => $precioUnitario,
+                    'subTotal'       => $subTotal,
                     'sale_id'        => $sale->id,
                     'descripcion'    => $product['descripcion'],
                     'user_id'        => $request->user()->id,
@@ -220,7 +289,10 @@ class SalesController extends Controller
                 $productSale->save();
             }
 
-            $sale->montoTotal = $montoTotal;
+            $montoTotalCentavos = Money::roundCentsToTenth($montoCalculadoCentavos);
+            $sale->montoCalculado = Money::fromCents($montoCalculadoCentavos);
+            $sale->ajusteRedondeo = Money::fromCents($montoTotalCentavos - $montoCalculadoCentavos);
+            $sale->montoTotal = Money::fromCents($montoTotalCentavos);
             $sale->concepto   = rtrim($concepto, ',');
             $sale->modificado = 'SI';
             $sale->save();
@@ -444,9 +516,9 @@ class SalesController extends Controller
         }
 
         $ids      = $rows->pluck('product_id')->all();
-        $products = DB::table('products as p')
-            ->whereIn('p.id', $ids)
-            ->select('p.id', 'p.nombre', 'p.imagen', 'p.precio', 'p.porcentaje', 'p.cantidad')
+        $products = Product::query()
+            ->whereIn('id', $ids)
+            ->select('id', 'nombre', 'imagen', 'precio', 'porcentaje', 'cantidad', 'category_id')
             ->get()
             ->map(function ($p) {
                 if (!$p->imagen || !file_exists(public_path('/images/' . $p->imagen))) {
@@ -457,26 +529,29 @@ class SalesController extends Controller
             ->keyBy('id');
 
         return response()->json(
-            $rows->map(function ($r) use ($products) {
+            $rows->map(function ($r) use ($products, $agenciaId) {
                 $p = $products[$r->product_id] ?? null;
                 if (!$p) {
                     return null;
                 }
 
-                $precio       = round((float) $p->precio, 1);
-                $precioNormal = null;
-                if (!empty($p->porcentaje) && (int) $p->porcentaje > 0) {
-                    $precioNormal = $precio;
-                    $precio       = round($precio - ($precio * $p->porcentaje / 100), 1);
-                }
+                $pricing = $this->promotionPricing->resolve(
+                    $p,
+                    'web',
+                    $agenciaId ? (int) $agenciaId : null
+                );
+                $precio = $pricing['precio_venta'];
+                $precioNormal = $pricing['porcentaje'] > 0 ? $pricing['precio_original'] : null;
 
                 return [
                     'id'           => (int) $p->id,
                     'nombre'       => $p->nombre,
                     'imagen'       => $p->imagen ?: 'productDefault.jpg',
-                    'precio'       => number_format($precio, 1, '.', ''),
-                    'precioNormal' => $precioNormal ? number_format($precioNormal, 1, '.', '') : null,
-                    'porcentaje'   => (int) ($p->porcentaje ?? 0),
+                    'precio'       => number_format($precio, 2, '.', ''),
+                    'precioNormal' => $precioNormal ? number_format($precioNormal, 2, '.', '') : null,
+                    'porcentaje'   => (float) $pricing['porcentaje'],
+                    'promocionId'  => $pricing['promocion_id'],
+                    'promocion'    => $pricing['promocion_nombre'],
                     'cantidad'     => (int) ($p->cantidad ?? 0),
                     'vendido'      => (int) $r->cantidad_total,
                 ];

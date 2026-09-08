@@ -50,8 +50,28 @@ class CatalogoViewModel extends ChangeNotifier {
   String filtro = FiltroCatalogo.todo; // TODO | OFERTAS | id de categoría
   int _pagina = 1;
   int _ultimaPagina = 1;
+  int? agenciaId;
 
   bool get hayMasProductos => _pagina < _ultimaPagina;
+
+  void setAgencia(int? id) {
+    if (agenciaId == id) return;
+    agenciaId = id;
+    cargarProductos();
+    cargarOfertas();
+  }
+
+  Future<void> cargarOfertas() async {
+    try {
+      final pagina = await repo.productos(
+        ofertas: true,
+        perPage: 10,
+        agenciaId: agenciaId,
+      );
+      ofertas = pagina.items;
+      notifyListeners();
+    } catch (_) {}
+  }
 
   int? get categoriaSeleccionada =>
       int.tryParse(filtro); // null si es TODO/OFERTAS
@@ -65,7 +85,11 @@ class CatalogoViewModel extends ChangeNotifier {
       categorias = config.categorias;
       sucursales = config.sucursales;
       umbralStockBajo = config.umbralStockBajo;
-      final pagOfertas = await repo.productos(ofertas: true, perPage: 10);
+      final pagOfertas = await repo.productos(
+        ofertas: true,
+        perPage: 10,
+        agenciaId: agenciaId,
+      );
       ofertas = pagOfertas.items;
       try {
         carrusel = await repo.carousels();
@@ -127,11 +151,12 @@ class CatalogoViewModel extends ChangeNotifier {
   }
 
   Future<PaginaProductos> _fetch(int page) => repo.productos(
-        search: busqueda.trim(),
-        categoryId: categoriaSeleccionada ?? 0,
-        ofertas: filtro == FiltroCatalogo.ofertas,
-        page: page,
-      );
+    search: busqueda.trim(),
+    categoryId: categoriaSeleccionada ?? 0,
+    ofertas: filtro == FiltroCatalogo.ofertas,
+    page: page,
+    agenciaId: agenciaId,
+  );
 
   /// Detalle completo de un producto con sus relacionados.
   /// El backend calcula los relacionados por principio activo (misma dosis
@@ -141,7 +166,7 @@ class CatalogoViewModel extends ChangeNotifier {
   /// local por composición/nombre como último recurso.
   Future<DetalleProducto> detalleConRelacionados(Product p) async {
     try {
-      final det = await repo.detalle(p.id);
+      final det = await repo.detalle(p.id, agenciaId: agenciaId);
       return det;
     } catch (_) {
       // el endpoint puede no existir aún en el servidor
@@ -152,6 +177,7 @@ class CatalogoViewModel extends ChangeNotifier {
       final pag = await repo.productos(
         search: _terminoRelacionado(p),
         perPage: 12,
+        agenciaId: agenciaId,
       );
       relacionados = pag.items.where((x) => x.id != p.id).toList();
     } catch (_) {}
@@ -183,6 +209,7 @@ class CatalogoViewModel extends ChangeNotifier {
       final pag = await repo.productos(
         search: q.trim(),
         perPage: maxSugerencias,
+        agenciaId: agenciaId,
       );
       return Sugerencias(items: pag.items, total: pag.total);
     } catch (_) {

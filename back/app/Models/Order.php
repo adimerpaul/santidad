@@ -9,7 +9,8 @@ class Order extends Model
 {
   protected $fillable = [
     'order_number','customer_id','customer_name','customer_phone','customer_address',
-    'subtotal','shipping','total','status','source','whatsapp_message','meta'
+    'subtotal','shipping','total','calculated_total','rounding_adjustment',
+    'status','source','whatsapp_message','meta'
   ];
 
   protected $casts = [
@@ -17,6 +18,8 @@ class Order extends Model
     'subtotal' => 'decimal:2',
     'shipping' => 'decimal:2',
     'total' => 'decimal:2',
+    'calculated_total' => 'decimal:2',
+    'rounding_adjustment' => 'decimal:2',
   ];
 
   public function items(): HasMany

@@ -196,7 +196,7 @@ class WithdrawalReportController extends Controller
 
                 if ($item->estado === 'ACEPTADO' || $item->estado === 'SUBSANADO') {
                     $product = Product::lockForUpdate()->findOrFail($item->product_id);
-                    $actualAgenciaId = $item->agencia_id;
+                    $actualAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
 
                     if (!$this->hasEnoughStock($product, $actualAgenciaId, $item->cantidad)) {
                         throw new \Exception("Stock insuficiente para el producto: {$product->nombre} en la sucursal seleccionada.");
@@ -268,7 +268,7 @@ class WithdrawalReportController extends Controller
                 foreach ($report->items as $item) {
                     if ($item->estado === 'ACEPTADO' || $item->estado === 'SUBSANADO') {
                         $product = Product::lockForUpdate()->findOrFail($item->product_id);
-                        $actualAgenciaId = $item->agencia_id;
+                        $actualAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
                         $this->updateStock($product, $actualAgenciaId, -$item->cantidad);
                     }
                 }
@@ -477,7 +477,7 @@ class WithdrawalReportController extends Controller
 
             // Stock validation for normal reports
             if ($report->tipo !== 'CONTEO FISICO') {
-                $actualAgenciaId = $newAgenciaId;
+                $actualAgenciaId = $newAgenciaId ?? ($item->buy->agencia_id ?? 0);
                 $product = Product::findOrFail($item->product_id);
                 if (!$this->hasEnoughStock($product, $actualAgenciaId, $cantidad)) {
                     return response()->json(['message' => 'Stock insuficiente en la sucursal seleccionada.'], 422);
@@ -495,11 +495,11 @@ class WithdrawalReportController extends Controller
             }
 
             if ($report->estado === 'REVISADO') {
-                $oldAgenciaId = $item->agencia_id;
+                $oldAgenciaId = $item->agencia_id ?? ($item->buy->agencia_id ?? 0);
                 $product = Product::lockForUpdate()->findOrFail($item->product_id);
                 $this->updateStock($product, $oldAgenciaId, -$item->cantidad);
 
-                $newAgenciaStockId = $newAgenciaId;
+                $newAgenciaStockId = $newAgenciaId ?? ($item->buy->agencia_id ?? 0);
                 if (!$this->hasEnoughStock($product, $newAgenciaStockId, $cantidad)) {
                      throw new \Exception("Stock insuficiente en la nueva sucursal seleccionada.");
                 }

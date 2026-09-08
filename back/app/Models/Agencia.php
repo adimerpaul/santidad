@@ -8,6 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class Agencia extends Model
 {
     use HasFactory;
-    protected $fillable = ['nombre','sucursal','direccion','telefono','atencion','horario','facebook','whatsapp','gps','latitud','longitud','status'];
+    protected $fillable = ['nombre','sucursal','direccion','telefono','atencion','horario','facebook','whatsapp','whatsapp_turno_2','gps','latitud','longitud','status'];
     protected $hidden = ['created_at','updated_at'];
 }

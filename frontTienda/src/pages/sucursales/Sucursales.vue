@@ -54,8 +54,9 @@
                     </div>
 
                     <div class="q-mt-sm q-gutter-sm">
-                      <q-btn :href="sucursal.whatsapp" target="_blank" color="green-6" icon="fab fa-whatsapp" label="WhatsApp" no-caps dense unelevated />
-                      <q-btn :href="sucursal.facebook" target="_blank" color="indigo-7" icon="fab fa-facebook" label="Facebook" no-caps dense unelevated />
+                      <q-btn v-if="sucursal.whatsapp" :href="sucursal.whatsapp" target="_blank" color="green-7" icon="fab fa-whatsapp" label="WhatsApp · Turno 1" no-caps dense unelevated />
+                      <q-btn v-if="sucursal.whatsapp_turno_2" :href="sucursal.whatsapp_turno_2" target="_blank" color="teal-7" icon="fab fa-whatsapp" label="WhatsApp · Turno 2" no-caps dense unelevated />
+                      <q-btn v-if="sucursal.facebook" :href="sucursal.facebook" target="_blank" color="indigo-7" icon="fab fa-facebook" label="Facebook" no-caps dense unelevated />
                       <q-btn outline color="primary" icon="my_location" label="Centrar en mapa" no-caps dense @click="focusSucursal(sucursal, true)" />
                     </div>
                   </div>
@@ -114,8 +115,9 @@
                         <div class="popup-title">{{ sucursal.nombre }}</div>
                         <div class="popup-sub">{{ sucursal.direccion }}</div>
                         <div class="q-mt-xs q-gutter-xs">
-                          <a :href="sucursal.whatsapp" target="_blank" class="popup-btn">WhatsApp</a>
-                          <a :href="sucursal.facebook" target="_blank" class="popup-btn alt">Facebook</a>
+                          <a v-if="sucursal.whatsapp" :href="sucursal.whatsapp" target="_blank" class="popup-btn whatsapp">WhatsApp T1</a>
+                          <a v-if="sucursal.whatsapp_turno_2" :href="sucursal.whatsapp_turno_2" target="_blank" class="popup-btn whatsapp turno-2">WhatsApp T2</a>
+                          <a v-if="sucursal.facebook" :href="sucursal.facebook" target="_blank" class="popup-btn alt">Facebook</a>
                         </div>
                       </div>
                     </l-popup>
@@ -290,6 +292,8 @@ export default {
 .popup-title{ font-weight: 700; font-size: 14px; margin-bottom: 2px; }
 .popup-sub{ font-size: 12px; color: #64748B; }
 .popup-btn{ display:inline-block; font-size:12px; padding:4px 8px; border-radius:8px; background:#2563eb; color:#fff; text-decoration:none; }
+.popup-btn.whatsapp{ background:#16a34a; }
+.popup-btn.whatsapp.turno-2{ background:#0f766e; }
 .popup-btn.alt{ background:#4b5563; }
 
 /* responsive */

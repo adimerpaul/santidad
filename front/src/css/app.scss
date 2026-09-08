@@ -72,3 +72,206 @@
   }
 }
 
+// Precio unitario oficial en los catálogos de Ventas, Compras y Productos.
+.product-sale-price-card {
+  display: flex;
+  min-height: 64px;
+  margin: 5px 4px 3px;
+  padding: 7px 8px;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #dce4fb;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f8faff 0%, #eef2ff 100%);
+  box-shadow: 0 4px 12px rgba(51, 70, 135, 0.09);
+  text-align: center;
+}
+
+.product-sale-price-card--offer {
+  border-color: #bfe8d1;
+  background: linear-gradient(145deg, #f6fffa 0%, #eaf9f1 100%);
+  box-shadow: 0 4px 12px rgba(16, 126, 74, 0.1);
+}
+
+.product-sale-price-card__heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #5969b5;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.product-sale-price-card--offer .product-sale-price-card__heading {
+  color: #168153;
+}
+
+.product-sale-price-card__amount {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+  color: #243463;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
+.product-sale-price-card__amount small {
+  color: #7c87aa;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.product-sale-price-card--offer .product-sale-price-card__amount {
+  color: #087443;
+}
+
+.product-sale-price-card__comparison {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(22, 129, 83, 0.14);
+  font-variant-numeric: tabular-nums;
+}
+
+.product-sale-price-card__comparison s {
+  color: #697180;
+  text-decoration-color: rgba(105, 113, 128, 0.42);
+  text-decoration-thickness: 1px;
+}
+
+.product-sale-price-card__metric {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-direction: column;
+  gap: 2px;
+  color: #697180;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.product-sale-price-card__metric + .product-sale-price-card__metric {
+  border-left: 1px solid rgba(22, 129, 83, 0.18);
+}
+
+.product-sale-price-card__metric small {
+  color: #7b8493;
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.product-sale-price-card__metric--saving,
+.product-sale-price-card__metric--saving small {
+  color: #087443;
+}
+
+.cart-sale-price-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 5px 0 3px;
+  color: #5363b0;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cart-sale-price-input {
+  width: 120px;
+}
+
+.cart-sale-price-input .q-field__control {
+  border-radius: 10px;
+  background: #f1f4ff;
+}
+
+.cart-sale-price-input .q-field__native {
+  color: #263b8e;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.product-sale-price-preview {
+  min-height: 56px;
+  margin: 0 8px;
+  padding: 8px 12px;
+  border: 1px solid #bfe8d1;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f6fffa 0%, #eaf9f1 100%);
+  box-shadow: 0 4px 12px rgba(16, 126, 74, 0.1);
+}
+
+.product-sale-price-preview__label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #168153;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.product-sale-price-preview__amount {
+  margin-top: 4px;
+  color: #087443;
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.product-sale-price-preview__amount small {
+  font-size: 10px;
+}
+
+@media (max-width: 599px) {
+  .product-sale-price-card {
+    min-height: 60px;
+    margin-right: 2px;
+    margin-left: 2px;
+    padding-right: 4px;
+    padding-left: 4px;
+    border-radius: 10px;
+  }
+
+  .product-sale-price-card__heading {
+    font-size: 7px;
+    letter-spacing: 0.045em;
+  }
+
+  .product-sale-price-card__amount {
+    font-size: 15px;
+  }
+
+  .product-sale-price-card__comparison {
+    padding-top: 4px;
+  }
+
+  .product-sale-price-card__metric {
+    font-size: 9px;
+  }
+
+  .product-sale-price-card__metric small {
+    font-size: 7px;
+  }
+}
+

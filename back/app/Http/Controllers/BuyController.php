@@ -268,6 +268,8 @@ class BuyController extends Controller{
         $product = Product::find($request->product_id);
         $product->cantidad = $product->cantidad + $buy->quantity;
         $product->cantidadAlmacen = $product->cantidadAlmacen + $buy->quantity;
+        $product->precio = $buy->price;
+        $product->costo = round((float) ($buy->price / 1.3), 1);
         $product->save();
         return Buy::with(['product','user'])->findOrFail($buy->id);
     }
@@ -383,9 +385,10 @@ class BuyController extends Controller{
             return response()->json([
                 'message' => 'Compra realizada con éxito',
                 'buy_ids' => $buyIds,
-                'total_compra' => collect($request->buys)->sum(function($b) {
-                    return $b['cantidadCompra'] * $b['price'];
-                })
+                'total_compra' => round(collect($request->buys)->sum(function($b) {
+                    $precio = round((float) $b['price'], 1);
+                    return round((float) $b['cantidadCompra'] * $precio, 1);
+                }), 1)
             ]);
 
         } catch (\Exception $e) {

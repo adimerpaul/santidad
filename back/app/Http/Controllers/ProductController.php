@@ -10,16 +10,22 @@ use App\Models\TransferHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Notificacion;
+use App\Services\PromotionPricingService;
 use Illuminate\Support\Facades\Schema;
 
 class ProductController extends Controller
 {
+    public function __construct(private readonly PromotionPricingService $promotionPricing)
+    {
+    }
+
     public function verificarStockVenta(Request $request)
     {
         $productos = $request->input('productos', []);
         $agencia_id = $request->input('agencia_id');
 
         $errores = [];
+        $precios = [];
 
         foreach ($productos as $item) {
             $producto = Product::find($item['id']);
@@ -34,13 +40,25 @@ class ProductController extends Controller
             if ($item['cantidadVenta'] > $stockDisponible) {
                 $errores[] = "Stock insuficiente para '{$producto->nombre}'. Solo hay {$stockDisponible} disponibles.";
             }
+
+            $pricing = $this->promotionPricing->resolve($producto, 'physical', $agencia_id ? (int) $agencia_id : null);
+            $precios[] = [
+                'id' => (int) $producto->id,
+                'precio' => round((float) $producto->precio, 1),
+                'precioVenta' => $pricing['precio_venta'],
+                'porcentajeEfectivo' => $pricing['porcentaje'],
+                'promocion' => $pricing['promocion_nombre'],
+            ];
         }
 
         if (!empty($errores)) {
             return response()->json(['errores' => $errores], 400);
         }
 
-        return response()->json(['message' => 'Stock verificado correctamente']);
+        return response()->json([
+            'message' => 'Stock verificado correctamente',
+            'precios' => $precios,
+        ]);
     }
     public function verificarStockSucursal(Request $request)
 {
@@ -179,6 +197,10 @@ class ProductController extends Controller
             if ($agencia_id != 0) {
                 $product->cantidad = $product->{"cantidadSucursal$agencia_id"};
             }
+            $pricing = $this->promotionPricing->resolve($product, 'physical', $agencia_id ?: null);
+            $product->setAttribute('precioVenta', $pricing['precio_venta']);
+            $product->setAttribute('porcentajeEfectivo', $pricing['porcentaje']);
+            $product->setAttribute('promocion', $pricing['promocion_nombre']);
             if (!file_exists(public_path() . '/images/' . $product->imagen)) {
                 $product->imagen = 'productDefault.jpg';
             }
@@ -362,8 +384,13 @@ class ProductController extends Controller
         $costoTotal = (float) ($costoTotalRow->costo_total ?? 0);
 
         // 8) Post-proceso de imagen
-        $products->getCollection()->transform(function ($product) use ($sucursalColumn) {
+        $products->getCollection()->transform(function ($product) use ($sucursalColumn, $agencia_id) {
             $product->cantidad = $product->{$sucursalColumn} ?? 0;
+
+            $pricing = $this->promotionPricing->resolve($product, 'physical', $agencia_id ?: null);
+            $product->setAttribute('precioVenta', $pricing['precio_venta']);
+            $product->setAttribute('porcentajeEfectivo', $pricing['porcentaje']);
+            $product->setAttribute('promocion', $pricing['promocion_nombre']);
 
             if (empty($product->imagen) || !is_file(public_path('images/' . $product->imagen))) {
                 $product->imagen = 'productDefault.jpg';
@@ -393,8 +420,14 @@ class ProductController extends Controller
         return Product::create($request->all());
     }
 
-    public function show(Product $product)
+    public function show(Request $request, Product $product)
     {
+        $agenciaId = (int) $request->input('agencia_id', $request->user()?->agencia_id ?? 0);
+        $pricing = $this->promotionPricing->resolve($product, 'physical', $agenciaId ?: null);
+        $product->setAttribute('precioVenta', $pricing['precio_venta']);
+        $product->setAttribute('porcentajeEfectivo', $pricing['porcentaje']);
+        $product->setAttribute('promocion', $pricing['promocion_nombre']);
+
         return $product;
     }
 
@@ -638,7 +671,7 @@ class ProductController extends Controller
         $likeContain = $searchLike;
         $likeStart   = "{$safeUpper}%";
 
-        $select = ['id', 'nombre', 'imagen', 'precio'];
+        $select = ['id', 'nombre', 'imagen', 'precio', 'category_id'];
         if (Schema::hasColumn('products', 'porcentaje'))    { $select[] = 'porcentaje'; }
         if (Schema::hasColumn('products', 'precioAntes'))   { $select[] = 'precioAntes'; }
         if (Schema::hasColumn('products', 'precioNormal'))  { $select[] = 'precioNormal'; }
@@ -710,8 +743,9 @@ class ProductController extends Controller
                 else                                  { $stock = 0; }
             }
 
-            $precioBase  = (float) ($p->precio ?? 0);
-            $porcentaje  = (float) ($p->porcentaje ?? 0);
+            $precioBase = (float) ($p->precio ?? 0);
+            $pricing = $this->promotionPricing->resolve($p, 'web', $agenciaId ?: null);
+            $porcentaje = $pricing['porcentaje'];
 
             $antesRaw = $p->precioAntes ?? $p->precioNormal ?? null;
             $precioAntes = (isset($antesRaw) && $antesRaw !== '' && is_numeric($antesRaw))
@@ -723,7 +757,7 @@ class ProductController extends Controller
             if ($porcentaje > 0) {
                 $baseAntes   = ($precioAntes && $precioAntes > 0) ? $precioAntes : $precioBase;
                 $precio_antes = $baseAntes;
-                $precio_ahora = round($baseAntes * (1 - $porcentaje / 100), 1);
+                $precio_ahora = $pricing['precio_venta'];
             } else {
                 if ($precioAntes && $precioAntes > 0) {
                     $precio_antes = $precioAntes;
@@ -743,12 +777,13 @@ class ProductController extends Controller
                 'id'     => $p->id,
                 'title'  => $p->nombre,
                 'imagen' => $img,
-                'precio'        => round((float) $precioBase, 1),
-                'precio_antes'  => $precio_antes ? round($precio_antes, 1) : null,
-                'precio_ahora'  => round($precio_ahora, 1),
-                'porcentaje'    => (int) $porcentaje,
-                'precio_sin_descuento' => round($precio_sin_descuento, 1),
-                'precio_con_descuento' => round($precio_con_descuento, 1),
+                'precio'        => round((float) $precioBase, 2),
+                'precio_antes'  => $precio_antes ? round($precio_antes, 2) : null,
+                'precio_ahora'  => round($precio_ahora, 2),
+                'porcentaje'    => (float) $porcentaje,
+                'promocion'     => $pricing['promocion_nombre'],
+                'precio_sin_descuento' => round($precio_sin_descuento, 2),
+                'precio_con_descuento' => round($precio_con_descuento, 2),
                 'stock'         => $stock,
             ];
         });

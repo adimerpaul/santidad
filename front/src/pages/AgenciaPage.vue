@@ -146,16 +146,32 @@
               <q-btn
                 v-if="a.whatsapp"
                 flat
-                round
                 dense
+                no-caps
                 size="sm"
                 color="green-7"
                 icon="fab fa-whatsapp"
+                label="T1"
                 :href="a.whatsapp"
                 target="_blank"
                 @click.stop
               >
-                <q-tooltip>WhatsApp</q-tooltip>
+                <q-tooltip>WhatsApp Turno 1</q-tooltip>
+              </q-btn>
+              <q-btn
+                v-if="a.whatsapp_turno_2"
+                flat
+                dense
+                no-caps
+                size="sm"
+                color="teal-7"
+                icon="fab fa-whatsapp"
+                label="T2"
+                :href="a.whatsapp_turno_2"
+                target="_blank"
+                @click.stop
+              >
+                <q-tooltip>WhatsApp Turno 2</q-tooltip>
               </q-btn>
               <q-btn
                 v-if="a.facebook"
@@ -257,8 +273,13 @@
             </div>
 
             <div class="col-12 col-sm-6">
-              <q-input v-model="form.whatsapp" label="Link WhatsApp" outlined dense placeholder="https://wa.link/...">
+              <q-input v-model="form.whatsapp" label="WhatsApp · Turno 1" outlined dense placeholder="https://wa.link/...">
                 <template v-slot:prepend><q-icon name="fab fa-whatsapp" color="green-7" /></template>
+              </q-input>
+            </div>
+            <div class="col-12 col-sm-6">
+              <q-input v-model="form.whatsapp_turno_2" label="WhatsApp · Turno 2" outlined dense placeholder="https://wa.link/...">
+                <template v-slot:prepend><q-icon name="fab fa-whatsapp" color="teal-7" /></template>
               </q-input>
             </div>
             <div class="col-12 col-sm-6">
@@ -267,7 +288,7 @@
               </q-input>
             </div>
 
-            <div class="col-12">
+            <div class="col-12 col-sm-6">
               <q-input v-model="form.gps" label="Link Google Maps" outlined dense placeholder="https://maps.app.goo.gl/...">
                 <template v-slot:prepend><q-icon name="place" color="red-7" /></template>
               </q-input>
@@ -393,6 +414,7 @@ export default {
         horario: '',
         facebook: '',
         whatsapp: '',
+        whatsapp_turno_2: '',
         gps: '',
         latitud: '',
         longitud: '',

@@ -37,6 +37,11 @@ class Buy extends Model
         $this->attributes['price'] = ($value !== null && $value !== '') ? round((float) $value, 1) : null;
     }
 
+    public function setTotalAttribute($value)
+    {
+        $this->attributes['total'] = ($value !== null && $value !== '') ? round((float) $value, 1) : null;
+    }
+
     public function userBaja(){
         return $this->belongsTo(User::class,'user_baja_id');
     }

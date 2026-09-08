@@ -105,6 +105,7 @@
           <span class="out-of-stock-text">Sin Stock</span>
         </div>
         <q-badge v-if="Number(p.porcentaje) > 0" color="red" floating>-{{ p.porcentaje }}%</q-badge>
+        <PromotionTicket :promotion-id="p.promocionId" :name="p.promocion" overlay />
       </q-img>
 
       <q-card-section class="q-pa-sm text-center">
@@ -157,8 +158,12 @@
 </template>
 
 <script>
+import { formatCurrency } from 'src/utils/money'
+import PromotionTicket from 'components/PromotionTicket.vue'
+
 export default {
   name: 'CategoriaPage',
+  components: { PromotionTicket },
   props: { id: { type: [String, Number], required: true } }, // category_id
   data () {
     return {
@@ -229,24 +234,30 @@ export default {
       this.productos = []
 
       try {
-        const resp = await this.$axios.get('productsSale', {
+        const resp = await this.$axios.get('productos', {
           params: {
-            category: this.id,
+            category_id: this.id,
             page: this.currentPage,
-            subcategory_id: this.subId || undefined,
-            subcategory: this.subId || undefined
+            subcategory_id: this.subId || undefined
           }
         })
-        const pag = resp.data.products
+        const pag = resp.data
         const items = (pag && pag.data) ? pag.data : []
 
         if (items.length > 0) {
           this.productos = items.map(p => {
             const x = { ...p }
+            x.porcentaje = Number(p.porcentajeEfectivo ?? p.porcentaje ?? 0)
+            const precioBase = Number(p.precio ?? 0)
 
-            x.precio = x.precio ? (Math.round(Number(x.precio) * 10) / 10).toFixed(1) : x.precio
-            if (x.precioNormal != null && x.precioNormal !== '') {
-              x.precioNormal = (Math.round(Number(x.precioNormal) * 10) / 10).toFixed(1)
+            if (x.porcentaje > 0) {
+              x.precioNormal = formatCurrency(precioBase)
+              x.precio = formatCurrency(p.precioVenta ?? precioBase)
+            } else {
+              x.precio = x.precio ? formatCurrency(x.precio) : x.precio
+              if (x.precioNormal != null && x.precioNormal !== '') {
+                x.precioNormal = formatCurrency(x.precioNormal)
+              }
             }
 
             // Verificamos si alguna sucursal tiene stock mayor a 0

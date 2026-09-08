@@ -117,13 +117,28 @@
                         </div>
                       </q-img>
                       <q-card-section class="q-pa-none q-ma-none">
-                        <div class="text-center text-subtitle2">
-                          {{ p.precio ? (Math.round(Number(p.precio) * 10) / 10).toFixed(1) : p.precio }}
-                          <span class="text-red" v-if="p.porcentaje">
-                            {{$filters.precioRebajaVenta(p.precio, p.porcentaje)}}
-                            ({{ (Math.round((p.precio - $filters.precioRebajaVenta(p.precio, p.porcentaje)) * 10) / 10).toFixed(1) }} Bs)
-                          </span>
-                          Bs
+                        <div
+                          class="product-sale-price-card"
+                          :class="{ 'product-sale-price-card--offer': Number(p.porcentaje) > 0 }"
+                        >
+                          <div class="product-sale-price-card__heading">
+                            <q-icon name="point_of_sale" />
+                            <span>Precio de venta</span>
+                          </div>
+                          <div class="product-sale-price-card__amount">
+                            <small>Bs</small>
+                            <strong>{{ formatCurrency(p.precioVenta ?? p.precio) }}</strong>
+                          </div>
+                          <div v-if="Number(p.porcentaje) > 0" class="product-sale-price-card__comparison">
+                            <span class="product-sale-price-card__metric">
+                              <small>Antes</small>
+                              <s>Bs {{ formatCurrency(p.precio) }}</s>
+                            </span>
+                            <span class="product-sale-price-card__metric product-sale-price-card__metric--saving">
+                              <small><q-icon name="savings" /> Ahorro</small>
+                              <strong>Bs {{ ahorroProducto(p) }}</strong>
+                            </span>
+                          </div>
                         </div>
                         <div :class="getStockTextClass(p)" class="flex items-center justify-center">
                           <span>{{ p.cantidadReal }} {{ $q.screen.lt.md?'Dis':'Disponible' }}</span>
@@ -204,13 +219,17 @@
                           </div>
                           <div class="text-grey">Stock Real: {{props.row.cantidadReal}}
                             (
-                            <span style="font-size: 10px">{{props.row.precio ? (Math.round(Number(props.row.precio) * 10) / 10).toFixed(1) : props.row.precio}} Bs </span>
-                            <span style="font-size: 10px" class="text-red text-bold" v-if="props.row.porcentaje">{{$filters.precioRebajaVenta(props.row.precio, props.row.porcentaje)}} Bs</span>
+                            <span style="font-size: 10px">{{props.row.precio ? formatCurrency(props.row.precio) : props.row.precio}} Bs </span>
+                            <span style="font-size: 10px" class="text-red text-bold" v-if="props.row.porcentaje">{{formatCurrency(props.row.precioVenta)}} Bs</span>
                             )
+                          </div>
+                          <div class="cart-sale-price-label">
+                            <q-icon name="sell" />
+                            Precio de venta
                           </div>
                           <q-input
                             v-model="props.row.precioVenta"
-                            style="width: 120px"
+                            class="cart-sale-price-input"
                             step="0.1"
                             type="number"
                             dense
@@ -218,7 +237,6 @@
                             readonly
                           >
                             <template v-slot:prepend>
-                              <q-icon name="edit" size="xs" />
                               <div style="font-size: 10px">Bs.</div>
                             </template>
                           </q-input>
@@ -256,53 +274,58 @@
               </q-table>
             </q-scroll-area>
           </q-card-section>
-          <q-card-section >
-            <q-list padding bordered dense class="rounded-borders full-width q-pa-none q-ma-none">
-              <q-expansion-item
-                dense
-                dense-toggle
-                expand-separator
-                label="Total"
-              >
-                <template v-slot:header>
-                  <q-item-section>
-                    Total
-                  </q-item-section>
-                  <q-item-section side>
-                    <div class="text-right text-grey-8 text-bold"> <u> Bs {{totalConDescuentoSistema}}</u></div>
-                  </q-item-section>
-                </template>
-                <q-card>
-                  <q-card-section>
-                    <div class="row">
-                      <div class="col-7 text-grey">Cantidades de referencia</div>
-                      <div class="col-5 text-right">{{$store.productosVenta.length}}</div>
-                      <div class="col-7 text-grey">
-                        Descuentos del sistema
-                        <q-icon name="o_info">
-                          <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">
-                            Descuentos aplicados automáticamente por porcentajes en productos
-                          </q-tooltip>
-                        </q-icon>
-                      </div>
-                      <div class="col-5 text-right text-green">{{totalDescuentoSistema}} Bs</div>
-                      <div class="col-7 text-grey">
-                        Monto Sin descuentos
-                        <q-icon name="o_info">
-                          <q-tooltip anchor="top middle" self="bottom middle" :offset="[10, 10]">
-                            Total sin ningún descuento aplicado
-                          </q-tooltip>
-                        </q-icon>
-                      </div>
-                      <div class="col-5 text-right text-green">
-                        {{totalSinDescuentos}} Bs
-                      </div>
-                    </div>
-                  </q-card-section>
-                </q-card>
-              </q-expansion-item>
-            </q-list>
-            <q-btn @click="clickSale" class="full-width" no-caps label="Confirmar venta"
+          <q-card-section>
+            <div class="sale-summary-card">
+              <div class="sale-summary-total">
+                <div class="sale-summary-total__identity">
+                  <div class="sale-summary-icon">
+                    <q-icon name="payments" size="24px" />
+                  </div>
+                  <div>
+                    <div class="sale-summary-eyebrow">RESUMEN DE VENTA</div>
+                    <div class="sale-summary-title">TOTAL A COBRAR</div>
+                  </div>
+                </div>
+                <div class="sale-summary-amount">
+                  <span class="sale-summary-currency">Bs</span>
+                  <span>{{totalCanasta}}</span>
+                </div>
+              </div>
+
+              <div class="sale-summary-details">
+                <div class="sale-summary-details__title">Detalle del cálculo</div>
+
+                <div class="sale-summary-row">
+                  <div class="sale-summary-label">
+                    <q-icon name="inventory_2" />
+                    <span>Referencias en canasta</span>
+                  </div>
+                  <div class="sale-summary-value">{{$store.productosVenta.length}}</div>
+                </div>
+
+                <div class="sale-summary-row">
+                  <div class="sale-summary-label">
+                    <q-icon name="sell" />
+                    <span>Descuentos del sistema</span>
+                    <q-icon name="info_outline" size="15px" class="sale-summary-info">
+                      <q-tooltip>Descuentos automáticos aplicados a los productos</q-tooltip>
+                    </q-icon>
+                  </div>
+                  <div class="sale-summary-value sale-summary-value--discount">− Bs {{totalDescuentoSistema}}</div>
+                </div>
+
+                <div class="sale-summary-row">
+                  <div class="sale-summary-label">
+                    <q-icon name="receipt_long" />
+                    <span>Monto sin descuentos</span>
+                  </div>
+                  <div class="sale-summary-value">Bs {{totalSinDescuentos}}</div>
+                </div>
+
+              </div>
+            </div>
+
+            <q-btn @click="clickSale" class="full-width q-mt-sm sale-confirm-button" no-caps label="Confirmar venta"
                    :color="$store.productosVenta.length==0?'grey':'warning'"
                    :disable="$store.productosVenta.length==0"
                    :loading="loading"/>
@@ -330,16 +353,31 @@
           <div class="text-h6">Realizar venta</div>
           <q-space />
           <q-btn
-            flat
+            :flat="!clientDisplayVisible"
+            :unelevated="clientDisplayVisible"
             no-caps
             dense
-            icon="cast"
-            :label="$q.screen.gt.sm ? 'Mostrar al Cliente' : ''"
-            color="indigo"
-            class="q-mr-sm"
-            @click="openClientDisplay"
+            :icon="clientDisplayVisible ? 'cast_connected' : 'cast'"
+            :label="$q.screen.gt.sm
+              ? (clientDisplayVisible ? 'Mostrando al cliente' : 'Mostrar al cliente')
+              : (clientDisplayVisible ? 'En pantalla' : '')"
+            :color="clientDisplayVisible ? 'positive' : 'indigo'"
+            class="q-mr-sm client-display-button"
+            :class="{ 'client-display-button--active': clientDisplayVisible }"
+            @click="toggleClientDisplay"
           >
-            <q-tooltip>Abrir pantalla de visualización para el cliente</q-tooltip>
+            <q-badge
+              v-if="clientDisplayVisible"
+              rounded
+              floating
+              color="light-green-3"
+              class="client-display-live-badge"
+            />
+            <q-tooltip>
+              {{ clientDisplayVisible
+                ? 'La información está visible para el cliente. Clic para ocultarla.'
+                : 'Mostrar la información en la pantalla del cliente.' }}
+            </q-tooltip>
           </q-btn>
           <q-btn flat round dense icon="close" v-close-popup />
         </q-card-section>
@@ -370,12 +408,12 @@
                 <q-input outlined dense label="TOTAL A PAGAR:" readonly v-model="totalFinal" :rules="ruleNumber"/>
               </div>
               <div class="col-6 col-md-2">
-                <q-input outlined dense label="EFECTIVO BS." v-model="efectivo" type="number" step="0.01" :rules="ruleNumber"
+                <q-input outlined dense label="EFECTIVO BS." v-model="efectivo" type="number" step="0.1" :rules="ruleNumber"
                          @update:model-value="calcularCambio"/>
               </div>
               <div class="col-6 col-md-2">
                 <q-input outlined dense label="Aporte" v-model="aporte" type="number" step="0.01" :rules="ruleNumber"
-                         @update:model-value="calcularCambio"/>
+                          @update:model-value="onAporteChange"/>
               </div>
 
               <!-- Campo de descuento manual -->
@@ -440,7 +478,7 @@
             <!-- Campos para método de pago personalizado -->
             <div v-if="metodoPago === 'Personalizado'" class="row q-col-gutter-sm q-mt-sm q-pa-sm bg-purple-1 rounded-borders items-center">
               <div class="col-6 col-md-3">
-                <q-input outlined dense label="Monto en Efectivo" v-model.number="montoEfectivoPersonalizado" type="number" step="0.01"
+                <q-input outlined dense label="Monto en Efectivo" v-model.number="montoEfectivoPersonalizado" type="number" step="0.1"
                          @update:model-value="onMontoEfectivoChange">
                   <template v-slot:prepend>
                     <q-icon name="payments" color="green" />
@@ -448,7 +486,7 @@
                 </q-input>
               </div>
               <div class="col-6 col-md-3">
-                <q-input outlined dense label="Monto en QR" v-model.number="montoQrPersonalizado" type="number" step="0.01"
+                <q-input outlined dense label="Monto en QR" v-model.number="montoQrPersonalizado" type="number" step="0.1"
                          @update:model-value="onMontoQrChange">
                   <template v-slot:prepend>
                     <q-icon name="qr_code" color="blue" />
@@ -500,22 +538,22 @@
               </template>
             </div>
 
-            <!-- Información del descuento aplicado -->
-            <div class="row q-mt-sm" v-if="descuento > 0">
+            <!-- Información de descuentos y total final -->
+            <div class="row q-mt-sm" v-if="descuento > 0 || Number(totalDescuentoSistema) > 0">
               <div class="col-12">
                 <q-banner dense class="bg-blue-1 text-blue-9">
                   <template v-slot:avatar>
                     <q-icon name="discount" color="blue" />
                   </template>
                   <div class="text-caption">
-                    <strong>Descuento adicional aplicado:</strong> {{ descuento }} Bs.
+                    <strong>Descuento adicional aplicado:</strong> {{ formatCurrency(descuento) }} Bs.
                     <span v-if="descuentoPorcentaje > 0">({{ descuentoPorcentaje }}% del total sin descuentos)</span>
                   </div>
                   <div class="text-caption">
                     <strong>Total sin descuentos:</strong> {{ totalSinDescuentos }} Bs.<br>
                     <strong>Descuento del sistema:</strong> {{ totalDescuentoSistema }} Bs.<br>
                     <strong>Total con descuento del sistema:</strong> {{ totalConDescuentoSistema }} Bs.<br>
-                    <strong>Total final con descuento adicional:</strong> {{ totalFinal }} Bs.
+                    <strong>Total a pagar:</strong> {{ totalFinal }} Bs.
                   </div>
                 </q-banner>
               </div>
@@ -593,25 +631,69 @@
         <div class="q-mt-xs text-caption text-grey-5 row justify-between items-center q-px-sm">
           <span>💡 <b>Rueda del mouse</b> o botones para Zoom • <b>Arrastra</b> para mover</span>
           <span class="text-white text-bold">
-            Precio: {{ productoImagenSeleccionado?.precio ? (Math.round(Number(productoImagenSeleccionado.precio) * 10) / 10).toFixed(1) : productoImagenSeleccionado?.precio }} Bs
+            Precio: {{ productoImagenSeleccionado?.precio ? formatCurrency(productoImagenSeleccionado.precio) : productoImagenSeleccionado?.precio }} Bs
             <span v-if="productoImagenSeleccionado?.porcentaje" class="text-red-4 q-ml-xs">
-              ({{ $filters.precioRebajaVenta(productoImagenSeleccionado.precio, productoImagenSeleccionado.porcentaje) }} Bs)
+              ({{ formatCurrency(productoImagenSeleccionado.precioVenta) }} Bs)
             </span>
           </span>
         </div>
       </q-card>
     </q-dialog>
-</q-page>
+
+    <!-- Configuración discreta del equipo. Requiere contraseña para modificarla. -->
+    <q-btn
+      class="terminal-config-trigger"
+      flat
+      round
+      dense
+      size="xs"
+      icon="settings"
+      :aria-label="caja_numero ? `Configurar terminal Caja ${caja_numero}` : 'Configurar terminal'"
+      @click="abrirConfigTerminal(false)"
+    >
+      <q-tooltip>
+        {{ caja_numero ? `Terminal configurada: Caja ${caja_numero}` : 'Terminal sin configurar' }}
+      </q-tooltip>
+    </q-btn>
+  </q-page>
 </template>
 
 <script>
 import { Imprimir } from 'src/addons/Imprimir'
+import { formatCurrency as formatMoney, formatPayable, roundCurrency, roundPayable } from 'src/utils/money'
+
+const TERMINAL_CONFIG_PASSWORD = '2202'
+const CAJA_STORAGE_KEY = 'caja_numero'
+const CAJAS_VALIDAS = [1, 2, 3, 4]
+const EVENTOS_PANTALLA_CLIENTE = new Set([
+  'clienteDisplayData',
+  'clienteQrData',
+  'clienteSaleComplete',
+  'clienteDisplayClose'
+])
+
+function normalizarCaja (value) {
+  const caja = Number.parseInt(value, 10)
+  return CAJAS_VALIDAS.includes(caja) ? caja : null
+}
+
+function redondearMoneda (value) {
+  return roundCurrency(value)
+}
 
 export default {
   name: 'SalePage',
   data () {
     return {
       agencia_id: parseInt(localStorage.getItem('agencia_id')),
+      caja_numero: normalizarCaja(localStorage.getItem(CAJA_STORAGE_KEY)),
+      terminalConfigDialogOpen: false,
+      cajasOptions: [
+        { label: 'Caja 1', value: 1 },
+        { label: 'Caja 2', value: 2 },
+        { label: 'Caja 3', value: 3 },
+        { label: 'Caja 4', value: 4 }
+      ],
       saleDialog: false,
       saleCompleted: false,
       dialogImagenCompleta: false,
@@ -730,8 +812,13 @@ export default {
   mounted () {
     this.productsGet()
     this.catalogosGet()
+    this.verificarConfiguracionTerminal()
+    window.addEventListener('keydown', this.handleSecretTerminalKey)
+    window.addEventListener('storage', this.handleTerminalStorageChange)
   },
   beforeUnmount () {
+    window.removeEventListener('keydown', this.handleSecretTerminalKey)
+    window.removeEventListener('storage', this.handleTerminalStorageChange)
     this.closeClientDisplay()
     this.detenerPollingQr()
   },
@@ -763,59 +850,67 @@ export default {
     totalSinDescuentos () {
       let s = 0
       this.$store.productosVenta.forEach(p => {
-        const precio = p.precio ? (Math.round(Number(p.precio) * 10) / 10) : 0
+        const precio = roundCurrency(p.precio)
         s = s + parseFloat(precio * p.cantidadVenta)
       })
-      return (Math.round(s * 10) / 10).toFixed(1)
+      return formatMoney(s)
     },
 
     // Descuento aplicado por el sistema (diferencia entre precio original y precio con descuento)
     totalDescuentoSistema () {
       let s = 0
       this.$store.productosVenta.forEach(p => {
-        const precioOriginal = p.precio ? (Math.round(Number(p.precio) * 10) / 10) : 0
-        const precioConDescuento = p.precioVenta ? (Math.round(Number(p.precioVenta) * 10) / 10) : 0
+        const precioOriginal = roundCurrency(p.precio)
+        const precioConDescuento = roundCurrency(p.precioVenta)
         s = s + ((precioOriginal - precioConDescuento) * p.cantidadVenta)
       })
-      return (Math.round(s * 10) / 10).toFixed(1)
+      return formatMoney(s)
     },
 
     // Total CON descuento del sistema (lo que ya venías usando)
     totalConDescuentoSistema () {
       let s = 0
       this.$store.productosVenta.forEach(p => {
-        const precioConDescuento = p.precioVenta ? (Math.round(Number(p.precioVenta) * 10) / 10) : 0
+        const precioConDescuento = roundCurrency(p.precioVenta)
         s = s + parseFloat(precioConDescuento * p.cantidadVenta)
       })
-      return (Math.round(s * 10) / 10).toFixed(1)
+      return formatMoney(s)
     },
 
-    // Total FINAL con descuento adicional aplicado
-    totalFinal () {
+    // Resultado exacto antes del único redondeo comercial.
+    totalCalculado () {
       const totalConSistema = parseFloat(this.totalConDescuentoSistema)
-      const descAdicional = parseFloat(this.descuento || 0)
-      return (Math.round((totalConSistema - descAdicional) * 10) / 10).toFixed(1)
+      const descAdicional = redondearMoneda(this.descuento)
+      const aporte = redondearMoneda(this.aporte)
+      return formatMoney(totalConSistema + aporte - descAdicional)
+    },
+
+    totalFinal () {
+      return formatPayable(this.totalCalculado)
+    },
+
+    totalCanasta () {
+      return formatPayable(this.totalConDescuentoSistema)
     },
 
     // CAMBIO CALCULADO CORREGIDO
     cambioCalculado () {
       const efectivo = parseFloat(this.efectivo || 0)
-      const aporte = parseFloat(this.aporte || 0)
       const totalFinal = parseFloat(this.totalFinal || 0)
 
       // Fórmula corregida: (Efectivo - Aporte) - Total Final
-      const cambio = (efectivo - aporte) - totalFinal
+      const cambio = efectivo - totalFinal
 
-      return Math.round(cambio * 10) / 10
+      return roundPayable(cambio)
     },
 
     totalganancia () {
       let s = 0
       this.$store.productosVenta.forEach(p => {
-        const precio = p.precio ? (Math.round(Number(p.precio) * 10) / 10) : 0
-        s = s + (precio - Number(this.$filters.precioRebajaVenta(p.precio, p.porcentaje))) * p.cantidadVenta
+        const precio = roundCurrency(p.precio)
+        s = s + (precio - roundCurrency(p.precioVenta)) * p.cantidadVenta
       })
-      return (Math.round(s * 10) / 10).toFixed(1)
+      return formatMoney(s)
     },
 
     // Mantener compatibilidad con código existente
@@ -832,6 +927,14 @@ export default {
     }
   },
   methods: {
+    formatCurrency (value) {
+      return formatMoney(value)
+    },
+    ahorroProducto (product) {
+      const precioAnterior = Number(product?.precio ?? 0)
+      const precioVenta = Number(product?.precioVenta ?? product?.precio ?? 0)
+      return formatMoney(Math.max(0, precioAnterior - precioVenta))
+    },
     // ✅ VERIFICAR STOCK AL CONFIRMAR VENTA
     verificarStockCanasta () {
       const productosSinStock = []
@@ -872,10 +975,15 @@ export default {
       this.$forceUpdate()
     },
 
+    onAporteChange () {
+      if (this.qrId) this.cancelarQr()
+      this.calcularCambio()
+    },
+
     onMontoEfectivoChange (val) {
       const total = parseFloat(this.totalFinal || 0)
       const efe = parseFloat(val || 0)
-      this.montoQrPersonalizado = Math.max(0, parseFloat((total - efe).toFixed(2)))
+      this.montoQrPersonalizado = Math.max(0, redondearMoneda(total - efe))
       // El monto del QR cambió: el QR ya generado quedó desactualizado
       if (this.qrId) this.cancelarQr()
     },
@@ -883,7 +991,7 @@ export default {
     onMontoQrChange (val) {
       const total = parseFloat(this.totalFinal || 0)
       const qr = parseFloat(val || 0)
-      this.montoEfectivoPersonalizado = Math.max(0, parseFloat((total - qr).toFixed(2)))
+      this.montoEfectivoPersonalizado = Math.max(0, redondearMoneda(total - qr))
       // El monto del QR cambió: el QR ya generado quedó desactualizado
       if (this.qrId) this.cancelarQr()
     },
@@ -894,7 +1002,7 @@ export default {
         this.descuento = 0
         this.descuentoPorcentaje = 0
       } else {
-        this.descuento = parseFloat(nuevoMonto)
+        this.descuento = redondearMoneda(nuevoMonto)
 
         // Calcular el porcentaje equivalente sobre el total SIN descuentos
         if (this.totalSinDescuentos > 0) {
@@ -903,6 +1011,7 @@ export default {
           this.descuentoPorcentaje = 0
         }
       }
+      if (this.qrId) this.cancelarQr()
       this.calcularCambio()
     },
 
@@ -915,15 +1024,16 @@ export default {
         this.descuentoPorcentaje = parseFloat(nuevoPorcentaje)
 
         // Calcular el monto equivalente sobre el total SIN descuentos
-        this.descuento = parseFloat((this.totalSinDescuentos * (this.descuentoPorcentaje / 100)).toFixed(2))
+        this.descuento = redondearMoneda(this.totalSinDescuentos * (this.descuentoPorcentaje / 100))
       }
+      if (this.qrId) this.cancelarQr()
       this.calcularCambio()
     },
 
     // Calcular monto desde porcentaje (para el hint)
     calcularMontoDesdePorcentaje () {
       if (this.descuentoPorcentaje > 0 && this.totalSinDescuentos > 0) {
-        return (this.totalSinDescuentos * (this.descuentoPorcentaje / 100)).toFixed(2)
+        return formatMoney(this.totalSinDescuentos * (this.descuentoPorcentaje / 100))
       }
       return '0.00'
     },
@@ -948,24 +1058,36 @@ export default {
     },
 
     saleInsert () {
+      const totalVenta = redondearMoneda(this.totalFinal)
+      if (this.metodoPago === 'Personalizado') {
+        const totalDividido = redondearMoneda(
+          redondearMoneda(this.montoEfectivoPersonalizado) + redondearMoneda(this.montoQrPersonalizado)
+        )
+        if (totalDividido !== totalVenta) {
+          this.$alert.error('La suma del pago en efectivo y QR debe ser igual al total de la venta.')
+          return
+        }
+      }
+
       this.loading = true
       this.detenerPollingQr()
       this.client.codigoTipoDocumentoIdentidad = this.document.codigoClasificador
       this.$store.productosVenta.forEach(p => {
-        p.subTotal = p.cantidadPedida * p.precioVenta
+        p.precioVenta = redondearMoneda(p.precioVenta)
+        p.subTotal = redondearMoneda(p.cantidadPedida * p.precioVenta)
       })
       const data = {
         montoTotal: this.totalFinal,
         client: this.client,
-        aporte: this.aporte,
-        descuento: this.descuento,
+        aporte: redondearMoneda(this.aporte),
+        descuento: redondearMoneda(this.descuento),
         qr: this.qr,
         qrId: this.qrId,
         efectivo: this.efectivo,
         products: this.$store.productosVenta,
         metodoPago: this.metodoPago,
-        montoEfectivo: this.metodoPago === 'Personalizado' ? this.montoEfectivoPersonalizado : null,
-        montoQr: this.metodoPago === 'Personalizado' ? this.montoQrPersonalizado : null,
+        montoEfectivo: this.metodoPago === 'Personalizado' ? redondearMoneda(this.montoEfectivoPersonalizado) : null,
+        montoQr: this.metodoPago === 'Personalizado' ? redondearMoneda(this.montoQrPersonalizado) : null,
         agencia_id: this.agencia_id
       }
       this.$axios.post('sales', data).then(res => {
@@ -976,7 +1098,11 @@ export default {
         this.saleDialog = false
 
         // Notificar a la pantalla del cliente: "Gracias por su compra"
-        this.notifySocket('clienteSaleComplete', Date.now().toString())
+        this.notifySocket('clienteSaleComplete', {
+          timestamp: Date.now().toString(),
+          agencia_id: this.agencia_id,
+          caja: this.caja_numero
+        })
 
         this.$store.productosVenta = []
         this.client = {}
@@ -995,8 +1121,135 @@ export default {
         Imprimir.factura(res.data).then(r => {})
       }).catch(err => {
         this.loading = false
-        this.$alert.error(err.response.data.message)
+        const errores = err.response?.data?.errors
+        const primerError = errores ? Object.values(errores).flat()[0] : null
+        this.$alert.error(primerError || err.response?.data?.message || 'No se pudo registrar la venta.')
       })
+    },
+
+    guardarCajaNumero (val) {
+      const caja = normalizarCaja(val)
+      if (!caja) {
+        this.$q.notify({ type: 'negative', message: 'El número de caja no es válido.' })
+        return
+      }
+
+      this.caja_numero = caja
+      localStorage.setItem(CAJA_STORAGE_KEY, caja.toString())
+      window.dispatchEvent(new CustomEvent('terminal-caja-changed', {
+        detail: { caja }
+      }))
+      this.$q.notify({
+        type: 'positive',
+        message: `Esta computadora quedó configurada como Caja ${caja}.`,
+        timeout: 2500
+      })
+    },
+
+    abrirConfigTerminal (configuracionInicial = false) {
+      if (this.terminalConfigDialogOpen) return
+      this.terminalConfigDialogOpen = true
+
+      const dialog = this.$q.dialog({
+        title: configuracionInicial ? 'Configuración inicial del terminal' : 'Acceso restringido',
+        message: configuracionInicial
+          ? 'Esta computadora todavía no tiene una caja asignada. Ingrese la contraseña de administración.'
+          : 'Ingrese la contraseña para cambiar la caja asignada a esta computadora.',
+        prompt: {
+          model: '',
+          type: 'password',
+          label: 'Contraseña',
+          outlined: true,
+          isValid: val => String(val || '').length > 0
+        },
+        ok: { label: 'Continuar', color: 'primary' },
+        cancel: configuracionInicial ? false : { label: 'Cancelar', flat: true },
+        persistent: true
+      })
+      this._terminalConfigDialog = dialog
+
+      dialog.onOk(password => {
+        if (String(password) !== TERMINAL_CONFIG_PASSWORD) {
+          this.$q.notify({
+            type: 'negative',
+            message: 'Contraseña incorrecta.',
+            timeout: 2000
+          })
+          if (configuracionInicial && !this.caja_numero) {
+            setTimeout(() => this.abrirConfigTerminal(true), 300)
+          }
+          return
+        }
+
+        this.seleccionarCajaTerminal(configuracionInicial)
+      }).onDismiss(() => {
+        if (this._terminalConfigDialog === dialog) {
+          this._terminalConfigDialog = null
+          this.terminalConfigDialogOpen = false
+        }
+      })
+    },
+
+    seleccionarCajaTerminal (configuracionInicial = false) {
+      const dialog = this.$q.dialog({
+        title: 'Caja asignada a esta computadora',
+        message: 'Seleccione la caja física correspondiente. Se conservará aunque cambie el usuario o el turno.',
+        options: {
+          type: 'radio',
+          model: this.caja_numero || 1,
+          items: this.cajasOptions.map(c => ({ label: c.label, value: c.value }))
+        },
+        ok: { label: 'Guardar configuración', color: 'primary' },
+        cancel: configuracionInicial ? false : { label: 'Cancelar', flat: true },
+        persistent: true
+      })
+      this._terminalConfigDialog = dialog
+      this.terminalConfigDialogOpen = true
+
+      dialog.onOk(val => this.guardarCajaNumero(val)).onDismiss(() => {
+        if (this._terminalConfigDialog === dialog) {
+          this._terminalConfigDialog = null
+          this.terminalConfigDialogOpen = false
+        }
+      })
+    },
+
+    verificarConfiguracionTerminal () {
+      const cajaGuardada = normalizarCaja(localStorage.getItem(CAJA_STORAGE_KEY))
+      this.caja_numero = cajaGuardada
+
+      if (!cajaGuardada) {
+        this.$nextTick(() => this.abrirConfigTerminal(true))
+      }
+    },
+
+    handleTerminalStorageChange (e) {
+      if (e.key !== CAJA_STORAGE_KEY) return
+
+      const nuevaCaja = normalizarCaja(e.newValue)
+      if (nuevaCaja === this.caja_numero) return
+
+      this.caja_numero = nuevaCaja
+      if (nuevaCaja) {
+        if (this._terminalConfigDialog && typeof this._terminalConfigDialog.hide === 'function') {
+          this._terminalConfigDialog.hide()
+        }
+        this.$q.notify({
+          type: 'info',
+          message: `Configuración sincronizada: Caja ${nuevaCaja}.`,
+          timeout: 1800
+        })
+      } else {
+        this.abrirConfigTerminal(true)
+      }
+    },
+
+    handleSecretTerminalKey (e) {
+      // Atajo secreto para el dueño/administrador: Ctrl + Alt + C
+      if (e.ctrlKey && e.altKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault()
+        this.abrirConfigTerminal(false)
+      }
     },
 
     // ===== PAGO CON QR (Baneco) =====
@@ -1014,7 +1267,13 @@ export default {
         this.qrImage = res.data.qrImage
         this.iniciarPollingQr()
         // Mostrar el QR también en la pantalla del cliente (pantallaCobro)
-        this.notifySocket('clienteQrData', { qrImage: this.qrImage, monto: amount, visible: true })
+        this.notifySocket('clienteQrData', {
+          qrImage: this.qrImage,
+          monto: amount,
+          visible: true,
+          agencia_id: this.agencia_id,
+          caja: this.caja_numero
+        })
       }).catch(err => {
         this.qrGenerando = false
         this.$alert.error(err.response?.data?.message || 'No se pudo generar el QR')
@@ -1074,7 +1333,13 @@ export default {
       this.qrGenerando = false
       this.qrCancelando = false
       if (teniaQr) {
-        this.notifySocket('clienteQrData', { qrImage: '', monto: '', visible: false })
+        this.notifySocket('clienteQrData', {
+          qrImage: '',
+          monto: '',
+          visible: false,
+          agencia_id: this.agencia_id,
+          caja: this.caja_numero
+        })
       }
     },
 
@@ -1150,9 +1415,20 @@ export default {
           cantidadVenta: p.cantidadVenta
         }))
 
-        await this.$axios.post('verificar-stock-venta', {
+        const { data: verificacion } = await this.$axios.post('verificar-stock-venta', {
           productos,
           agencia_id: this.agencia_id
+        })
+
+        const precios = new Map((verificacion.precios || []).map(p => [Number(p.id), p]))
+        this.$store.productosVenta.forEach(producto => {
+          const precioActual = precios.get(Number(producto.id))
+          if (!precioActual) return
+          producto.precio = formatMoney(precioActual.precio)
+          producto.precioVenta = formatMoney(precioActual.precioVenta)
+          producto.porcentajeEfectivo = Number(precioActual.porcentajeEfectivo ?? 0)
+          producto.porcentaje = producto.porcentajeEfectivo
+          producto.promocion = precioActual.promocion
         })
 
         this.aporte = 0
@@ -1213,11 +1489,10 @@ export default {
       // Solo actualizar el stock visual para mostrar
       product.cantidad = stockDisponible - 1
 
-      if (product.porcentaje) {
-        product.precioVenta = this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
-      } else {
-        product.precioVenta = product.precio ? (Math.round(Number(product.precio) * 10) / 10).toFixed(1) : product.precio
-      }
+      const precioVenta = product.precioVenta ?? (product.porcentaje
+        ? this.$filters.precioRebajaVenta(product.precio, product.porcentaje)
+        : product.precio)
+      product.precioVenta = precioVenta != null ? formatMoney(precioVenta) : precioVenta
 
       if (productoEnCanasta) {
         productoEnCanasta.cantidadVenta++
@@ -1236,7 +1511,7 @@ export default {
     },
 
     redondeo (n) {
-      return (Math.round(Number(n) * 10) / 10).toFixed(1)
+      return formatMoney(n)
     },
 
     addCantidad (n, i) {
@@ -1293,12 +1568,16 @@ export default {
         this.totalProducts = res.data.products.total
         this.last_page = res.data.products.last_page
         this.current_page = res.data.products.current_page
-        this.costoTotalProducts = parseFloat(res.data.costoTotal).toFixed(2)
+        this.costoTotalProducts = parseFloat(res.data.costoTotal).toFixed(1)
         res.data.products.data.forEach(p => {
           p.cantidadPedida = 0
           p.cantidadReal = p.cantidad // ✅ Guardar stock real
-          p.precio = p.precio ? (Math.round(Number(p.precio) * 10) / 10).toFixed(1) : p.precio
-          p.precioVenta = p.porcentaje ? this.$filters.precioRebajaVenta(p.precio, p.porcentaje) : p.precio
+          p.porcentaje = Number(p.porcentajeEfectivo ?? p.porcentaje ?? 0)
+          p.precio = p.precio ? formatMoney(p.precio) : p.precio
+          const precioVenta = p.precioVenta ?? (p.porcentaje
+            ? this.$filters.precioRebajaVenta(p.precio, p.porcentaje)
+            : p.precio)
+          p.precioVenta = precioVenta != null ? formatMoney(precioVenta) : precioVenta
           p.cantidadAlmacen = p.cantidadAlmacen || 0
           this.products.push(p)
         })
@@ -1385,13 +1664,13 @@ export default {
         // Normaliza campos mínimos para que clickAddSale funcione igual que con el grid
         const base = {
           ...raw,
-          precio: raw.precio ? (Math.round(Number(raw.precio) * 10) / 10).toFixed(1) : raw.precio,
+          precio: raw.precio ? formatMoney(raw.precio) : raw.precio,
           // stock para las validaciones de clickAddSale
           cantidadReal: Number(raw.cantidadReal ?? raw.cantidad ?? raw.stock ?? 0),
-          // precio se recalcula dentro de clickAddSale si hay porcentaje,
-          // pero no molesta si lo dejamos así:
-          precioVenta: raw.precio ? (Math.round(Number(raw.precio) * 10) / 10) : 0,
-          porcentaje: Number(raw.porcentaje ?? 0),
+          // El backend entrega el precio unitario oficial ya redondeado.
+          precioVenta: raw.precioVenta ?? (raw.precio ? roundCurrency(raw.precio) : 0),
+          porcentajeEfectivo: Number(raw.porcentajeEfectivo ?? raw.porcentaje ?? 0),
+          porcentaje: Number(raw.porcentajeEfectivo ?? raw.porcentaje ?? 0),
           cantidadVenta: 0,
           cantidadPedida: 0,
           buys: Array.isArray(raw.buys) ? raw.buys : []
@@ -1411,7 +1690,21 @@ export default {
     },
 
     // ===== PANTALLA CLIENTE =====
+    toggleClientDisplay () {
+      if (this.clientDisplayVisible) {
+        this.closeClientDisplay()
+        return
+      }
+
+      this.openClientDisplay()
+    },
+
     async openClientDisplay () {
+      if (!normalizarCaja(this.caja_numero)) {
+        this.abrirConfigTerminal(true)
+        return
+      }
+
       this.clientDisplayVisible = true
       this.syncClientDisplay(true)
     },
@@ -1423,7 +1716,9 @@ export default {
         nombreRazonSocial: this.client?.nombreRazonSocial || '',
         email: this.client?.email || '',
         tipoDocumento: this.document?.descripcion || this.document?.label || '',
-        visible: show
+        visible: show,
+        agencia_id: this.agencia_id,
+        caja: this.caja_numero
       }
 
       // Notificar por Sockets para la aplicación de PC
@@ -1448,7 +1743,9 @@ export default {
         nombreRazonSocial: '',
         email: '',
         tipoDocumento: '',
-        visible: false
+        visible: false,
+        agencia_id: this.agencia_id,
+        caja: this.caja_numero
       }
       this.notifySocket('clienteDisplayData', payload)
     },
@@ -1456,10 +1753,19 @@ export default {
     closeClientDisplay () {
       if (this.clientDisplayVisible) {
         this.clearClientDisplayData()
+        this.notifySocket('clienteDisplayClose', {
+          agencia_id: this.agencia_id,
+          caja: this.caja_numero
+        })
       }
     },
 
     notifySocket (event, data) {
+      if (EVENTOS_PANTALLA_CLIENTE.has(event) && !normalizarCaja(this.caja_numero)) {
+        console.warn(`No se envió ${event}: esta computadora no tiene una caja configurada.`)
+        return
+      }
+
       // const socketUrl = 'http://' + window.location.hostname + ':3000'
       // env VITE_API_SOCKET
       const socketUrl = import.meta.env.VITE_API_SOCKET || 'http://localhost:3000'
@@ -1544,5 +1850,197 @@ export default {
 <style scoped>
 .cursor-not-allowed {
   cursor: not-allowed;
+}
+
+.sale-summary-card {
+  overflow: hidden;
+  border: 1px solid #dfe5f1;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(34, 51, 84, 0.12);
+}
+
+.sale-summary-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, #273c75 0%, #4c5fd7 58%, #667eea 100%);
+}
+
+.sale-summary-total__identity,
+.sale-summary-label {
+  display: flex;
+  align-items: center;
+}
+
+.sale-summary-total__identity {
+  gap: 11px;
+  min-width: 0;
+}
+
+.sale-summary-icon {
+  display: grid;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.sale-summary-eyebrow {
+  margin-bottom: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  opacity: 0.76;
+}
+
+.sale-summary-title {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.025em;
+}
+
+.sale-summary-amount {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+  font-size: 29px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.sale-summary-currency {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  opacity: 0.78;
+}
+
+.sale-summary-details {
+  padding: 11px 14px 13px;
+}
+
+.sale-summary-details__title {
+  padding: 2px 2px 7px;
+  color: #8a94a6;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sale-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 37px;
+  padding: 7px 2px;
+  border-bottom: 1px solid #edf0f5;
+}
+
+.sale-summary-label {
+  gap: 8px;
+  min-width: 0;
+  color: #687386;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.sale-summary-label > .q-icon:first-child {
+  flex: 0 0 auto;
+  color: #6b78c8;
+  font-size: 17px;
+}
+
+.sale-summary-info {
+  flex: 0 0 auto;
+  color: #a3aabc;
+  cursor: help;
+}
+
+.sale-summary-value {
+  flex: 0 0 auto;
+  color: #273247;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.sale-summary-value--discount {
+  color: #15965a;
+}
+
+.sale-confirm-button {
+  min-height: 42px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 420px) {
+  .sale-summary-total {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sale-summary-amount {
+    align-self: flex-end;
+  }
+}
+
+.terminal-config-trigger {
+  position: fixed;
+  right: 4px;
+  bottom: 4px;
+  z-index: 2100;
+  opacity: 0.14;
+  transition: opacity 0.2s ease;
+}
+
+.terminal-config-trigger:hover,
+.terminal-config-trigger:focus-visible {
+  opacity: 0.8;
+}
+
+.client-display-button {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.client-display-button--active {
+  box-shadow: 0 3px 10px rgba(33, 186, 69, 0.32);
+  transform: translateY(-1px);
+}
+
+.client-display-live-badge {
+  width: 9px;
+  height: 9px;
+  min-width: 9px;
+  padding: 0;
+  box-shadow: 0 0 0 0 rgba(139, 195, 74, 0.7);
+  animation: client-display-pulse 1.5s infinite;
+}
+
+@keyframes client-display-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(139, 195, 74, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(139, 195, 74, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(139, 195, 74, 0);
+  }
 }
 </style>

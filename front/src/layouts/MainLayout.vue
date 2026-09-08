@@ -17,8 +17,25 @@
               <q-avatar size="38px" color="blue-grey-8" text-color="white" icon="local_pharmacy" />
             </div>
             <div class="col">
-              <div class="text-weight-bold text-body2 ellipsis">
-                {{ $store.user.name || 'Panel administrativo' }}
+              <div class="row items-center no-wrap toolbar-user-row">
+                <div class="text-weight-bold text-body2 ellipsis toolbar-user-name">
+                  {{ $store.user.name || 'Panel administrativo' }}
+                </div>
+                <div
+                  class="header-terminal-badge q-ml-sm"
+                  :class="{ 'header-terminal-badge--unset': !terminalCajaNumero }"
+                >
+                  <q-icon
+                    :name="terminalCajaNumero ? 'point_of_sale' : 'warning_amber'"
+                    size="13px"
+                  />
+                  <span>{{ terminalCajaNumero ? `Caja ${terminalCajaNumero}` : 'Sin caja' }}</span>
+                  <q-tooltip>
+                    {{ terminalCajaNumero
+                      ? `Caja física asignada a esta computadora: ${terminalCajaNumero}`
+                      : 'Esta computadora todavía no tiene una caja asignada' }}
+                  </q-tooltip>
+                </div>
               </div>
               <div class="row items-center q-gutter-xs">
                 <q-chip
@@ -502,6 +519,12 @@ import { io } from 'socket.io-client'
 // pase: aunque algo dispare la verificación en bucle, no sale más de una
 // petición por ventana. Los cambios reales llegan por socket y usan force.
 const CAJA_CHECK_MIN_INTERVAL = 5000
+const TERMINAL_CAJA_STORAGE_KEY = 'caja_numero'
+
+function obtenerCajaTerminal (value) {
+  const caja = Number.parseInt(value, 10)
+  return caja >= 1 && caja <= 4 ? caja : null
+}
 
 export default {
   name: 'MainLayout',
@@ -568,7 +591,8 @@ export default {
         monto_fisico: 0,
         observaciones: ''
       },
-      dialogLogoutCaja: false
+      dialogLogoutCaja: false,
+      terminalCajaNumero: obtenerCajaTerminal(localStorage.getItem(TERMINAL_CAJA_STORAGE_KEY))
     }
   },
   computed: {
@@ -603,6 +627,7 @@ export default {
         { to: '/vendedores', label: 'Vendedores', icon: 'badge' },
         { to: '/users', label: 'Usuarios', icon: 'manage_accounts' },
         { to: '/agencias', label: 'Agencias', icon: 'apartment' },
+        { to: '/promociones', label: 'Promociones', icon: 'sell' },
         { to: '/reportes', label: 'Reportes', icon: 'insert_chart' },
         { to: '/siat', label: 'SIAT', icon: 'verified' },
         { to: '/carousel', label: 'Carousel', icon: 'view_carousel' },
@@ -638,8 +663,12 @@ export default {
     // Carga inicial una sola vez; las actualizaciones llegan por socket (sin polling)
     this.getNotificaciones(1)
     this.conectarSocket()
+    window.addEventListener('storage', this.handleTerminalCajaStorage)
+    window.addEventListener('terminal-caja-changed', this.handleTerminalCajaChanged)
   },
   beforeUnmount () {
+    window.removeEventListener('storage', this.handleTerminalCajaStorage)
+    window.removeEventListener('terminal-caja-changed', this.handleTerminalCajaChanged)
     if (this.socket) {
       this.socket.disconnect()
       this.socket = null
@@ -649,6 +678,13 @@ export default {
     }
   },
   methods: {
+    handleTerminalCajaStorage (e) {
+      if (e.key !== TERMINAL_CAJA_STORAGE_KEY) return
+      this.terminalCajaNumero = obtenerCajaTerminal(e.newValue)
+    },
+    handleTerminalCajaChanged (e) {
+      this.terminalCajaNumero = obtenerCajaTerminal(e.detail?.caja)
+    },
     conectarSocket () {
       const socketUrl = import.meta.env.VITE_API_SOCKET || 'http://localhost:3000'
       this.socket = io(socketUrl)
@@ -1135,6 +1171,34 @@ export default {
 </script>
 
 <style>
+.toolbar-user-row,
+.toolbar-user-name {
+  min-width: 0;
+}
+
+.header-terminal-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #26a69a 0%, #00897b 100%);
+  box-shadow: 0 2px 8px rgba(0, 137, 123, 0.3);
+  color: white;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.header-terminal-badge--unset {
+  background: linear-gradient(135deg, #fb8c00 0%, #ef6c00 100%);
+  box-shadow: 0 2px 8px rgba(239, 108, 0, 0.3);
+}
+
 .drawer-shell {
   background: linear-gradient(180deg, #0f4c81 0%, #0a3558 100%) !important;
 }

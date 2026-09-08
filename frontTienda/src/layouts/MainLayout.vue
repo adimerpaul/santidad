@@ -284,6 +284,10 @@
             <span>Subtotal:</span>
             <span class="text-weight-bold">Bs. {{ formatPrice(subtotal) }}</span>
           </div>
+          <div v-if="Number(roundingAdjustment) !== 0" class="resumen-item row justify-between q-mb-sm text-grey-7">
+            <span>Ajuste de redondeo:</span>
+            <span>{{ roundingAdjustmentLabel }} Bs.</span>
+          </div>
           <div class="resumen-item row justify-between q-mb-sm">
             <span>Envío:</span>
             <span class="text-positive">Por Coordinar</span>
@@ -291,7 +295,7 @@
           <q-separator class="q-my-md" />
           <div class="total-final row justify-between text-h6">
             <span>Total:</span>
-            <span class="text-weight-bold text-green">Bs. {{ formatPrice(subtotal) }}</span>
+            <span class="text-weight-bold text-green">Bs. {{ formatTotal(totalPayable) }}</span>
           </div>
               <!-- Selección de Sucursal en el carrito -->
               <q-select
@@ -389,6 +393,7 @@
 
 <script>
 import { defineComponent, nextTick } from 'vue'
+import { formatCurrency as formatMoney, formatPayable, roundCurrency, roundSalePrice } from 'src/utils/money'
 
 export default defineComponent({
   name: 'MainLayout',
@@ -432,10 +437,20 @@ export default defineComponent({
     subtotal () {
       if (!this.$store?.carrito.length) return 0
       const total = this.$store.carrito.reduce((acc, item) => {
-        const p = Math.round(Number(item.precio || 0) * 10) / 10
+        const p = roundCurrency(item.precio)
         return acc + (p * Number(item.cantidad || 0))
       }, 0)
-      return (Math.round(total * 10) / 10).toFixed(1)
+      return formatMoney(total)
+    },
+    totalPayable () {
+      return formatPayable(this.subtotal)
+    },
+    roundingAdjustment () {
+      return formatMoney(Number(this.totalPayable) - Number(this.subtotal))
+    },
+    roundingAdjustmentLabel () {
+      const adjustment = Number(this.roundingAdjustment)
+      return `${adjustment > 0 ? '+' : ''}${formatMoney(adjustment)}`
     }
   },
   mounted () {
@@ -577,11 +592,19 @@ export default defineComponent({
       const carrito = this.$store.carrito
       if (!carrito || !carrito.length) return
 
-      const totalPedido = carrito.reduce((t, i) => {
+      let totalCalculadoPedido = roundCurrency(carrito.reduce((t, i) => {
         const p = Number(i.precio) || 0
         const c = Number(i.cantidad) || 0
         return t + (p * c)
-      }, 0)
+      }, 0))
+      let totalPedido = Number(formatPayable(totalCalculadoPedido))
+      let ajusteRedondeo = roundCurrency(totalPedido - totalCalculadoPedido)
+      let itemsPedido = carrito.map(item => ({
+        name: item.nombre,
+        price: Number(item.precio) || 0,
+        quantity: Number(item.cantidad) || 0,
+        subtotal: roundCurrency((Number(item.precio) || 0) * (Number(item.cantidad) || 0))
+      }))
 
       // Payload para guardar el pedido
       const payload = {
@@ -617,6 +640,10 @@ export default defineComponent({
           data?.order?.order_number ||
           data?.data?.order_number ||
           ''
+        totalPedido = Number(data?.total ?? totalPedido)
+        totalCalculadoPedido = Number(data?.calculated_total ?? totalCalculadoPedido)
+        ajusteRedondeo = Number(data?.rounding_adjustment ?? ajusteRedondeo)
+        if (Array.isArray(data?.items) && data.items.length) itemsPedido = data.items
       } catch (e) {
         console.error('Error guardando pedido:', {
           message: e?.message,
@@ -633,11 +660,11 @@ export default defineComponent({
 
       mensaje += `📍 *Sucursal seleccionada:* ${this.selectedSucursal.label}\n\n`
 
-      carrito.forEach((item, idx) => {
-        const precio = Number(item.precio) || 0
-        const cantidad = Number(item.cantidad) || 0
-        const subtotal = precio * cantidad
-        mensaje += `${idx + 1}. *${item.nombre}*\n`
+      itemsPedido.forEach((item, idx) => {
+        const precio = Number(item.price ?? item.precio) || 0
+        const cantidad = Number(item.quantity ?? item.cantidad) || 0
+        const subtotal = Number(item.subtotal) || roundCurrency(precio * cantidad)
+        mensaje += `${idx + 1}. *${item.name ?? item.nombre}*\n`
         mensaje += `   Cantidad: ${cantidad}\n`
         mensaje += `   Precio unitario: Bs. ${this.formatPrice(precio)}\n`
         mensaje += `   Subtotal: Bs. ${this.formatPrice(subtotal)}\n\n`
@@ -645,9 +672,12 @@ export default defineComponent({
 
       mensaje += '*=======================*\n'
       mensaje += '*RESUMEN DEL PEDIDO:*\n'
-      mensaje += `📦 Subtotal: Bs. ${this.formatPrice(totalPedido)}\n`
+      mensaje += `📦 Subtotal: Bs. ${this.formatPrice(totalCalculadoPedido)}\n`
+      if (ajusteRedondeo !== 0) {
+        mensaje += `🔄 Ajuste de redondeo: ${ajusteRedondeo > 0 ? '+' : ''}${this.formatPrice(ajusteRedondeo)} Bs.\n`
+      }
       mensaje += '🚚 Envío: Por Coordinar\n'
-      mensaje += `💳 *TOTAL: Bs. ${this.formatPrice(totalPedido)}*\n\n`
+      mensaje += `💳 *TOTAL: Bs. ${this.formatTotal(totalPedido)}*\n\n`
       mensaje += 'Por favor, confirmen mi pedido. ¡Gracias! 😊'
 
       const wa = `https://wa.me/59172319869?text=${encodeURIComponent(mensaje)}`
@@ -677,11 +707,11 @@ export default defineComponent({
 
           if (x.porcentaje > 0) {
             const baseAntes = (precioAntes && precioAntes > 0) ? precioAntes : precioBase
-            x.precio_antes = Math.round(baseAntes * 10) / 10
-            x.precio_ahora = Math.round(baseAntes * (1 - x.porcentaje / 100) * 10) / 10
+            x.precio_antes = roundCurrency(baseAntes)
+            x.precio_ahora = roundSalePrice(x.precio_con_descuento ?? (baseAntes * (1 - x.porcentaje / 100)))
           } else {
-            x.precio_antes = (precioAntes && precioAntes > 0) ? (Math.round(precioAntes * 10) / 10) : null
-            x.precio_ahora = Math.round(precioBase * 10) / 10
+            x.precio_antes = (precioAntes && precioAntes > 0) ? roundCurrency(precioAntes) : null
+            x.precio_ahora = roundCurrency(precioBase)
           }
 
           if ((!x.porcentaje || x.porcentaje === 0) && x.precio_antes && x.precio_ahora) {
@@ -789,7 +819,8 @@ export default defineComponent({
     },
 
     // ===== Utils =====
-    formatPrice (v) { return (Math.round(Number(v ?? 0) * 10) / 10).toFixed(1) },
+    formatPrice (v) { return formatMoney(v) },
+    formatTotal (v) { return formatPayable(v) },
     espacioCambioGuion (text) { return text.replace(/ |\/|\./g, '-').replace(/,/g, '') }
   }
 })

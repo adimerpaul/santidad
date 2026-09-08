@@ -24,6 +24,7 @@ use App\Http\Controllers\SiatController;
 use App\Http\Controllers\QrPagoController;
 use App\Http\Controllers\AppMovilController;
 use App\Http\Controllers\CashClosureController;
+use App\Http\Controllers\PromotionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -114,6 +115,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::resource('/subcategories', SubcategoryController::class)->except(['index','show']);
 
     Route::resource('/agencias', AgenciaController::class);
+    Route::apiResource('/promotions', PromotionController::class);
     Route::resource('/products', ProductController::class);
     Route::resource('/unids', UnidController::class);
 

@@ -8,6 +8,7 @@ use App\Models\Pedido;
 use App\Models\PedidoDetail;
 use App\Models\PedidoModificacion;
 use App\Models\Product;
+use App\Services\PromotionPricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -18,6 +19,10 @@ use Illuminate\Support\Facades\DB;
 class AppMovilController extends Controller
 {
     const UMBRAL_STOCK_BAJO = 20;
+
+    public function __construct(private readonly PromotionPricingService $promotionPricing)
+    {
+    }
 
     // GET /app/config — catálogo base que la app carga al iniciar
     public function config()
@@ -36,6 +41,7 @@ class AppMovilController extends Controller
         $categoryId = (int) $request->get('category_id', 0);
         $ofertas    = $request->boolean('ofertas');
         $perPage    = max(5, min(50, (int) $request->get('per_page', 30)));
+        $agenciaId  = (int) $request->get('agencia_id', $request->user()?->agencia_id ?? 0);
 
         $agencias = Agencia::where('status', 'ACTIVO')->orderBy('id')->get();
 
@@ -55,22 +61,47 @@ class AppMovilController extends Controller
             $query->where('category_id', $categoryId);
         }
         if ($ofertas) {
-            $query->where('en_oferta', 1);
+            $scope = $this->promotionPricing->activeScopeIds('app', $agenciaId ?: null);
+            $query->where(function ($ofertasQuery) use ($scope) {
+                $ofertasQuery->where('en_oferta', 1);
+
+                if (!empty($scope['product_ids']) || !empty($scope['category_ids'])) {
+                    $ofertasQuery->orWhere(function ($promotionQuery) use ($scope) {
+                        $promotionQuery->where(function ($scopeQuery) use ($scope) {
+                            if (!empty($scope['product_ids'])) {
+                                $scopeQuery->whereIn('id', $scope['product_ids']);
+                            }
+                            if (!empty($scope['category_ids'])) {
+                                $method = !empty($scope['product_ids']) ? 'orWhereIn' : 'whereIn';
+                                $scopeQuery->{$method}('category_id', $scope['category_ids']);
+                            }
+                        });
+
+                        if (!empty($scope['excluded_subcategory_ids'])) {
+                            $promotionQuery->where(function ($allowedQuery) use ($scope) {
+                                $allowedQuery->whereNull('subcategory_id')
+                                    ->orWhereNotIn('subcategory_id', $scope['excluded_subcategory_ids']);
+                            });
+                        }
+                    });
+                }
+            });
         }
 
         $productos = $query->orderByDesc('en_oferta')->orderBy('nombre')->paginate($perPage);
 
         $productos->getCollection()->transform(
-            fn ($p) => $this->productoResumen($p, $agencias)
+            fn ($p) => $this->productoResumen($p, $agencias, $agenciaId ?: null)
         );
 
         return $productos;
     }
 
     // GET /app/productos/{id} — detalle completo + productos similares
-    public function productoDetalle($id)
+    public function productoDetalle(Request $request, $id)
     {
         $agencias = Agencia::where('status', 'ACTIVO')->orderBy('id')->get();
+        $agenciaId = (int) $request->get('agencia_id', $request->user()?->agencia_id ?? 0);
 
         $producto = Product::with('category')
             ->where('activo', 'ACTIVO')
@@ -79,9 +110,9 @@ class AppMovilController extends Controller
         $similares = $this->productosRelacionados($producto);
 
         return response()->json([
-            'producto'  => $this->productoResumen($producto, $agencias),
+            'producto'  => $this->productoResumen($producto, $agencias, $agenciaId ?: null),
             'similares' => $similares
-                ->map(fn ($p) => $this->productoResumen($p, $agencias))
+                ->map(fn ($p) => $this->productoResumen($p, $agencias, $agenciaId ?: null))
                 ->values(),
         ]);
     }
@@ -288,7 +319,7 @@ class AppMovilController extends Controller
      * Contrato de producto para la app. El precio ya viene con el descuento
      * aplicado y precio_antes guarda el precio original cuando hay oferta.
      */
-    private function productoResumen(Product $p, $agencias): array
+    private function productoResumen(Product $p, $agencias, ?int $agenciaId = null): array
     {
         $stocks = $agencias->map(fn ($a) => [
             'agencia_id' => $a->id,
@@ -303,15 +334,12 @@ class AppMovilController extends Controller
             $img = null;
         }
 
-        $precio     = round((float) $p->precio, 1);
-        $porcentaje = (float) ($p->porcentaje ?? 0);
-        if ($porcentaje > 0) {
-            $precioFinal = round($precio - ($precio * $porcentaje / 100), 1);
-            $precioAntes = $precio;
-        } else {
-            $precioFinal = $precio;
-            $precioAntes = $p->precioAntes ? round((float) $p->precioAntes, 1) : 0;
-        }
+        $pricing = $this->promotionPricing->resolve($p, 'app', $agenciaId);
+        $porcentaje = $pricing['porcentaje'];
+        $precioFinal = $pricing['precio_venta'];
+        $precioAntes = $porcentaje > 0
+            ? $pricing['precio_original']
+            : ($p->precioAntes ? round((float) $p->precioAntes, 1) : 0);
 
         return [
             'id'                 => $p->id,
@@ -322,8 +350,9 @@ class AppMovilController extends Controller
             'marca'              => $p->marca,
             'precio'             => $precioFinal,
             'precio_antes'       => $precioAntes,
-            'en_oferta'          => (bool) $p->en_oferta,
+            'en_oferta'          => (bool) $p->en_oferta || $pricing['mostrar_en_ofertas'],
             'porcentaje'         => $porcentaje,
+            'promocion'          => $pricing['promocion_nombre'],
             'imagen'             => $img,
             'descripcion'        => $p->descripcion,
             'registro_sanitario' => $p->registroSanitario,

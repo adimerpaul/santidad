@@ -22,7 +22,8 @@ class UpdateAgenciaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'whatsapp' => ['nullable', 'string', 'max:255'],
+            'whatsapp_turno_2' => ['nullable', 'string', 'max:255'],
         ];
     }
 }
