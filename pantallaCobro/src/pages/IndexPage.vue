@@ -2,10 +2,10 @@
   <q-page class="player-page">
     <!-- ===== REPRODUCTOR MULTIMEDIA DE FONDO ===== -->
     <div class="media-container">
-      <transition name="fade" mode="out-in">
+      <transition name="fade">
         <div
           v-if="playlist.length > 0 && currentAd"
-          :key="currentAd.file_id"
+          :key="localMediaId(currentAd)"
           class="fullscreen-media-wrapper"
         >
           <!-- Video Player -->
@@ -14,6 +14,8 @@
             ref="videoPlayer"
             class="fullscreen-media"
             :src="currentAd.url"
+            :data-media-id="localMediaId(currentAd)"
+            @loadedmetadata="alignVideo"
             autoplay
             muted
             playsinline
@@ -290,6 +292,8 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { io } from 'socket.io-client'
+import { ServerClock, playbackPosition, localMediaId } from '../utils/adSync.mjs'
+import { fetchJson, measureVideo } from '../utils/adMedia.mjs'
 
 // Configuración general
 const configured = ref(false)
@@ -316,6 +320,17 @@ const agencias = ref([])
 const playlist = ref([])
 const currentIndex = ref(0)
 const imageTimer = ref(null)
+const videoPlayer = ref(null)
+const serverClock = new ServerClock()
+let syncManifest = null
+let playlistBusy = false
+let playlistPoll = null
+let syncTimer = null
+let destroyed = false
+const scopeKey = () => config.value.serverIp + '|' + config.value.agencia
+let activeScope = null
+let legacyCacheAllowed = true
+const cacheKey = () => 'pcpubli_sync_cache:' + scopeKey()
 
 // Datos del cliente en caja
 const clientData = ref({
@@ -440,155 +455,196 @@ function openConfig() {
   showConfigModal.value = true
 }
 
-// Obtener playlist de publicidad
+// The legacy endpoint stays available during a rolling backend/app update.
+async function readSyncManifest(base, scope) {
+  const start = performance.now()
+  const manifest = await fetchJson(base + '/api/publicidad-sync?agencia_id=' + config.value.agencia)
+  const end = performance.now()
+  if (manifest.protocol !== 1 || !Array.isArray(manifest.items) || String(manifest.agencia_id) !== String(config.value.agencia)) {
+    throw new Error('Invalid advertising manifest')
+  }
+  if (scope !== scopeKey() || destroyed) throw new Error('Configuration changed')
+  serverClock.sample(manifest.server_time_ms, start, end)
+  return manifest
+}
+
 async function fetchPlaylist() {
-  if (!configured.value) return
-  if (isDownloading.value) return // Prevenir múltiples descargas simultáneas
-  try {
-    const cleanIp = config.value.serverIp.replace(/\/$/, '')
-    const url = new URL(`${cleanIp}/api/publicidad-actual`)
-    if (config.value.agencia) {
-      url.searchParams.append('agencia_id', config.value.agencia.toString())
-    }
-
-    const response = await fetch(url)
-    if (response.ok) {
-      let data = await response.json()
-      if (Array.isArray(data)) {
-        // Guardar copia limpia en caché local para uso offline
-        localStorage.setItem('pcpubli_playlist_cache', JSON.stringify(data))
-
-        const newIds = data.map((d) => d.file_id)
-        const oldIds = playlist.value.map((d) => d.file_id)
-
-        // Si la playlist cambió, procesar descargas
-        if (newIds.join(',') !== oldIds.join(',')) {
-          isDownloading.value = true
-          console.log('Nuevos archivos detectados, limpiando y descargando...')
-
-          // Limpiar archivos locales viejos
-          if (window.mediaAPI) {
-            await window.mediaAPI.cleanup(newIds)
-          }
-
-          // Descargar los nuevos archivos
-          for (const ad of data) {
-            if (window.mediaAPI) {
-              // Pasar la URL pública de R2 directamente para descargar
-              await window.mediaAPI.download(ad.file_id, ad.type, ad.url)
-              // Construir ruta local: 'publicidad/foto.png' -> 'publicidad_foto.png'
-              const safeName = ad.file_id.replace(/[\/\\]/g, '_')
-              ad.url = `localmedia://${safeName}`
-            } else {
-              // Fallback navegador: usar la URL remota de R2 directamente
-              ad.url = ad.url // Ya viene con la URL de R2 desde el backend
-            }
-          }
-
-          playlist.value = data
-          currentIndex.value = 0
-          playCurrentAd()
-          isDownloading.value = false
-        }
-      } else {
-        // La API retornó objeto de "no hay publicidad"
-        playlist.value = []
-        localStorage.removeItem('pcpubli_playlist_cache')
-        clearImageTimer()
-        if (window.mediaAPI) {
-          await window.mediaAPI.cleanup([]) // Borrar todo local
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Error fetching playlist:', err)
-    isDownloading.value = false
-    // Intentar reproducir desde caché si el servidor está caído
+  if (!configured.value || showConfigModal.value || destroyed) return
+  const scope = scopeKey()
+  const base = config.value.serverIp.replace(/\/$/, '')
+  if (activeScope !== scope) {
+    activeScope = scope
+    syncManifest = null
+    serverClock.samples = []
+    playlist.value = []
+    clearImageTimer()
     loadCachedPlaylist()
   }
-}
-
-// Carga de respaldo offline desde almacenamiento local
-async function loadCachedPlaylist() {
-  const cached = localStorage.getItem('pcpubli_playlist_cache')
-  if (cached) {
+  if (playlistBusy) return
+  playlistBusy = true
+  try {
+    let manifest = null
+    let data
     try {
-      const data = JSON.parse(cached)
-      if (Array.isArray(data) && data.length > 0) {
-        console.log('Cargando playlist desde caché offline local...')
-        for (const ad of data) {
-          if (window.mediaAPI) {
-            const safeName = ad.file_id.replace(/[\/\\]/g, '_')
-            ad.url = `localmedia://${safeName}`
-          }
-        }
-        playlist.value = data
-        currentIndex.value = 0
-        playCurrentAd()
-        return
-      }
-    } catch (e) {
-      console.error('Error al restaurar caché offline:', e)
+      manifest = await readSyncManifest(base, scope)
+      data = manifest.items
+    } catch (error) {
+      // Once synchronized, a temporary outage must not replace the shared cycle.
+      if (syncManifest) throw error
+      data = await fetchJson(base + '/api/publicidad-actual?agencia_id=' + config.value.agencia)
+      if (!Array.isArray(data)) data = []
     }
-  }
-  playlist.value = []
-}
-
-// Iniciar bucle de reproducción
-function playCurrentAd() {
-  clearImageTimer()
-  if (playlist.value.length === 0) return
-
-  const ad = currentAd.value
-  if (!ad) return
-
-  if (ad.type === 'video') {
-    nextTick(() => {
-      const video = document.querySelector('video')
-      if (video) {
-        video.load()
-        video.play().catch((e) => {
-          console.log('Autoplay blocked:', e)
+    if (scope !== scopeKey() || destroyed) return
+    const changed = data.map(localMediaId).join(',') !== playlist.value.map(localMediaId).join(',')
+    const mediaReady = !window.mediaAPI || (await Promise.all(data.map(ad => window.mediaAPI.exists(localMediaId(ad))))).every(Boolean)
+    if (!changed && mediaReady && (!manifest || manifest.version === syncManifest?.version)) {
+      syncPlayback()
+      return
+    }
+    isDownloading.value = changed && data.length > 0
+    const prepared = []
+    const durations = []
+    for (const ad of data) {
+      if (scope !== scopeKey() || destroyed) return
+      const item = { ...ad }
+      const id = localMediaId(item)
+      if (window.mediaAPI) {
+        const result = await window.mediaAPI.download(id, item.type, item.url)
+        if (!result?.success) throw new Error(result?.error || 'Media download failed')
+        item.url = 'localmedia://' + id.replace(/[\/\\]/g, '_')
+      }
+      if (manifest && item.type === 'video' && !item.duration_ms) {
+        durations.push({ id: item.id, media_version: item.media_version, duration_ms: await measureVideo(item.url) })
+      }
+      prepared.push(item)
+    }
+    if (durations.length) {
+      if (scope !== scopeKey() || destroyed) return
+      for (let i = 0; i < durations.length; i += 100) {
+        await fetchJson(base + '/api/publicidad-sync/durations', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ agencia_id: Number(config.value.agencia), items: durations.slice(i, i + 100) }),
         })
       }
+      const refreshed = await readSyncManifest(base, scope)
+      if (refreshed.items.map(localMediaId).join(',') !== data.map(localMediaId).join(',')) return
+      manifest = refreshed
+      prepared.forEach((ad, i) => { ad.duration_ms = manifest.items[i].duration_ms })
+    }
+    if (scope !== scopeKey() || destroyed || (manifest && !manifest.ready)) return
+    syncManifest = manifest
+    playlist.value = prepared
+    currentIndex.value = 0
+    localStorage.setItem(cacheKey(), JSON.stringify({ items: prepared, manifest }))
+    playCurrentAd()
+    if (window.mediaAPI) await window.mediaAPI.cleanup(prepared.map(localMediaId))
+  } catch (error) {
+    console.error('Advertising update failed; keeping local playback:', error)
+    if (!playlist.value.length) loadCachedPlaylist()
+  } finally {
+    playlistBusy = false
+    isDownloading.value = false
+    if (!destroyed && scope !== scopeKey()) fetchPlaylist()
+  }
+}
+
+function loadCachedPlaylist() {
+  try {
+    let cached = JSON.parse(localStorage.getItem(cacheKey()) || 'null')
+    if (!cached && legacyCacheAllowed) {
+      const old = JSON.parse(localStorage.getItem('pcpubli_playlist_cache') || 'null')
+      if (Array.isArray(old)) {
+        cached = { manifest: null, items: old.map(ad => ({ ...ad,
+          url: window.mediaAPI ? 'localmedia://' + ad.file_id.replace(/[\/\\]/g, '_') : ad.url,
+        })) }
+        localStorage.setItem(cacheKey(), JSON.stringify(cached))
+      }
+    }
+    legacyCacheAllowed = false
+    if (!cached?.items?.length) return
+    playlist.value = cached.items
+    syncManifest = cached.manifest
+    currentIndex.value = 0
+    // Without a fresh server sample, offline startup uses sequential playback.
+    // It joins the shared timeline as soon as the connection returns.
+    playCurrentAd()
+  } catch (error) {
+    console.error('Cannot restore advertising cache:', error)
+  }
+}
+
+function targetPosition() {
+  return playbackPosition(syncManifest, serverClock.time)
+}
+
+function alignVideo() {
+  const video = videoPlayer.value
+  if (!video || !currentAd.value || video.dataset.mediaId !== localMediaId(currentAd.value) || video.readyState < 1) return
+  const target = targetPosition()
+  if (target && target.index === currentIndex.value && Number.isFinite(video.duration)) {
+    const seconds = Math.min(target.offsetMs / 1000, Math.max(0, video.duration - 0.05))
+    if (Math.abs(video.currentTime - seconds) > 0.4) video.currentTime = seconds
+  }
+  if (video.paused && !video.error) video.play().catch(() => {})
+}
+
+function syncPlayback() {
+  const target = targetPosition()
+  if (!target || !playlist.value.length) return
+  if (currentIndex.value !== target.index) {
+    currentIndex.value = target.index
+    playCurrentAd()
+  } else if (currentAd.value?.type === 'video') {
+    alignVideo()
+  }
+}
+
+function playCurrentAd() {
+  clearImageTimer()
+  if (!playlist.value.length) return
+  const target = targetPosition()
+  if (target) currentIndex.value = target.index
+  const ad = currentAd.value
+  if (!ad) return
+  if (ad.type === 'video') {
+    nextTick(() => {
+      const video = videoPlayer.value
+      // A single-item loop reuses its element; other items initialize on metadata.
+      if (!target && video?.dataset.mediaId === localMediaId(ad) && video.ended) video.currentTime = 0
+      alignVideo()
     })
   } else {
-    // Es una imagen, dura 10 segundos
-    imageTimer.value = setTimeout(() => {
-      nextAd()
-    }, 10000)
+    imageTimer.value = setTimeout(nextAd, Math.max(20, target?.remainingMs ?? 10000))
   }
 }
 
 function nextAd() {
-  if (playlist.value.length === 0) return
-  currentIndex.value = (currentIndex.value + 1) % playlist.value.length
-  playCurrentAd()
+  if (!playlist.value.length) return
+  if (targetPosition()) {
+    playCurrentAd()
+  } else {
+    currentIndex.value = (currentIndex.value + 1) % playlist.value.length
+    playCurrentAd()
+  }
 }
 
 function clearImageTimer() {
-  if (imageTimer.value) {
-    clearTimeout(imageTimer.value)
-    imageTimer.value = null
-  }
+  if (imageTimer.value) clearTimeout(imageTimer.value)
+  imageTimer.value = null
 }
 
 function onVideoError(e) {
   console.error('Video error playing ad:', e)
-
-  // Informar al backend vpc (vía socket) del fallo de reproducción
-  if (socketConn && socketConn.connected && currentAd.value) {
+  if (socketConn?.connected && currentAd.value) {
     socketConn.emit('terminal_error', {
-      error_type: 'video_playback_failed',
-      ad_name: currentAd.value.name,
-      file_id: currentAd.value.file_id,
-      url: currentAd.value.url,
+      error_type: 'video_playback_failed', ad_name: currentAd.value.name,
+      file_id: currentAd.value.file_id, url: currentAd.value.url,
       agencia_id: config.value.agencia,
-      message: `El video "${currentAd.value.name}" no es compatible o falló al reproducirse.`,
+      message: 'No se pudo reproducir: ' + currentAd.value.name,
     })
   }
-
-  nextAd()
+  // A failed video must not advance this terminal ahead of the common cycle.
+  if (!targetPosition()) nextAd()
 }
 
 // Verificar si un evento de cobro/QR va dirigido estrictamente a esta pantalla y caja
@@ -622,6 +678,7 @@ function initSocket() {
     console.log('Socket conectado con éxito:', socketConn.id)
     registerTerminalRoom()
     sendStatusHeartbeat()
+    fetchPlaylist()
   })
 
   // Escuchar actualizaciones de publicidad
@@ -756,6 +813,8 @@ function handleKeyPress(e) {
 onMounted(() => {
   updateTime()
   clockInterval = setInterval(updateTime, 1000)
+  playlistPoll = setInterval(fetchPlaylist, 15000)
+  syncTimer = setInterval(syncPlayback, 250)
   window.addEventListener('keydown', handleKeyPress)
 
   const exists = loadLocalConfig()
@@ -771,6 +830,9 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  destroyed = true
+  clearInterval(playlistPoll)
+  clearInterval(syncTimer)
   if (clockInterval) clearInterval(clockInterval)
   if (imageTimer.value) clearTimeout(imageTimer.value)
   if (watchdogTimer) clearTimeout(watchdogTimer)

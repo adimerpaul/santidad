@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, protocol, net, Tray, Menu, powerSaveBlocke
 import path from 'path'
 import os from 'os'
 import fs from 'fs'
-import https from 'https'
+import { downloadToFile } from './mediaDownload.mjs'
 import { exec } from 'child_process'
 
 // needed in case process is undefined under Linux
@@ -140,46 +140,13 @@ app.whenReady().then(() => {
     // URL directa de R2: pasada desde el renderer o construida desde el file_id
     const downloadUrl = r2Url
 
-    return new Promise((resolve, reject) => {
-      https.get(downloadUrl, { rejectUnauthorized: false }, (response) => {
-        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-          // Seguir redirección si hubiera
-          https.get(response.headers.location, { rejectUnauthorized: false }, (res2) => {
-            const fileStream = fs.createWriteStream(filePath)
-            res2.pipe(fileStream)
-            fileStream.on('finish', () => fileStream.close(() => resolve({ success: true, fileName })))
-            fileStream.on('error', (err) => { fs.unlink(filePath, () => {}); reject(err) })
-          }).on('error', (err) => { fs.unlink(filePath, () => {}); reject(err) })
-          return
-        }
-
-        if (response.statusCode !== 200) {
-          reject(new Error(`Error HTTP ${response.statusCode} al descargar de R2: ${downloadUrl}`))
-          return
-        }
-
-        const fileStream = fs.createWriteStream(filePath)
-        response.pipe(fileStream)
-
-        fileStream.on('finish', () => {
-          fileStream.close(() => {
-            console.log(`[Media] Descargado de R2: ${fileName}`)
-            resolve({ success: true, fileName })
-          })
-        })
-
-        fileStream.on('error', (err) => {
-          fs.unlink(filePath, () => {})
-          reject(err)
-        })
-      }).on('error', (err) => {
-        fs.unlink(filePath, () => {})
-        reject(err)
-      })
-    }).catch(error => {
-      console.error(`[Media] Error descargando ${fileId}:`, error.message)
+    try {
+      await downloadToFile(downloadUrl, filePath)
+      return { success: true, fileName }
+    } catch (error) {
+      console.error('Media download failed:', error.message)
       return { success: false, error: error.message }
-    })
+    }
   })
 
   // ===== IPC: VERIFICAR si un archivo existe localmente =====

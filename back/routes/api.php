@@ -76,6 +76,9 @@ Route::get('/productsSale', [ProductController::class,'productsSale'])
     ->middleware('throttle:120,1');
 
 Route::get('/publicidad-actual', [App\Http\Controllers\PublicidadController::class, 'publicidadActual']);
+Route::get('/publicidad-sync', [App\Http\Controllers\PublicidadSyncController::class, 'show']);
+Route::post('/publicidad-sync/durations', [App\Http\Controllers\PublicidadSyncController::class, 'durations'])
+    ->middleware('throttle:120,1');
 
 // --- App móvil (catálogo público, los pedidos se envían por WhatsApp) ---
 Route::get('/app/config', [AppMovilController::class, 'config'])
