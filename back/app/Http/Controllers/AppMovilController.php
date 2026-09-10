@@ -65,9 +65,13 @@ class AppMovilController extends Controller
             $query->where(function ($ofertasQuery) use ($scope) {
                 $ofertasQuery->where('en_oferta', 1);
 
-                if (!empty($scope['product_ids']) || !empty($scope['category_ids'])) {
+                if (!empty($scope['all_categories']) || !empty($scope['product_ids']) || !empty($scope['category_ids'])) {
                     $ofertasQuery->orWhere(function ($promotionQuery) use ($scope) {
                         $promotionQuery->where(function ($scopeQuery) use ($scope) {
+                            if (!empty($scope['all_categories'])) {
+                                $scopeQuery->whereRaw('1 = 1');
+                                return;
+                            }
                             if (!empty($scope['product_ids'])) {
                                 $scopeQuery->whereIn('id', $scope['product_ids']);
                             }

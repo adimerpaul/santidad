@@ -40,8 +40,9 @@ class PromotionPricingService
                 && $promotion->products->contains('id', $product->id);
             $esCategoria = $promotion->alcance === 'CATEGORIA'
                 && (int) $promotion->category_id === (int) $product->category_id;
+            $esTodas = $promotion->alcance === 'TODAS_CATEGORIAS';
 
-            if (!$esProducto && !$esCategoria) {
+            if (!$esProducto && !$esCategoria && !$esTodas) {
                 continue;
             }
 
@@ -51,8 +52,8 @@ class PromotionPricingService
                 'id' => $promotion->id,
                 'nombre' => $promotion->nombre,
                 'porcentaje' => $this->normalizePercentage($promotion->porcentaje),
-                'especificidad' => $esProducto ? 2 : 1,
-                'origen' => $esProducto ? 'PRODUCTOS' : 'CATEGORIA',
+                'especificidad' => $esProducto ? 2 : ($esCategoria ? 1 : 0),
+                'origen' => $promotion->alcance,
             ]);
         }
 
@@ -92,6 +93,7 @@ class PromotionPricingService
             ->where('mostrar_en_ofertas', true);
 
         return [
+            'all_categories' => $promotions->contains('alcance', 'TODAS_CATEGORIAS'),
             'product_ids' => $promotions
                 ->where('alcance', 'PRODUCTOS')
                 ->flatMap(fn (Promotion $promotion) => $promotion->products->pluck('id'))

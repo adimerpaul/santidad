@@ -87,7 +87,7 @@ class PromotionController extends Controller
             'nombre' => ['required', 'string', 'max:150'],
             'descripcion' => ['nullable', 'string', 'max:1000'],
             'porcentaje' => ['required', 'numeric', 'gt:0', 'lte:100'],
-            'alcance' => ['required', Rule::in(['CATEGORIA', 'PRODUCTOS'])],
+            'alcance' => ['required', Rule::in(['TODAS_CATEGORIAS', 'CATEGORIA', 'PRODUCTOS'])],
             'category_id' => [
                 Rule::requiredIf(fn () => $request->input('alcance') === 'CATEGORIA'),
                 'nullable',
@@ -155,8 +155,14 @@ class PromotionController extends Controller
                     $query->where('category_id', $request->input('category_id'));
                 } elseif ($request->input('alcance') === 'PRODUCTOS') {
                     $query->whereIn('id', $request->input('product_ids', []));
-                } else {
+                } elseif ($request->input('alcance') !== 'TODAS_CATEGORIAS') {
                     $query->whereRaw('1 = 0');
+                }
+
+                $excludedIds = $this->pricing->excludedSubcategoryIds();
+                if ($excludedIds) {
+                    $query->where(fn ($allowed) => $allowed->whereNull('subcategory_id')
+                        ->orWhereNotIn('subcategory_id', $excludedIds));
                 }
 
                 $minimumPrice = $query->min('precio');

@@ -51,9 +51,13 @@ class TiendaController extends Controller
                 $q->where(function ($ofertasQuery) use ($scopeOfertas) {
                     $ofertasQuery->where('en_oferta', 1);
 
-                    if (!empty($scopeOfertas['product_ids']) || !empty($scopeOfertas['category_ids'])) {
+                    if (!empty($scopeOfertas['all_categories']) || !empty($scopeOfertas['product_ids']) || !empty($scopeOfertas['category_ids'])) {
                         $ofertasQuery->orWhere(function ($promotionQuery) use ($scopeOfertas) {
                             $promotionQuery->where(function ($scopeQuery) use ($scopeOfertas) {
+                                if (!empty($scopeOfertas['all_categories'])) {
+                                    $scopeQuery->whereRaw('1 = 1');
+                                    return;
+                                }
                                 if (!empty($scopeOfertas['product_ids'])) {
                                     $scopeQuery->whereIn('id', $scopeOfertas['product_ids']);
                                 }

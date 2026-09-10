@@ -83,7 +83,7 @@
         <template #body-cell-alcance="props">
           <q-td :props="props">
             <div class="text-weight-medium">
-              <q-icon :name="props.row.alcance === 'CATEGORIA' ? 'category' : 'inventory_2'" color="primary" class="q-mr-xs" />
+              <q-icon :name="props.row.alcance === 'PRODUCTOS' ? 'inventory_2' : 'category'" color="primary" class="q-mr-xs" />
               {{ descripcionAlcance(props.row) }}
             </div>
           </q-td>
@@ -189,6 +189,7 @@
               color="grey-2"
               text-color="grey-8"
               :options="[
+                { label: 'Todas las categorías', value: 'TODAS_CATEGORIAS', icon: 'apps' },
                 { label: 'Una categoría', value: 'CATEGORIA', icon: 'category' },
                 { label: 'Productos elegidos', value: 'PRODUCTOS', icon: 'inventory_2' }
               ]"
@@ -209,7 +210,7 @@
               :rules="[requerido]"
             />
             <q-select
-              v-else
+              v-else-if="form.alcance === 'PRODUCTOS'"
               v-model="form.product_ids"
               :options="opcionesProductos"
               option-label="nombre"
@@ -229,6 +230,10 @@
             >
               <template #no-option><q-item><q-item-section class="text-grey">Escribe para buscar productos</q-item-section></q-item></template>
             </q-select>
+
+            <div v-if="form.alcance === 'TODAS_CATEGORIAS'" class="text-grey-7 q-mb-sm">
+              El descuento se aplica a todo el catálogo, incluidos los productos que agregues después.
+            </div>
 
             <q-banner dense rounded class="bg-amber-1 text-amber-10 q-mt-sm">
               <template #avatar><q-icon name="health_and_safety" color="amber-9" /></template>
@@ -283,12 +288,15 @@
                   <q-item-label caption>
                     Incluye automáticamente los productos alcanzados en la sección Ofertas de la página web y la app.
                   </q-item-label>
+                  <q-item-label v-if="!form.canal_web && !form.canal_app" caption>
+                    Para mostrarlos en Ofertas, activa el canal Página web o Aplicación.
+                  </q-item-label>
                 </q-item-section>
                 <q-item-section side>
                   <q-toggle
                     v-model="form.mostrar_en_ofertas"
                     color="pink-7"
-                    :disable="!form.canal_web && !form.canal_app"
+                    aria-label="Mostrar todos en Ofertas"
                   />
                 </q-item-section>
               </q-item>
@@ -520,6 +528,7 @@ export default {
       })
     },
     descripcionAlcance (promocion) {
+      if (promocion.alcance === 'TODAS_CATEGORIAS') return 'Todas las categorías'
       if (promocion.alcance === 'CATEGORIA') return promocion.category?.name || 'Categoría'
       const cantidad = promocion.products?.length || 0
       return `${cantidad} producto${cantidad === 1 ? '' : 's'}`
