@@ -1215,12 +1215,8 @@ export default {
     },
 
     verificarConfiguracionTerminal () {
-      const cajaGuardada = normalizarCaja(localStorage.getItem(CAJA_STORAGE_KEY))
-      this.caja_numero = cajaGuardada
-
-      if (!cajaGuardada) {
-        this.$nextTick(() => this.abrirConfigTerminal(true))
-      }
+      // La caja se configura a pedido; entrar al sistema no obliga a asignarla.
+      this.caja_numero = normalizarCaja(localStorage.getItem(CAJA_STORAGE_KEY))
     },
 
     handleTerminalStorageChange (e) {
@@ -1239,8 +1235,6 @@ export default {
           message: `Configuración sincronizada: Caja ${nuevaCaja}.`,
           timeout: 1800
         })
-      } else {
-        this.abrirConfigTerminal(true)
       }
     },
 
