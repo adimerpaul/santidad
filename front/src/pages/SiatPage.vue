@@ -203,13 +203,11 @@ export default {
         codigo_sucursal: 0,
         codigo_punto_venta: 0
       },
-      sucursalOptions: [
-        { label: 'Sucursal 0 — Casa Matriz', value: 0 },
-        { label: 'Sucursal 1', value: 1 }
-      ],
+      // Sucursales habilitadas para generar/consultar CUIS y CUFD
       sucursales: [
         { label: 'Sucursal 0 — Casa Matriz', value: 0 },
-        { label: 'Sucursal 1', value: 1 }
+        { label: 'Sucursal 1', value: 1 },
+        { label: 'Sucursal 2', value: 2 }
       ],
       cuisColumns: [
         { name: 'codigo', label: 'Código CUIS', field: 'codigo', align: 'left', sortable: true },
@@ -309,6 +307,10 @@ export default {
     }
   },
   computed: {
+    // El selector de generación usa la misma lista que el estado por sucursal
+    sucursalOptions () {
+      return this.sucursales
+    },
     sucursalLabel () {
       return this.sucursalOptions.find(o => o.value === this.form.codigo_sucursal)?.label || ''
     }

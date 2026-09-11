@@ -1118,7 +1118,14 @@ export default {
           p.cantidadPedida = 0
         })
         this.totalProducts = 0
-        Imprimir.factura(res.data).then(r => {})
+        // Con factura SIAT (venta 'F' y numeroFactura > 0) se imprime la factura;
+        // si no se facturó (numeroFactura = 0, cliente sin NIT) se imprime la nota de venta.
+        const ventaRegistrada = res.data
+        const tieneFactura = ventaRegistrada.venta === 'F' && Number(ventaRegistrada.numeroFactura) > 0
+        const printAction = tieneFactura
+          ? Imprimir.factura(ventaRegistrada)
+          : Imprimir.nota(ventaRegistrada)
+        printAction.then(r => {})
       }).catch(err => {
         this.loading = false
         const errores = err.response?.data?.errors

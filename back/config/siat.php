@@ -11,4 +11,7 @@ return [
     'url_qr' => env('URL_SIAT2'),
     'telefono' => env('TELEFONO'),
     'direccion' => env('DIRECCION'),
+
+    // Ruta al XSD oficial de SIAT; si se deja vacia se usa resources/siat
+    'xsd_path' => env('SIAT_XSD_PATH'),
 ];

@@ -442,10 +442,39 @@ class SalesController extends Controller
 
     // ─────────────────────────── Reportes ───────────────────────────
 
+    /**
+     * Normaliza la fecha que llega por URL a 'Y-m-d H:i:s'.
+     * El front envía inputs datetime-local ('2026-09-11T19:02'), por lo que no se
+     * puede concatenar la hora a ciegas: quedaría '2026-09-11T19:02 23:59:59',
+     * que MySQL no interpreta y hace que la consulta no devuelva ninguna fila.
+     */
+    private function normalizarFechaFiltro($valor, bool $finDeRango): string
+    {
+        $valor = trim(str_replace('T', ' ', (string) $valor));
+
+        try {
+            $fecha = Carbon::parse($valor);
+        } catch (\Throwable $e) {
+            $fecha = Carbon::now();
+        }
+
+        // Solo fecha (sin hora): se cubre el día completo
+        if (!preg_match('/\d{1,2}:\d{2}/', $valor)) {
+            return ($finDeRango ? $fecha->endOfDay() : $fecha->startOfDay())->format('Y-m-d H:i:s');
+        }
+
+        // Fecha con hora pero sin segundos: el límite final llega hasta el segundo 59
+        if ($finDeRango && !preg_match('/\d{1,2}:\d{2}:\d{2}/', $valor)) {
+            $fecha->second(59);
+        }
+
+        return $fecha->format('Y-m-d H:i:s');
+    }
+
     public function betweenDates($fechaInicio, $fechaFin, Request $request)
     {
-        $fechaInicio .= ' 00:00:00';
-        $fechaFin    .= ' 23:59:59';
+        $fechaInicio = $this->normalizarFechaFiltro($fechaInicio, false);
+        $fechaFin    = $this->normalizarFechaFiltro($fechaFin, true);
 
         $query = Sales::whereBetween('fechaEmision', [$fechaInicio, $fechaFin])
             ->with(['details', 'client', 'user', 'agencia'])
@@ -463,7 +492,7 @@ class SalesController extends Controller
 
     public function reportTotal($fechaInicio, $fechaFin)
     {
-        return Sales::whereBetween('fechaEmision', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+        return Sales::whereBetween('fechaEmision', [$this->normalizarFechaFiltro($fechaInicio, false), $this->normalizarFechaFiltro($fechaFin, true)])
             ->where('estado', '!=', 'ANULADO')
             ->with('user')
             ->get();
@@ -471,7 +500,7 @@ class SalesController extends Controller
 
     public function reportTotalIngreso($fechaInicio, $fechaFin)
     {
-        return Sales::whereBetween('fechaEmision', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+        return Sales::whereBetween('fechaEmision', [$this->normalizarFechaFiltro($fechaInicio, false), $this->normalizarFechaFiltro($fechaFin, true)])
             ->where('estado', '!=', 'ANULADO')
             ->where('tipoVenta', 'Ingreso')
             ->with('user')
@@ -480,7 +509,7 @@ class SalesController extends Controller
 
     public function reportTotalEgreso($fechaInicio, $fechaFin)
     {
-        return Sales::whereBetween('fechaEmision', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59'])
+        return Sales::whereBetween('fechaEmision', [$this->normalizarFechaFiltro($fechaInicio, false), $this->normalizarFechaFiltro($fechaFin, true)])
             ->where('estado', '!=', 'ANULADO')
             ->where('tipoVenta', 'Egreso')
             ->with('user')

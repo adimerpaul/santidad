@@ -409,7 +409,9 @@ export default {
       saleDialogUpdate: false,
       saleUpate: {},
       dateIni: moment().startOf('day').format('YYYY-MM-DDTHH:mm'),
-      dateFin: moment().add(2, 'minutes').format('YYYY-MM-DDTHH:mm'),
+      // Hasta el final del día: si se dejaba la hora actual, las ventas hechas
+      // después de abrir la página no aparecían al pulsar "Actualizar".
+      dateFin: moment().endOf('day').format('YYYY-MM-DDTHH:mm'),
       loading: false,
       loadingPaquete: {},
       dialogSale: false,

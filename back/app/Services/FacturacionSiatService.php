@@ -549,10 +549,36 @@ XML;
 XML;
     }
 
+    /**
+     * Ubica el XSD oficial de SIAT. El esquema se distribuye con la app
+     * (resources/siat) para no depender de la carpeta hermana siat/, que no
+     * existe en todos los entornos; se puede sobreescribir con SIAT_XSD_PATH.
+     */
+    private function rutaXsdFactura(): ?string
+    {
+        $candidatos = [
+            config('siat.xsd_path'),
+            resource_path('siat/facturaComputarizadaCompraVenta.xsd'),
+            base_path('../siat/facturaComputarizadaCompraVenta.xsd'),
+        ];
+
+        foreach ($candidatos as $candidato) {
+            if (!$candidato) {
+                continue;
+            }
+            $ruta = realpath($candidato);
+            if ($ruta && is_file($ruta)) {
+                return $ruta;
+            }
+        }
+
+        return null;
+    }
+
     private function validateSiatXml(string $xml): void
     {
-        $schemaPath = realpath(base_path('../siat/facturaComputarizadaCompraVenta.xsd'));
-        if (!$schemaPath || !is_file($schemaPath)) {
+        $schemaPath = $this->rutaXsdFactura();
+        if (!$schemaPath) {
             throw new \RuntimeException('No se encontro el XSD de SIAT para validar la factura');
         }
 
