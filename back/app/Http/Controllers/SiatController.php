@@ -107,10 +107,12 @@ class SiatController extends Controller
         $data = $request->validate([
             'codigo_sucursal' => 'nullable|integer|min:0',
             'codigo_punto_venta' => 'required|integer|min:0',
+            'forzar' => 'nullable|boolean',
         ]);
 
         $codigoSucursal = (int) ($data['codigo_sucursal'] ?? config('siat.codigo_sucursal'));
         $codigoPuntoVenta = (int) $data['codigo_punto_venta'];
+        $forzar = (bool) ($data['forzar'] ?? false);
 
         $cuis = Cuis::where('codigoSucursal', $codigoSucursal)
             ->where('codigoPuntoVenta', $codigoPuntoVenta)
@@ -127,7 +129,10 @@ class SiatController extends Controller
             ->latest('id')
             ->first();
 
-        if ($ultimoCufd && $ultimoCufd->fechaVigencia && $ultimoCufd->fechaVigencia->isFuture()) {
+        // Con "forzar" se pide uno nuevo aunque el guardado siga vigente: si otro
+        // sistema solicitó un CUFD para el mismo NIT, el nuestro quedó obsoleto y
+        // SIAT rechaza las facturas con el error 1003 (CUFD inválido).
+        if (!$forzar && $ultimoCufd && $ultimoCufd->fechaVigencia && $ultimoCufd->fechaVigencia->isFuture()) {
             return response()->json([
                 'message' => 'Ya existe un CUFD vigente para este punto de venta',
                 'cufd' => $ultimoCufd,

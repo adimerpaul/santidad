@@ -51,76 +51,21 @@ class FacturacionSiatService
                 return false;
             }
 
-            $fechaEmision = Carbon::now('America/La_Paz');
-            $mili         = str_pad((string) ((int) floor(((int) $fechaEmision->format('u')) / 1000)), 3, '0', STR_PAD_LEFT);
-            $fechaSiat    = $fechaEmision->format('Y-m-d\TH:i:s') . '.' . $mili;
+            $result = $this->emitirFactura($sales, $cuiUltimo, $cufdUltimo, $codigoSucursal, $codigoPuntoVenta);
 
-            $numeroFactura = $sales->numeroFactura && (int) $sales->numeroFactura > 0
-                ? (int) $sales->numeroFactura
-                : ((int) Sales::max('numeroFactura') + 1);
+            // SIAT invalida el CUFD anterior cada vez que se solicita uno nuevo
+            // (otro terminal, otro sistema o el servidor pueden haberlo rotado).
+            // Si rechaza por CUF/CUFD desactualizado se renueva y se reintenta una vez.
+            if (!$this->esRespuestaAceptada($result) && $this->rechazoPorCufdDesactualizado($result)) {
+                error_log("SIAT: CUFD desactualizado en venta #{$sales->id}, solicitando uno nuevo y reintentando");
+                $cufdNuevo = $this->renovarCufd($cuiUltimo, $codigoSucursal, $codigoPuntoVenta);
 
-            $leyenda = $this->leyendaSiat();
+                if ($cufdNuevo) {
+                    $result = $this->emitirFactura($sales, $cuiUltimo, $cufdNuevo, $codigoSucursal, $codigoPuntoVenta);
+                }
+            }
 
-            $cuf = $this->generarCuf(
-                (string) config('siat.nit'),
-                $fechaEmision->format('YmdHis') . $mili,
-                (string) $codigoSucursal,
-                (string) config('siat.codigo_modalidad'),
-                '1', '1', '1',
-                (string) $numeroFactura,
-                (string) $codigoPuntoVenta,
-                (string) $cufdUltimo->codigoControl
-            );
-
-            $sales->numeroFactura         = $numeroFactura;
-            $sales->venta                 = 'F';
-            $sales->cuf                   = $cuf;
-            $sales->cufd                  = $cufdUltimo->codigo;
-            $sales->cui                   = $cuiUltimo->codigo;
-            $sales->codigoSucursal        = $codigoSucursal;
-            $sales->codigoPuntoVenta      = $codigoPuntoVenta;
-            $sales->codigoDocumentoSector = 1;
-            $sales->fechaEmision          = $fechaEmision->format('Y-m-d H:i:s');
-            $sales->leyenda               = $leyenda;
-            $sales->cufd_id               = $cufdUltimo->id;
-            $sales->siatEnviado           = false;
-            $sales->save();
-
-            $xml = $this->buildSiatXml(
-                $sales, $numeroFactura, $cuf,
-                (string) $cufdUltimo->codigo,
-                $codigoSucursal, $codigoPuntoVenta,
-                $fechaSiat, $leyenda
-            );
-
-            $this->validateSiatXml($xml);
-
-            $gzContent   = gzencode($xml, 9);
-            $hashArchivo = hash('sha256', $gzContent);
-            $this->storeSiatXml($sales->id, $xml, $gzContent);
-
-            $payload = [
-                'codigoAmbiente'        => (int) config('siat.codigo_ambiente'),
-                'codigoDocumentoSector' => 1,
-                'codigoEmision'         => 1,
-                'codigoModalidad'       => (int) config('siat.codigo_modalidad'),
-                'codigoPuntoVenta'      => $codigoPuntoVenta,
-                'codigoSistema'         => (string) config('siat.codigo_sistema'),
-                'codigoSucursal'        => $codigoSucursal,
-                'cufd'                  => $cufdUltimo->codigo,
-                'cuis'                  => $cuiUltimo->codigo,
-                'nit'                   => (int) config('siat.nit'),
-                'tipoFacturaDocumento'  => 1,
-                'archivo'               => $gzContent,
-                'fechaEnvio'            => $fechaSiat,
-                'hashArchivo'           => $hashArchivo,
-            ];
-
-            $result      = $this->siatCodeService->recepcionFactura($payload);
-            $transaccion = data_get($result, 'RespuestaServicioFacturacion.transaccion')
-                ?? data_get($result, 'transaccion');
-
-            if (!$transaccion) {
+            if (!$this->esRespuestaAceptada($result)) {
                 error_log('SIAT rechazó factura: ' . json_encode($result));
                 $sales->siatEnviado = false;
                 $sales->save();
@@ -140,6 +85,147 @@ class FacturacionSiatService
             $sales->save();
             return false;
         }
+    }
+
+    /**
+     * Arma el XML, lo firma con el CUF del CUFD recibido y lo envía a SIAT.
+     * Devuelve la respuesta cruda del servicio.
+     */
+    private function emitirFactura(
+        Sales $sales,
+        Cuis $cuis,
+        Cufd $cufd,
+        int $codigoSucursal,
+        int $codigoPuntoVenta
+    ): array {
+        $fechaEmision = Carbon::now('America/La_Paz');
+        $mili         = str_pad((string) ((int) floor(((int) $fechaEmision->format('u')) / 1000)), 3, '0', STR_PAD_LEFT);
+        $fechaSiat    = $fechaEmision->format('Y-m-d\TH:i:s') . '.' . $mili;
+
+        $numeroFactura = $sales->numeroFactura && (int) $sales->numeroFactura > 0
+            ? (int) $sales->numeroFactura
+            : ((int) Sales::max('numeroFactura') + 1);
+
+        $leyenda = $this->leyendaSiat();
+
+        $cuf = $this->generarCuf(
+            (string) config('siat.nit'),
+            $fechaEmision->format('YmdHis') . $mili,
+            (string) $codigoSucursal,
+            (string) config('siat.codigo_modalidad'),
+            '1', '1', '1',
+            (string) $numeroFactura,
+            (string) $codigoPuntoVenta,
+            (string) $cufd->codigoControl
+        );
+
+        $sales->numeroFactura         = $numeroFactura;
+        $sales->venta                 = 'F';
+        $sales->cuf                   = $cuf;
+        $sales->cufd                  = $cufd->codigo;
+        $sales->cui                   = $cuis->codigo;
+        $sales->codigoSucursal        = $codigoSucursal;
+        $sales->codigoPuntoVenta      = $codigoPuntoVenta;
+        $sales->codigoDocumentoSector = 1;
+        $sales->fechaEmision          = $fechaEmision->format('Y-m-d H:i:s');
+        $sales->leyenda               = $leyenda;
+        $sales->cufd_id               = $cufd->id;
+        $sales->siatEnviado           = false;
+        $sales->save();
+
+        $xml = $this->buildSiatXml(
+            $sales, $numeroFactura, $cuf,
+            (string) $cufd->codigo,
+            $codigoSucursal, $codigoPuntoVenta,
+            $fechaSiat, $leyenda
+        );
+
+        $this->validateSiatXml($xml);
+
+        $gzContent   = gzencode($xml, 9);
+        $hashArchivo = hash('sha256', $gzContent);
+        $this->storeSiatXml($sales->id, $xml, $gzContent);
+
+        $payload = [
+            'codigoAmbiente'        => (int) config('siat.codigo_ambiente'),
+            'codigoDocumentoSector' => 1,
+            'codigoEmision'         => 1,
+            'codigoModalidad'       => (int) config('siat.codigo_modalidad'),
+            'codigoPuntoVenta'      => $codigoPuntoVenta,
+            'codigoSistema'         => (string) config('siat.codigo_sistema'),
+            'codigoSucursal'        => $codigoSucursal,
+            'cufd'                  => $cufd->codigo,
+            'cuis'                  => $cuis->codigo,
+            'nit'                   => (int) config('siat.nit'),
+            'tipoFacturaDocumento'  => 1,
+            'archivo'               => $gzContent,
+            'fechaEnvio'            => $fechaSiat,
+            'hashArchivo'           => $hashArchivo,
+        ];
+
+        return $this->siatCodeService->recepcionFactura($payload);
+    }
+
+    private function esRespuestaAceptada(array $result): bool
+    {
+        return (bool) (data_get($result, 'RespuestaServicioFacturacion.transaccion')
+            ?? data_get($result, 'transaccion'));
+    }
+
+    /**
+     * 1002 = CUF inválido, 1003 = CUFD inválido. Ambos aparecen cuando SIAT ya
+     * emitió un CUFD posterior al que tenemos guardado.
+     */
+    private function rechazoPorCufdDesactualizado(array $result): bool
+    {
+        $mensajes = data_get($result, 'RespuestaServicioFacturacion.mensajesList')
+            ?? data_get($result, 'mensajesList')
+            ?? [];
+
+        if (isset($mensajes['codigo'])) {
+            $mensajes = [$mensajes];
+        }
+
+        foreach ($mensajes as $mensaje) {
+            if (in_array((int) data_get($mensaje, 'codigo'), [1002, 1003], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Solicita un CUFD nuevo a SIAT y lo guarda. El CUFD vigente pasa a ser este.
+     */
+    public function renovarCufd(Cuis $cuis, int $codigoSucursal, int $codigoPuntoVenta): ?Cufd
+    {
+        $respuesta = $this->siatCodeService->solicitarCufd([
+            'codigoAmbiente'   => (int) config('siat.codigo_ambiente'),
+            'codigoModalidad'  => (int) config('siat.codigo_modalidad'),
+            'codigoPuntoVenta' => $codigoPuntoVenta,
+            'codigoSistema'    => (string) config('siat.codigo_sistema'),
+            'codigoSucursal'   => $codigoSucursal,
+            'cuis'             => $cuis->codigo,
+            'nit'              => (int) config('siat.nit'),
+        ]);
+
+        $normalizada = $respuesta['RespuestaCufd'] ?? $respuesta;
+
+        if (empty($normalizada['codigo'])) {
+            error_log('SIAT no devolvió un CUFD válido: ' . json_encode($respuesta));
+            return null;
+        }
+
+        return Cufd::create([
+            'codigo'           => $normalizada['codigo'],
+            'codigoControl'    => $normalizada['codigoControl'] ?? null,
+            'direccion'        => config('app.url'),
+            'fechaVigencia'    => Carbon::now()->endOfDay(),
+            'fechaCreacion'    => Carbon::now(),
+            'codigoPuntoVenta' => $codigoPuntoVenta,
+            'codigoSucursal'   => $codigoSucursal,
+        ]);
     }
 
     /**

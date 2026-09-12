@@ -57,8 +57,21 @@
           <q-separator />
           <q-card-actions align="between">
             <q-btn color="primary" icon="verified_user" label="Generar CUIS" :loading="loadingCuis" @click="generarCuis" no-caps />
-            <q-btn color="deep-orange" icon="confirmation_number" label="Generar CUFD" :loading="loadingCufd" @click="generarCufd" no-caps />
+            <q-btn color="deep-orange" icon="confirmation_number" label="Generar CUFD" :loading="loadingCufd" @click="generarCufd()" no-caps />
           </q-card-actions>
+          <q-separator />
+          <q-card-section class="q-pt-sm">
+            <q-btn
+              flat dense no-caps color="deep-orange"
+              icon="autorenew"
+              label="Renovar CUFD (forzar)"
+              :loading="loadingCufd"
+              @click="renovarCufd"
+            />
+            <div class="text-caption text-grey-7 q-mt-xs">
+              Úsalo si SIAT rechaza facturas con «CUFD inválido»: pide uno nuevo aunque el guardado siga vigente.
+            </div>
+          </q-card-section>
         </q-card>
       </div>
 
@@ -293,10 +306,18 @@ export default {
         this.loadingCuis = false
       }
     },
-    async generarCufd () {
+    renovarCufd () {
+      this.$q.dialog({
+        title: 'Renovar CUFD',
+        message: `Se solicitará un CUFD nuevo a SIAT para ${this.sucursalLabel}, aunque el actual siga vigente. El CUFD anterior queda invalidado. ¿Continuar?`,
+        cancel: true,
+        persistent: true
+      }).onOk(() => this.generarCufd(true))
+    },
+    async generarCufd (forzar = false) {
       this.loadingCufd = true
       try {
-        await this.$axios.post('siat/cufds/generar', this.form)
+        await this.$axios.post('siat/cufds/generar', { ...this.form, forzar })
         this.$alert.success('CUFD generado correctamente para ' + this.sucursalLabel)
         await this.loadDashboard()
       } catch (error) {
