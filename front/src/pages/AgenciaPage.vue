@@ -118,8 +118,8 @@
                 >
                   {{ a.status || 'INACTIVO' }}
                 </q-badge>
-                <q-badge v-if="a.sucursal === 1" color="purple" class="q-ml-xs">
-                  Casa Matriz
+                <q-badge color="purple" class="q-ml-xs">
+                  {{ Number(a.sucursal ?? 0) === 0 ? 'Casa Matriz' : 'Sucursal ' + a.sucursal }}
                 </q-badge>
               </div>
               <div class="q-mt-xs text-grey-8" style="font-size: 13px">
@@ -247,7 +247,15 @@
               />
             </div>
             <div class="col-6 col-sm-2 flex items-center">
-              <q-toggle v-model="form.sucursal" :true-value="1" :false-value="0" label="Matriz" dense />
+              <q-input
+                v-model.number="form.sucursal"
+                type="number"
+                min="0"
+                label="Sucursal SIAT"
+                hint="0 = Casa Matriz"
+                outlined
+                dense
+              />
             </div>
 
             <div class="col-12">

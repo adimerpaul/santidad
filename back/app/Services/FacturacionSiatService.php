@@ -574,11 +574,15 @@ class FacturacionSiatService
 XML;
         }
 
+        // La dirección y el teléfono son los de la sucursal que emite; si la
+        // agencia no los tiene cargados se cae a los de casa matriz (.env).
+        $agencia = $sale->agencia;
+
         $razon             = $this->xmlValue((string) env('RAZON', 'Santidad Divina'));
         $nit               = $this->xmlValue((string) config('siat.nit'));
         $municipio         = $this->xmlValue((string) env('MUNICIPIO', 'Oruro'));
-        $telefono          = $this->xmlValue((string) env('TELEFONO', ''));
-        $direccion         = $this->xmlValue((string) env('DIRECCION', ''));
+        $telefono          = $this->xmlValue((string) ($agencia?->telefono ?: env('TELEFONO', '')));
+        $direccion         = $this->xmlValue((string) ($agencia?->direccion ?: env('DIRECCION', '')));
         $nombreRazonSocial = $this->xmlValue((string) ($client->nombreRazonSocial ?: 'SIN NOMBRE'));
         $numeroDocumento   = $this->xmlValue((string) ($client->numeroDocumento   ?: '0'));
         $codigoCliente     = $client->id ?: 0;

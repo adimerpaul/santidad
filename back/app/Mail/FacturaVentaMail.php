@@ -63,6 +63,10 @@ class FacturaVentaMail extends Mailable
     {
         $xml = simplexml_load_string(file_get_contents($xmlPath));
 
+        // Sucursal que emite: 0 es casa matriz, el resto lleva su número
+        $codigoSucursal = (int) $xml->cabecera->codigoSucursal;
+        $sucursalLabel  = $codigoSucursal === 0 ? 'CASA MATRIZ' : 'SUCURSAL ' . $codigoSucursal;
+
         // CUF con saltos cada 20 caracteres
         $cuf    = '';
         $rawCuf = (string) $xml->cabecera->cuf;
@@ -146,7 +150,7 @@ class FacturaVentaMail extends Mailable
     <tr>
         <td width="40%" valign="top">
             <div class="bold center">{$xml->cabecera->razonSocialEmisor}</div>
-            <div class="bold center">CASA MATRIZ</div>
+            <div class="bold center">{$sucursalLabel}</div>
             <div class="center">No. Punto de Venta {$xml->cabecera->codigoPuntoVenta}</div>
             <div class="center">{$xml->cabecera->direccion}</div>
             <div class="center">Teléfono: {$xml->cabecera->telefono}</div>

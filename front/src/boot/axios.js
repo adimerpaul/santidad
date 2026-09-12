@@ -58,7 +58,14 @@ export default boot(({ app, router }) => {
       // console.log(res.data)
       useCounterStore().user = res.data.user
       useCounterStore().env = res.data.env
-      // useCounterStore().agencia_id = res.data.agencia_id
+      // La agencia del usuario puede haber cambiado desde el último login. Sin
+      // esto, agencia_id se quedaba con el valor viejo guardado al iniciar
+      // sesión y las ventas se emitían con la sucursal SIAT equivocada.
+      const agenciaId = res.data.user?.agencia_id
+      if (agenciaId) {
+        useCounterStore().agencia_id = parseInt(agenciaId)
+        localStorage.setItem('agencia_id', agenciaId)
+      }
     }).catch(() => {
       app.config.globalProperties.$axios.defaults.headers.common.Authorization = ''
       useCounterStore().user = {}

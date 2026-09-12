@@ -240,7 +240,7 @@ class SalesController extends Controller
         $online = $this->facturacionService->procesar($sale);
         $this->enviarCorreoFactura($sale, $online);
 
-        return Sales::with(['details.product', 'client'])->find($sale->id);
+        return Sales::with(['details.product', 'client', 'agencia'])->find($sale->id);
     }
 
     // ─────────────────────────── Actualizar venta ───────────────────────────
@@ -437,7 +437,7 @@ class SalesController extends Controller
         ]);
         $detail->save();
 
-        return Sales::with(['details', 'client'])->find($sale->id);
+        return Sales::with(['details', 'client', 'agencia'])->find($sale->id);
     }
 
     // ─────────────────────────── Reportes ───────────────────────────

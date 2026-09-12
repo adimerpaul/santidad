@@ -3,6 +3,26 @@ import { useCounterStore } from 'stores/example-store'
 import { Printd } from 'printd'
 import conversor from 'conversor-numero-a-letras-es-ar'
 export class Imprimir {
+  /**
+   * Datos de la sucursal que emite el documento. Se toman de la agencia de la
+   * venta (cada agencia tiene su código de sucursal SIAT) y, si falta alguno,
+   * se cae a los datos de casa matriz configurados en el .env del backend.
+   */
+  static emisor (factura) {
+    const env = useCounterStore().env || {}
+    const agencia = factura.agencia || {}
+    const codigoSucursal = Number(
+      factura.codigoSucursal ?? agencia.sucursal ?? 0
+    )
+
+    return {
+      sucursal: codigoSucursal === 0 ? 'Casa Matriz' : `Sucursal ${codigoSucursal}`,
+      puntoVenta: Number(factura.codigoPuntoVenta ?? 0),
+      direccion: agencia.direccion || env.direccion || '',
+      telefono: agencia.telefono || env.telefono || ''
+    }
+  }
+
   static factura (factura) {
     return new Promise((resolve, reject) => {
       const ClaseConversor = conversor.conversorNumerosALetras
@@ -20,15 +40,15 @@ export class Imprimir {
         }
       }
       const env = useCounterStore().env
+      const emisor = this.emisor(factura)
       QRCode.toDataURL(env.url2 + 'consulta/QR?nit=' + env.nit + '&cuf=' + factura.cuf + '&numero=' + factura.numeroFactura + '&t=2', opts).then(url => {
         let cadena = `${this.head()}
   <div style='padding-left: 0.5cm;padding-right: 0.5cm'>
       <div class='titulo'>FACTURA <br>CON DERECHO A CREDITO FISCAL</div>
-      <div class='titulo2'>${env.razon} <br>
-      Casa Matriz<br>
-      No. Punto de Venta 0<br>
-${env.direccion}<br>
-Tel. ${env.telefono}<br>
+      <div class='titulo2'>${emisor.sucursal}<br>
+      No. Punto de Venta ${emisor.puntoVenta}<br>
+${emisor.direccion}<br>
+Tel. ${emisor.telefono}<br>
 Oruro</div>
 <hr>
 <div class='titulo'>NIT</div>
@@ -115,17 +135,16 @@ Oruro</div>
           light: '#FFF'
         }
       }
-      const env = useCounterStore().env
+      const emisor = this.emisor(factura)
       QRCode.toDataURL(`Fecha: ${factura.fechaEmision} Monto: ${parseFloat(factura.montoTotal).toFixed(2)}`, opts).then(url => {
         let cadena = `${this.head()}
   <div style='padding-left: 0.5cm;padding-right: 0.5cm'>
   <img src="logo.png" alt="logo" style="width: 100px; height: 100px; display: block; margin-left: auto; margin-right: auto;">
       <div class='titulo'>${factura.tipoVenta === 'Egreso' ? 'NOTA DE EGRESO' : 'NOTA DE VENTA'}</div>
-      <div class='titulo2'>${env.razon} <br>
-      Casa Matriz<br>
-      No. Punto de Venta 0<br>
-${env.direccion}<br>
-Tel. ${env.telefono}<br>
+      <div class='titulo2'>${emisor.sucursal}<br>
+      No. Punto de Venta ${emisor.puntoVenta}<br>
+${emisor.direccion}<br>
+Tel. ${emisor.telefono}<br>
 Oruro</div>
 <hr>
 <table>
