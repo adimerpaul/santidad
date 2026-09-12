@@ -32,6 +32,12 @@ class FacturacionSiatService
             $codigoSucursal   = (int) ($sales->agencia?->sucursal ?? $sales->user?->agencia?->sucursal ?? 0);
             $codigoPuntoVenta = 0;
 
+            // Sucursal 0 = agencia no habilitada para facturar en SIAT. La venta
+            // se queda como nota de venta: sin factura, sin XML y sin correo.
+            if ($codigoSucursal === 0) {
+                return false;
+            }
+
             $cuiUltimo = Cuis::where('fechaVigencia', '>', date('Y-m-d H:i:s'))
                 ->where('codigoSucursal', $codigoSucursal)
                 ->where('codigoPuntoVenta', $codigoPuntoVenta)

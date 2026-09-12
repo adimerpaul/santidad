@@ -74,7 +74,14 @@ class SalesController extends Controller
 
         DB::beginTransaction();
         try {
-            $agencia_id = (int) $request->agencia_id;
+            // Solo el administrador puede vender a nombre de otra agencia (es el
+            // único con el selector habilitado). Para el resto se impone la
+            // agencia del usuario: si el navegador manda un id viejo, la venta
+            // se registraría en otra sucursal y facturaría donde no corresponde.
+            $usuario = $request->user();
+            $agencia_id = (string) $usuario->id === '1' || !$usuario->agencia_id
+                ? (int) $request->agencia_id
+                : (int) $usuario->agencia_id;
             $productosProcesados = [];
             $montoBaseCentavos = 0;
             $descuentoProductoCentavos = 0;
@@ -238,7 +245,12 @@ class SalesController extends Controller
 
         // SIAT y correo fuera de la transacción; un fallo no cancela la venta
         $online = $this->facturacionService->procesar($sale);
-        $this->enviarCorreoFactura($sale, $online);
+
+        // El correo solo sale cuando la venta llegó a ser factura. Las notas de
+        // venta (cliente sin NIT, o agencia con sucursal 0) no envían nada.
+        if ($sale->venta === 'F' && (int) $sale->numeroFactura > 0) {
+            $this->enviarCorreoFactura($sale, $online);
+        }
 
         return Sales::with(['details.product', 'client', 'agencia'])->find($sale->id);
     }

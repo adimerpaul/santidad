@@ -53,7 +53,7 @@
             <q-select class="bg-white" label="Agencia" dense outlined v-model="agencia_id"
                       :options="agencias" map-options emit-value
                       option-value="id" option-label="nombre"
-                      @update:model-value="productsGet"
+                      @update:model-value="agenciaSeleccionada"
                       :disable="!($store.user.id=='1')"
             />
           </div>
@@ -686,6 +686,8 @@ export default {
   data () {
     return {
       agencia_id: parseInt(localStorage.getItem('agencia_id')),
+      // El administrador eligió una agencia distinta a la suya en el selector
+      agenciaElegidaManual: false,
       caja_numero: normalizarCaja(localStorage.getItem(CAJA_STORAGE_KEY)),
       terminalConfigDialogOpen: false,
       cajasOptions: [
@@ -768,6 +770,18 @@ export default {
     }
   },
   watch: {
+    // La agencia del usuario se conoce recién cuando responde 'me', que puede
+    // llegar después de montar esta página. Sin esto quedaba seleccionada la
+    // agencia guardada en el login anterior y la venta se emitía con la
+    // sucursal SIAT equivocada. El administrador puede cambiarla a mano y su
+    // elección manda.
+    '$store.user.agencia_id' (agenciaUsuario) {
+      if (!agenciaUsuario || this.agenciaElegidaManual) return
+      if (parseInt(agenciaUsuario) === this.agencia_id) return
+
+      this.agencia_id = parseInt(agenciaUsuario)
+      this.productsGet()
+    },
     'client.numeroDocumento' () { this.syncClientDisplayDebounced() },
     'client.complemento' () { this.syncClientDisplayDebounced() },
     'client.nombreRazonSocial' () { this.syncClientDisplayDebounced() },
@@ -1055,6 +1069,13 @@ export default {
 
       this.documents = this.$store.documents.map(r => ({ ...r, label: r.descripcion }))
       this.document = this.documents[0]
+    },
+
+    // El selector solo está habilitado para el administrador: marcar la
+    // elección evita que la agencia del usuario la vuelva a sobreescribir.
+    agenciaSeleccionada () {
+      this.agenciaElegidaManual = true
+      this.productsGet()
     },
 
     saleInsert () {
