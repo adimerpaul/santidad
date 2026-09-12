@@ -23,3 +23,11 @@ export function formatPayable (value) {
 export function formatSalePrice (value) {
   return roundSalePrice(value).toFixed(2)
 }
+
+export function hasProductSavings (product) {
+  const percentage = Number(product?.porcentajeEfectivo ?? product?.porcentaje ?? 0)
+  const original = Number(product?.precio)
+  const sale = Number(product?.precioVenta ?? product?.precio)
+  return percentage > 0 && Number.isFinite(original) && Number.isFinite(sale) &&
+    roundCurrency(sale) < roundCurrency(original)
+}

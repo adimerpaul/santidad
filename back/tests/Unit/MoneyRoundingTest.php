@@ -9,15 +9,15 @@ use PHPUnit\Framework\TestCase;
 
 class MoneyRoundingTest extends TestCase
 {
-    public function test_product_prices_and_cost_are_stored_with_one_decimal(): void
+    public function test_product_base_prices_preserve_cents_and_cost_keeps_its_rounding(): void
     {
         $product = new Product();
         $product->precio = 10.06;
         $product->precioAntes = 12.04;
         $product->costo = 7.76;
 
-        $this->assertEquals(10.1, $product->precio);
-        $this->assertEquals(12.0, $product->precioAntes);
+        $this->assertEquals(10.06, $product->precio);
+        $this->assertEquals(12.04, $product->precioAntes);
         $this->assertEquals(7.8, $product->costo);
     }
 
@@ -38,6 +38,22 @@ class MoneyRoundingTest extends TestCase
         $product->porcentaje = 15;
 
         $this->assertEquals(0.3, $product->precioVentaRedondeado());
+    }
+
+    public function test_manual_discount_is_applied_before_rounding_to_tenths(): void
+    {
+        $product = new Product();
+        $product->precio = 0.46;
+        $product->porcentaje = 8;
+
+        $this->assertEquals(0.46, $product->precio);
+        $this->assertEquals(0.4, $product->precioVenta);
+        $this->assertEquals(1.2, Money::roundToCents($product->precioVenta * 3));
+
+        $product->precio = 0.49;
+        $this->assertEquals(0.5, $product->precioVenta);
+        $product->porcentaje = 0;
+        $this->assertEquals(0.5, $product->precioVenta);
     }
 
     public function test_cart_can_multiply_the_official_rounded_unit_price_directly(): void
@@ -70,13 +86,13 @@ class MoneyRoundingTest extends TestCase
         $this->assertEquals(0.3, Money::roundToTenth(0.26));
     }
 
-    public function test_purchase_price_and_total_are_stored_with_one_decimal(): void
+    public function test_purchase_unit_price_preserves_cents_and_total_keeps_its_rounding(): void
     {
         $buy = new Buy();
         $buy->price = 10.06;
         $buy->total = 30.18;
 
-        $this->assertEquals(10.1, $buy->price);
+        $this->assertEquals(10.06, $buy->price);
         $this->assertEquals(30.2, $buy->total);
     }
 }

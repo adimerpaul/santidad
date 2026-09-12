@@ -78,7 +78,7 @@
                         style="transition: all 0.2s ease;"
                         :style="$store.productosCompra.find(item => item.id === p.id) ? 'border: 3px solid #21ba45;' : ''"
                       >
-                        <q-badge color="red" floating style="padding: 5px 8px; margin: 0px; z-index: 15;" v-if="p.porcentaje">
+                        <q-badge color="red" floating style="padding: 5px 8px; margin: 0px; z-index: 15;" v-if="hasProductSavings(p)">
                           {{p.porcentaje}}%
                         </q-badge>
 
@@ -115,7 +115,7 @@
                       <q-card-section class="q-pa-none q-ma-none">
                         <div
                           class="product-sale-price-card"
-                          :class="{ 'product-sale-price-card--offer': Number(p.porcentaje) > 0 }"
+                          :class="{ 'product-sale-price-card--offer': hasProductSavings(p) }"
                         >
                           <div class="product-sale-price-card__heading">
                             <q-icon name="point_of_sale" />
@@ -125,7 +125,7 @@
                             <small>Bs</small>
                             <strong>{{ formatCurrency(p.precioVenta ?? p.precio) }}</strong>
                           </div>
-                          <div v-if="Number(p.porcentaje) > 0" class="product-sale-price-card__comparison">
+                          <div v-if="hasProductSavings(p)" class="product-sale-price-card__comparison">
                             <span class="product-sale-price-card__metric">
                               <small>Antes</small>
                               <s>Bs {{ formatCurrency(p.precio) }}</s>
@@ -271,9 +271,9 @@
                         <input v-model="props.row.cantidadCompra" type="number" min="1" placeholder="Cantidad" style="width: 170px;"
                                :class="{'invalid-date': props.row._cantidadError}"
                                @input="props.row._cantidadError=false"/><br>
-                        <input v-model="props.row.price" type="number" step="0.1" min="0" placeholder="Precio" style="width: 170px;"
+                        <input v-model="props.row.price" type="number" step="0.01" min="0" placeholder="Precio" style="width: 170px;"
                                :class="{'invalid-date': props.row._precioError}"
-                               @blur="props.row.price = (props.row.price !== '' && props.row.price !== null) ? (Math.round(Number(props.row.price) * 10) / 10) : props.row.price"
+                               @blur="props.row.price = (props.row.price !== '' && props.row.price !== null) ? roundCurrency(props.row.price) : props.row.price"
                                @input="props.row._precioError=false"/><br>
 
                         <div><b>Subtotal:</b> {{(Math.round((props.row.price*props.row.cantidadCompra)*10)/10).toFixed(1)}} Bs</div>
@@ -535,7 +535,7 @@
 
 <script>
 import { date } from 'quasar'
-import { formatCurrency as formatMoney } from 'src/utils/money'
+import { formatCurrency as formatMoney, roundCurrency, hasProductSavings } from 'src/utils/money'
 
 export default {
   name: 'ComprasPage',
@@ -637,6 +637,8 @@ export default {
     this.agenciasGet()
   },
   methods: {
+    hasProductSavings,
+    roundCurrency,
     formatCurrency (value) {
       return formatMoney(value)
     },
@@ -680,7 +682,7 @@ export default {
         p._cantidadError = false
         p._precioError = false
         if (p.price !== '' && p.price !== null) {
-          p.price = Math.round(Number(p.price) * 10) / 10
+          p.price = roundCurrency(p.price)
         }
         if (
           p.lote === '' || p.fechaVencimiento === '' || p.cantidadCompra === '' || p.price === '' ||
@@ -888,7 +890,7 @@ export default {
       // returdir el 30 porciento
       let total = 0
       this.$store.productosCompra.forEach(p => {
-        const precio = Math.round((parseFloat(p.price) || 0) * 10) / 10
+        const precio = roundCurrency(p.price)
         const cantidad = parseFloat(p.cantidadCompra) || 0
         total += Math.round(precio * cantidad * 10) / 10
       })
@@ -937,7 +939,7 @@ export default {
         _cantidadError: false,
         _precioError: false,
         _tocoFecha: false,
-        price: product.precio ? (Math.round(Number(product.precio) * 10) / 10) : (product.precioVenta ? (Math.round(Number(product.precioVenta) * 10) / 10) : 0),
+        price: roundCurrency(product.precio ?? product.precioVenta ?? 0),
         cantidadReal: product.cantidad,
         agencia_destino: this.agencia_id
       })

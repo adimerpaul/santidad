@@ -44,7 +44,7 @@ class ProductController extends Controller
             $pricing = $this->promotionPricing->resolve($producto, 'physical', $agencia_id ? (int) $agencia_id : null);
             $precios[] = [
                 'id' => (int) $producto->id,
-                'precio' => round((float) $producto->precio, 1),
+                'precio' => $pricing['precio_original'],
                 'precioVenta' => $pricing['precio_venta'],
                 'porcentajeEfectivo' => $pricing['porcentaje'],
                 'promocion' => $pricing['promocion_nombre'],
@@ -752,7 +752,7 @@ class ProductController extends Controller
                 ? (float) $antesRaw : null;
 
             $precio_antes = null;
-            $precio_ahora = $precioBase;
+            $precio_ahora = $pricing['precio_venta'];
 
             if ($porcentaje > 0) {
                 $baseAntes   = ($precioAntes && $precioAntes > 0) ? $precioAntes : $precioBase;
@@ -761,7 +761,7 @@ class ProductController extends Controller
             } else {
                 if ($precioAntes && $precioAntes > 0) {
                     $precio_antes = $precioAntes;
-                    $precio_ahora = $precioBase;
+                    $precio_ahora = $pricing['precio_venta'];
                 }
             }
 

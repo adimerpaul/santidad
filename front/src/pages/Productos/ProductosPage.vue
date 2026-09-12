@@ -194,7 +194,7 @@
 <script>
 import CategoriComponent from 'pages/Productos/CategoriComponent.vue'
 import ProductionOptionComponent from 'pages/Productos/ProductionOptionComponent.vue'
-import { formatCurrency as formatMoney } from 'src/utils/money'
+import { formatCurrency as formatMoney, hasProductSavings } from 'src/utils/money'
 export default {
   name: 'ProductosPage',
   components: {
@@ -265,7 +265,7 @@ export default {
       return formatMoney(Math.max(0, precioAnterior - precioVenta))
     },
     descuentoVisible (product) {
-      return Number(product?.porcentajeEfectivo ?? product?.porcentaje ?? 0)
+      return hasProductSavings(product) ? Number(product.porcentajeEfectivo ?? product.porcentaje ?? 0) : 0
     },
 
     subcategoriesGet () {

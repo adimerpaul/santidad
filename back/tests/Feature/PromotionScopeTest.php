@@ -73,6 +73,48 @@ class PromotionScopeTest extends TestCase
         return $this->postJson('/api/promotions', $this->payload($overrides))->assertCreated()->json('id');
     }
 
+    public function test_base_price_cents_survive_saving_and_manual_discount_checkout(): void
+    {
+        $product = Product::findOrFail(1);
+        $product->timestamps = false;
+        $product->precio = 0.46;
+        $product->porcentaje = 8;
+        $product->save();
+        $this->assertEquals(0.46, $product->fresh()->precio);
+
+        $this->postJson('/api/verificar-stock-venta', [
+            'agencia_id' => 1,
+            'productos' => [['id' => 1, 'cantidadVenta' => 0]],
+        ])->assertOk()->assertJsonPath('precios.0.precio', 0.46)
+            ->assertJsonPath('precios.0.precioVenta', 0.4);
+    }
+
+    public function test_promotion_discount_uses_cents_and_competes_with_manual_discount(): void
+    {
+        DB::table('products')->where('id', 1)->update(['precio' => 0.46, 'porcentaje' => 5]);
+        $promotionId = $this->createPromotion(['porcentaje' => 8]);
+        $pricing = app(PromotionPricingService::class);
+        foreach (['physical', 'web', 'app'] as $channel) {
+            $price = $pricing->resolve(Product::findOrFail(1), $channel, 1);
+            $this->assertEquals(0.46, $price['precio_original']);
+            $this->assertEquals(0.4, $price['precio_venta']);
+            $this->assertEquals(8, $price['porcentaje']);
+            $this->assertSame($promotionId, $price['promocion_id']);
+        }
+
+        $web = collect($this->getJson('/api/productos?agencia_id=1')->assertOk()->json('data'))->firstWhere('id', 1);
+        $app = collect($this->getJson('/api/app/productos?agencia_id=1')->assertOk()->json('data'))->firstWhere('id', 1);
+        $this->assertEquals(0.46, $web['precio']);
+        $this->assertEquals(0.4, $web['precioVenta']);
+        $this->assertEquals(0.4, $app['precio']);
+
+        DB::table('products')->where('id', 1)->update(['porcentaje' => 30]);
+        $price = $pricing->resolve(Product::findOrFail(1), 'physical', 1);
+        $this->assertEquals(30, $price['porcentaje']);
+        $this->assertEquals(0.3, $price['precio_venta']);
+        $this->assertNull($price['promocion_id']);
+    }
+
     public function test_offers_can_be_disabled_and_reenabled_for_a_physical_only_promotion(): void
     {
         $payload = $this->payload(['canal_web' => false, 'canal_app' => false]);

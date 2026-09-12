@@ -116,7 +116,7 @@ class SalesController extends Controller
                 }
 
                 $subtotalCentavos = $cantidad * $precioVentaCentavos;
-                $descuentoLineaCentavos = $cantidad * ($precioOriginalCentavos - $precioVentaCentavos);
+                $descuentoLineaCentavos = $cantidad * max(0, $precioOriginalCentavos - $precioVentaCentavos);
                 $montoBaseCentavos += $subtotalCentavos;
                 $descuentoProductoCentavos += $descuentoLineaCentavos;
 

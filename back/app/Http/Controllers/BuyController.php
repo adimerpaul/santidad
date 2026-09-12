@@ -256,7 +256,7 @@ class BuyController extends Controller{
         $buy->product_id= $request->product_id;
         $buy->lote= $request->lote;
         $buy->quantity= $request->quantity;
-        $buy->price= round((float) $request->price, 1);
+        $buy->price= round((float) $request->price, 2);
         $buy->total= round((float) ($request->quantity * $buy->price), 1);
         $buy->dateExpiry= $request->dateExpiry;
         $buy->agencia_id= $request->user()->agencia_id;
@@ -304,7 +304,7 @@ class BuyController extends Controller{
                 $buyNew->lote = $buy['lote'];
                 $buyNew->quantity = $buy['cantidadCompra'];
                 $buyNew->cantidadVendida = $buy['cantidadCompra'];
-                $buyNew->price = round((float) $buy['price'], 1);
+                $buyNew->price = round((float) $buy['price'], 2);
                 $buyNew->total = round((float) ($buy['cantidadCompra'] * $buyNew->price), 1);
                 $buyNew->dateExpiry = $buy['fechaVencimiento'];
                 $itemDestino = isset($buy['agencia_destino']) ? $buy['agencia_destino'] : $request->agencia_id;
@@ -348,7 +348,7 @@ class BuyController extends Controller{
                     $product->cantidadSucursal10 = $product->cantidadSucursal10 + $buy['cantidadCompra'];
                 }
 
-                $product->precio = round((float) $buy['price'], 1);
+                $product->precio = $buyNew->price;
                 $product->costo = round((float) ($buyNew->price / 1.3), 1);
                 $product->save();
             }
@@ -386,7 +386,7 @@ class BuyController extends Controller{
                 'message' => 'Compra realizada con éxito',
                 'buy_ids' => $buyIds,
                 'total_compra' => round(collect($request->buys)->sum(function($b) {
-                    $precio = round((float) $b['price'], 1);
+                    $precio = round((float) $b['price'], 2);
                     return round((float) $b['cantidadCompra'] * $precio, 1);
                 }), 1)
             ]);

@@ -132,9 +132,9 @@
               label-color="black"
               outlined
               type="number"
-              step="0.1"
+              step="0.01"
               v-model="product.precio"
-              @blur="product.precio = product.precio ? (Math.round(Number(product.precio) * 10) / 10) : product.precio"
+              @blur="product.precio = product.precio ? roundCurrency(product.precio) : product.precio"
               label="Precio*"
               dense
               hint="Valor que le cobras a tus clientes por el producto"
@@ -330,6 +330,7 @@
 <script>
 import DetailProducts from 'pages/Productos/DetailProducts.vue'
 import moment from 'moment/moment'
+import { roundCurrency, formatSalePrice } from 'src/utils/money'
 export default {
   name: 'ProductOptionComponentPage',
   components: {
@@ -424,6 +425,7 @@ export default {
   },
 
   methods: {
+    roundCurrency,
     historySucursalProduct (product) {
       this.loading = true
       this.sucursalShow = { nombre: 'Todo' }
@@ -604,7 +606,7 @@ export default {
     productSave () {
       this.loading = true
       if (this.product.precio !== null && this.product.precio !== '') {
-        this.product.precio = Math.round(Number(this.product.precio) * 10) / 10
+        this.product.precio = roundCurrency(this.product.precio)
       }
       if (this.productAction === 'create') {
         this.$axios.post('products', this.product).then(res => {
@@ -636,10 +638,9 @@ export default {
   },
   computed: {
     precioVenta () {
-      const precio = this.product.precio == null ? 0 : Number(this.product.precio)
-      const porcentaje = this.product.porcentaje == null ? 0 : Number(this.product.porcentaje)
-      const precioVenta = (Math.round((precio - (precio * porcentaje / 100) + Number.EPSILON) * 10) / 10).toFixed(2)
-      return precioVenta
+      const precio = roundCurrency(this.product.precio)
+      const porcentaje = Math.max(0, Math.min(100, Number(this.product.porcentaje || 0)))
+      return formatSalePrice(precio * (1 - porcentaje / 100))
     },
     porcentaje () {
       const precio = this.product.precio == null ? 0 : this.product.precio

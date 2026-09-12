@@ -82,7 +82,7 @@
                         style="transition: all 0.2s ease;"
                         :style="$store.productosVenta.find(item => item.id === p.id) ? 'border: 3px solid #21ba45;' : ''"
                       >
-                        <q-badge color="red" floating style="padding: 5px 8px; margin: 0px; z-index: 15;" v-if="p.porcentaje">
+                        <q-badge color="red" floating style="padding: 5px 8px; margin: 0px; z-index: 15;" v-if="hasProductSavings(p)">
                           {{p.porcentaje}}%
                         </q-badge>
 
@@ -119,7 +119,7 @@
                       <q-card-section class="q-pa-none q-ma-none">
                         <div
                           class="product-sale-price-card"
-                          :class="{ 'product-sale-price-card--offer': Number(p.porcentaje) > 0 }"
+                          :class="{ 'product-sale-price-card--offer': hasProductSavings(p) }"
                         >
                           <div class="product-sale-price-card__heading">
                             <q-icon name="point_of_sale" />
@@ -129,7 +129,7 @@
                             <small>Bs</small>
                             <strong>{{ formatCurrency(p.precioVenta ?? p.precio) }}</strong>
                           </div>
-                          <div v-if="Number(p.porcentaje) > 0" class="product-sale-price-card__comparison">
+                          <div v-if="hasProductSavings(p)" class="product-sale-price-card__comparison">
                             <span class="product-sale-price-card__metric">
                               <small>Antes</small>
                               <s>Bs {{ formatCurrency(p.precio) }}</s>
@@ -220,7 +220,7 @@
                           <div class="text-grey">Stock Real: {{props.row.cantidadReal}}
                             (
                             <span style="font-size: 10px">{{props.row.precio ? formatCurrency(props.row.precio) : props.row.precio}} Bs </span>
-                            <span style="font-size: 10px" class="text-red text-bold" v-if="props.row.porcentaje">{{formatCurrency(props.row.precioVenta)}} Bs</span>
+                            <span style="font-size: 10px" class="text-red text-bold" v-if="hasProductSavings(props.row)">{{formatCurrency(props.row.precioVenta)}} Bs</span>
                             )
                           </div>
                           <div class="cart-sale-price-label">
@@ -632,7 +632,7 @@
           <span>💡 <b>Rueda del mouse</b> o botones para Zoom • <b>Arrastra</b> para mover</span>
           <span class="text-white text-bold">
             Precio: {{ productoImagenSeleccionado?.precio ? formatCurrency(productoImagenSeleccionado.precio) : productoImagenSeleccionado?.precio }} Bs
-            <span v-if="productoImagenSeleccionado?.porcentaje" class="text-red-4 q-ml-xs">
+            <span v-if="hasProductSavings(productoImagenSeleccionado)" class="text-red-4 q-ml-xs">
               ({{ formatCurrency(productoImagenSeleccionado.precioVenta) }} Bs)
             </span>
           </span>
@@ -660,7 +660,7 @@
 
 <script>
 import { Imprimir } from 'src/addons/Imprimir'
-import { formatCurrency as formatMoney, formatPayable, roundCurrency, roundPayable } from 'src/utils/money'
+import { formatCurrency as formatMoney, formatPayable, roundCurrency, roundPayable, hasProductSavings } from 'src/utils/money'
 
 const TERMINAL_CONFIG_PASSWORD = '2202'
 const CAJA_STORAGE_KEY = 'caja_numero'
@@ -876,7 +876,7 @@ export default {
       this.$store.productosVenta.forEach(p => {
         const precioOriginal = roundCurrency(p.precio)
         const precioConDescuento = roundCurrency(p.precioVenta)
-        s = s + ((precioOriginal - precioConDescuento) * p.cantidadVenta)
+        s = s + (Math.max(0, precioOriginal - precioConDescuento) * p.cantidadVenta)
       })
       return formatMoney(s)
     },
@@ -922,7 +922,7 @@ export default {
       let s = 0
       this.$store.productosVenta.forEach(p => {
         const precio = roundCurrency(p.precio)
-        s = s + (precio - roundCurrency(p.precioVenta)) * p.cantidadVenta
+        s = s + Math.max(0, precio - roundCurrency(p.precioVenta)) * p.cantidadVenta
       })
       return formatMoney(s)
     },
@@ -941,6 +941,7 @@ export default {
     }
   },
   methods: {
+    hasProductSavings,
     formatCurrency (value) {
       return formatMoney(value)
     },

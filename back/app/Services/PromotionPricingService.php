@@ -16,7 +16,8 @@ class PromotionPricingService
 
     public function resolve(Product $product, string $channel, ?int $agenciaId = null): array
     {
-        $precioOriginal = round((float) $product->precio, 1);
+        // Conservar los centavos del precio base; redondear a décimas solo al cobrar.
+        $precioOriginal = Money::roundToCents($product->precio);
         $porcentajeBase = $this->normalizePercentage($product->porcentaje ?? 0);
         $mostrarEnOfertas = false;
 

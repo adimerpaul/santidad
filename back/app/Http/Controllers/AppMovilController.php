@@ -343,7 +343,7 @@ class AppMovilController extends Controller
         $precioFinal = $pricing['precio_venta'];
         $precioAntes = $porcentaje > 0
             ? $pricing['precio_original']
-            : ($p->precioAntes ? round((float) $p->precioAntes, 1) : 0);
+            : ($p->precioAntes ? round((float) $p->precioAntes, 2) : 0);
 
         return [
             'id'                 => $p->id,

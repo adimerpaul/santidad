@@ -66,12 +66,12 @@ class Product extends Model
 
     public function setPrecioAttribute($value)
     {
-        $this->attributes['precio'] = ($value !== null && $value !== '') ? round((float) $value, 1) : null;
+        $this->attributes['precio'] = ($value !== null && $value !== '') ? Money::roundToCents($value) : null;
     }
 
     public function setPrecioAntesAttribute($value)
     {
-        $this->attributes['precioAntes'] = ($value !== null && $value !== '') ? round((float) $value, 1) : null;
+        $this->attributes['precioAntes'] = ($value !== null && $value !== '') ? Money::roundToCents($value) : null;
     }
 
     public function setCostoAttribute($value)
@@ -82,7 +82,7 @@ class Product extends Model
     /** Precio unitario efectivo que se cobra, redondeado a Bs 0,10. */
     public function precioVentaRedondeado(): float
     {
-        $precio = round((float) $this->precio, 1);
+        $precio = Money::roundToCents($this->precio);
         $porcentaje = max(0, min(100, (float) ($this->porcentaje ?? 0)));
 
         return Money::roundToTenth($precio - ($precio * $porcentaje / 100));

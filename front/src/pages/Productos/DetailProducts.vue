@@ -8,7 +8,7 @@
       </q-img>
     </div>
     <q-card-section class="q-pa-none q-ma-none">
-      <div class="text-center text-subtitle2">{{ product.precio ? (Math.round(Number(product.precio) * 10) / 10).toFixed(1) : product.precio }} Bs</div>
+      <div class="text-center text-subtitle2">{{ product.precio ? Number(product.precio).toFixed(2) : product.precio }} Bs</div>
       <div :class="product.cantidad<=0?'text-center text-bold text-red':' text-center text-bold'">
         {{ product.cantidad }}
         Disponible
@@ -31,7 +31,7 @@
             Precio
           </div>
           <div class="col-12 col-md-6">
-            <div class="text-grey text-caption text-right">{{ product.precio ? (Math.round(Number(product.precio) * 10) / 10).toFixed(1) : product.precio }} Bs</div>
+            <div class="text-grey text-caption text-right">{{ product.precio ? Number(product.precio).toFixed(2) : product.precio }} Bs</div>
           </div>
 <!--          <div class="col-12 col-md-6 text-subtitle2 text-bold text-red">-->
 <!--            <q-icon name="o_paid" class="text-red" size="20px" />-->

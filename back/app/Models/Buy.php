@@ -34,7 +34,7 @@ class Buy extends Model
 
     public function setPriceAttribute($value)
     {
-        $this->attributes['price'] = ($value !== null && $value !== '') ? round((float) $value, 1) : null;
+        $this->attributes['price'] = ($value !== null && $value !== '') ? round((float) $value, 2) : null;
     }
 
     public function setTotalAttribute($value)
