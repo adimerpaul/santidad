@@ -502,6 +502,7 @@ export default {
           await this.$axios.post('promotions', this.payload())
         }
         this.$q.notify({ type: 'positive', icon: 'check_circle', message: 'Promoción guardada correctamente.' })
+        window.dispatchEvent(new Event('promotions-changed'))
         this.dialogo = false
         await this.cargarPromociones()
       } catch (error) {
@@ -520,6 +521,7 @@ export default {
       }).onOk(async () => {
         try {
           await this.$axios.delete(`promotions/${promocion.id}`)
+          window.dispatchEvent(new Event('promotions-changed'))
           this.$q.notify({ type: 'positive', message: 'Promoción eliminada.' })
           await this.cargarPromociones()
         } catch (error) {

@@ -1,7 +1,7 @@
 <template>
   <q-layout view="lHh Lpr lFf" class="bg-grey-2">
     <q-header class="bg-blue-grey-10 text-grey-2">
-      <q-toolbar class="q-px-sm q-py-xs">
+      <q-toolbar class="q-px-sm q-py-xs header-toolbar">
         <q-btn
           flat
           dense
@@ -54,6 +54,12 @@
             </div>
           </div>
         </q-toolbar-title>
+
+        <promotion-notice
+          v-if="$store.isLoggedIn && $store.user.id"
+          :key="$store.user.id"
+          :agencia-id="Number($store.user.agencia_id) || null"
+        />
 
         <!-- Estado de Caja Dinámico y Animado -->
         <q-btn
@@ -514,6 +520,7 @@
 
 <script>
 import { io } from 'socket.io-client'
+import PromotionNotice from 'src/components/PromotionNotice.vue'
 
 // Ventana mínima entre consultas de estado de caja. Acota el gasto pase lo que
 // pase: aunque algo dispare la verificación en bucle, no sale más de una
@@ -528,6 +535,7 @@ function obtenerCajaTerminal (value) {
 
 export default {
   name: 'MainLayout',
+  components: { PromotionNotice },
   data () {
     return {
       leftDrawerOpen: false,
@@ -1355,5 +1363,8 @@ export default {
 .logout-option-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+@media (max-width: 600px) {
+  .header-toolbar { flex-wrap: wrap; }
 }
 </style>

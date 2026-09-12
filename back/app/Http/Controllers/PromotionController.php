@@ -33,6 +33,50 @@ class PromotionController extends Controller
             ->get();
     }
 
+    public function announcements(Request $request)
+    {
+        $request->validate(['agencia_id' => ['nullable', 'integer', 'min:1']]);
+        $user = $request->user();
+        $agenciaId = (int) ((int) $user->id === 1
+            ? $request->input('agencia_id', $user->agencia_id)
+            : $user->agencia_id);
+        $now = now();
+        $promotions = Promotion::query()
+            ->with(['category:id,name', 'products:id,nombre'])
+            ->where('activo', true)
+            ->where(fn ($query) => $query->where('canal_fisico', true)
+                ->orWhere('canal_web', true)->orWhere('canal_app', true))
+            ->where(fn ($query) => $query->whereNull('fecha_inicio')->orWhere('fecha_inicio', '<=', $now))
+            ->where(fn ($query) => $query->where('permanente', true)
+                ->orWhereNull('fecha_fin')->orWhere('fecha_fin', '>=', $now))
+            ->where(function ($query) use ($agenciaId) {
+                $query->where('todas_agencias', true);
+                if ($agenciaId) {
+                    $query->orWhereHas('agencias', fn ($agency) => $agency->where('agencias.id', $agenciaId));
+                }
+            })
+            ->orderByDesc('porcentaje')->orderByDesc('id')->get()
+            ->map(fn (Promotion $promotion) => [
+                'id' => $promotion->id,
+                'nombre' => $promotion->nombre,
+                'porcentaje' => $promotion->porcentaje,
+                'alcance' => $promotion->alcance,
+                'categoria' => $promotion->category?->name,
+                'productos' => $promotion->products->take(3)->pluck('nombre')->values(),
+                'cantidad_productos' => $promotion->products->count(),
+                'inicio_ms' => $promotion->fecha_inicio?->getTimestamp() * 1000 ?: null,
+                'fin_ms' => $promotion->permanente ? null : ($promotion->fecha_fin?->getTimestamp() * 1000 ?: null),
+                'canal_fisico' => $promotion->canal_fisico,
+                'canal_web' => $promotion->canal_web,
+                'canal_app' => $promotion->canal_app,
+            ])->values();
+
+        return response()->json([
+            'promociones' => $promotions,
+            'server_time_ms' => (int) floor(microtime(true) * 1000),
+        ])->header('Cache-Control', 'no-store, private');
+    }
+
     public function store(Request $request)
     {
         $this->ensureAdmin($request);

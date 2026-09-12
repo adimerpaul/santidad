@@ -153,4 +153,50 @@ class PromotionScopeTest extends TestCase
         $this->assertEquals(100, app(PromotionPricingService::class)->resolve(Product::findOrFail(1), 'web', 1)['precio_venta']);
         $this->assertFalse(app(PromotionPricingService::class)->activeScopeIds('app', 1)['all_categories']);
     }
+
+    public function test_header_announcements_are_available_to_branch_users_without_admin_access(): void
+    {
+        $global = $this->createPromotion(['mostrar_en_ofertas' => false]);
+        $local = $this->createPromotion(['alcance' => 'CATEGORIA', 'category_id' => 2,
+            'todas_agencias' => false, 'agencia_ids' => [1], 'porcentaje' => 25]);
+        $this->createPromotion(['todas_agencias' => false, 'agencia_ids' => [2]]);
+        $this->actingAs((new User())->forceFill(['id' => 9, 'agencia_id' => 1]), 'sanctum');
+
+        // A different query-string branch cannot expose another branch's notices.
+        $response = $this->getJson('/api/promotions/announcements?agencia_id=2')->assertOk();
+        $this->assertSame([$local, $global], array_column($response->json('promociones'), 'id'));
+        $response->assertJsonPath('promociones.0.categoria', 'Belleza');
+        $response->assertJsonPath('promociones.1.alcance', 'TODAS_CATEGORIAS');
+        $response->assertJsonPath('promociones.1.fin_ms', null);
+        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+        $this->assertLessThan(2000, abs(microtime(true) * 1000 - $response->json('server_time_ms')));
+        $this->getJson('/api/promotions')->assertForbidden();
+    }
+
+    public function test_header_hides_expired_paused_and_scheduled_promotions(): void
+    {
+        $id = $this->createPromotion(['alcance' => 'PRODUCTOS', 'product_ids' => [1, 2],
+            'permanente' => false, 'fecha_inicio' => now()->subDay()->format('Y-m-d H:i:s'),
+            'fecha_fin' => now()->addDay()->format('Y-m-d H:i:s')]);
+        $this->createPromotion(['activo' => false]);
+        $this->createPromotion(['permanente' => false,
+            'fecha_inicio' => now()->subDays(2)->format('Y-m-d H:i:s'),
+            'fecha_fin' => now()->subDay()->format('Y-m-d H:i:s')]);
+        $this->createPromotion(['permanente' => false,
+            'fecha_inicio' => now()->addDay()->format('Y-m-d H:i:s'),
+            'fecha_fin' => now()->addDays(2)->format('Y-m-d H:i:s')]);
+        $response = $this->getJson('/api/promotions/announcements?agencia_id=1')->assertOk();
+        $this->assertSame([$id], array_column($response->json('promociones'), 'id'));
+        $response->assertJsonPath('promociones.0.cantidad_productos', 2);
+        $this->assertEqualsCanonicalizing(['Producto 1', 'Producto 2'], $response->json('promociones.0.productos'));
+        $this->assertGreaterThan($response->json('server_time_ms'), $response->json('promociones.0.fin_ms'));
+
+        $this->travel(2)->days();
+        try {
+            $ids = array_column($this->getJson('/api/promotions/announcements?agencia_id=1')->assertOk()->json('promociones'), 'id');
+            $this->assertNotContains($id, $ids);
+        } finally {
+            $this->travelBack();
+        }
+    }
 }

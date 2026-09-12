@@ -115,15 +115,6 @@ Oruro</div>
                                   parseFloat(factura.descuento_producto || 0) +
                                   parseFloat(factura.descuento || 0)
 
-      // Calcula los porcentajes con redondeo
-      const porcentajeDescuento = totalAntesDescuentos > 0
-        ? Math.round((parseFloat(factura.descuento || 0) / totalAntesDescuentos) * 100)
-        : 0
-
-      const porcentajeDescuentoProducto = totalAntesDescuentos > 0
-        ? Math.round((parseFloat(factura.descuento_producto || 0) / totalAntesDescuentos) * 100)
-        : 0
-
       const opts = {
         errorCorrectionLevel: 'M',
         type: 'png',
@@ -173,11 +164,11 @@ Oruro</div>
         <td class='conte2'>${parseFloat(factura.aporte).toFixed(2)}</td>
       </tr>
       <tr style='display: ${factura.descuento ? '' : 'none'}'>
-        <td class='titder' style='width: 60%'>DESCUENTO ${porcentajeDescuento}% Bs</td>
+        <td class='titder' style='width: 60%'>DESCUENTO Bs</td>
         <td class='conte2'>${parseFloat(factura.descuento || 0).toFixed(2)}</td>
       </tr>
       <tr style="display: ${factura.descuento_producto ? '' : 'none'}">
-        <td class='titder' style='width: 60%'>DESC PROD ${porcentajeDescuentoProducto}% Bs</td>
+        <td class='titder' style='width: 60%'>DESC PROD Bs</td>
         <td class='conte2'>${parseFloat(factura.descuento_producto || 0).toFixed(2)}</td>
       </tr>
       <tr>

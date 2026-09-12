@@ -118,6 +118,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::resource('/subcategories', SubcategoryController::class)->except(['index','show']);
 
     Route::resource('/agencias', AgenciaController::class);
+    Route::get('/promotions/announcements', [PromotionController::class, 'announcements']);
     Route::apiResource('/promotions', PromotionController::class);
     Route::resource('/products', ProductController::class);
     Route::resource('/unids', UnidController::class);

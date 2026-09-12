@@ -1870,6 +1870,11 @@ export default {
 </script>
 
 <style scoped>
+.product-sale-price-card__metric--saving,
+.product-sale-price-card__metric--saving small {
+  color: #c62828;
+}
+
 .cursor-not-allowed {
   cursor: not-allowed;
 }

@@ -202,9 +202,9 @@
                 <template v-slot:body="props">
                   <q-tr :props="props"
                         :class="{
-                          'destino-row-almacen': isSucursal1User && props.row.agencia_destino === 0,
-                          'destino-row-sucursal': isSucursal1User && props.row.agencia_destino === 1,
-                          'destino-row-override': isSucursal1User && props.row.agencia_destino !== agencia_id
+                          'destino-row-almacen': puedeElegirDestinoProducto && props.row.agencia_destino === 0,
+                          'destino-row-sucursal': puedeElegirDestinoProducto && props.row.agencia_destino === destinoSucursalId,
+                          'destino-row-override': puedeElegirDestinoProducto && props.row.agencia_destino !== agencia_id
                         }">
                     <q-td key="borrar" :props="props" style="padding: 0px;margin: 0px" auto-width>
                       <q-btn flat dense @click="deleteProductosVenta(props.row,props.pageIndex)"
@@ -221,7 +221,7 @@
                             {{props.row.nombre}}
                           </div>
                           <!-- Toggle destino debajo del nombre -->
-                          <div v-if="isSucursal1User" class="q-mt-xs">
+                          <div v-if="puedeElegirDestinoProducto" class="q-mt-xs">
                             <q-btn-toggle
                               v-model="props.row.agencia_destino"
                               dense
@@ -233,9 +233,13 @@
                               class="destino-btn-toggle"
                               :options="[
                                 { label: '📦 Almacén', value: 0 },
-                                { label: '🏪 Sucursal', value: 1 }
+                                { label: '🏪 Sucursal', value: destinoSucursalId }
                               ]"
-                            />
+                            >
+                              <q-tooltip>
+                                Sucursal: {{ agencias.find(a => Number(a.id) === destinoSucursalId)?.nombre || 'Casa Matriz Velasco' }}
+                              </q-tooltip>
+                            </q-btn-toggle>
                           </div>
                         </div>
                       </div>
@@ -1165,6 +1169,12 @@ export default {
     },
     isSucursal1User () {
       return !this.isAdmin && String(this.$store.user?.agencia_id) === '1'
+    },
+    puedeElegirDestinoProducto () {
+      return this.isAdmin || this.isSucursal1User
+    },
+    destinoSucursalId () {
+      return this.isAdmin && Number(this.agencia_id) > 0 ? Number(this.agencia_id) : 1
     },
     agenciasDestino () {
       if (this.isAdmin) {
