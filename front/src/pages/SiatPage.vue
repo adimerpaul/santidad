@@ -79,6 +79,12 @@
       <div class="col-12 col-lg-8">
 
         <!-- Estado de cada sucursal -->
+        <q-banner v-if="!sucursales.length" dense class="bg-orange-1 text-orange-9 q-mb-md">
+          <q-icon name="warning" class="q-mr-xs" />
+          Ninguna agencia tiene sucursal SIAT asignada (todas están en 0). Asigna el número de
+          sucursal en Agencias para poder generar CUIS y CUFD.
+        </q-banner>
+
         <div v-for="suc in sucursales" :key="suc.value" class="q-mb-md">
           <div class="text-subtitle2 text-weight-bold text-blue-grey-8 q-mb-sm">
             <q-icon name="store" class="q-mr-xs" />
@@ -216,12 +222,10 @@ export default {
         codigo_sucursal: 0,
         codigo_punto_venta: 0
       },
-      // Sucursales habilitadas para generar/consultar CUIS y CUFD
-      sucursales: [
-        { label: 'Sucursal 0 — Casa Matriz', value: 0 },
-        { label: 'Sucursal 1', value: 1 },
-        { label: 'Sucursal 2', value: 2 }
-      ],
+      // Sucursales habilitadas para generar/consultar CUIS y CUFD: las manda el
+      // backend desde las agencias con sucursal distinta de 0 (las que están
+      // habilitadas en SIAT), no una lista fija.
+      sucursales: [],
       cuisColumns: [
         { name: 'codigo', label: 'Código CUIS', field: 'codigo', align: 'left', sortable: true },
         { name: 'codigoSucursal', label: 'Sucursal', field: 'codigoSucursal', align: 'center' },
@@ -252,8 +256,15 @@ export default {
           this.$axios.get('siat/cufds')
         ])
         this.config = dashboardResponse.data.config || {}
+        this.sucursales = dashboardResponse.data.sucursales || []
         this.cuis = cuisResponse.data || []
         this.cufds = cufdResponse.data || []
+
+        // El selector arranca en la primera sucursal habilitada; sin esto
+        // quedaría en 0, que es justo la que no se puede facturar.
+        if (this.sucursales.length && !this.sucursales.some(s => s.value === this.form.codigo_sucursal)) {
+          this.form.codigo_sucursal = this.sucursales[0].value
+        }
       } catch (error) {
         this.$alert.error(error.response?.data?.message || 'No se pudo cargar el panel SIAT')
       }

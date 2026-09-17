@@ -38,17 +38,12 @@ class FacturacionSiatService
                 return false;
             }
 
-            $cuiUltimo = Cuis::where('fechaVigencia', '>', date('Y-m-d H:i:s'))
-                ->where('codigoSucursal', $codigoSucursal)
-                ->where('codigoPuntoVenta', $codigoPuntoVenta)
-                ->latest('id')
-                ->first();
-
-            $cufdUltimo = Cufd::where('fechaVigencia', '>', date('Y-m-d H:i:s'))
-                ->where('codigoSucursal', $codigoSucursal)
-                ->where('codigoPuntoVenta', $codigoPuntoVenta)
-                ->latest('id')
-                ->first();
+            // El CUFD caduca cada día: si no hay uno vigente se pide al vuelo a
+            // SIAT (junto con el CUIS si también venció) en lugar de rechazar.
+            $cuiUltimo  = $this->asegurarCuisVigente($codigoSucursal, $codigoPuntoVenta);
+            $cufdUltimo = $cuiUltimo
+                ? $this->asegurarCufdVigente($codigoSucursal, $codigoPuntoVenta)
+                : null;
 
             if (!$cuiUltimo || !$cufdUltimo) {
                 error_log("SIAT: Sin CUIS/CUFD vigente para sucursal {$codigoSucursal}, venta #{$sales->id}");
@@ -232,6 +227,82 @@ class FacturacionSiatService
             'codigoPuntoVenta' => $codigoPuntoVenta,
             'codigoSucursal'   => $codigoSucursal,
         ]);
+    }
+
+    /**
+     * Devuelve el CUIS vigente del punto de venta y, si no hay, lo solicita a
+     * SIAT y lo guarda. Devuelve null si SIAT no responde con un código válido.
+     */
+    public function asegurarCuisVigente(int $codigoSucursal, int $codigoPuntoVenta = 0): ?Cuis
+    {
+        $cuis = Cuis::where('fechaVigencia', '>', date('Y-m-d H:i:s'))
+            ->where('codigoSucursal', $codigoSucursal)
+            ->where('codigoPuntoVenta', $codigoPuntoVenta)
+            ->latest('id')
+            ->first();
+
+        if ($cuis) {
+            return $cuis;
+        }
+
+        try {
+            $respuesta = $this->siatCodeService->solicitarCuis([
+                'codigoAmbiente'   => (int) config('siat.codigo_ambiente'),
+                'codigoModalidad'  => (int) config('siat.codigo_modalidad'),
+                'codigoPuntoVenta' => $codigoPuntoVenta,
+                'codigoSistema'    => (string) config('siat.codigo_sistema'),
+                'codigoSucursal'   => $codigoSucursal,
+                'nit'              => (int) config('siat.nit'),
+            ]);
+
+            $normalizada = $respuesta['RespuestaCuis'] ?? $respuesta;
+
+            if (empty($normalizada['codigo'])) {
+                error_log('SIAT no devolvió un CUIS válido: ' . json_encode($respuesta));
+                return null;
+            }
+
+            return Cuis::create([
+                'codigo'           => $normalizada['codigo'],
+                'fechaVigencia'    => $normalizada['fechaVigencia'] ?? Carbon::now()->addYear(),
+                'fechaCreacion'    => Carbon::now(),
+                'codigoPuntoVenta' => $codigoPuntoVenta,
+                'codigoSucursal'   => $codigoSucursal,
+            ]);
+        } catch (\Throwable $e) {
+            error_log("SIAT: no se pudo solicitar el CUIS de la sucursal {$codigoSucursal}: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Devuelve el CUFD vigente del punto de venta y, si no hay, lo solicita a
+     * SIAT y lo guarda. Devuelve null si SIAT no responde con un código válido.
+     */
+    public function asegurarCufdVigente(int $codigoSucursal, int $codigoPuntoVenta = 0): ?Cufd
+    {
+        $cufd = Cufd::where('fechaVigencia', '>', date('Y-m-d H:i:s'))
+            ->where('codigoSucursal', $codigoSucursal)
+            ->where('codigoPuntoVenta', $codigoPuntoVenta)
+            ->latest('id')
+            ->first();
+
+        if ($cufd) {
+            return $cufd;
+        }
+
+        $cuis = $this->asegurarCuisVigente($codigoSucursal, $codigoPuntoVenta);
+
+        if (!$cuis) {
+            return null;
+        }
+
+        try {
+            return $this->renovarCufd($cuis, $codigoSucursal, $codigoPuntoVenta);
+        } catch (\Throwable $e) {
+            error_log("SIAT: no se pudo solicitar el CUFD de la sucursal {$codigoSucursal}: " . $e->getMessage());
+            return null;
+        }
     }
 
     /**
