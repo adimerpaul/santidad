@@ -422,10 +422,9 @@ class FacturacionSiatService
             throw new \RuntimeException('La factura ya fue enviada a SIAT');
         }
 
-        $xmlPath = storage_path("app/siat/sales/{$sale->id}.xml");
-        if (!file_exists($xmlPath)) {
-            throw new \RuntimeException('No se encontró el XML de la factura para empaquetar');
-        }
+        // Se regenera siempre: el XML guardado puede haber quedado con datos
+        // viejos (método de pago, detalles) que SIAT rechazaría al validar.
+        $xmlPath = $this->asegurarXmlFactura($sale, true);
 
         $cufd = $sale->cufd_id
             ? Cufd::find($sale->cufd_id)
@@ -606,6 +605,142 @@ class FacturacionSiatService
     }
 
     // ─────────────────────────── XML ───────────────────────────
+
+    /**
+     * Devuelve la ruta del XML de la factura y, si el archivo ya no está
+     * (storage limpiado, factura emitida desde otro equipo o venta que nunca
+     * llegó a enviarse), lo vuelve a generar con los datos guardados en la
+     * venta. Con $regenerar lo reescribe aunque exista.
+     * Retorna la ruta absoluta del XML.
+     */
+    public function asegurarXmlFactura(Sales $sale, bool $regenerar = false): string
+    {
+        $xmlPath = storage_path("app/siat/sales/{$sale->id}.xml");
+
+        if (!$regenerar && file_exists($xmlPath)) {
+            return $xmlPath;
+        }
+
+        $sale->loadMissing(['details.product', 'client', 'user.agencia', 'agencia']);
+
+        $cufd = $sale->cufd_id
+            ? Cufd::find($sale->cufd_id)
+            : Cufd::where('codigo', $sale->cufd)->latest('id')->first();
+
+        if (!$cufd) {
+            throw new \RuntimeException('No existe CUFD asociado a la venta para regenerar el XML');
+        }
+
+        $codigoSucursal   = (int) ($sale->codigoSucursal   ?? 0);
+        $codigoPuntoVenta = (int) ($sale->codigoPuntoVenta ?? 0);
+        $numeroFactura    = (int) $sale->numeroFactura;
+        $leyenda          = $sale->leyenda ?: $this->leyendaSiat();
+        $cuf              = (string) $sale->cuf;
+
+        // `fechaEmision` se guarda sin milisegundos, pero el XML debe declarar
+        // exactamente la fecha con la que se calculó el CUF. Se recupera del
+        // propio CUF, que la lleva codificada.
+        $fechaSiat = $cuf !== '' && $numeroFactura > 0
+            ? $this->fechaSiatDesdeCuf($cuf, (string) $cufd->codigoControl)
+            : null;
+
+        if (!$fechaSiat) {
+            // Sin CUF utilizable: se emite el documento ahora, fuera de línea,
+            // con el CUFD que ya tiene asignado la venta.
+            $fechaEmision  = Carbon::now('America/La_Paz');
+            $mili          = str_pad((string) ((int) floor(((int) $fechaEmision->format('u')) / 1000)), 3, '0', STR_PAD_LEFT);
+            $fechaSiat     = $fechaEmision->format('Y-m-d\TH:i:s') . '.' . $mili;
+            $numeroFactura = $numeroFactura > 0 ? $numeroFactura : ((int) Sales::max('numeroFactura') + 1);
+
+            $cuf = $this->generarCuf(
+                (string) config('siat.nit'),
+                $fechaEmision->format('YmdHis') . $mili,
+                (string) $codigoSucursal,
+                (string) config('siat.codigo_modalidad'),
+                '1', '1', '1',
+                (string) $numeroFactura,
+                (string) $codigoPuntoVenta,
+                (string) $cufd->codigoControl
+            );
+
+            $sale->numeroFactura         = $numeroFactura;
+            $sale->venta                 = 'F';
+            $sale->cuf                   = $cuf;
+            $sale->cufd                  = $cufd->codigo;
+            $sale->codigoSucursal        = $codigoSucursal;
+            $sale->codigoPuntoVenta      = $codigoPuntoVenta;
+            $sale->codigoDocumentoSector = 1;
+            $sale->fechaEmision          = $fechaEmision->format('Y-m-d H:i:s');
+            $sale->cufd_id               = $cufd->id;
+        }
+
+        $sale->leyenda = $leyenda;
+        $sale->save();
+
+        $xml = $this->buildSiatXml(
+            $sale, $numeroFactura, $cuf,
+            (string) $cufd->codigo,
+            $codigoSucursal, $codigoPuntoVenta,
+            $fechaSiat, $leyenda
+        );
+
+        $this->validateSiatXml($xml);
+        $this->storeSiatXml($sale->id, $xml, gzencode($xml, 9));
+
+        if (!file_exists($xmlPath)) {
+            throw new \RuntimeException('No se pudo regenerar el XML de la factura para empaquetar');
+        }
+
+        error_log("SIAT paquete [{$sale->id}] XML regenerado en {$xmlPath}");
+
+        return $xmlPath;
+    }
+
+    /**
+     * Extrae la fecha de emisión (con milisegundos) codificada dentro del CUF.
+     * El CUF es base16(cadena) + codigoControl, y la cadena son 54 dígitos:
+     * nit(13) + fechaHora(14) + milisegundos(3) + sucursal(4) + modalidad(1) +
+     * tipoEmision(1) + documentoFiscal(1) + sector(2) + factura(10) +
+     * puntoVenta(4) + dígito verificador(1). Devuelve null si no se puede leer.
+     */
+    private function fechaSiatDesdeCuf(string $cuf, string $codigoControl): ?string
+    {
+        if ($codigoControl === '' || !str_ends_with($cuf, $codigoControl)) {
+            return null;
+        }
+
+        $hex = strtoupper(substr($cuf, 0, strlen($cuf) - strlen($codigoControl)));
+
+        if ($hex === '' || !ctype_xdigit($hex)) {
+            return null;
+        }
+
+        $decimal = '0';
+        foreach (str_split($hex) as $char) {
+            $decimal = bcadd(bcmul($decimal, '16'), (string) hexdec($char));
+        }
+
+        $cadena = str_pad($decimal, 54, '0', STR_PAD_LEFT);
+
+        if (strlen($cadena) !== 54) {
+            return null;
+        }
+
+        $fechaHora = substr($cadena, 13, 14);
+        $mili      = substr($cadena, 27, 3);
+
+        try {
+            $fecha = Carbon::createFromFormat('YmdHis', $fechaHora, 'America/La_Paz');
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        if (!$fecha || $fecha->format('YmdHis') !== $fechaHora) {
+            return null;
+        }
+
+        return $fecha->format('Y-m-d\TH:i:s') . '.' . $mili;
+    }
 
     private function buildSiatXml(
         Sales  $sale,
@@ -800,14 +935,14 @@ XML;
         return $leyendas[array_rand($leyendas)];
     }
 
+    /**
+     * Todas las ventas se declaran a SIAT como efectivo (1), sea cual sea el
+     * método de pago real. Los códigos 2/3/16 exigen datos adicionales
+     * (numeroTarjeta y similares) y SIAT rechaza el paquete con el error 1012.
+     */
     private function codigoMetodoPago(?string $metodoPago): int
     {
-        return match ($metodoPago) {
-            'Tarjeta'      => 2,
-            'Transferencia' => 3,
-            'Qr', 'QR'    => 16,
-            default        => 1,
-        };
+        return 1;
     }
 
     private function xmlValue(?string $value): string

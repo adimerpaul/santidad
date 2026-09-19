@@ -22,6 +22,16 @@
           <q-tooltip>Actualizar</q-tooltip>
         </q-btn>
       </div>
+      <div class="col-12 col-md-2 text-center" v-if="salesPendientes.length">
+        <q-btn icon="cloud_upload" dense size="sm" no-caps color="orange-8"
+               :label="`Enviar pendientes (${salesPendientes.length})`"
+               :loading="loadingPendientes" @click="enviarPendientes">
+          <template v-slot:loading>
+            <q-spinner-dots class="q-mr-xs"/>{{ progresoPendientes.actual }}/{{ progresoPendientes.total }}
+          </template>
+          <q-tooltip>Enviar a SIAT todas las facturas pendientes de la lista</q-tooltip>
+        </q-btn>
+      </div>
       <div class="col-12 col-md-1 text-center">
         <q-btn color="black" no-caps flat icon="o_file_download" size="sm">
           <div class="q-page-xs subrayado">  Reportes</div>
@@ -414,6 +424,8 @@ export default {
       dateFin: moment().endOf('day').format('YYYY-MM-DDTHH:mm'),
       loading: false,
       loadingPaquete: {},
+      loadingPendientes: false,
+      progresoPendientes: { actual: 0, total: 0 },
       dialogSale: false,
       sale: {},
       sales: [],
@@ -543,6 +555,54 @@ export default {
         })
       })
     },
+    enviarPendientes () {
+      const pendientes = this.salesPendientes
+
+      if (!pendientes.length) {
+        this.$alert.error('No hay facturas pendientes para enviar')
+        return
+      }
+
+      this.$q.dialog({
+        title: 'Enviar pendientes a SIAT',
+        message: `¿Enviar ${pendientes.length} factura(s) pendiente(s) a SIAT? Puede tardar varios segundos por factura.`,
+        cancel: true,
+        persistent: true
+      }).onOk(async () => {
+        this.loadingPendientes = true
+        this.progresoPendientes = { actual: 0, total: pendientes.length }
+
+        let enviadas = 0
+        const errores = []
+
+        // Secuencial: cada envío registra un evento y hace polling en SIAT,
+        // enviarlas en paralelo provoca rechazos por CUFD/evento.
+        for (const sale of pendientes) {
+          this.loadingPaquete[sale.id] = true
+          try {
+            await this.$axios.post(`salesEnviarPaquete/${sale.id}`)
+            enviadas++
+          } catch (err) {
+            errores.push(`N° ${sale.numeroFactura}: ${err.response?.data?.message || 'Error al enviar paquete'}`)
+          }
+          this.loadingPaquete[sale.id] = false
+          this.progresoPendientes.actual++
+        }
+
+        this.loadingPendientes = false
+        this.salesGet()
+
+        if (errores.length) {
+          this.$q.dialog({
+            title: `Enviadas ${enviadas} de ${pendientes.length}`,
+            message: `No se pudieron enviar ${errores.length}:<br>${errores.join('<br>')}`,
+            html: true
+          })
+        } else {
+          this.$alert.success(`${enviadas} factura(s) enviada(s) y validada(s) en SIAT correctamente`)
+        }
+      })
+    },
     saleRevertir (id) {
       this.$q.dialog({
         title: 'Revertir anulación',
@@ -619,6 +679,11 @@ export default {
     }
   },
   computed: {
+    // Facturas de la lista que aún no llegaron a SIAT: las mismas que muestran
+    // el chip "Pendiente" en la columna SIAT.
+    salesPendientes () {
+      return this.sales.filter(sale => sale.venta === 'F' && !sale.siatEnviado && sale.estado !== 'ANULADO')
+    },
     montoTotalUpdate () {
       let total = 0
       this.saleUpate.details.forEach(detail => {
