@@ -54,7 +54,8 @@ const routes = [
       { path: 'publicidad', component: PublicidadPage, meta: { requiresAuth: true } },
       { path: 'promociones', component: () => import('pages/PromotionsPage.vue'), meta: { requiresAuth: true } },
       { path: 'siat', component: SiatPage, meta: { requiresAuth: true } },
-      { path: 'cierres-caja', component: () => import('pages/CierresCajaPage.vue'), meta: { requiresAuth: true } }
+      { path: 'cierres-caja', component: () => import('pages/CierresCajaPage.vue'), meta: { requiresAuth: true } },
+      { path: 'dashboard', component: () => import('pages/DashboardPage.vue'), meta: { requiresAuth: true } }
 
     ]
   },

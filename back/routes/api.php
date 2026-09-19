@@ -9,6 +9,7 @@ use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\CarouselController;
 use App\Http\Controllers\TiendaController;
 use App\Http\Controllers\SalesController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\AgenciaController;
@@ -179,6 +180,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/salesGasto', [SalesController::class,'salesGasto']);
     Route::post('/searchClient', [ClientController::class,'searchClient']);
     Route::get('/betweenDates/{fechaInicio}/{fechaFin}', [SalesController::class,'betweenDates']);
+    Route::get('/dashboard/resumen', [DashboardController::class,'resumen']);
     Route::get('/env', [SalesController::class,'env']);
 
     Route::get('/historySucursal', [TransferHistoryController::class,'historySucursal']);

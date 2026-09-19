@@ -609,6 +609,8 @@ export default {
     },
     menuSections () {
       const operacion = [
+        // El dashboard muestra ganancias y márgenes: solo para el administrador.
+        ...(this.isAdmin ? [{ to: '/dashboard', label: 'Dashboard', icon: 'insights' }] : []),
         { to: '/', label: 'Movimientos', icon: 'space_dashboard' },
         { to: '/sale', label: 'Venta', icon: 'point_of_sale' },
         { to: '/compras', label: 'Compras', icon: 'shopping_bag' },
