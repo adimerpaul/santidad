@@ -78,6 +78,25 @@ class BanecoQrService
         ];
     }
 
+    /**
+     * Lista de QR pagados en una fecha (API 7.6 /v2/paidQR/{yyyyMMdd}).
+     */
+    public function paidQr(string $fecha): array
+    {
+        $token = $this->authenticate();
+
+        $response = Http::withToken($token)
+            ->get("{$this->baseUrl}/api/qrsimple/v2/paidQR/" . date('Ymd', strtotime($fecha)));
+
+        $data = $response->json();
+
+        if (!$response->successful() || ($data['responseCode'] ?? null) !== 0) {
+            throw new RuntimeException('Fallo al consultar QR pagados: ' . ($data['message'] ?? $data['Message'] ?? $response->body()));
+        }
+
+        return $data['paymentList'] ?? [];
+    }
+
     public function cancelQr(string $qrId): void
     {
         $token = $this->authenticate();

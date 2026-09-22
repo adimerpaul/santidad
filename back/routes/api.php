@@ -156,6 +156,10 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/qr/generar', [QrPagoController::class,'generar']);
     Route::get('/qr/estado/{qrId}', [QrPagoController::class,'estado']);
     Route::post('/qr/cancelar', [QrPagoController::class,'cancelar']);
+    Route::get('/qr/pagados', [QrPagoController::class,'pagados']);
+    Route::get('/qr/ventas-candidatas', [QrPagoController::class,'ventasCandidatas']);
+    Route::post('/qr/vincular', [QrPagoController::class,'vincular']);
+    Route::post('/qr/desvincular', [QrPagoController::class,'desvincular']);
 
     Route::resource('/buys', BuyController::class);
     Route::get('/indexVencidos', [BuyController::class,'indexVencidos']);

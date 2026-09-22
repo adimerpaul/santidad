@@ -183,7 +183,7 @@
       <div class="drawer-content">
         <div class="drawer-profile">
           <div class="drawer-profile__avatar">
-            <q-icon name="medication" size="26px" />
+            <q-icon name="medication" size="20px" />
           </div>
           <div class="drawer-profile__info">
             <div class="drawer-profile__name">{{ $store.user.name || 'Usuario' }}</div>
@@ -204,7 +204,7 @@
               :label="section.title"
               :header-class="sectionIsActive(section) ? 'drawer-group drawer-group--active' : 'drawer-group'"
             >
-              <q-list dense class="q-px-xs q-pb-xs">
+              <q-list dense class="q-pl-sm q-py-xs">
                 <q-item
                   v-for="item in section.items"
                   :key="item.to"
@@ -218,7 +218,7 @@
                   <q-item-section avatar class="drawer-link__avatar">
                     <q-icon
                       :name="item.icon"
-                      size="17px"
+                      size="15px"
                       :class="linkIsActive(item) ? 'text-white' : 'text-blue-grey-2'"
                     />
                   </q-item-section>
@@ -618,7 +618,8 @@ export default {
         { to: '/historial-pedidos', label: 'Historial de pedidos', icon: 'history' },
         { to: '/transferencias', label: 'Transferencias', icon: 'swap_horiz' },
         { to: '/facturas', label: 'Facturas', icon: 'receipt_long' },
-        { to: '/cierres-caja', label: 'Cierres de Caja', icon: 'lock' }
+        { to: '/cierres-caja', label: 'Cierres de Caja', icon: 'lock' },
+        { to: '/pagos-qr', label: 'Pagos QR', icon: 'qr_code_2' }
       ]
 
       const inventario = [
@@ -1215,7 +1216,7 @@ export default {
 
 .drawer-content {
   min-height: 100%;
-  padding: 12px 10px 16px;
+  padding: 8px 6px 10px;
   display: flex;
   flex-direction: column;
 }
@@ -1223,17 +1224,17 @@ export default {
 .drawer-profile {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
-  border-radius: 14px;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.13);
 }
 
 .drawer-profile__avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1263,8 +1264,8 @@ export default {
 }
 
 .drawer-section-label {
-  padding: 0 8px 6px;
-  font-size: 10px;
+  padding: 0 6px 3px;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1274,17 +1275,18 @@ export default {
 .drawer-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 /* q-expansion-item header: se aplica via :header-class, necesita !important */
 .drawer-group {
-  border-radius: 12px !important;
+  border-radius: 8px !important;
   background: rgba(255, 255, 255, 0.07) !important;
   color: white !important;
   font-weight: 600 !important;
-  font-size: 12.5px !important;
-  min-height: 36px !important;
+  font-size: 12px !important;
+  min-height: 28px !important;
+  padding: 0 8px !important;
 }
 
 .drawer-group--active {
@@ -1297,18 +1299,29 @@ export default {
 }
 
 .drawer-link {
-  min-height: 34px !important;
-  border-radius: 9px !important;
-  margin: 1px 0;
+  min-height: 24px !important;
+  padding: 1px 8px !important;
+  border-radius: 6px !important;
+  margin: 0;
   color: rgba(176, 210, 255, 0.85) !important;
 }
 
 .drawer-link__avatar {
-  min-width: 30px;
+  min-width: 24px !important;
+  padding-right: 6px !important;
+}
+
+.drawer-group .q-item__section--avatar {
+  min-width: 26px !important;
+  padding-right: 6px !important;
+}
+
+.drawer-group .q-icon {
+  font-size: 17px;
 }
 
 .drawer-link__label {
-  font-size: 12.5px;
+  font-size: 12px;
   line-height: 1.2;
 }
 
@@ -1325,11 +1338,10 @@ export default {
 
 .drawer-logout {
   margin-top: auto;
-  padding-top: 10px;
-  border-radius: 12px !important;
+  border-radius: 8px !important;
   background: rgba(244, 67, 54, 0.18) !important;
   color: #ffd5d2 !important;
-  min-height: 38px !important;
+  min-height: 30px !important;
 }
 
 .pulse-indicator {
