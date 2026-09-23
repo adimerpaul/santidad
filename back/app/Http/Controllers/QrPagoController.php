@@ -47,7 +47,12 @@ class QrPagoController extends Controller
         }
     }
 
-    private const VENTA_RELACIONES = ['client:id,nombreRazonSocial,numeroDocumento', 'user:id,name', 'agencia:id,nombre'];
+    private const VENTA_RELACIONES = [
+        'client:id,nombreRazonSocial,numeroDocumento',
+        'user:id,name',
+        'agencia:id,nombre',
+        'details:id,sale_id,descripcion,cantidad,precioUnitario,subTotal',
+    ];
 
     /**
      * Pagos QR recibidos en el banco en un rango de fechas, cruzados con las ventas del sistema.

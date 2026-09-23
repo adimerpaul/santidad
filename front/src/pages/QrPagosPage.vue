@@ -12,6 +12,16 @@
       <q-form class="row items-center q-gutter-sm" @submit.prevent="buscar">
         <q-input v-model="fechaInicio" type="date" outlined dense label="Desde" style="min-width: 150px" />
         <q-input v-model="fechaFin" type="date" outlined dense label="Hasta" style="min-width: 150px" />
+        <q-select
+          v-model="agenciaFiltro"
+          :options="agenciaOptions"
+          emit-value
+          map-options
+          outlined
+          dense
+          label="Agencia"
+          style="min-width: 180px"
+        />
         <q-btn type="submit" color="primary" icon="search" label="Buscar" no-caps :loading="loading" />
       </q-form>
     </div>
@@ -26,7 +36,7 @@
       <div class="col-6 col-md-3">
         <q-card flat bordered class="q-pa-sm">
           <div class="text-caption text-grey-7">Pagos recibidos</div>
-          <div class="text-h6 text-bold">{{ pagos.length }}</div>
+          <div class="text-h6 text-bold">{{ pagosFiltrados.length }}</div>
         </q-card>
       </div>
       <div class="col-6 col-md-3">
@@ -44,7 +54,7 @@
       <div class="col-6 col-md-3">
         <q-card flat bordered class="q-pa-sm">
           <div class="text-caption text-grey-7">Ventas QR sin pago</div>
-          <div class="text-h6 text-bold" :class="ventasSinPago.length ? 'text-red-8' : ''">{{ ventasSinPago.length }}</div>
+          <div class="text-h6 text-bold" :class="ventasSinPagoFiltradas.length ? 'text-red-8' : ''">{{ ventasSinPagoFiltradas.length }}</div>
         </q-card>
       </div>
     </div>
@@ -54,7 +64,7 @@
       bordered
       dense
       title="Pagos recibidos"
-      :rows="pagos"
+      :rows="pagosFiltrados"
       :columns="columns"
       row-key="qrId"
       :loading="loading"
@@ -64,7 +74,7 @@
       <template #body-cell-venta="props">
         <q-td :props="props">
           <template v-if="props.row.venta">
-            <q-chip dense square color="green" text-color="white" size="11px">
+            <q-chip dense square color="green" text-color="white" size="11px" clickable icon="visibility" @click="verVenta(props.row)">
               #{{ props.row.venta.id }}
             </q-chip>
             <span class="text-caption">
@@ -112,13 +122,13 @@
     </q-table>
 
     <q-table
-      v-if="ventasSinPago.length"
+      v-if="ventasSinPagoFiltradas.length"
       class="q-mt-md"
       flat
       bordered
       dense
       title="Ventas con QR sin pago confirmado por el banco"
-      :rows="ventasSinPago"
+      :rows="ventasSinPagoFiltradas"
       :columns="columnsVentas"
       row-key="id"
       :rows-per-page-options="[0]"
@@ -193,6 +203,66 @@
         </q-table>
       </q-card>
     </q-dialog>
+
+    <q-dialog v-model="dialogVenta">
+      <q-card v-if="pagoVer && pagoVer.venta" style="width: 640px; max-width: 95vw">
+        <q-card-section class="row items-center q-pb-sm">
+          <div>
+            <div class="text-subtitle1 text-bold">
+              Venta #{{ pagoVer.venta.id }}
+              <q-badge v-if="pagoVer.venta.estado === 'ANULADO'" color="red" class="q-ml-xs">Anulada</q-badge>
+            </div>
+            <div class="text-caption text-grey-7">
+              {{ pagoVer.venta.fechaEmision ? formatFechaHora(pagoVer.venta.fechaEmision) : '' }}
+              <span v-if="pagoVer.venta.numeroFactura"> · Factura {{ pagoVer.venta.numeroFactura }}</span>
+            </div>
+          </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pt-none">
+          <div class="row q-col-gutter-sm text-body2">
+            <div class="col-12 col-sm-6"><b>Cliente:</b> {{ pagoVer.venta.client?.nombreRazonSocial || 'S/N' }}</div>
+            <div class="col-12 col-sm-6"><b>CI/NIT:</b> {{ pagoVer.venta.client?.numeroDocumento || '—' }}</div>
+            <div class="col-12 col-sm-6"><b>Vendedor:</b> {{ pagoVer.venta.user?.name || '—' }}</div>
+            <div class="col-12 col-sm-6"><b>Agencia:</b> {{ pagoVer.venta.agencia?.nombre || '—' }}</div>
+            <div class="col-12 col-sm-6"><b>Método de pago:</b> {{ pagoVer.venta.metodoPago || '—' }}</div>
+            <div class="col-12 col-sm-6"><b>QR:</b> {{ pagoVer.qrId }}</div>
+          </div>
+        </q-card-section>
+
+        <q-markup-table flat bordered dense separator="cell" class="q-mx-md">
+          <thead>
+            <tr>
+              <th class="text-left">Producto</th>
+              <th class="text-right">Cant.</th>
+              <th class="text-right">P. unit.</th>
+              <th class="text-right">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="d in pagoVer.venta.details || []" :key="d.id">
+              <td>{{ d.descripcion }}</td>
+              <td class="text-right">{{ d.cantidad }}</td>
+              <td class="text-right">{{ Number(d.precioUnitario).toFixed(2) }}</td>
+              <td class="text-right">{{ Number(d.subTotal).toFixed(2) }}</td>
+            </tr>
+            <tr v-if="!(pagoVer.venta.details || []).length">
+              <td colspan="4" class="text-center text-grey-6">Sin detalle de productos</td>
+            </tr>
+          </tbody>
+        </q-markup-table>
+
+        <q-card-section class="text-right text-body2">
+          <div>Total venta: <b>Bs {{ Number(pagoVer.venta.montoTotal).toFixed(2) }}</b></div>
+          <div>
+            Pagado por QR: <b class="text-green-8">{{ pagoVer.currency }} {{ Number(pagoVer.amount).toFixed(2) }}</b>
+            <span class="text-grey-7"> · {{ pagoVer.senderName }}</span>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -215,6 +285,9 @@ export default {
       candidatas: [],
       loadingCandidatas: false,
       vinculando: null,
+      agenciaFiltro: 0,
+      dialogVenta: false,
+      pagoVer: null,
       columns: [
         { name: 'fecha', label: 'Fecha', align: 'left', field: 'paymentDate', format: val => this.formatFecha(val), sortable: true },
         { name: 'hora', label: 'Hora', align: 'left', field: 'paymentTime', sortable: true },
@@ -248,19 +321,45 @@ export default {
     }
   },
   computed: {
+    agenciaOptions () {
+      return [
+        { label: 'Todas las agencias', value: 0 },
+        ...(this.$store.agencias || []).map(a => ({ label: a.nombre, value: a.id })),
+        { label: 'Pagos sin venta', value: -1 }
+      ]
+    },
+    // El banco no informa la agencia: se toma la de la venta vinculada
+    pagosFiltrados () {
+      if (this.agenciaFiltro === 0) return this.pagos
+      if (this.agenciaFiltro === -1) return this.pagos.filter(p => !p.venta)
+      return this.pagos.filter(p => p.venta && Number(p.venta.agencia_id) === this.agenciaFiltro)
+    },
+    ventasSinPagoFiltradas () {
+      if (this.agenciaFiltro === 0) return this.ventasSinPago
+      if (this.agenciaFiltro === -1) return []
+      return this.ventasSinPago.filter(v => Number(v.agencia_id) === this.agenciaFiltro)
+    },
     totalPagos () {
-      return this.pagos.reduce((sum, p) => sum + Number(p.amount || 0), 0)
+      return this.pagosFiltrados.reduce((sum, p) => sum + Number(p.amount || 0), 0)
     },
     pagosSinVenta () {
-      return this.pagos.filter(p => !p.venta).length
+      return this.pagosFiltrados.filter(p => !p.venta).length
     }
   },
   mounted () {
+    this.$store.fetchCatalogos(this.$axios, ['agencias'])
     this.buscar()
   },
   methods: {
     formatFecha (val) {
       return val ? moment(val).format('DD/MM/YYYY') : ''
+    },
+    formatFechaHora (val) {
+      return val ? moment(val).format('DD/MM/YYYY HH:mm') : ''
+    },
+    verVenta (pago) {
+      this.pagoVer = pago
+      this.dialogVenta = true
     },
     buscar () {
       if (!this.fechaInicio || !this.fechaFin) return
