@@ -15,12 +15,13 @@
             class="fullscreen-media"
             :src="currentAd.url"
             :data-media-id="localMediaId(currentAd)"
-            @loadedmetadata="alignVideo"
+            preload="auto"
             autoplay
             muted
             playsinline
             @ended="nextAd"
             @error="onVideoError"
+            @vnode-unmounted="onVideoUnmounted"
           ></video>
 
           <!-- Image Player -->
@@ -37,9 +38,6 @@
         </div>
       </transition>
     </div>
-
-    <!-- Pre-carga silenciosa del próximo video para evitar retraso de carga -->
-    <video v-if="nextAdUrl" style="display: none" :src="nextAdUrl" preload="auto" muted></video>
 
     <!-- ===== SUPERPOSICIÓN DE VERIFICACIÓN DE CLIENTE (PRIMER PLANO) ===== -->
     <div class="overlay-container" v-if="clientData.visible || showThanks || qrData.visible">
@@ -204,12 +202,15 @@
           <div class="text-caption text-grey">
             Establezca los parámetros de red para el reproductor
           </div>
+          <div class="q-mt-xs flex flex-center">
+            <q-badge color="teal" :label="'Versión: v' + appVersion" class="text-bold q-px-sm q-py-xs" />
+          </div>
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
           <!-- IP Laravel Server -->
           <q-input
-            v-model="config.serverIp"
+            v-model="configDraft.serverIp"
             label="Servidor Laravel (Laragon)"
             placeholder="http://192.168.100.2:8000"
             filled
@@ -219,7 +220,7 @@
 
           <!-- IP Sockets Server -->
           <q-input
-            v-model="config.socketIp"
+            v-model="configDraft.socketIp"
             label="Servidor de WebSockets (Sockets)"
             placeholder="http://192.168.100.2:3000"
             filled
@@ -242,7 +243,7 @@
 
           <!-- Agencia selector -->
           <q-select
-            v-model="config.agencia"
+            v-model="configDraft.agencia"
             :options="agencias"
             option-value="id"
             option-label="nombre"
@@ -253,12 +254,12 @@
             map-options
             :loading="loadingAgencias"
             hint="Obligatorio: Identifica en qué sucursal se encuentra esta pantalla"
-            :rules="[val => !!val || 'Debe seleccionar una sucursal']"
+            :rules="[(val) => !!val || 'Debe seleccionar una sucursal']"
           />
 
           <!-- Caja / Terminal selector -->
           <q-select
-            v-model="config.caja"
+            v-model="configDraft.caja"
             :options="cajasOptions"
             emit-value
             map-options
@@ -268,19 +269,61 @@
             hint="Caja a la que pertenece esta pantalla (Caja 1, Caja 2, etc.)"
             class="q-mt-sm"
           />
+
+          <!-- Opción: Reloj en pantalla extendida -->
+          <div class="q-pt-sm">
+            <q-toggle
+              v-model="configDraft.mostrarHora"
+              label="Mostrar reloj en pantalla"
+              color="primary"
+              icon="schedule"
+              dense
+            />
+            <div class="text-caption text-grey-6 q-ml-md">
+              Muestra la hora en la esquina inferior izquierda
+            </div>
+          </div>
         </q-card-section>
 
+        <q-card-section class="q-pt-none">
+          <div v-if="configError" class="text-negative q-mb-sm" role="alert">{{ configError }}</div>
+          <div class="text-caption" :class="socketConnected ? 'text-positive' : 'text-negative'">
+            {{ socketStatus }}
+          </div>
+          <div v-if="configured" class="text-caption text-grey-8" style="overflow-wrap: anywhere">
+            Conexión activa: {{ config.socketIp }} · Sucursal {{ config.agencia }} · Caja
+            {{ config.caja }}
+          </div>
+        </q-card-section>
         <q-card-actions align="right" class="q-mt-md">
+          <q-btn v-if="configured" label="Cancelar" flat @click="cancelConfig" />
           <q-btn
-            label="Guardar y Ejecutar"
+            label="Guardar y Pasar a Pantalla Cliente"
+            icon="desktop_windows"
             color="primary"
-            :disable="!config.agencia || !config.serverIp || !config.socketIp"
+            :disable="
+              !configDraft.agencia ||
+              !configDraft.caja ||
+              !configDraft.serverIp ||
+              !configDraft.socketIp
+            "
             @click="saveConfiguration"
             class="full-width"
           />
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- ===== RELOJ FLOTANTE INFERIOR IZQUIERDO ===== -->
+    <transition name="fade">
+      <div
+        v-if="config.mostrarHora && !clientData.visible && !showThanks && !qrData.visible"
+        class="bottom-left-clock"
+      >
+        <q-icon name="schedule" size="18px" class="clock-icon" />
+        <span class="clock-time">{{ currentTime }}</span>
+      </div>
+    </transition>
 
     <!-- Botón flotante invisible en esquina superior izquierda para re-configurar (hover) o presionando Esc -->
     <div class="settings-gear" @click="openConfig">
@@ -290,22 +333,30 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { io } from 'socket.io-client'
 import { ServerClock, playbackPosition, localMediaId } from '../utils/adSync.mjs'
 import { fetchJson, measureVideo } from '../utils/adMedia.mjs'
+import { localMediaUrl } from '../utils/localMedia.mjs'
+import { backendAddress, socketTarget, normalizeTerminalConfig } from '../utils/terminalConfig.mjs'
 
 // Configuración general
 const configured = ref(false)
 const showConfigModal = ref(false)
 const loadingAgencias = ref(false)
+const appVersion = ref('0.0.9')
 
 const config = ref({
   serverIp: process.env.SERVER_IP || 'http://192.168.100.2:8000',
   socketIp: process.env.SOCKET_IP || 'http://192.168.100.2:3000',
   agencia: null,
   caja: 1,
+  mostrarHora: true,
 })
+const configDraft = ref({ ...config.value })
+const configError = ref('')
+const socketConnected = ref(false)
+const socketStatus = ref('Conexión de cobro sin iniciar')
 
 const cajasOptions = [
   { label: 'Caja 1', value: 1 },
@@ -327,6 +378,9 @@ let playlistBusy = false
 let playlistPoll = null
 let syncTimer = null
 let destroyed = false
+let lastCompletedId = null
+let consecutivePlayCount = 0
+let lastPlayedMediaId = null
 const scopeKey = () => config.value.serverIp + '|' + config.value.agencia
 let activeScope = null
 let legacyCacheAllowed = true
@@ -356,21 +410,12 @@ const currentTime = ref('')
 let clockInterval = null
 let socketConn = null
 let watchdogTimer = null
+let thanksTimer = null
 let heartbeatInterval = null
 
 const currentAd = computed(() => {
   if (playlist.value.length === 0) return null
   return playlist.value[currentIndex.value]
-})
-
-const nextAdUrl = computed(() => {
-  if (playlist.value.length <= 1) return null
-  const nextIndex = (currentIndex.value + 1) % playlist.value.length
-  const nextAd = playlist.value[nextIndex]
-  if (nextAd && nextAd.type === 'video') {
-    return nextAd.url
-  }
-  return null
 })
 
 const hasClientData = computed(() => {
@@ -380,6 +425,25 @@ const hasClientData = computed(() => {
     clientData.value.numeroDocumento !== '0'
   )
 })
+
+const isBusyWithCustomer = computed(() => {
+  return Boolean(
+    clientData.value.visible ||
+    showThanks.value ||
+    qrData.value.visible ||
+    showConfigModal.value
+  )
+})
+
+watch(
+  isBusyWithCustomer,
+  (busy) => {
+    if (window.terminalWindowAPI?.setBusy) {
+      window.terminalWindowAPI.setBusy(busy)
+    }
+  },
+  { immediate: true },
+)
 
 // === MÉTODOS ===
 
@@ -395,17 +459,18 @@ function updateTime() {
 
 // Cargar agencias desde el backend Laravel
 async function fetchAgencias() {
-  if (!config.value.serverIp) return
+  if (!configDraft.value.serverIp) return
   loadingAgencias.value = true
+  configError.value = ''
   try {
-    const cleanIp = config.value.serverIp.replace(/\/$/, '')
-    const response = await fetch(`${cleanIp}/api/sucursales`)
-    if (response.ok) {
-      const data = await response.json()
-      agencias.value = data
-    }
+    const cleanIp = backendAddress(configDraft.value.serverIp)
+    const data = await fetchJson(`${cleanIp}/api/sucursales`)
+    if (cleanIp !== backendAddress(configDraft.value.serverIp)) return
+    if (!Array.isArray(data)) throw new Error('El servidor no devolvió una lista de sucursales.')
+    agencias.value = data
   } catch (error) {
-    console.error('Error fetching sucursales:', error)
+    configError.value =
+      'No se pudieron cargar las sucursales. Revise la URL de Laravel. ' + error.message
   } finally {
     loadingAgencias.value = false
   }
@@ -417,21 +482,44 @@ function loadLocalConfig() {
   const savedSocket = localStorage.getItem('pcpubli_socket_ip')
   const savedAgencia = localStorage.getItem('pcpubli_agencia_id')
   const savedCaja = localStorage.getItem('pcpubli_caja_numero')
+  const savedMostrarHora = localStorage.getItem('pcpubli_mostrar_hora')
 
-  if (savedServer && savedSocket && savedAgencia && savedCaja) {
-    config.value.serverIp = savedServer
-    config.value.socketIp = savedSocket
-    config.value.agencia = savedAgencia ? parseInt(savedAgencia, 10) : null
-    config.value.caja = parseInt(savedCaja, 10)
+  configDraft.value = {
+    serverIp: savedServer || config.value.serverIp,
+    socketIp: savedSocket || config.value.socketIp,
+    agencia: savedAgencia ? Number(savedAgencia) : null,
+    caja: savedCaja ? Number(savedCaja) : 1,
+    mostrarHora: savedMostrarHora !== null ? savedMostrarHora === 'true' : true,
+  }
+  try {
+    config.value = normalizeTerminalConfig(configDraft.value)
+    configDraft.value = { ...config.value }
     configured.value = true
     return true
+  } catch {
+    return false
   }
-  return false
 }
 
 // Guardar y aplicar configuración
 function saveConfiguration() {
-  if (!config.value.serverIp || !config.value.socketIp || !config.value.agencia || !config.value.caja) return
+  let nextConfig
+  try {
+    nextConfig = normalizeTerminalConfig(configDraft.value)
+  } catch (error) {
+    configError.value = error.message
+    return
+  }
+  if (JSON.stringify(nextConfig) !== JSON.stringify(config.value)) {
+    clearTimeout(watchdogTimer)
+    clearTimeout(thanksTimer)
+    showThanks.value = false
+    clearClientState()
+    legacyCacheAllowed = false
+  }
+  config.value = nextConfig
+  configDraft.value = { ...nextConfig }
+  configError.value = ''
 
   localStorage.setItem('pcpubli_server_ip', config.value.serverIp)
   localStorage.setItem('pcpubli_socket_ip', config.value.socketIp)
@@ -441,18 +529,36 @@ function saveConfiguration() {
     localStorage.removeItem('pcpubli_agencia_id')
   }
   localStorage.setItem('pcpubli_caja_numero', (config.value.caja || 1).toString())
+  localStorage.setItem('pcpubli_mostrar_hora', String(config.value.mostrarHora))
 
   configured.value = true
   showConfigModal.value = false
+
+  // Trasladar automáticamente a la pantalla del cliente en pantalla completa
+  if (window.terminalWindowAPI?.moveToSecondary) {
+    window.terminalWindowAPI.moveToSecondary()
+  }
 
   // Inicializar todo
   initSocket()
   fetchPlaylist()
 }
 
-function openConfig() {
-  fetchAgencias()
+function openConfig(bringToFront = true) {
+  if (bringToFront && window.terminalWindowAPI?.moveToPrimary) {
+    window.terminalWindowAPI.moveToPrimary()
+  }
+  if (configured.value) configDraft.value = { ...config.value }
+  configError.value = ''
   showConfigModal.value = true
+  fetchAgencias()
+}
+
+function cancelConfig() {
+  showConfigModal.value = false
+  if (configured.value && window.terminalWindowAPI?.moveToSecondary) {
+    window.terminalWindowAPI.moveToSecondary()
+  }
 }
 
 // The legacy endpoint stays available during a rolling backend/app update.
@@ -460,7 +566,11 @@ async function readSyncManifest(base, scope) {
   const start = performance.now()
   const manifest = await fetchJson(base + '/api/publicidad-sync?agencia_id=' + config.value.agencia)
   const end = performance.now()
-  if (manifest.protocol !== 1 || !Array.isArray(manifest.items) || String(manifest.agencia_id) !== String(config.value.agencia)) {
+  if (
+    manifest.protocol !== 1 ||
+    !Array.isArray(manifest.items) ||
+    String(manifest.agencia_id) !== String(config.value.agencia)
+  ) {
     throw new Error('Invalid advertising manifest')
   }
   if (scope !== scopeKey() || destroyed) throw new Error('Configuration changed')
@@ -496,7 +606,9 @@ async function fetchPlaylist() {
     }
     if (scope !== scopeKey() || destroyed) return
     const changed = data.map(localMediaId).join(',') !== playlist.value.map(localMediaId).join(',')
-    const mediaReady = !window.mediaAPI || (await Promise.all(data.map(ad => window.mediaAPI.exists(localMediaId(ad))))).every(Boolean)
+    const mediaReady =
+      !window.mediaAPI ||
+      (await Promise.all(data.map((ad) => window.mediaAPI.exists(localMediaId(ad))))).every(Boolean)
     if (!changed && mediaReady && (!manifest || manifest.version === syncManifest?.version)) {
       syncPlayback()
       return
@@ -511,10 +623,14 @@ async function fetchPlaylist() {
       if (window.mediaAPI) {
         const result = await window.mediaAPI.download(id, item.type, item.url)
         if (!result?.success) throw new Error(result?.error || 'Media download failed')
-        item.url = 'localmedia://' + id.replace(/[\/\\]/g, '_')
+        item.url = localMediaUrl(id)
       }
       if (manifest && item.type === 'video' && !item.duration_ms) {
-        durations.push({ id: item.id, media_version: item.media_version, duration_ms: await measureVideo(item.url) })
+        durations.push({
+          id: item.id,
+          media_version: item.media_version,
+          duration_ms: await measureVideo(item.url),
+        })
       }
       prepared.push(item)
     }
@@ -522,21 +638,37 @@ async function fetchPlaylist() {
       if (scope !== scopeKey() || destroyed) return
       for (let i = 0; i < durations.length; i += 100) {
         await fetchJson(base + '/api/publicidad-sync/durations', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ agencia_id: Number(config.value.agencia), items: durations.slice(i, i + 100) }),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agencia_id: Number(config.value.agencia),
+            items: durations.slice(i, i + 100),
+          }),
         })
       }
       const refreshed = await readSyncManifest(base, scope)
       if (refreshed.items.map(localMediaId).join(',') !== data.map(localMediaId).join(',')) return
       manifest = refreshed
-      prepared.forEach((ad, i) => { ad.duration_ms = manifest.items[i].duration_ms })
+      prepared.forEach((ad, i) => {
+        ad.duration_ms = manifest.items[i].duration_ms
+      })
     }
     if (scope !== scopeKey() || destroyed || (manifest && !manifest.ready)) return
     syncManifest = manifest
+    const currentId = currentAd.value ? localMediaId(currentAd.value) : null
     playlist.value = prepared
-    currentIndex.value = 0
+
+    // Conservar el elemento que se estaba reproduciendo para no reiniciar a 0 cada 15 segundos
+    const existingIdx = currentId ? prepared.findIndex((a) => localMediaId(a) === currentId) : -1
+    if (existingIdx !== -1) {
+      currentIndex.value = existingIdx
+    } else {
+      const target = targetPosition()
+      currentIndex.value = target && target.index < prepared.length ? target.index : 0
+      playCurrentAd(true)
+    }
+
     localStorage.setItem(cacheKey(), JSON.stringify({ items: prepared, manifest }))
-    playCurrentAd()
     if (window.mediaAPI) await window.mediaAPI.cleanup(prepared.map(localMediaId))
   } catch (error) {
     console.error('Advertising update failed; keeping local playback:', error)
@@ -554,15 +686,26 @@ function loadCachedPlaylist() {
     if (!cached && legacyCacheAllowed) {
       const old = JSON.parse(localStorage.getItem('pcpubli_playlist_cache') || 'null')
       if (Array.isArray(old)) {
-        cached = { manifest: null, items: old.map(ad => ({ ...ad,
-          url: window.mediaAPI ? 'localmedia://' + ad.file_id.replace(/[\/\\]/g, '_') : ad.url,
-        })) }
+        cached = {
+          manifest: null,
+          items: old.map((ad) => ({
+            ...ad,
+            url: window.mediaAPI ? localMediaUrl(ad.file_id) : ad.url,
+          })),
+        }
         localStorage.setItem(cacheKey(), JSON.stringify(cached))
       }
     }
     legacyCacheAllowed = false
     if (!cached?.items?.length) return
-    playlist.value = cached.items
+    // Rebuild old cached URLs too, including when starting without internet.
+    playlist.value = cached.items.map((ad) => ({
+      ...ad,
+      url:
+        window.mediaAPI && ad.url?.startsWith('localmedia://')
+          ? localMediaUrl(localMediaId(ad))
+          : ad.url,
+    }))
     syncManifest = cached.manifest
     currentIndex.value = 0
     // Without a fresh server sample, offline startup uses sequential playback.
@@ -579,53 +722,157 @@ function targetPosition() {
 
 function alignVideo() {
   const video = videoPlayer.value
-  if (!video || !currentAd.value || video.dataset.mediaId !== localMediaId(currentAd.value) || video.readyState < 1) return
+  if (
+    !video ||
+    !currentAd.value ||
+    video.dataset.mediaId !== localMediaId(currentAd.value) ||
+    video.readyState < 1
+  )
+    return
+
+  // No alterar si está buscando o ya terminó
+  if (video.seeking || video.ended) return
+
   const target = targetPosition()
   if (target && target.index === currentIndex.value && Number.isFinite(video.duration)) {
-    const seconds = Math.min(target.offsetMs / 1000, Math.max(0, video.duration - 0.05))
-    if (Math.abs(video.currentTime - seconds) > 0.4) video.currentTime = seconds
+    const targetSeconds = Math.min(target.offsetMs / 1000, Math.max(0, video.duration - 0.05))
+    const drift = targetSeconds - video.currentTime
+
+    // Sincronización suave sin saltos ni tirones:
+    // NUNCA hacemos saltos bruscos (video.currentTime) mid-playback porque causa reinicios y parpadeos.
+    // Solo ajustamos suavemente playbackRate.
+    if (drift > 2.0) {
+      video.playbackRate = 1.08
+    } else if (drift > 0.3) {
+      video.playbackRate = 1.04
+    } else if (drift < -2.0) {
+      video.playbackRate = 0.92
+    } else if (drift < -0.3) {
+      video.playbackRate = 0.96
+    } else {
+      video.playbackRate = 1.0
+    }
   }
-  if (video.paused && !video.error) video.play().catch(() => {})
+
+  if (video.paused && !video.ended && !video.error) {
+    video.play().catch(() => {})
+  }
 }
 
 function syncPlayback() {
   const target = targetPosition()
   if (!target || !playlist.value.length) return
-  if (currentIndex.value !== target.index) {
-    currentIndex.value = target.index
-    playCurrentAd()
-  } else if (currentAd.value?.type === 'video') {
+
+  // Si un video está reproduciéndose, NUNCA lo cortamos a mitad de reproducción ni lo reiniciamos
+  // Dejamos que complete su ciclo naturalmente y que alignVideo ajuste el ritmo sin que se note
+  if (currentAd.value?.type === 'video') {
     alignVideo()
+    return
+  }
+
+  // Si estamos en una imagen, solo cambiamos al siguiente si:
+  // 1. El timeline del servidor marca otro anuncio
+  // 2. Y ese anuncio del servidor NO es el que acabamos de terminar (evita bucles y regresos)
+  if (currentIndex.value !== target.index) {
+    const targetAd = playlist.value[target.index]
+    const targetId = targetAd ? localMediaId(targetAd) : null
+
+    if (targetId && targetId === lastCompletedId) {
+      // El servidor todavía tiene tiempo residual del anuncio que acaba de terminar;
+      // no regresar hacia atrás, dejar que el anuncio actual continúe
+      return
+    }
+
+    currentIndex.value = target.index
+    playCurrentAd(true)
   }
 }
 
-function playCurrentAd() {
+function playCurrentAd(fromSync = true) {
   clearImageTimer()
   if (!playlist.value.length) return
   const target = targetPosition()
-  if (target) currentIndex.value = target.index
+  if (fromSync && target) {
+    currentIndex.value = target.index
+  }
   const ad = currentAd.value
   if (!ad) return
+
+  // Protección anti-bucle: si el mismo anuncio se ejecuta 2 veces seguidas cuando hay más de 1 item
+  const adId = localMediaId(ad)
+  if (adId === lastPlayedMediaId && playlist.value.length > 1) {
+    consecutivePlayCount++
+    if (consecutivePlayCount >= 1) {
+      console.warn('Anti-bucle activado: Anuncio repetido consecutivamente detectado, forzando avance:', ad.name)
+      consecutivePlayCount = 0
+      lastCompletedId = adId
+      currentIndex.value = (currentIndex.value + 1) % playlist.value.length
+      playCurrentAd(false)
+      return
+    }
+  } else {
+    consecutivePlayCount = 0
+    lastPlayedMediaId = adId
+  }
+
   if (ad.type === 'video') {
     nextTick(() => {
       const video = videoPlayer.value
-      // A single-item loop reuses its element; other items initialize on metadata.
-      if (!target && video?.dataset.mediaId === localMediaId(ad) && video.ended) video.currentTime = 0
-      alignVideo()
+      if (video) {
+        video.playbackRate = 1.0
+        // Solo al iniciar un nuevo video, si entramos tarde al anuncio por más de 2 segundos,
+        // ajustamos la posición inicial antes de que arranque
+        if (fromSync && target && target.index === currentIndex.value && target.offsetMs > 2000) {
+          const initialSec = Math.min(target.offsetMs / 1000, Math.max(0, (video.duration || 10) - 0.5))
+          video.currentTime = initialSec
+        } else {
+          if (video.ended || (Number.isFinite(video.duration) && video.currentTime >= video.duration - 0.1)) {
+            video.currentTime = 0
+          }
+        }
+        alignVideo()
+        if (video.paused && !video.ended && !video.error) {
+          video.play().catch(() => {})
+        }
+      }
     })
   } else {
-    imageTimer.value = setTimeout(nextAd, Math.max(20, target?.remainingMs ?? 10000))
+    // Para imágenes: calcular la duración restante real según el reloj del servidor
+    let displayMs = ad.duration_ms || 10000
+    if (target && target.index === currentIndex.value && target.remainingMs > 0) {
+      displayMs = target.remainingMs
+    }
+    // Garantizar duración mínima de 3 segundos para legibilidad
+    if (displayMs < 3000) displayMs = 3000
+    imageTimer.value = setTimeout(nextAd, displayMs)
   }
 }
 
 function nextAd() {
   if (!playlist.value.length) return
-  if (targetPosition()) {
-    playCurrentAd()
+
+  // Guardar el anuncio que acaba de terminar para evitar que syncPlayback lo regrese en bucle
+  if (currentAd.value) {
+    lastCompletedId = localMediaId(currentAd.value)
+  }
+
+  const target = targetPosition()
+  if (target) {
+    const targetAd = playlist.value[target.index]
+    const targetId = targetAd ? localMediaId(targetAd) : null
+
+    // Si el video/imagen terminó y el timeline del servidor ya apunta a un anuncio diferente al que acaba de terminar
+    if (target.index !== currentIndex.value && targetId !== lastCompletedId) {
+      currentIndex.value = target.index
+    } else {
+      // Si el reloj del servidor todavía tiene milisegundos residuales del anuncio que acaba
+      // de terminar, avanzar limpiamente al siguiente elemento de la lista para evitar bucle
+      currentIndex.value = (currentIndex.value + 1) % playlist.value.length
+    }
   } else {
     currentIndex.value = (currentIndex.value + 1) % playlist.value.length
-    playCurrentAd()
   }
+  playCurrentAd(false)
 }
 
 function clearImageTimer() {
@@ -633,18 +880,48 @@ function clearImageTimer() {
   imageTimer.value = null
 }
 
+function onVideoUnmounted(vnode) {
+  const el = vnode?.el
+  if (el && typeof el.pause === 'function') {
+    try {
+      el.pause()
+      el.removeAttribute('src')
+      el.load()
+    } catch (err) {
+      console.warn('Error releasing video on unmount:', err)
+    }
+  }
+}
+
 function onVideoError(e) {
   console.error('Video error playing ad:', e)
   if (socketConn?.connected && currentAd.value) {
     socketConn.emit('terminal_error', {
-      error_type: 'video_playback_failed', ad_name: currentAd.value.name,
-      file_id: currentAd.value.file_id, url: currentAd.value.url,
+      error_type: 'video_playback_failed',
+      ad_name: currentAd.value.name,
+      file_id: currentAd.value.file_id,
+      url: currentAd.value.url,
       agencia_id: config.value.agencia,
       message: 'No se pudo reproducir: ' + currentAd.value.name,
     })
   }
-  // A failed video must not advance this terminal ahead of the common cycle.
-  if (!targetPosition()) nextAd()
+
+  // Intentar recargar una vez el video si el decoder colapsó
+  const video = videoPlayer.value
+  if (video && !video.dataset.retried) {
+    video.dataset.retried = 'true'
+    try {
+      video.currentTime = 0
+      video.load()
+      video.play().catch(() => {})
+      return
+    } catch (_) {}
+  }
+
+  // Si no se puede recuperar, saltar al siguiente anuncio para no dejar la pantalla en negro
+  setTimeout(() => {
+    nextAd()
+  }, 1000)
 }
 
 // Verificar si un evento de cobro/QR va dirigido estrictamente a esta pantalla y caja
@@ -668,13 +945,32 @@ function isTargetMe(data) {
 // Configurar WebSockets
 function initSocket() {
   if (socketConn) {
+    socketConn.removeAllListeners()
     socketConn.disconnect()
   }
 
-  const cleanSocketUrl = config.value.socketIp.replace(/\/$/, '')
-  socketConn = io(cleanSocketUrl)
+  const target = socketTarget(config.value.socketIp)
+  socketConnected.value = false
+  socketStatus.value = 'Conectando al servidor de cobro…'
+  socketConn = io(target.url, {
+    path: target.path,
+    transports: ['websocket', 'polling'],
+    tryAllTransports: true,
+  })
+
+  socketConn.on('connect_error', () => {
+    socketConnected.value = false
+    socketStatus.value =
+      'No se pudo conectar al servidor de cobro. Revise la URL de Sockets y la red.'
+  })
+  socketConn.on('disconnect', () => {
+    socketConnected.value = false
+    socketStatus.value = 'Conexión de cobro interrumpida. Reconectando…'
+  })
 
   socketConn.on('connect', () => {
+    socketConnected.value = true
+    socketStatus.value = 'Servidor conectado; registrando sucursal y caja…'
     console.log('Socket conectado con éxito:', socketConn.id)
     registerTerminalRoom()
     sendStatusHeartbeat()
@@ -691,6 +987,10 @@ function initSocket() {
   socketConn.on('clienteDisplayData', (data) => {
     if (!isTargetMe(data)) return
     console.log('Datos del cliente recibidos por socket para esta caja:', data)
+    if (data.visible) {
+      clearTimeout(thanksTimer)
+      showThanks.value = false
+    }
     clientData.value = data
     resetWatchdog()
   })
@@ -699,6 +999,10 @@ function initSocket() {
   socketConn.on('clienteQrData', (data) => {
     if (!isTargetMe(data)) return
     console.log('Datos de QR recibidos por socket para esta caja:', data)
+    if (data.visible) {
+      clearTimeout(thanksTimer)
+      showThanks.value = false
+    }
     qrData.value = data
     if (data.visible) resetWatchdog()
   })
@@ -721,10 +1025,23 @@ function initSocket() {
 // Latido periódico para monitoreo del terminal (liviano y seguro)
 function registerTerminalRoom() {
   if (!socketConn || !socketConn.connected || !config.value.agencia || !config.value.caja) return
-  socketConn.emit('register_terminal', {
-    agencia_id: config.value.agencia,
-    caja: config.value.caja,
-  })
+  const connection = socketConn
+  connection.timeout(8000).emit(
+    'register_terminal',
+    {
+      agencia_id: config.value.agencia,
+      caja: config.value.caja,
+    },
+    (error, response) => {
+      if (destroyed || socketConn !== connection || !connection.connected) return
+      if (error || !response?.success) {
+        socketStatus.value =
+          'Servidor conectado, pero no confirmó la sucursal y caja. Compruebe que sea el mismo servidor que usa Ventas.'
+        return
+      }
+      socketStatus.value = `Listo para recibir QR y datos · Sucursal ${config.value.agencia} · Caja ${config.value.caja}`
+    },
+  )
 }
 
 async function sendStatusHeartbeat() {
@@ -778,8 +1095,9 @@ function closeGracefully() {
 }
 
 function showThankYou() {
+  clearTimeout(thanksTimer)
   showThanks.value = true
-  setTimeout(() => {
+  thanksTimer = setTimeout(() => {
     showThanks.value = false
     clearClientState()
   }, 5000)
@@ -801,27 +1119,51 @@ function clearClientState() {
   }
 }
 
-// Atajo de teclado (Esc) para abrir configuración
+// Atajo de teclado (Esc o F2) para abrir configuración trayendo a pantalla principal
 function handleKeyPress(e) {
-  if (e.key === 'Escape') {
-    openConfig()
+  if (e.key === 'Escape' || e.key === 'F2') {
+    openConfig(true)
   }
 }
 
 // === LIFECYCLE HOOKS ===
 
-onMounted(() => {
+onMounted(async () => {
   updateTime()
   clockInterval = setInterval(updateTime, 1000)
   playlistPoll = setInterval(fetchPlaylist, 15000)
-  syncTimer = setInterval(syncPlayback, 250)
+  syncTimer = setInterval(syncPlayback, 1000)
   window.addEventListener('keydown', handleKeyPress)
+
+  // Obtener versión real de la app desde Electron
+  if (window.terminalWindowAPI?.getVersion) {
+    try {
+      const v = await window.terminalWindowAPI.getVersion()
+      if (v) appVersion.value = v
+    } catch (e) {
+      console.warn('[Terminal] No se pudo obtener la versión:', e)
+    }
+  }
+
+  // Escuchar solicitud de apertura de configuración desde el menú Tray
+  if (window.terminalWindowAPI?.onOpenConfig) {
+    window.terminalWindowAPI.onOpenConfig(() => {
+      openConfig(true)
+    })
+  }
 
   const exists = loadLocalConfig()
   if (exists) {
+    if (window.terminalWindowAPI?.moveToSecondary) {
+      window.terminalWindowAPI.moveToSecondary()
+    }
     initSocket()
     fetchPlaylist()
   } else {
+    // Si no está configurado (primera instalación), traer a pantalla principal
+    if (window.terminalWindowAPI?.moveToPrimary) {
+      window.terminalWindowAPI.moveToPrimary()
+    }
     showConfigModal.value = true
   }
 
@@ -836,6 +1178,7 @@ onBeforeUnmount(() => {
   if (clockInterval) clearInterval(clockInterval)
   if (imageTimer.value) clearTimeout(imageTimer.value)
   if (watchdogTimer) clearTimeout(watchdogTimer)
+  if (thanksTimer) clearTimeout(thanksTimer)
   if (heartbeatInterval) clearInterval(heartbeatInterval)
   if (socketConn) socketConn.disconnect()
   window.removeEventListener('keydown', handleKeyPress)
@@ -852,6 +1195,8 @@ onBeforeUnmount(() => {
   background-color: #000;
   position: relative;
   font-family: 'Outfit', sans-serif;
+  cursor: none !important;
+  user-select: none;
 }
 
 /* ===== REPRODUCTOR MULTIMEDIA ===== */
@@ -1319,5 +1664,46 @@ onBeforeUnmount(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* Reloj flotante inferior izquierdo */
+.bottom-left-clock {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(13, 30, 48, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border-radius: 30px;
+  padding: 8px 18px;
+  color: #ffffff;
+  pointer-events: none;
+  user-select: none;
+}
+
+.bottom-left-clock .clock-icon {
+  color: #38bdf8;
+  opacity: 0.9;
+}
+
+.bottom-left-clock .clock-time {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  line-height: 1;
+}
+
+.config-card {
+  cursor: default !important;
 }
 </style>

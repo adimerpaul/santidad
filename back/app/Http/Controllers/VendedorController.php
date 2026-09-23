@@ -13,10 +13,12 @@ class VendedorController extends Controller
         return Vendedor::with('client')->orderBy('id', 'desc')->get();
     }
 
-    // Método especial para el WhatsApp (HistorialPedidos)
+    // Método especial para el WhatsApp (HistorialPedidos) y Pedidos (solo activos)
     public function getByProvider($provider_id)
     {
-        return Vendedor::where('client_id', $provider_id)->get();
+        return Vendedor::where('client_id', $provider_id)
+            ->where('activo', true)
+            ->get();
     }
 
     public function store(Request $request)
@@ -24,7 +26,8 @@ class VendedorController extends Controller
         $request->validate([
             'nombre' => 'required',
             'celular' => 'required',
-            'client_id' => 'required|exists:clients,id'
+            'client_id' => 'required|exists:clients,id',
+            'activo' => 'nullable|boolean'
         ]);
 
         if (strlen((string) $request->celular) !== 8) {
@@ -48,7 +51,8 @@ class VendedorController extends Controller
         $request->validate([
             'nombre' => 'required',
             'celular' => 'required',
-            'client_id' => 'required|exists:clients,id'
+            'client_id' => 'required|exists:clients,id',
+            'activo' => 'nullable|boolean'
         ]);
 
         if (strlen((string) $request->celular) !== 8) {
@@ -64,6 +68,14 @@ class VendedorController extends Controller
 
         $vendedor->update($request->all());
         return $vendedor;
+    }
+
+    public function toggleActive($id)
+    {
+        $vendedor = Vendedor::with('client')->findOrFail($id);
+        $vendedor->activo = !$vendedor->activo;
+        $vendedor->save();
+        return response()->json($vendedor);
     }
 
     public function destroy($id)

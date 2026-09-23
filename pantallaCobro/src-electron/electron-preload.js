@@ -7,3 +7,11 @@ contextBridge.exposeInMainWorld('mediaAPI', {
   cleanup: (activeFileIds) => ipcRenderer.invoke('media:cleanup', activeFileIds),
   getDiskSpace: () => ipcRenderer.invoke('system:diskspace')
 })
+
+contextBridge.exposeInMainWorld('terminalWindowAPI', {
+  moveToPrimary: () => ipcRenderer.invoke('window:moveToPrimary'),
+  moveToSecondary: () => ipcRenderer.invoke('window:moveToSecondary'),
+  getVersion: () => ipcRenderer.invoke('app:getVersion'),
+  setBusy: (busy) => ipcRenderer.send('terminal:busyState', busy),
+  onOpenConfig: (callback) => ipcRenderer.on('window:openConfig', callback)
+})

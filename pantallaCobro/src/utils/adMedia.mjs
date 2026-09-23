@@ -17,7 +17,7 @@ export function measureVideo(url) {
       if (error || !Number.isFinite(duration) || duration <= 0) reject(error || new Error('Invalid duration'))
       else resolve(duration)
     }
-    const timer = setTimeout(() => finish(new Error('Metadata timeout')), 15000)
+    const timer = setTimeout(() => finish(new Error('Metadata timeout')), 30000)
     video.preload = 'metadata'
     video.onloadedmetadata = () => finish()
     video.onerror = () => finish(new Error('Cannot read video metadata'))

@@ -15,9 +15,16 @@ function responseFor(url, redirects = 0) {
       } else if (response.statusCode !== 200) {
         response.resume()
         reject(new Error(`Media HTTP ${response.statusCode}`))
-      } else resolve(response)
+      } else {
+        // Timeout de inactividad de 10 minutos (600,000 ms) en el socket de respuesta
+        response.setTimeout(600000, () => {
+          response.destroy(new Error('Media download socket timeout'))
+        })
+        resolve(response)
+      }
     })
-    request.setTimeout(30000, () => request.destroy(new Error('Media download timeout')))
+    // 10 minutos para iniciar la conexión y recibir cabeceras
+    request.setTimeout(600000, () => request.destroy(new Error('Media download timeout')))
     request.on('error', reject)
   })
 }

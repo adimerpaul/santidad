@@ -212,6 +212,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::put('vendedores/{id}', [App\Http\Controllers\VendedorController::class, 'update']); // Editar
     Route::delete('vendedores/{id}', [App\Http\Controllers\VendedorController::class, 'destroy']); // Eliminar
 
+    Route::post('vendedores/{id}/toggle', [App\Http\Controllers\VendedorController::class, 'toggleActive']); // Activar/Desactivar
     // Ruta especial para el select del HistorialPedidos (WhatsApp)
     Route::get('vendedores-por-proveedor/{id}', [App\Http\Controllers\VendedorController::class, 'getByProvider']);
 

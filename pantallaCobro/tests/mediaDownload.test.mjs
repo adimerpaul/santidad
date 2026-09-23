@@ -32,6 +32,6 @@ test('downloads commit atomically, redirects work and truncated files are discar
     server.closeAllConnections()
     await new Promise(resolve => server.close(resolve))
     if (fs.existsSync(file)) fs.unlinkSync(file)
-    fs.rmdirSync(directory)
+    fs.rmSync(directory, { recursive: true, force: true })
   }
 })

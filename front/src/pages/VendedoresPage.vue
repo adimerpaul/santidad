@@ -17,7 +17,7 @@
 
       <q-card-section class="q-pa-none">
         <q-table
-          :rows="vendedores"
+          :rows="vendedoresFiltrados"
           :columns="columns"
           row-key="id"
           :loading="loading"
@@ -26,6 +26,22 @@
           bordered
         >
           <template v-slot:top-right>
+            <q-btn-toggle
+              v-model="filtroEstado"
+              dense
+              no-caps
+              rounded
+              unelevated
+              toggle-color="primary"
+              color="grey-3"
+              text-color="grey-8"
+              :options="[
+                { label: 'Todos', value: 'TODOS' },
+                { label: 'Activos', value: 'ACTIVOS' },
+                { label: 'Inactivos', value: 'INACTIVOS' }
+              ]"
+              class="q-mr-sm"
+            />
             <q-input borderless dense debounce="300" v-model="filter" placeholder="Buscar">
               <template v-slot:append>
                 <q-icon name="search" />
@@ -39,6 +55,25 @@
                 {{ props.row.client.nombreRazonSocial }}
               </q-badge>
               <span v-else class="text-grey">Sin asignar</span>
+            </q-td>
+          </template>
+
+          <template v-slot:body-cell-activo="props">
+            <q-td :props="props" class="text-center" auto-width>
+              <q-toggle
+                :model-value="Boolean(props.row.activo)"
+                color="positive"
+                dense
+                @update:model-value="toggleActivo(props.row)"
+              >
+                <q-tooltip>{{ props.row.activo ? 'Clic para desactivar' : 'Clic para activar' }}</q-tooltip>
+              </q-toggle>
+              <q-badge
+                :color="props.row.activo ? 'positive' : 'grey-7'"
+                :label="props.row.activo ? 'Activo' : 'Inactivo'"
+                class="q-ml-xs cursor-pointer"
+                @click="toggleActivo(props.row)"
+              />
             </q-td>
           </template>
 
@@ -113,6 +148,14 @@
                   ]"
                 />
               </div>
+
+              <div class="col-12" v-if="editMode">
+                <q-toggle
+                  v-model="vendedor.activo"
+                  label="Vendedor Activo"
+                  color="positive"
+                />
+              </div>
             </div>
 
             <div class="row justify-end q-mt-md">
@@ -138,19 +181,33 @@ export default {
       dialog: false,
       editMode: false,
       filter: '',
+      filtroEstado: 'TODOS',
       vendedor: {
         id: null,
         nombre: '',
         celular: '',
-        client_id: null
+        client_id: null,
+        activo: true
       },
       columns: [
         { name: 'id', label: '#', field: 'id', sortable: true, align: 'left', style: 'width: 50px' },
         { name: 'proveedor', label: 'Empresa / Proveedor', field: row => row.client?.nombreRazonSocial || 'N/A', align: 'left', sortable: true },
         { name: 'nombre', label: 'Nombre Vendedor', field: 'nombre', align: 'left', sortable: true },
         { name: 'celular', label: 'Celular', field: 'celular', align: 'left' },
+        { name: 'activo', label: 'Estado', field: 'activo', align: 'center', sortable: true },
         { name: 'actions', label: 'Acciones', field: 'actions', align: 'right' }
       ]
+    }
+  },
+  computed: {
+    vendedoresFiltrados () {
+      if (this.filtroEstado === 'ACTIVOS') {
+        return this.vendedores.filter(v => Boolean(v.activo))
+      }
+      if (this.filtroEstado === 'INACTIVOS') {
+        return this.vendedores.filter(v => !v.activo)
+      }
+      return this.vendedores
     }
   },
   mounted () {
@@ -190,17 +247,26 @@ export default {
     },
     clickCreate () {
       this.editMode = false
-      this.vendedor = { nombre: '', celular: '', client_id: null }
+      this.vendedor = { nombre: '', celular: '', client_id: null, activo: true }
       this.dialog = true
     },
     clickEdit (row) {
       this.editMode = true
-      this.vendedor = { ...row }
+      this.vendedor = { ...row, activo: Boolean(row.activo) }
       // Aseguramos que client_id sea el correcto
       if (row.client) {
         this.vendedor.client_id = row.client.id
       }
       this.dialog = true
+    },
+    toggleActivo (row) {
+      this.$axios.post(`vendedores/${row.id}/toggle`).then(res => {
+        row.activo = Boolean(res.data.activo)
+        this.$alert.success(row.activo ? 'Vendedor activado' : 'Vendedor desactivado')
+      }).catch(err => {
+        console.error(err)
+        this.$alert.error('No se pudo cambiar el estado del vendedor')
+      })
     },
     onSubmit () {
       this.loadingSubmit = true

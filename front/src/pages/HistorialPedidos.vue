@@ -1230,7 +1230,14 @@ export default {
           const { data } = await this.$axios.get(`vendedores-por-proveedor/${this.pedidoSeleccionado.proveedor_id}`)
           this.vendedores = data
 
-          if (this.vendedores.length === 1) {
+          if (this.pedidoSeleccionado.vendedor) {
+            const vendedorGuardado = this.vendedores.find(v => v.id === this.pedidoSeleccionado.vendedor.id)
+            if (vendedorGuardado) {
+              this.vendedorSeleccionado = vendedorGuardado
+            } else if (this.vendedores.length === 1) {
+              this.vendedorSeleccionado = this.vendedores[0]
+            }
+          } else if (this.vendedores.length === 1) {
             this.vendedorSeleccionado = this.vendedores[0]
           }
         } catch (e) {
@@ -1327,7 +1334,13 @@ export default {
             if (vendedorGuardado) {
               this.vendedorSeleccionado = vendedorGuardado
             } else {
-              this.vendedorSeleccionado = this.pedidoSeleccionado.vendedor
+              this.vendedorSeleccionado = this.vendedores.length === 1 ? this.vendedores[0] : null
+              this.$q.notify({
+                color: 'warning',
+                message: `El vendedor anterior (${this.pedidoSeleccionado.vendedor.nombre}) está inactivo. Por favor seleccione un vendedor activo.`,
+                icon: 'warning',
+                position: 'top'
+              })
             }
           } else if (this.vendedores.length === 1) {
             // Comentario movido aquí adentro para no romper el código
@@ -1459,6 +1472,11 @@ export default {
 
       const pedido = this.pedidoSeleccionado
       const sucursal = pedido.agencia ? pedido.agencia.nombre : 'Principal'
+      let direccion = pedido.agencia?.direccion
+      if (!direccion && pedido.agencia_id && this.agencias?.length) {
+        const ag = this.agencias.find(a => a.id === pedido.agencia_id)
+        if (ag?.direccion) direccion = ag.direccion
+      }
       // Usamos tu función formatFecha si existe, sino usamos la fecha directa
       const fecha = typeof this.formatFecha === 'function' ? this.formatFecha(pedido.fecha_pedido) : pedido.fecha_pedido
       // 1. CABECERA ELEGANTE
@@ -1468,6 +1486,9 @@ export default {
       texto += '━━━━━━━━━━━━━━━━━━\n'
       texto += '📌 *DATOS GENERALES*\n'
       texto += `🏢 *Sucursal:* ${sucursal}\n`
+      if (direccion) {
+        texto += `📍 *Dirección:* ${direccion}\n`
+      }
       texto += `📅 *Fecha:* ${fecha}\n`
       texto += `📄 *Nro Pedido:* ${pedido.id}\n`
       texto += '━━━━━━━━━━━━━━━━━━\n\n'

@@ -12,7 +12,12 @@ class Vendedor extends Model
     protected $fillable = [
         'nombre',
         'celular',
-        'client_id'
+        'client_id',
+        'activo'
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean'
     ];
 
     // Esta función es la clave para que funcione el with('client')
