@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Publicidad;
+use App\Services\PublicidadSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Aws\S3\S3Client;
@@ -68,7 +69,7 @@ class PublicidadController extends Controller
                 'agencia_id' => $agencia_id
             ]);
 
-            $this->notifySocket('new_publicidad', $publicidad);
+            app(PublicidadSyncService::class)->changed($publicidad);
 
             return response()->json($publicidad->load('agencia'), 201);
         } catch (AwsException $e) {
@@ -131,7 +132,7 @@ class PublicidadController extends Controller
             $tempPublicidad = clone $publicidad;
             $publicidad->delete();
 
-            $this->notifySocket('new_publicidad', $tempPublicidad);
+            app(PublicidadSyncService::class)->changed($tempPublicidad);
 
             return response()->json(['message' => 'Publicidad eliminada correctamente']);
         } catch (\Exception $e) {
@@ -145,20 +146,9 @@ class PublicidadController extends Controller
         $publicidad->active = !$publicidad->active;
         $publicidad->save();
 
-        $this->notifySocket('new_publicidad', $publicidad);
+        app(PublicidadSyncService::class)->changed($publicidad);
 
         return response()->json($publicidad);
     }
 
-    private function notifySocket($event, $data)
-    {
-        try {
-            \Illuminate\Support\Facades\Http::post(env('SOCKET_SERVER_URL') . '/notify', [
-                'event' => $event,
-                'data'  => $data
-            ]);
-        } catch (\Exception $e) {
-            Log::warning('Could not notify socket server: ' . $e->getMessage());
-        }
-    }
 }

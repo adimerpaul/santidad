@@ -376,6 +376,7 @@ const serverClock = new ServerClock()
 let syncManifest = null
 let playlistBusy = false
 let playlistPoll = null
+let lastManifestAt = -Infinity
 let syncTimer = null
 let destroyed = false
 let lastCompletedId = null
@@ -575,7 +576,18 @@ async function readSyncManifest(base, scope) {
   }
   if (scope !== scopeKey() || destroyed) throw new Error('Configuration changed')
   serverClock.sample(manifest.server_time_ms, start, end)
+  lastManifestAt = end
   return manifest
+}
+
+// Los cambios de publicidad llegan por socket (new_publicidad y al reconectar),
+// así que el sondeo solo es respaldo. Se consulta seguido mientras la lista no esté
+// lista (descargas o duraciones de video pendientes) o si el socket está caído.
+function pollPlaylist() {
+  let intervalMs = 5 * 60 * 1000
+  if (!syncManifest?.ready) intervalMs = 15 * 1000
+  else if (!socketConnected.value) intervalMs = 60 * 1000
+  if (performance.now() - lastManifestAt >= intervalMs) fetchPlaylist()
 }
 
 async function fetchPlaylist() {
@@ -1131,7 +1143,7 @@ function handleKeyPress(e) {
 onMounted(async () => {
   updateTime()
   clockInterval = setInterval(updateTime, 1000)
-  playlistPoll = setInterval(fetchPlaylist, 15000)
+  playlistPoll = setInterval(pollPlaylist, 15000)
   syncTimer = setInterval(syncPlayback, 1000)
   window.addEventListener('keydown', handleKeyPress)
 
