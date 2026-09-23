@@ -54,13 +54,16 @@
                       :disable="!isAdmin && !($store.user?.agencia_id==1)"/>
           </div>
 
-          <div class="col-12 flex flex-center">
+          <div class="col-12 flex flex-center items-center q-gutter-sm">
             <q-pagination
               v-model="current_page"
               :max="last_page"
               :max-pages="6"
               boundary-numbers
               @update:model-value="productsGet"/>
+            <q-select class="bg-white" style="min-width: 110px" label="Por página" dense outlined
+                      v-model="per_page" :options="perPageOptions"
+                      @update:model-value="cambiarPorPagina"/>
           </div>
 
           <div class="col-12">
@@ -551,6 +554,8 @@ export default {
       factura: '',
       agencia_id: 0,
       current_page: 1,
+      per_page: 12,
+      perPageOptions: [12, 24, 36, 48],
       vendedores: [],
       last_page: 1,
       ruleNumber: [
@@ -961,12 +966,17 @@ export default {
         this.categoriesTable = response.data
       }).catch(error => console.log(error))
     },
+    cambiarPorPagina () {
+      this.current_page = 1
+      this.productsGet()
+    },
     productsGet () {
       this.loading = true
       this.products = []
       this.$axios.get('productsSale', {
         params: {
           page: this.current_page,
+          paginate: this.per_page,
           search: this.search,
           order: this.order,
           category: this.category,
