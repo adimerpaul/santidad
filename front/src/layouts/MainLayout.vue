@@ -176,14 +176,14 @@
     <q-drawer
       v-model="leftDrawerOpen"
       show-if-above
-      :width="228"
+      :width="260"
       :breakpoint="500"
       class="drawer-shell text-white"
     >
       <div class="drawer-content">
         <div class="drawer-profile">
           <div class="drawer-profile__avatar">
-            <q-icon name="medication" size="20px" />
+            <q-icon name="medication" size="22px" />
           </div>
           <div class="drawer-profile__info">
             <div class="drawer-profile__name">{{ $store.user.name || 'Usuario' }}</div>
@@ -218,7 +218,7 @@
                   <q-item-section avatar class="drawer-link__avatar">
                     <q-icon
                       :name="item.icon"
-                      size="15px"
+                      size="18px"
                       :class="linkIsActive(item) ? 'text-white' : 'text-blue-grey-2'"
                     />
                   </q-item-section>
@@ -235,7 +235,7 @@
 
         <q-item clickable class="drawer-logout" @click="logout">
           <q-item-section avatar>
-            <q-icon name="exit_to_app" size="18px" />
+            <q-icon name="exit_to_app" size="20px" />
           </q-item-section>
           <q-item-section>
             <q-item-label class="drawer-link__label">Salir</q-item-label>
@@ -1232,8 +1232,8 @@ export default {
 }
 
 .drawer-profile__avatar {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   border-radius: 9px;
   display: flex;
   align-items: center;
@@ -1248,7 +1248,7 @@ export default {
 
 .drawer-profile__name {
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -1256,7 +1256,7 @@ export default {
 }
 
 .drawer-profile__sub {
-  font-size: 11px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.65);
   white-space: nowrap;
   overflow: hidden;
@@ -1265,7 +1265,7 @@ export default {
 
 .drawer-section-label {
   padding: 0 6px 3px;
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1284,9 +1284,9 @@ export default {
   background: rgba(255, 255, 255, 0.07) !important;
   color: white !important;
   font-weight: 600 !important;
-  font-size: 12px !important;
-  min-height: 28px !important;
-  padding: 0 8px !important;
+  font-size: 14px !important;
+  min-height: 38px !important;
+  padding: 0 10px !important;
 }
 
 .drawer-group--active {
@@ -1299,30 +1299,30 @@ export default {
 }
 
 .drawer-link {
-  min-height: 24px !important;
-  padding: 1px 8px !important;
+  min-height: 34px !important;
+  padding: 3px 10px !important;
   border-radius: 6px !important;
   margin: 0;
   color: rgba(176, 210, 255, 0.85) !important;
 }
 
 .drawer-link__avatar {
-  min-width: 24px !important;
-  padding-right: 6px !important;
+  min-width: 28px !important;
+  padding-right: 8px !important;
 }
 
 .drawer-group .q-item__section--avatar {
-  min-width: 26px !important;
-  padding-right: 6px !important;
+  min-width: 30px !important;
+  padding-right: 8px !important;
 }
 
 .drawer-group .q-icon {
-  font-size: 17px;
+  font-size: 20px;
 }
 
 .drawer-link__label {
-  font-size: 12px;
-  line-height: 1.2;
+  font-size: 14px;
+  line-height: 1.3;
 }
 
 /* active-class aplicado por Vue Router */
@@ -1341,7 +1341,7 @@ export default {
   border-radius: 8px !important;
   background: rgba(244, 67, 54, 0.18) !important;
   color: #ffd5d2 !important;
-  min-height: 30px !important;
+  min-height: 38px !important;
 }
 
 .pulse-indicator {

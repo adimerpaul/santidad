@@ -83,7 +83,6 @@ export default {
     this.refresh()
     this._tick = setInterval(this.updateClock, 1000)
     this.startRotation()
-    this._poll = setInterval(this.refresh, 30000)
     window.addEventListener('promotions-changed', this.refresh)
     document.addEventListener('visibilitychange', this.onVisibilityChange)
   },
@@ -92,7 +91,6 @@ export default {
     this._request?.abort()
     clearInterval(this._tick)
     clearInterval(this._rotation)
-    clearInterval(this._poll)
     window.removeEventListener('promotions-changed', this.refresh)
     document.removeEventListener('visibilitychange', this.onVisibilityChange)
   },
@@ -113,13 +111,11 @@ export default {
       if (this.active.length > 1) this.currentId = this.active[(this.currentIndex + 1) % this.active.length].id
     },
     onVisibilityChange () {
-      if (!document.hidden) {
-        this.updateClock()
-        this.refresh()
-      }
+      // Solo resincroniza el reloj local; las promociones se consultan al cargar (F5)
+      if (!document.hidden) this.updateClock()
     },
     async refresh () {
-      if (this._disposed || document.hidden) return
+      if (this._disposed) return
       this._request?.abort()
       const controller = new AbortController()
       this._request = controller

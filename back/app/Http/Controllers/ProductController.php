@@ -188,7 +188,8 @@ class ProductController extends Controller
         $products = $query->orderByRaw($ordenarRaw)
             ->paginate($paginate);
 
-        $costoTotal = $query->select(DB::raw('sum(costo*cantidad)'))
+        // reorder(): el ORDER BY del listado rompe el GROUP BY con only_full_group_by
+        $costoTotal = (clone $query)->reorder()->select(DB::raw('sum(costo*cantidad)'))
             ->groupBy('agencia_id')
             ->first();
 

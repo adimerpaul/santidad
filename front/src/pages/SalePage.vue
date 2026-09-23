@@ -57,13 +57,17 @@
                       :disable="!($store.user.id=='1')"
             />
           </div>
-          <div class="col-12 flex flex-center">
+          <div class="col-12 flex flex-center items-center q-gutter-sm">
             <q-pagination
               v-model="current_page"
               :max="last_page"
               :max-pages="6"
               boundary-numbers
               @update:model-value="productsGet"
+            />
+            <q-select class="bg-white" style="min-width: 110px" label="Por página" dense outlined
+                      v-model="per_page" :options="perPageOptions"
+                      @update:model-value="cambiarPorPagina"
             />
           </div>
           <div class="col-12">
@@ -724,6 +728,8 @@ export default {
       document: {},
       current_page: 1,
       last_page: 1,
+      per_page: 12,
+      perPageOptions: [12, 24, 36, 48],
       loadingPedidoOnline: false,
       loadingClientSearch: false,
       ruleNumber: [
@@ -1583,10 +1589,14 @@ export default {
       this.$store.productosVenta = []
     },
 
+    cambiarPorPagina () {
+      this.current_page = 1
+      this.productsGet()
+    },
     productsGet () {
       this.loading = true
       this.products = []
-      this.$axios.get(`productsSale?page=${this.current_page}&paginate=18&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}&subcategory=${this.subcategoria}`).then(res => {
+      this.$axios.get(`productsSale?page=${this.current_page}&paginate=${this.per_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}&subcategory=${this.subcategoria}`).then(res => {
         this.loading = false
         this.totalProducts = res.data.products.total
         this.last_page = res.data.products.last_page
