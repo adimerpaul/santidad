@@ -9,6 +9,7 @@ use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\CarouselController;
 use App\Http\Controllers\TiendaController;
 use App\Http\Controllers\SalesController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\AgenciaController;
@@ -155,6 +156,10 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/qr/generar', [QrPagoController::class,'generar']);
     Route::get('/qr/estado/{qrId}', [QrPagoController::class,'estado']);
     Route::post('/qr/cancelar', [QrPagoController::class,'cancelar']);
+    Route::get('/qr/pagados', [QrPagoController::class,'pagados']);
+    Route::get('/qr/ventas-candidatas', [QrPagoController::class,'ventasCandidatas']);
+    Route::post('/qr/vincular', [QrPagoController::class,'vincular']);
+    Route::post('/qr/desvincular', [QrPagoController::class,'desvincular']);
 
     Route::resource('/buys', BuyController::class);
     Route::get('/indexVencidos', [BuyController::class,'indexVencidos']);
@@ -179,6 +184,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::post('/salesGasto', [SalesController::class,'salesGasto']);
     Route::post('/searchClient', [ClientController::class,'searchClient']);
     Route::get('/betweenDates/{fechaInicio}/{fechaFin}', [SalesController::class,'betweenDates']);
+    Route::get('/dashboard/resumen', [DashboardController::class,'resumen']);
     Route::get('/env', [SalesController::class,'env']);
 
     Route::get('/historySucursal', [TransferHistoryController::class,'historySucursal']);

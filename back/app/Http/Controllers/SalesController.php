@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Mail\FacturaEstadoMail;
 use App\Mail\FacturaVentaMail;
+use App\Models\Agencia;
 use App\Models\Buy;
 use App\Models\Client;
-use App\Models\Cufd;
 use App\Models\Detail;
 use App\Models\Product;
 use App\Models\Sales;
@@ -43,6 +43,21 @@ class SalesController extends Controller
         return $sales->delete();
     }
 
+    /**
+     * Solo el administrador puede vender a nombre de otra agencia (es el único
+     * con el selector habilitado). Para el resto se impone la agencia del
+     * usuario: si el navegador manda un id viejo, la venta se registraría en
+     * otra sucursal y facturaría donde no corresponde.
+     */
+    private function agenciaDeLaVenta(Request $request): int
+    {
+        $usuario = $request->user();
+
+        return (string) $usuario->id === '1' || !$usuario->agencia_id
+            ? (int) $request->agencia_id
+            : (int) $usuario->agencia_id;
+    }
+
     // ─────────────────────────── Crear venta ───────────────────────────
 
     public function store(StoreSalesRequest $request)
@@ -64,24 +79,23 @@ class SalesController extends Controller
 
         error_log('cliente numeroDocumento: ' . $request->client['numeroDocumento']);
 
+        // Con NIT/CI distinto de 0 la venta se factura, así que necesita un CUFD
+        // vigente. El CUFD caduca a diario: si no hay, se pide a SIAT en el
+        // momento en lugar de rechazar la venta.
         if ($request->client['numeroDocumento'] !== '0') {
-            if (!Cufd::where('fechaVigencia', '>', date('Y-m-d H:i:s'))->exists()) {
+            $codigoSucursal = (int) (Agencia::find($this->agenciaDeLaVenta($request))?->sucursal ?? 0);
+
+            // Sucursal 0 = agencia sin habilitación SIAT: sale como nota de venta.
+            if ($codigoSucursal > 0 && !$this->facturacionService->asegurarCufdVigente($codigoSucursal)) {
                 return response()->json([
-                    'message' => 'El cliente tiene que tener un CUFD registrado para poder realizar la venta',
+                    'message' => 'No se pudo obtener un CUFD vigente desde SIAT para esta sucursal. Verifica la conexión con SIAT o genera el CUFD manualmente.',
                 ], 400);
             }
         }
 
         DB::beginTransaction();
         try {
-            // Solo el administrador puede vender a nombre de otra agencia (es el
-            // único con el selector habilitado). Para el resto se impone la
-            // agencia del usuario: si el navegador manda un id viejo, la venta
-            // se registraría en otra sucursal y facturaría donde no corresponde.
-            $usuario = $request->user();
-            $agencia_id = (string) $usuario->id === '1' || !$usuario->agencia_id
-                ? (int) $request->agencia_id
-                : (int) $usuario->agencia_id;
+            $agencia_id = $this->agenciaDeLaVenta($request);
             $productosProcesados = [];
             $montoBaseCentavos = 0;
             $descuentoProductoCentavos = 0;

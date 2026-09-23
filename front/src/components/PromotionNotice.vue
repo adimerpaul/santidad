@@ -128,7 +128,7 @@ export default {
         const { data } = await this.$axios.get('promotions/announcements', {
           params: this.agenciaId ? { agencia_id: this.agenciaId } : {},
           signal: controller.signal,
-          timeout: 10000
+          timeout: 60000
         })
         if (controller.signal.aborted || this._disposed) return
         if (!Array.isArray(data.promociones) || !Number.isFinite(data.server_time_ms)) return

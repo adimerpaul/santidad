@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Agencia;
 use App\Models\Cufd;
 use App\Models\Cuis;
 use App\Services\SiatCodeService;
@@ -31,7 +32,27 @@ class SiatController extends Controller
             ],
             'cuis' => $latestCuis,
             'cufds' => $latestCufds,
+            'sucursales' => $this->sucursalesHabilitadas(),
         ]);
+    }
+
+    /**
+     * Sucursales que se pueden facturar: las agencias con `sucursal` distinto
+     * de 0. Una agencia en 0 no está habilitada en SIAT y sus ventas salen como
+     * nota de venta, así que no tiene sentido pedirle códigos al servicio.
+     */
+    private function sucursalesHabilitadas()
+    {
+        return Agencia::where('sucursal', '!=', 0)
+            ->whereNotNull('sucursal')
+            ->orderBy('sucursal')
+            ->get(['id', 'nombre', 'sucursal'])
+            ->groupBy('sucursal')
+            ->map(fn ($agencias, $sucursal) => [
+                'value' => (int) $sucursal,
+                'label' => 'Sucursal ' . $sucursal . ' — ' . $agencias->pluck('nombre')->implode(' / '),
+            ])
+            ->values();
     }
 
     public function cuisIndex()
@@ -50,8 +71,16 @@ class SiatController extends Controller
             'codigo_sucursal' => 'nullable|integer|min:0',
             'codigo_punto_venta' => 'required|integer|min:0',
         ]);
+        $codigoSucursal = (int) ($data['codigo_sucursal'] ?? config('siat.codigo_sucursal'));
+
+        if (!$this->sucursalEsFacturable($codigoSucursal)) {
+            return response()->json([
+                'message' => "La sucursal {$codigoSucursal} no corresponde a ninguna agencia habilitada para facturar",
+            ], 422);
+        }
+
 //        verificar si hay fecha de vigecia el ultimo
-        $ultimoCuis = Cuis::where('codigoSucursal', $data['codigo_sucursal'] ?? config('siat.codigo_sucursal'))
+        $ultimoCuis = Cuis::where('codigoSucursal', $codigoSucursal)
             ->where('codigoPuntoVenta', $data['codigo_punto_venta'])
             ->latest('id')
             ->first();
@@ -66,7 +95,7 @@ class SiatController extends Controller
             'codigoModalidad' => (int) config('siat.codigo_modalidad'),
             'codigoPuntoVenta' => (int) $data['codigo_punto_venta'],
             'codigoSistema' => (string) config('siat.codigo_sistema'),
-            'codigoSucursal' => (int) ($data['codigo_sucursal'] ?? config('siat.codigo_sucursal')),
+            'codigoSucursal' => $codigoSucursal,
             'nit' => (int) config('siat.nit'),
         ];
 
@@ -113,6 +142,12 @@ class SiatController extends Controller
         $codigoSucursal = (int) ($data['codigo_sucursal'] ?? config('siat.codigo_sucursal'));
         $codigoPuntoVenta = (int) $data['codigo_punto_venta'];
         $forzar = (bool) ($data['forzar'] ?? false);
+
+        if (!$this->sucursalEsFacturable($codigoSucursal)) {
+            return response()->json([
+                'message' => "La sucursal {$codigoSucursal} no corresponde a ninguna agencia habilitada para facturar",
+            ], 422);
+        }
 
         $cuis = Cuis::where('codigoSucursal', $codigoSucursal)
             ->where('codigoPuntoVenta', $codigoPuntoVenta)
@@ -181,6 +216,12 @@ class SiatController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function sucursalEsFacturable(int $codigoSucursal): bool
+    {
+        return $codigoSucursal !== 0
+            && Agencia::where('sucursal', $codigoSucursal)->exists();
     }
 
     private function maskToken(?string $token): string
