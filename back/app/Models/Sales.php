@@ -17,6 +17,7 @@ class Sales extends Model
         "codigoSucursal",
         "codigoPuntoVenta",
         "fechaEmision",
+        "fechaEnvioFactura",
         "montoTotal",
         "montoCalculado",
         "ajusteRedondeo",

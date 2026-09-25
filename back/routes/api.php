@@ -24,6 +24,7 @@ use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\SiatController;
 use App\Http\Controllers\QrPagoController;
 use App\Http\Controllers\AppMovilController;
+use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\CashClosureController;
 use App\Http\Controllers\PromotionController;
 
@@ -88,6 +89,13 @@ Route::get('/app/productos', [AppMovilController::class, 'productos'])
     ->middleware('throttle:120,1');
 Route::get('/app/productos/{id}', [AppMovilController::class, 'productoDetalle'])
     ->middleware('throttle:120,1');
+
+// --- Delivery (API pública: imagen, precio, descuento y stock por sucursal) ---
+Route::prefix('delivery')->middleware('throttle:120,1')->group(function () {
+    Route::get('sucursales', [DeliveryController::class, 'sucursales']);
+    Route::get('productos', [DeliveryController::class, 'productos']);
+    Route::get('productos/{id}', [DeliveryController::class, 'producto'])->whereNumber('id');
+});
 
 
 // --- PROTEGIDAS ---

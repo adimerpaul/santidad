@@ -91,13 +91,16 @@ class FacturacionSiatService
     /**
      * Arma el XML, lo firma con el CUF del CUFD recibido y lo envía a SIAT.
      * Devuelve la respuesta cruda del servicio.
+     * Con $reemision la fecha declarada a SIAT se guarda en `fechaEnvioFactura`
+     * y `fechaEmision` (fecha de caja) no se toca.
      */
     private function emitirFactura(
         Sales $sales,
         Cuis $cuis,
         Cufd $cufd,
         int $codigoSucursal,
-        int $codigoPuntoVenta
+        int $codigoPuntoVenta,
+        bool $reemision = false
     ): array {
         $fechaEmision = Carbon::now('America/La_Paz');
         $mili         = str_pad((string) ((int) floor(((int) $fechaEmision->format('u')) / 1000)), 3, '0', STR_PAD_LEFT);
@@ -128,7 +131,11 @@ class FacturacionSiatService
         $sales->codigoSucursal        = $codigoSucursal;
         $sales->codigoPuntoVenta      = $codigoPuntoVenta;
         $sales->codigoDocumentoSector = 1;
-        $sales->fechaEmision          = $fechaEmision->format('Y-m-d H:i:s');
+        if ($reemision) {
+            $sales->fechaEnvioFactura = $fechaEmision->format('Y-m-d H:i:s');
+        } else {
+            $sales->fechaEmision      = $fechaEmision->format('Y-m-d H:i:s');
+        }
         $sales->leyenda               = $leyenda;
         $sales->cufd_id               = $cufd->id;
         $sales->siatEnviado           = false;
@@ -174,7 +181,7 @@ class FacturacionSiatService
     }
 
     /**
-     * 1002 = CUF inválido, 1003 = CUFD inválido. Ambos aparecen cuando SIAT ya
+     * 914/1003 = CUFD inválido, 1002 = CUF inválido. Aparecen cuando SIAT ya
      * emitió un CUFD posterior al que tenemos guardado.
      */
     private function rechazoPorCufdDesactualizado(array $result): bool
@@ -188,7 +195,7 @@ class FacturacionSiatService
         }
 
         foreach ($mensajes as $mensaje) {
-            if (in_array((int) data_get($mensaje, 'codigo'), [1002, 1003], true)) {
+            if (in_array((int) data_get($mensaje, 'codigo'), [914, 1002, 1003], true)) {
                 return true;
             }
         }
@@ -413,8 +420,11 @@ class FacturacionSiatService
     }
 
     /**
-     * Envía una factura offline a SIAT como paquete (recepcionPaqueteFactura).
-     * Flujo: registrar evento significativo → empaquetar XML → enviar → validar.
+     * Envía a SIAT una factura pendiente (quedó fuera de línea al venderse).
+     * El CUFD con el que se generó suele estar vencido o rotado y SIAT lo
+     * rechaza (914), así que la factura se reemite en línea con la fecha de
+     * hoy y un CUFD vigente. La fecha declarada queda en `fechaEnvioFactura`;
+     * `fechaEmision` se mantiene para no mover la venta de caja.
      */
     public function enviarPaquete(Sales $sale): void
     {
@@ -422,186 +432,66 @@ class FacturacionSiatService
             throw new \RuntimeException('La factura ya fue enviada a SIAT');
         }
 
-        // Se regenera siempre: el XML guardado puede haber quedado con datos
-        // viejos (método de pago, detalles) que SIAT rechazaría al validar.
-        $xmlPath = $this->asegurarXmlFactura($sale, true);
+        $sale->loadMissing(['details.product', 'client', 'user.agencia', 'agencia']);
 
-        $cufd = $sale->cufd_id
-            ? Cufd::find($sale->cufd_id)
-            : Cufd::where('codigo', $sale->cufd)->latest('id')->first();
-
-        $cuis = Cuis::where('codigoSucursal', (int) ($sale->codigoSucursal ?? 0))
-            ->where('codigoPuntoVenta', (int) ($sale->codigoPuntoVenta ?? 0))
-            ->latest('id')
-            ->first();
-
-        if (!$cufd || !$cuis) {
-            throw new \RuntimeException('No existe CUIS/CUFD para enviar el paquete');
-        }
-
-        $codigoSucursal   = (int) ($sale->codigoSucursal   ?? 0);
+        $codigoSucursal = (int) ($sale->codigoSucursal
+            ?: $sale->agencia?->sucursal
+            ?: $sale->user?->agencia?->sucursal
+            ?: 0);
         $codigoPuntoVenta = (int) ($sale->codigoPuntoVenta ?? 0);
 
-        // Ventana de evento: 1 segundo antes y 1 segundo después de la emisión
-        $fechaEmision = Carbon::parse($sale->fechaEmision, 'America/La_Paz');
-        $inicio = $fechaEmision->copy()->subSecond()->format('Y-m-d\TH:i:s.000');
-        $fin    = $fechaEmision->copy()->addSecond()->format('Y-m-d\TH:i:s.999');
+        if ($codigoSucursal === 0) {
+            throw new \RuntimeException('La agencia de la venta no está habilitada para facturar en SIAT');
+        }
 
-        // Buscar registro de envío existente para reutilizar el código de evento
+        $cuis = $this->asegurarCuisVigente($codigoSucursal, $codigoPuntoVenta);
+        $cufd = $cuis ? $this->asegurarCufdVigente($codigoSucursal, $codigoPuntoVenta) : null;
+
+        if (!$cuis || !$cufd) {
+            throw new \RuntimeException('No se pudo obtener CUIS/CUFD vigente de SIAT');
+        }
+
         $envio = SiatEnvio::firstOrCreate(
             ['sale_id' => $sale->id],
             ['estado'  => 'pendiente']
         );
 
-        if ($envio->codigo_evento) {
-            // Ya tenemos el evento registrado en SIAT — lo reutilizamos
-            $codigoEvento = $envio->codigo_evento;
-            error_log("SIAT paquete [{$sale->id}] reutilizando evento existente: {$codigoEvento}");
-        } else {
-            // Registrar evento nuevo en SIAT
-            $eventResult = $this->siatCodeService->registroEventoSignificativo([
-                'codigoAmbiente'        => (int) config('siat.codigo_ambiente'),
-                'codigoMotivoEvento'    => 1,
-                'codigoPuntoVenta'      => $codigoPuntoVenta,
-                'codigoSistema'         => (string) config('siat.codigo_sistema'),
-                'codigoSucursal'        => $codigoSucursal,
-                'cufd'                  => $cufd->codigo,
-                'cufdEvento'            => $cufd->codigo,
-                'cuis'                  => $cuis->codigo,
-                'descripcion'           => 'Envio de factura generada fuera de linea',
-                'fechaHoraFinEvento'    => $fin,
-                'fechaHoraInicioEvento' => $inicio,
-                'nit'                   => (int) config('siat.nit'),
-            ]);
+        $result = $this->emitirFactura($sale, $cuis, $cufd, $codigoSucursal, $codigoPuntoVenta, true);
 
-            error_log("SIAT paquete [{$sale->id}] evento: " . json_encode($eventResult));
+        // El CUFD guardado como vigente puede haber sido rotado en SIAT: se
+        // pide uno nuevo y se reintenta una vez.
+        if (!$this->esRespuestaAceptada($result) && $this->rechazoPorCufdDesactualizado($result)) {
+            error_log("SIAT reemisión [{$sale->id}] CUFD desactualizado, solicitando uno nuevo");
+            $cufdNuevo = $this->renovarCufd($cuis, $codigoSucursal, $codigoPuntoVenta);
 
-            $codigoEvento = data_get($eventResult, 'RespuestaListaEventos.codigoRecepcionEventoSignificativo')
-                ?? data_get($eventResult, 'codigoRecepcionEventoSignificativo');
-
-            if (!$codigoEvento) {
-                $envio->update(['estado' => 'error', 'ultimo_mensaje' => json_encode($eventResult)]);
-                throw new \RuntimeException('SIAT no devolvió código de evento: ' . json_encode($eventResult));
+            if ($cufdNuevo) {
+                $result = $this->emitirFactura($sale, $cuis, $cufdNuevo, $codigoSucursal, $codigoPuntoVenta, true);
             }
-
-            // Guardar el código de evento para no volver a crearlo en reintentos
-            $envio->update(['codigo_evento' => $codigoEvento]);
         }
 
-        // Construir tar.gz con el XML de la factura
-        $tempDir = storage_path("app/siat/temp/{$sale->id}");
-        if (!is_dir($tempDir)) {
-            mkdir($tempDir, 0755, true);
+        error_log("SIAT reemisión [{$sale->id}]: " . json_encode($result));
+
+        if (!$this->esRespuestaAceptada($result)) {
+            $mensajesSiat = data_get($result, 'RespuestaServicioFacturacion.mensajesList')
+                ?? data_get($result, 'mensajesList')
+                ?? [];
+            $detalle = is_array($mensajesSiat) ? json_encode($mensajesSiat) : (string) $mensajesSiat;
+            $envio->update(['estado' => 'error', 'ultimo_mensaje' => $detalle]);
+            throw new \RuntimeException('SIAT rechazó la factura. ' . $detalle);
         }
-        $xmlTemp = "{$tempDir}/{$sale->id}.xml";
-        $tarPath = "{$tempDir}/paquete.tar";
 
-        try {
-            copy($xmlPath, $xmlTemp);
+        $codigoRecepcion = data_get($result, 'RespuestaServicioFacturacion.codigoRecepcion')
+            ?? data_get($result, 'codigoRecepcion');
 
-            $phar = new \PharData($tarPath);
-            $phar->addFile($xmlTemp, "{$sale->id}.xml");
-            $phar->compress(\Phar::GZ);
+        $envio->update([
+            'codigo_recepcion' => $codigoRecepcion,
+            'estado'           => 'validado',
+            'ultimo_mensaje'   => null,
+        ]);
 
-            $gzPath    = $tarPath . '.gz';
-            $gzContent = file_get_contents($gzPath);
-            $hash      = hash('sha256', $gzContent);
-            $fechaEnvio = Carbon::now('America/La_Paz')->format('Y-m-d\TH:i:s.000');
-
-            $packagePayload = [
-                'codigoAmbiente'        => (int) config('siat.codigo_ambiente'),
-                'codigoDocumentoSector' => 1,
-                'codigoEmision'         => 2,
-                'codigoModalidad'       => (int) config('siat.codigo_modalidad'),
-                'codigoPuntoVenta'      => $codigoPuntoVenta,
-                'codigoSistema'         => (string) config('siat.codigo_sistema'),
-                'codigoSucursal'        => $codigoSucursal,
-                'cufd'                  => $cufd->codigo,
-                'cuis'                  => $cuis->codigo,
-                'nit'                   => (int) config('siat.nit'),
-                'tipoFacturaDocumento'  => 1,
-                'archivo'               => $gzContent,
-                'fechaEnvio'            => $fechaEnvio,
-                'hashArchivo'           => $hash,
-                'cantidadFacturas'      => 1,
-                'codigoEvento'          => (int) $codigoEvento,
-            ];
-
-            $recepcionResult = $this->siatCodeService->recepcionPaqueteFactura($packagePayload);
-            error_log("SIAT paquete [{$sale->id}] recepcion: " . json_encode($recepcionResult));
-
-            $codigoRecepcion = data_get($recepcionResult, 'RespuestaServicioFacturacion.codigoRecepcion')
-                ?? data_get($recepcionResult, 'codigoRecepcion');
-
-            if (!$codigoRecepcion) {
-                $mensajesSiat = data_get($recepcionResult, 'RespuestaServicioFacturacion.mensajesList')
-                    ?? data_get($recepcionResult, 'mensajesList')
-                    ?? [];
-                $detalleMensaje = is_array($mensajesSiat) ? json_encode($mensajesSiat) : (string) $mensajesSiat;
-                $envio->update(['estado' => 'error', 'ultimo_mensaje' => $detalleMensaje]);
-                throw new \RuntimeException('SIAT no devolvió código de recepción. ' . $detalleMensaje);
-            }
-
-            $envio->update(['codigo_recepcion' => $codigoRecepcion, 'estado' => 'enviado']);
-
-            // Polling de validación (máx. 10 intentos con 1 s de pausa)
-            $validado    = false;
-            $intentos    = 0;
-            $maxIntentos = 10;
-            $ultimaRespuesta = [];
-
-            $validationPayload = [
-                'codigoAmbiente'        => (int) config('siat.codigo_ambiente'),
-                'codigoDocumentoSector' => 1,
-                'codigoEmision'         => 2,
-                'codigoModalidad'       => (int) config('siat.codigo_modalidad'),
-                'codigoPuntoVenta'      => $codigoPuntoVenta,
-                'codigoSistema'         => (string) config('siat.codigo_sistema'),
-                'codigoSucursal'        => $codigoSucursal,
-                'cufd'                  => $cufd->codigo,
-                'cuis'                  => $cuis->codigo,
-                'nit'                   => (int) config('siat.nit'),
-                'tipoFacturaDocumento'  => 1,
-                'codigoRecepcion'       => $codigoRecepcion,
-            ];
-
-            while (!$validado && $intentos < $maxIntentos) {
-                sleep(1);
-                $valResult       = $this->siatCodeService->validacionRecepcionPaqueteFactura($validationPayload);
-                $ultimaRespuesta = $valResult;
-                error_log("SIAT paquete [{$sale->id}] validacion intento {$intentos}: " . json_encode($valResult));
-
-                $descripcion = data_get($valResult, 'RespuestaServicioFacturacion.codigoDescripcion')
-                    ?? data_get($valResult, 'codigoDescripcion');
-
-                if ($descripcion === 'VALIDADA') {
-                    $validado = true;
-                }
-                $intentos++;
-            }
-
-            if (!$validado) {
-                $mensajesSiat = data_get($ultimaRespuesta, 'RespuestaServicioFacturacion.mensajesList')
-                    ?? data_get($ultimaRespuesta, 'mensajesList')
-                    ?? [];
-                $detalle = is_array($mensajesSiat) ? json_encode($mensajesSiat) : (string) $mensajesSiat;
-                $envio->update(['estado' => 'error', 'ultimo_mensaje' => $detalle]);
-                throw new \RuntimeException("SIAT no validó el paquete tras {$maxIntentos} intentos. Última respuesta: {$detalle}");
-            }
-
-            $envio->update(['estado' => 'validado']);
-
-            $sale->siatEnviado                        = true;
-            $sale->codigoRecepcion                    = $codigoRecepcion;
-            $sale->codigoRecepcionEventoSignificativo = $codigoEvento;
-            $sale->save();
-
-        } finally {
-            @unlink($xmlTemp);
-            @unlink($tarPath);
-            @unlink($tarPath . '.gz');
-            @rmdir($tempDir);
-        }
+        $sale->codigoRecepcion = $codigoRecepcion;
+        $sale->siatEnviado     = true;
+        $sale->save();
     }
 
     // ─────────────────────────── XML ───────────────────────────
@@ -670,7 +560,7 @@ class FacturacionSiatService
             $sale->codigoSucursal        = $codigoSucursal;
             $sale->codigoPuntoVenta      = $codigoPuntoVenta;
             $sale->codigoDocumentoSector = 1;
-            $sale->fechaEmision          = $fechaEmision->format('Y-m-d H:i:s');
+            $sale->fechaEnvioFactura     = $fechaEmision->format('Y-m-d H:i:s');
             $sale->cufd_id               = $cufd->id;
         }
 

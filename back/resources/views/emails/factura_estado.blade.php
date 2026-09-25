@@ -45,7 +45,7 @@
                 </tr>
                 <tr>
                     <td>Fecha de emisión:</td>
-                    <td>{{ \Carbon\Carbon::parse($sale->fechaEmision)->format('d/m/Y H:i') }}</td>
+                    <td>{{ \Carbon\Carbon::parse($sale->fechaEnvioFactura ?: $sale->fechaEmision)->format('d/m/Y H:i') }}</td>
                 </tr>
                 <tr>
                     <td>Monto total:</td>

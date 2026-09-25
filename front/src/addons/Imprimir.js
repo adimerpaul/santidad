@@ -62,7 +62,7 @@ Oruro</div>
 <tr><td class='titder'>NOMBRE/RAZÓN SOCIAL:</td><td class='contenido'>${factura.client.nombreRazonSocial}</td>
 </tr><tr><td class='titder'>NIT/CI/CEX:</td><td class='contenido'>${factura.client.numeroDocumento}</td></tr>
 <tr><td class='titder'>COD. CLIENTE:</td ><td class='contenido'>${factura.client.id}</td></tr>
-<tr><td class='titder'>FECHA DE EMISIÓN:</td><td class='contenido'>${factura.fechaEmision}</td></tr>
+<tr><td class='titder'>FECHA DE EMISIÓN:</td><td class='contenido'>${factura.fechaEnvioFactura || factura.fechaEmision}</td></tr>
 </table><hr><div class='titulo'>DETALLE</div>`
         factura.details.forEach(r => {
           cadena += `<div style='font-size: 12px'><b>${r.product_id} ${r.descripcion} </b></div>`
