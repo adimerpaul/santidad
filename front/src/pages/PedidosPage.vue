@@ -818,7 +818,19 @@ export default {
     productsGet () {
       this.loading = true
       this.products = []
-      this.$axios.get(`productsSale?page=${this.current_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}&subcategory=${this.subcategoria}&proveedor=${this.proveedorFiltro || 0}`).then(res => {
+      // Como objeto: al limpiar el buscador search queda en null y en la URL
+      // viajaba como el texto "null"
+      this.$axios.get('productsSale', {
+        params: {
+          page: this.current_page,
+          search: this.search || '',
+          order: this.order,
+          category: this.category,
+          agencia: this.agencia_id,
+          subcategory: this.subcategoria,
+          proveedor: this.proveedorFiltro || 0
+        }
+      }).then(res => {
         this.loading = false
         this.totalProducts = res.data.products.total
         this.last_page = res.data.products.last_page

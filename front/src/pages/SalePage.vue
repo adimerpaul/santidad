@@ -4,14 +4,15 @@
       <div class="col-12 col-md-8">
         <div class="row">
           <div class="col-12 col-md-6 bg-white">
-            <q-input outlined v-model="search" label="Buscar producto" dense clearable @update:model-value="productsGet" debounce="500">
+            <q-input outlined v-model="search" label="Buscar producto" dense clearable @update:model-value="buscarProductos" debounce="500"
+                     :hint="buscarMuyCorto ? `Escribe al menos ${MIN_CARACTERES_BUSQUEDA} letras` : undefined">
               <template v-slot:prepend>
                 <q-icon name="search" class="cursor-pointer" />
               </template>
             </q-input>
           </div>
           <div class="col-12 col-md-6 flex">
-            <q-btn :loading="loading" icon="refresh" dense label="Actualizar" color="indigo" no-caps class="text-bold" @click="productsGet">
+            <q-btn :loading="loading" icon="refresh" dense label="Actualizar" color="indigo" no-caps class="text-bold" @click="actualizarProductos">
               <q-tooltip>Actualizar</q-tooltip>
             </q-btn>
              <q-btn
@@ -30,14 +31,14 @@
           <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" emit-value map-options dense outlined
                       v-model="category" option-value="id" option-label="name" :options="categories"
-                      @update:model-value="productsGet"
+                      @update:model-value="buscarProductos"
             >
             </q-select>
           </div>
           <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" emit-value map-options dense outlined
                       v-model="subcategoria" option-value="id" option-label="name" :options="subcategories"
-                      @update:model-value="productsGet"
+                      @update:model-value="buscarProductos"
                       label="Subcategoria"
             >
             </q-select>
@@ -46,7 +47,7 @@
             <q-select class="bg-white" label="Ordenar" dense outlined v-model="order"
                       :options="orders" map-options emit-value
                       option-value="value" option-label="label"
-                      @update:model-value="productsGet"
+                      @update:model-value="buscarProductos"
             />
           </div>
           <div class="col-12 col-md-3 q-pa-xs">
@@ -63,7 +64,7 @@
               :max="last_page"
               :max-pages="6"
               boundary-numbers
-              @update:model-value="productsGet"
+              @update:model-value="productsGet()"
             />
             <q-select class="bg-white" style="min-width: 110px" label="Por página" dense outlined
                       v-model="per_page" :options="perPageOptions"
@@ -666,6 +667,53 @@
 import { Imprimir } from 'src/addons/Imprimir'
 import { formatCurrency as formatMoney, formatPayable, roundCurrency, roundPayable, hasProductSavings } from 'src/utils/money'
 
+// Caché de búsquedas de productos: las cajas repiten mucho las mismas búsquedas
+// y páginas. Cada venta avisa por socket ('stock_actualizado') qué productos
+// vendió y se descartan solo las búsquedas que los contienen; lo demás (compras,
+// transferencias) tarda como máximo PRODUCTOS_CACHE_MS en verse. Al cobrar, el
+// servidor valida el stock real (verificar-stock-venta) y "Actualizar" ignora la caché.
+const PRODUCTOS_CACHE_MS = 3 * 60 * 1000
+const PRODUCTOS_CACHE_MAX = 60
+const MIN_CARACTERES_BUSQUEDA = 3
+const productosCache = new Map()
+// Identifica a esta pestaña para no aplicar dos veces el aviso de su propia venta
+const ORIGEN_VENTA = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+function productosCacheInvalidar (ids) {
+  const vendidos = new Set(ids.map(Number))
+  for (const [clave, entrada] of productosCache) {
+    if (entrada.data.products.data.some(p => vendidos.has(Number(p.id)))) {
+      productosCache.delete(clave)
+    }
+  }
+}
+
+// A nivel de módulo: la caché sobrevive a salir de Venta, así que también debe
+// enterarse de las ventas de otras cajas mientras esta página no está abierta
+window.addEventListener('stock-actualizado', e => {
+  const productos = e.detail?.productos
+  if (Array.isArray(productos)) productosCacheInvalidar(productos.map(p => p.id))
+})
+
+function productosCacheGet (clave) {
+  const entrada = productosCache.get(clave)
+  if (!entrada) return null
+  if (Date.now() - entrada.guardado > PRODUCTOS_CACHE_MS) {
+    productosCache.delete(clave)
+    return null
+  }
+  return entrada.data
+}
+
+function productosCacheSet (clave, data) {
+  productosCache.delete(clave)
+  productosCache.set(clave, { data, guardado: Date.now() })
+  // Map conserva el orden de inserción: la primera clave es la más antigua
+  if (productosCache.size > PRODUCTOS_CACHE_MAX) {
+    productosCache.delete(productosCache.keys().next().value)
+  }
+}
+
 const TERMINAL_CONFIG_PASSWORD = '2202'
 const CAJA_STORAGE_KEY = 'caja_numero'
 const CAJAS_VALIDAS = [1, 2, 3, 4]
@@ -835,14 +883,22 @@ export default {
     this.verificarConfiguracionTerminal()
     window.addEventListener('keydown', this.handleSecretTerminalKey)
     window.addEventListener('storage', this.handleTerminalStorageChange)
+    window.addEventListener('stock-actualizado', this.handleStockActualizado)
   },
   beforeUnmount () {
     window.removeEventListener('keydown', this.handleSecretTerminalKey)
     window.removeEventListener('storage', this.handleTerminalStorageChange)
+    window.removeEventListener('stock-actualizado', this.handleStockActualizado)
+    if (this.productosAbort) this.productosAbort.abort()
     this.closeClientDisplay()
     this.detenerPollingQr()
   },
   computed: {
+    MIN_CARACTERES_BUSQUEDA: () => MIN_CARACTERES_BUSQUEDA,
+    buscarMuyCorto () {
+      const largo = (this.search || '').trim().length
+      return largo > 0 && largo < MIN_CARACTERES_BUSQUEDA
+    },
     urlImagenCompleta () {
       if (!this.productoImagenSeleccionado?.imagen) return ''
       const img = this.productoImagenSeleccionado.imagen
@@ -1124,6 +1180,26 @@ export default {
         // Indicar que la venta se completó antes de cerrar el diálogo
         this.saleCompleted = true
         this.saleDialog = false
+
+        // Lo vendido (cantidadPedida es lo que descuenta el backend): se corrige
+        // el stock en pantalla y se avisa a las demás cajas sin volver a consultar
+        const vendidos = this.$store.productosVenta.map(p => ({
+          id: p.id,
+          cantidad: Number(p.cantidadPedida) || 0
+        }))
+        productosCacheInvalidar(vendidos.map(p => p.id))
+        vendidos.forEach(v => {
+          const enGrid = this.products.find(p => p.id === v.id)
+          if (!enGrid) return
+          // La reserva de la canasta ya no aplica: el stock visible es el real
+          enGrid.cantidadReal = Math.max(0, Number(enGrid.cantidadReal) - v.cantidad)
+          enGrid.cantidad = enGrid.cantidadReal
+        })
+        this.notifySocket('stock_actualizado', {
+          agencia_id: this.agencia_id,
+          origen: ORIGEN_VENTA,
+          productos: vendidos
+        })
 
         // Notificar a la pantalla del cliente: "Gracias por su compra"
         this.notifySocket('clienteSaleComplete', {
@@ -1593,30 +1669,94 @@ export default {
       this.current_page = 1
       this.productsGet()
     },
+    // Venta hecha en otra caja: descuenta lo vendido de la lista visible. Solo
+    // misma agencia (el stock es por sucursal) y no la venta de esta pestaña,
+    // que ya se corrigió en saleInsert.
+    handleStockActualizado (e) {
+      const { agencia_id: agencia, origen, productos } = e.detail || {}
+      if (origen === ORIGEN_VENTA || !Array.isArray(productos)) return
+      if (String(agencia) !== String(this.agencia_id)) return
+      productos.forEach(v => {
+        const enGrid = this.products.find(p => p.id === v.id)
+        if (!enGrid) return
+        const cantidad = Number(v.cantidad) || 0
+        // cantidad puede incluir la reserva de la canasta de esta caja: se
+        // descuenta de ambos para mantener esa diferencia
+        enGrid.cantidadReal = Math.max(0, Number(enGrid.cantidadReal) - cantidad)
+        enGrid.cantidad = Math.max(0, Number(enGrid.cantidad) - cantidad)
+      })
+    },
+    // Búsqueda o filtro nuevo: vuelve a la página 1 y evita consultar con 1-2 letras
+    buscarProductos () {
+      if (this.buscarMuyCorto) return
+      this.current_page = 1
+      this.productsGet()
+    },
+    // Botón "Actualizar": ignora la caché y trae el stock actual
+    actualizarProductos () {
+      productosCache.clear()
+      this.productsGet()
+    },
     productsGet () {
+      // Como objeto: al limpiar el buscador search queda en null y en la URL
+      // viajaba como el texto "null"
+      const params = {
+        page: this.current_page,
+        paginate: this.per_page,
+        search: (this.search || '').trim(),
+        order: this.order,
+        category: this.category,
+        agencia: this.agencia_id,
+        subcategory: this.subcategoria
+      }
+      const clave = JSON.stringify(params)
+
+      // Una respuesta que llega tarde no debe pisar la búsqueda más reciente
+      if (this.productosAbort) this.productosAbort.abort()
+      this.productosAbort = null
+
+      const enCache = productosCacheGet(clave)
+      if (enCache) {
+        this.mostrarProductos(enCache)
+        return
+      }
+
+      const controller = new AbortController()
+      this.productosAbort = controller
       this.loading = true
       this.products = []
-      this.$axios.get(`productsSale?page=${this.current_page}&paginate=${this.per_page}&search=${this.search}&order=${this.order}&category=${this.category}&agencia=${this.agencia_id}&subcategory=${this.subcategoria}`).then(res => {
-        this.loading = false
-        this.totalProducts = res.data.products.total
-        this.last_page = res.data.products.last_page
-        this.current_page = res.data.products.current_page
-        this.costoTotalProducts = parseFloat(res.data.costoTotal).toFixed(1)
-        res.data.products.data.forEach(p => {
-          p.cantidadPedida = 0
-          p.cantidadReal = p.cantidad // ✅ Guardar stock real
-          p.porcentaje = Number(p.porcentajeEfectivo ?? p.porcentaje ?? 0)
-          p.precio = p.precio ? formatMoney(p.precio) : p.precio
-          const precioVenta = p.precioVenta ?? (p.porcentaje
-            ? this.$filters.precioRebajaVenta(p.precio, p.porcentaje)
-            : p.precio)
-          p.precioVenta = precioVenta != null ? formatMoney(precioVenta) : precioVenta
-          p.cantidadAlmacen = p.cantidadAlmacen || 0
-          this.products.push(p)
-        })
+      this.$axios.get('productsSale', { params, signal: controller.signal }).then(res => {
+        productosCacheSet(clave, res.data)
+        this.mostrarProductos(res.data)
       }).catch(err => {
+        if (err?.code === 'ERR_CANCELED') return
         this.loading = false
         console.log(err)
+      }).finally(() => {
+        if (this.productosAbort === controller) this.productosAbort = null
+      })
+    },
+    mostrarProductos (data) {
+      // Copia: los productos se modifican en pantalla (cantidades, carrito) y
+      // la caché debe quedar tal como la devolvió el servidor
+      data = JSON.parse(JSON.stringify(data))
+      this.loading = false
+      this.products = []
+      this.totalProducts = data.products.total
+      this.last_page = data.products.last_page
+      this.current_page = data.products.current_page
+      this.costoTotalProducts = parseFloat(data.costoTotal).toFixed(1)
+      data.products.data.forEach(p => {
+        p.cantidadPedida = 0
+        p.cantidadReal = p.cantidad // ✅ Guardar stock real
+        p.porcentaje = Number(p.porcentajeEfectivo ?? p.porcentaje ?? 0)
+        p.precio = p.precio ? formatMoney(p.precio) : p.precio
+        const precioVenta = p.precioVenta ?? (p.porcentaje
+          ? this.$filters.precioRebajaVenta(p.precio, p.porcentaje)
+          : p.precio)
+        p.precioVenta = precioVenta != null ? formatMoney(precioVenta) : precioVenta
+        p.cantidadAlmacen = p.cantidadAlmacen || 0
+        this.products.push(p)
       })
     },
     cargarPedidoOnline () {

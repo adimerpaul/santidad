@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Agencia;
 use App\Models\Product;
+use App\Models\Buy;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\TransferHistory;
@@ -324,17 +325,9 @@ class ProductController extends Controller
         };
 
         // 4) Query base
+        // Los lotes se cargan después de paginar (paso 6): en Laravel 10 un limit()
+        // dentro de with() limita el total de lotes de la página, no por producto.
         $query = Product::query()
-            ->with([
-                'buys' => function ($q) {
-                    // Solo las columnas que consume el front (lotes en la venta);
-                    // product_id es obligatorio para hidratar la relación
-                    $q->select(['id', 'product_id', 'lote', 'price', 'dateExpiry', 'cantidadVendida'])
-                        ->where('cantidadVendida', '>', 0)
-                        ->orderBy('created_at', 'desc')
-                        ->limit(7);
-                }
-            ])
             ->where('nombre', 'like', $searchLike);
 
         if ($category_id !== 0) {
@@ -366,23 +359,41 @@ class ProductController extends Controller
         // 6) Paginación
         $products = $query->paginate($paginate);
 
-        // 7) Costo total correcto (Aplicando los mismos filtros)
-        $costoTotalRow = Product::query()
-            ->when($category_id !== 0, fn($q) => $q->where('category_id', $category_id))
-            ->when($sub_category_id !== 0, fn($q) => $q->where('subcategory_id', $sub_category_id))
-            // Aplicamos el mismo filtro de proveedor al total
-            ->when($proveedor_id !== 0, fn($q) => $q->whereRaw('
-                (SELECT proveedor_id 
-                 FROM buys 
-                 WHERE buys.product_id = products.id 
-                 ORDER BY created_at DESC, id DESC 
-                 LIMIT 1) = ?
-            ', [$proveedor_id]))
-            ->where('nombre', 'like', $searchLike)
-            ->selectRaw("SUM(costo * {$sucursalColumn}) as costo_total")
-            ->first();
+        // Hasta 7 lotes con saldo por producto, en una sola consulta para toda la página.
+        // Solo las columnas que consume el front; product_id es necesario para agrupar.
+        $lotesPorProducto = Buy::query()
+            ->select(['id', 'product_id', 'lote', 'price', 'dateExpiry', 'cantidadVendida'])
+            ->whereIn('product_id', $products->getCollection()->pluck('id'))
+            ->where('cantidadVendida', '>', 0)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->groupBy('product_id');
+        $products->getCollection()->each(function ($product) use ($lotesPorProducto) {
+            $lotes = $lotesPorProducto->get($product->id, collect())->take(7)->values();
+            $product->setRelation('buys', $lotes);
+        });
 
-        $costoTotal = (float) ($costoTotalRow->costo_total ?? 0);
+        // 7) Costo total: recorre toda la tabla de productos y ninguna pantalla de
+        // venta lo muestra, así que solo se calcula si se pide con ?conCosto=1
+        $costoTotal = 0.0;
+        if ($request->boolean('conCosto')) {
+            $costoTotalRow = Product::query()
+                ->when($category_id !== 0, fn($q) => $q->where('category_id', $category_id))
+                ->when($sub_category_id !== 0, fn($q) => $q->where('subcategory_id', $sub_category_id))
+                // Aplicamos el mismo filtro de proveedor al total
+                ->when($proveedor_id !== 0, fn($q) => $q->whereRaw('
+                    (SELECT proveedor_id
+                     FROM buys
+                     WHERE buys.product_id = products.id
+                     ORDER BY created_at DESC, id DESC
+                     LIMIT 1) = ?
+                ', [$proveedor_id]))
+                ->where('nombre', 'like', $searchLike)
+                ->selectRaw("SUM(costo * {$sucursalColumn}) as costo_total")
+                ->first();
+
+            $costoTotal = (float) ($costoTotalRow->costo_total ?? 0);
+        }
 
         // 8) Post-proceso de imagen
         $products->getCollection()->transform(function ($product) use ($sucursalColumn, $agencia_id) {

@@ -711,6 +711,11 @@ export default {
           this.getNotificaciones(1, true)
         }
       })
+      // Venta en cualquier caja: la pantalla de venta ajusta su caché y su lista
+      // (SalePage escucha 'stock-actualizado' en window)
+      this.socket.on('stock_actualizado', (data) => {
+        window.dispatchEvent(new CustomEvent('stock-actualizado', { detail: data }))
+      })
       this.socket.on('caja_estado', (data) => {
         if (String(data?.agencia_id) === String(this.$store.agencia_id)) {
           // Cambio real de estado: salta el antirebote, pero sigue compartiendo
