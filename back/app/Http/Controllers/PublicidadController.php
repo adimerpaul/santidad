@@ -85,7 +85,6 @@ class PublicidadController extends Controller
     {
         try {
             $agencia_id = $request->agencia_id;
-            Log::info('Consultando publicidad para agencia: ' . ($agencia_id ?? 'GLOBAL'));
 
             $query = Publicidad::where('active', true);
 
@@ -138,6 +137,36 @@ class PublicidadController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Ordena a las pantallas reproducir la playlist desde un anuncio (o desde el
+     * inicio). La playlist viaja en el evento: las pantallas no consultan la API.
+     */
+    public function play(Request $request)
+    {
+        $data = $request->validate([
+            'agencia_id' => 'nullable|exists:agencias,id',
+            'start_id'   => 'nullable|exists:publicidads,id',
+        ]);
+        $agencia = $data['agencia_id'] ?? null;
+
+        // Sin sucursal se envían todas las activas y cada pantalla filtra las suyas
+        $items = Publicidad::where('active', true)
+            ->when($agencia, fn ($q) => $q->where(fn ($q) => $q->whereNull('agencia_id')->orWhere('agencia_id', $agencia)))
+            ->orderBy('id', 'desc')
+            ->get(['id', 'name', 'file_id', 'type', 'url', 'agencia_id']);
+
+        $sent = app(PublicidadSyncService::class)->notify('publicidad_play', [
+            'agencia_id' => $agencia,
+            'start_id'   => $data['start_id'] ?? null,
+            'items'      => $items,
+        ]);
+
+        if (!$sent) {
+            return response()->json(['error' => 'No se pudo contactar al servidor de sockets'], 502);
+        }
+        return response()->json(['message' => 'Orden enviada', 'items' => $items->count()]);
     }
 
     public function toggleActive($id)

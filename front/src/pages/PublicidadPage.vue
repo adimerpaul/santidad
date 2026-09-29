@@ -3,6 +3,18 @@
     <div class="row items-center q-mb-md">
       <div class="text-h6">Gestión de Publicidad TV</div>
       <q-space />
+      <q-select
+        v-model="playAgencia"
+        :options="agenciasOptions"
+        label="Pantallas"
+        emit-value
+        map-options
+        dense
+        outlined
+        style="min-width: 240px"
+        class="q-mr-sm"
+      />
+      <q-btn label="Reproducir desde el inicio" icon="replay" color="positive" class="q-mr-sm" :loading="playing" @click="playFrom(null)" />
       <q-btn label="Subir Publicidad" icon="upload" color="primary" @click="showUploadDialog = true" />
     </div>
 
@@ -45,6 +57,9 @@
             </template>
             <template v-slot:body-cell-actions="props">
               <q-td :props="props" class="q-gutter-xs">
+                <q-btn icon="play_arrow" color="positive" flat round size="sm" :disable="!props.row.active || playing" @click="playFrom(props.row)">
+                  <q-tooltip>Reproducir desde esta publicidad</q-tooltip>
+                </q-btn>
                 <q-btn icon="delete" color="negative" flat round size="sm" @click="deletePublicidad(props.row)" />
               </q-td>
             </template>
@@ -145,6 +160,8 @@ export default {
       previewType: '',
       previewTitle: '',
       agencias: [],
+      playAgencia: null,
+      playing: false,
       form: {
         name: '',
         file: null,
@@ -269,6 +286,24 @@ export default {
         })
         .finally(() => {
           this.uploading = false
+        })
+    },
+    // Envía la playlist por socket a las pantallas; ellas no consultan la API
+    playFrom (row) {
+      this.playing = true
+      this.$axios.post('publicidad/play', {
+        agencia_id: this.playAgencia,
+        start_id: row ? row.id : null
+      })
+        .then(res => {
+          const desde = row ? `desde "${row.name}"` : 'desde el inicio'
+          this.$q.notify({ message: `Pantallas reproduciendo ${desde} (${res.data.items} publicidades)`, color: 'positive' })
+        })
+        .catch(err => {
+          this.$q.notify({ message: 'Error: ' + (err.response?.data?.error || err.message), color: 'negative' })
+        })
+        .finally(() => {
+          this.playing = false
         })
     },
     toggleActive (row) {
