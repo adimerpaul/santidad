@@ -72,7 +72,7 @@ class PublicidadController extends Controller
                 'size_bytes' => $file->getSize()
             ]);
 
-            app(PublicidadSyncService::class)->changed($publicidad);
+            // app(PublicidadSyncService::class)->changed($publicidad);
 
             return response()->json($publicidad->load('agencia'), 201);
         } catch (AwsException $e) {
@@ -134,7 +134,7 @@ class PublicidadController extends Controller
             $tempPublicidad = clone $publicidad;
             $publicidad->delete();
 
-            app(PublicidadSyncService::class)->changed($tempPublicidad);
+            // app(PublicidadSyncService::class)->changed($tempPublicidad);
 
             return response()->json(['message' => 'Publicidad eliminada correctamente']);
         } catch (\Exception $e) {
@@ -154,12 +154,13 @@ class PublicidadController extends Controller
         ]);
         $agencia = $data['agencia_id'] ?? null;
 
-        $states = app(PublicidadSyncService::class)->publish($agencia ? (int) $agencia : null, true, $data['start_id'] ?? null);
-        $legacyItems = collect($states)->flatMap(fn ($state) => $state['items'])->unique('id')->values();
-        app(PublicidadSyncService::class)->notify('publicidad_play', [
-            'agencia_id' => $agencia, 'start_id' => $data['start_id'] ?? null, 'items' => $legacyItems,
-        ]);
-        $items = $legacyItems->count();
+        // $states = app(PublicidadSyncService::class)->publish($agencia ? (int) $agencia : null, true, $data['start_id'] ?? null);
+        // $legacyItems = collect($states)->flatMap(fn ($state) => $state['items'])->unique('id')->values();
+        // app(PublicidadSyncService::class)->notify('publicidad_play', [
+        //     'agencia_id' => $agencia, 'start_id' => $data['start_id'] ?? null, 'items' => $legacyItems,
+        // ]);
+        // $items = $legacyItems->count();
+        $items = 0;
         return response()->json(['message' => 'Programación guardada; se enviará a las pantallas', 'items' => $items]);
     }
 
@@ -172,7 +173,7 @@ class PublicidadController extends Controller
             $publicidad->active = array_key_exists('active', $data) ? (bool) $data['active'] : !$publicidad->active;
             $publicidad->save();
             // Persist the schedules atomically; notify sockets only after commit.
-            app(PublicidadSyncService::class)->changed($publicidad);
+            // app(PublicidadSyncService::class)->changed($publicidad);
             return $publicidad;
         });
 

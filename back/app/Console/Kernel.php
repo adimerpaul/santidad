@@ -12,7 +12,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->command('publicidad:publish-pending')->everyMinute()->withoutOverlapping();
+        // $schedule->command('publicidad:publish-pending')->everyMinute()->withoutOverlapping();
     }
 
     /**
