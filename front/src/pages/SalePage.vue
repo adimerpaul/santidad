@@ -571,7 +571,6 @@
               dense
               class="q-mb-sm"
               :label="facturaPequena ? 'Imprimir factura pequeña' : 'Imprimir factura grande (normal)'"
-              @update:model-value="guardarFormatoFactura"
             />
             <div class="row">
               <div class="col-6">
@@ -723,15 +722,6 @@ function productosCacheSet (clave, data) {
 
 const TERMINAL_CONFIG_PASSWORD = '2202'
 const CAJA_STORAGE_KEY = 'caja_numero'
-const FORMATO_FACTURA_KEY = 'formato_factura'
-
-function leerFormatoFactura () {
-  try {
-    return localStorage.getItem(FORMATO_FACTURA_KEY) !== 'grande'
-  } catch (e) {
-    return true
-  }
-}
 const CAJAS_VALIDAS = [1, 2, 3, 4]
 const EVENTOS_PANTALLA_CLIENTE = new Set([
   'clienteDisplayData',
@@ -755,7 +745,7 @@ export default {
     return {
       agencia_id: parseInt(localStorage.getItem('agencia_id')),
       // Formato de impresión de la factura; por defecto el ticket pequeño
-      facturaPequena: leerFormatoFactura(),
+      facturaPequena: true,
       // El administrador eligió una agencia distinta a la suya en el selector
       agenciaElegidaManual: false,
       caja_numero: normalizarCaja(localStorage.getItem(CAJA_STORAGE_KEY)),
@@ -867,6 +857,8 @@ export default {
       if (val) {
         this.saleCompleted = false
         this.clientDisplayVisible = false
+        // Cada venta arranca con la factura pequeña marcada
+        this.facturaPequena = true
       } else {
         // Diálogo cerrado (botón X, Atrás, o después de venta)
         if (this.clientDisplayVisible) {
@@ -1254,12 +1246,6 @@ export default {
         const primerError = errores ? Object.values(errores).flat()[0] : null
         this.$alert.error(primerError || err.response?.data?.message || 'No se pudo registrar la venta.')
       })
-    },
-
-    guardarFormatoFactura (val) {
-      try {
-        localStorage.setItem(FORMATO_FACTURA_KEY, val ? 'pequena' : 'grande')
-      } catch (e) {}
     },
 
     guardarCajaNumero (val) {
