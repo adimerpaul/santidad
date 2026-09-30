@@ -148,6 +148,9 @@ export class Imprimir {
       const emisor = this.emisor(factura)
       const client = factura.client || {}
       const fecha = factura.fechaEnvioFactura || factura.fechaEmision
+      const documento = client.numeroDocumento
+        ? client.numeroDocumento + (client.complemento ? '-' + client.complemento : '')
+        : '0'
       QRCode.toDataURL(env.url2 + 'consulta/QR?nit=' + env.nit + '&cuf=' + factura.cuf + '&numero=' + factura.numeroFactura + '&t=2', opts).then(url => {
         const cadena = `<html>
 <style>
@@ -168,14 +171,15 @@ export class Imprimir {
   <div class='c cab'>
     <div>${env.razon || ''}</div>
     <div>${emisor.sucursal.toUpperCase()}</div>
+    <div>NIT ${env.nit}</div>
   </div>
   <div class='cuerpo'>
     <table>
-      <tr><td class='et'>NIT:</td><td>${env.nit}</td></tr>
+      <tr><td class='et'>NIT/CI:</td><td>${documento}</td></tr>
       <tr><td class='et'>RAZON SOCIAL:</td><td>${client.nombreRazonSocial || 'SIN NOMBRE'}</td></tr>
       <tr><td class='et'>FACTURA N°:</td><td>${factura.numeroFactura}</td></tr>
       <tr><td class='et'>ORDEN N°:</td><td>${factura.id}</td></tr>
-      <tr><td class='et'>FECHA:</td><td>${fecha ? moment(fecha).format('DD/MM/YYYY') : ''}</td></tr>
+      <tr><td class='et'>FECHA:</td><td>${fecha ? moment(fecha).format('DD/MM/YYYY HH:mm') : ''}</td></tr>
       <tr><td class='et'>IMPORTE:</td><td>${(parseFloat(factura.montoTotal) || 0).toFixed(2)}</td></tr>
     </table>
     <div class='qr'><img src="${url}"></div>
