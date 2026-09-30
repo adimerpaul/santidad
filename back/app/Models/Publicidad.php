@@ -15,7 +15,7 @@ class Publicidad extends Model
         'type',
         'url',
         'active',
-        'agencia_id'
+        'agencia_id', 'duration_ms', 'media_sha256', 'size_bytes'
     ];
 
     public function agencia()

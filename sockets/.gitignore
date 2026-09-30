@@ -29,3 +29,6 @@ yarn-error.log*
 *.sln
 AGENTS.md
 CLAUDE.md
+
+# Persistent advertising schedules
+.data/

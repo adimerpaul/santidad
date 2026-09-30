@@ -1,11 +1,15 @@
-import { app, BrowserWindow, ipcMain, protocol, net, Tray, Menu, powerSaveBlocker } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, Tray, Menu, powerSaveBlocker } from 'electron'
 import path from 'path'
 import os from 'os'
 import fs from 'fs'
-import { downloadToFile } from './mediaDownload.mjs'
-import { localMediaFileUrl } from './localMediaFile.mjs'
-import { lockCursor, unlockCursor, setCursorLockEnabled, isCursorLockEnabled } from './cursorLock.mjs'
-import { exec } from 'child_process'
+import { downloadToFile, validMediaFile } from './mediaDownload.mjs'
+import { localMediaResponse } from './localMediaResponse.mjs'
+import {
+  lockCursor,
+  unlockCursor,
+  setCursorLockEnabled,
+  isCursorLockEnabled,
+} from './cursorLock.mjs'
 
 // needed in case process is undefined under Linux
 const platform = process.platform || os.platform()
@@ -151,14 +155,10 @@ app.whenReady().then(() => {
 
   // Registrar protocolo localmedia:// para servir archivos locales al renderer
   // Uso: <video src="localmedia://publicidad_xxx.mp4">
-  protocol.handle('localmedia', (request) => {
-    return net.fetch(localMediaFileUrl(request.url, mediaDir), {
-      bypassCustomProtocolHandlers: true,
-    })
-  })
+  protocol.handle('localmedia', (request) => localMediaResponse(request, mediaDir))
 
   // ===== IPC: DESCARGAR archivo de Cloudflare R2 al disco local =====
-  ipcMain.handle('media:download', async (event, fileId, type, r2Url) => {
+  ipcMain.handle('media:download', async (event, fileId, type, r2Url, expected = {}) => {
     // fileId ahora es la ruta completa: 'publicidad/nombre.ext'
     // Usamos solo el nombre del archivo para guardarlo localmente
     const safeName = fileId.replace(/[\\/]/g, '_') // 'publicidad/foto.png' -> 'publicidad_foto.png'
@@ -166,7 +166,7 @@ app.whenReady().then(() => {
     const filePath = path.join(mediaDir, fileName)
 
     // Si ya existe, retornar inmediatamente
-    if (fs.existsSync(filePath)) {
+    if (await validMediaFile(filePath, expected)) {
       console.log(`[Media] Ya existe localmente: ${fileName}`)
       return { success: true, fileName }
     }
@@ -175,7 +175,13 @@ app.whenReady().then(() => {
     const downloadUrl = r2Url
 
     try {
-      await downloadToFile(downloadUrl, filePath)
+      const disk = fs.statfsSync(mediaDir)
+      if (
+        disk.bavail * disk.bsize <
+        (Number(expected.size) || 200 * 1024 * 1024) + 64 * 1024 * 1024
+      )
+        throw new Error('Espacio insuficiente para preparar la publicidad')
+      await downloadToFile(downloadUrl, filePath, expected)
       return { success: true, fileName }
     } catch (error) {
       console.error('Media download failed:', error.message)
@@ -210,7 +216,7 @@ app.whenReady().then(() => {
     const activeFileNames = activeFileIds.map((id) => id.replace(/[\\/]/g, '_'))
 
     for (const file of files) {
-      if (!activeFileNames.includes(file)) {
+      if (!file.endsWith('.part') && !activeFileNames.includes(file)) {
         try {
           fs.unlinkSync(path.join(mediaDir, file))
           deleted.push(file)
@@ -413,7 +419,9 @@ let pendingUpdateInstall = false
 
 function applyPendingUpdate() {
   if (isTerminalBusy) {
-    console.log('[Updater] Pantalla ocupada en cobro/QR. Actualización pospuesta hasta volver a publicidad.')
+    console.log(
+      '[Updater] Pantalla ocupada en cobro/QR. Actualización pospuesta hasta volver a publicidad.',
+    )
     pendingUpdateInstall = true
     return
   }

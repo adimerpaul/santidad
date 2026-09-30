@@ -44,6 +44,7 @@
                   v-model="props.row.active"
                   :true-value="1"
                   :false-value="0"
+                  :disable="Boolean(updatingActive[props.row.id])"
                   @update:model-value="toggleActive(props.row)"
                 />
               </q-td>
@@ -148,6 +149,7 @@ export default {
   data () {
     return {
       publicidades: [],
+      updatingActive: {},
       loading: false,
       showUploadDialog: false,
       uploading: false,
@@ -297,7 +299,7 @@ export default {
       })
         .then(res => {
           const desde = row ? `desde "${row.name}"` : 'desde el inicio'
-          this.$q.notify({ message: `Pantallas reproduciendo ${desde} (${res.data.items} publicidades)`, color: 'positive' })
+          this.$q.notify({ message: `Orden de reproducción guardada ${desde} (${res.data.items} publicidades)`, color: 'positive' })
         })
         .catch(err => {
           this.$q.notify({ message: 'Error: ' + (err.response?.data?.error || err.message), color: 'negative' })
@@ -307,13 +309,21 @@ export default {
         })
     },
     toggleActive (row) {
-      this.$axios.post(`publicidad/${row.id}/toggle`)
-        .then(() => {
+      if (this.updatingActive[row.id]) return
+      this.updatingActive[row.id] = true
+      this.$axios.post(`publicidad/${row.id}/toggle`, { active: Number(row.active) })
+        .then(res => {
+          row.active = Number(res.data.active)
           this.$q.notify({ message: 'Estado actualizado', color: 'positive', timeout: 500 })
         })
         .catch(() => {
           row.active = row.active === 1 ? 0 : 1
-          this.$q.notify({ message: 'Error al actualizar estado', color: 'negative' })
+          // A lost response does not prove that the server rejected the change.
+          this.getPublicidades()
+          this.$q.notify({ message: 'No se pudo confirmar el cambio. Actualizando el estado del servidor.', color: 'negative' })
+        })
+        .finally(() => {
+          delete this.updatingActive[row.id]
         })
     },
     deletePublicidad (row) {

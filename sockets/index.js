@@ -9,7 +9,9 @@ const io = new Server(server, {
     origin: "*",
   }
 });
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
+const { attachAdvertising } = require('./advertising');
+const advertising = attachAdvertising(io, process.env.AD_STATE_DIR ? { directory: process.env.AD_STATE_DIR } : {});
 
 // Enable CORS for HTTP requests (like /notify)
 app.use((req, res, next) => {
@@ -46,6 +48,11 @@ app.post('/notify', (req, res) => {
   const { event, data } = req.body;
   if (typeof event !== 'string' || event.length === 0) {
     return res.status(400).json({ success: false, message: 'Evento no válido' });
+  }
+
+  if (event === 'ad_schedule') {
+    try { advertising.publish(data); return res.json({ success: true }); }
+    catch (error) { return res.status(422).json({ success: false, message: error.message }); }
   }
 
   if (TERMINAL_EVENTS.has(event)) {
@@ -90,6 +97,8 @@ io.on('connection', (socket) => {
 });
 
 const PORT = Number.parseInt(process.env.PORT, 10) || 3000;
-server.listen(PORT, '0.0.0.0', () => {
+if (require.main === module) server.listen(PORT, '0.0.0.0', () => {
   console.log(`Socket server listening on port http://localhost:${PORT}`);
 });
+
+module.exports = { app, server, io, advertising };

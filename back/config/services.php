@@ -40,4 +40,6 @@ return [
         'branch_code' => env('BANECO_BRANCH_CODE'),
     ],
 
+    'publicidad' => ['socket_url' => env('SOCKET_SERVER_URL')],
+
 ];

@@ -30,3 +30,7 @@ flutter build apk --release
 
 La APK universal se genera en
 `build/app/outputs/flutter-apk/app-release.apk`.
+
+## Publicidad sincronizada 6.4
+
+Requiere desplegar primero el backend y socket del protocolo 2. Consulta [publicidad-sync](../docs/publicidad-sync.md) para el orden de actualización, pruebas y recuperación. El volumen de los videos se controla con el mando de Android TV.

@@ -34,3 +34,18 @@ test('different local clock origins and network latency converge; wall clock is 
   a.sample(999999, aTick - 6000, aTick) // excessive RTT is rejected
   assert.equal(a.time, 28100)
 })
+
+
+test('protocol 2 never activates a future schedule early', () => {
+  assert.equal(playbackPosition({ ...manifest, protocol: 2, epoch_ms: 5000 }, 4999), null)
+  assert.deepEqual(playbackPosition({ ...manifest, protocol: 2, epoch_ms: 5000 }, 5000), { index: 0, offsetMs: 0, remainingMs: 10000 })
+})
+
+test('recent clock samples replace an old fast sample after ten minutes', () => {
+  let tick = 0
+  const clock = new ServerClock(() => tick)
+  clock.sample(1000, 0, 0)
+  tick = 600001
+  clock.sample(700000, tick - 10, tick)
+  assert.equal(clock.time, 700005)
+})

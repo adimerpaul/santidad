@@ -7,7 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
+import 'ad_sync.dart';
+import 'ad_media.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,14 +16,22 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // flutter build (release) usa .env.production; flutter run (debug) usa .env.
 // Se puede forzar con --dart-define=ENV=production o ENV=development.
-const String _env = String.fromEnvironment('ENV', defaultValue: kReleaseMode ? 'production' : 'development');
-const String appVersion = 'v6.3.0';
-const MethodChannel _autoStartChannel = MethodChannel('com.santidad.app/autostart');
+const String _env = String.fromEnvironment(
+  'ENV',
+  defaultValue: kReleaseMode ? 'production' : 'development',
+);
+const String appVersion = 'v6.4.0';
+const MethodChannel _autoStartChannel = MethodChannel(
+  'com.santidad.app/autostart',
+);
 const Duration _imageDuration = Duration(seconds: 10);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: _env == 'production' ? '.env.production' : '.env');
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 64 * 1024 * 1024;
+  await dotenv.load(
+    fileName: _env == 'production' ? '.env.production' : '.env',
+  );
 
   // Forzar orientación LANDSCAPE (nativa del TV)
   await SystemChrome.setPreferredOrientations([
@@ -56,10 +65,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Santidad TV',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(brightness: Brightness.dark, primarySwatch: Colors.blue),
       home: const PublicidadPlayer(),
     );
   }
@@ -72,13 +78,13 @@ class PublicidadPlayer extends StatefulWidget {
   State<PublicidadPlayer> createState() => _PublicidadPlayerState();
 }
 
-/// Reproductor de publicidad sin sondeo: la playlist se pide UNA vez al iniciar
-/// (publicidad-actual) y luego solo cambia cuando el panel envía el evento de
-/// socket `publicidad_play`, que trae la playlist completa y el anuncio inicial.
-/// Los archivos se guardan en el dispositivo y solo se descargan los que faltan.
-class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBindingObserver {
+/// Programación por sucursal, reloj compartido y archivos locales.
+class _PublicidadPlayerState extends State<PublicidadPlayer>
+    with WidgetsBindingObserver {
   String get _rawServerUrl =>
-      dotenv.env['SERVER_IP'] ?? dotenv.env['API_BASE_URL'] ?? 'https://bsantidad.tuprogam.com';
+      dotenv.env['SERVER_IP'] ??
+      dotenv.env['API_BASE_URL'] ??
+      'https://bsantidad.tuprogam.com';
 
   String get apiBaseUrl {
     final base = _rawServerUrl.trim();
@@ -88,7 +94,10 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
   }
 
   String get socketUrl {
-    final socket = dotenv.env['SOCKET_IP'] ?? dotenv.env['SOCKET_URL'] ?? 'https://saventura.tuprogam.com';
+    final socket =
+        dotenv.env['SOCKET_IP'] ??
+        dotenv.env['SOCKET_URL'] ??
+        'https://saventura.tuprogam.com';
     return socket.trim();
   }
 
@@ -97,7 +106,8 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
   int _currentIndex = 0;
   String? _localPath;
   String? _agenciaId;
-  int _rotationTurns = 1; // 1 = 90° giro para TV horizontal con contenido vertical
+  int _rotationTurns =
+      1; // 1 = 90° giro para TV horizontal con contenido vertical
   bool _isLoading = true;
   bool _dialogOpen = false; // Pausar timers cuando hay diálogos abiertos
   bool _initializing = false;
@@ -106,9 +116,23 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
   IO.Socket? socket;
   Timer? _imageTimer;
   int _playGeneration = 0;
-  // Las actualizaciones de playlist se ejecutan en orden, nunca en paralelo
-  Future<void> _playlistQueue = Future.value();
-  String get _cacheKey => 'playlist_v2:$apiBaseUrl|$_agenciaId';
+  final AdServerClock _serverClock = AdServerClock();
+  Map<String, dynamic>? _manifest, _desired, _preparedManifest;
+  List<Map<String, dynamic>>? _preparedItems;
+  Timer? _syncTimer, _clockTimer, _prepareRetry, _bootstrapRetry, _clockRetry;
+  bool _preparing = false,
+      _bootstrapBusy = false,
+      _foreground = true,
+      _mediaFailed = false;
+  bool _aligning = false;
+  bool _socketClock = false;
+  int _retrySeconds = 5;
+  int _lastProgressTick = 0, _lastPositionMs = -1;
+  int _seekRecoveries = 0;
+  double _slotEndsAt = 0;
+  String get _scope => apiBaseUrl + '|' + (_agenciaId ?? '');
+  String get _cacheKey => 'playlist_v3:' + _scope;
+  AdPosition? get _target => adPosition(_manifest, _serverClock.time);
   DateTime? _lastEnterPress;
   final FocusNode _playerFocusNode = FocusNode(debugLabel: 'PublicidadPlayer');
 
@@ -119,12 +143,25 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _playerFocusNode.requestFocus();
     });
+    _syncTimer = Timer.periodic(
+      const Duration(milliseconds: 250),
+      (_) => _syncPlayback(),
+    );
+    _clockTimer = Timer.periodic(
+      const Duration(minutes: 5),
+      (_) => _requestClock(),
+    );
     _initApp();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
+    _foreground = state == AppLifecycleState.resumed;
+    if (!_foreground) {
+      _controller?.pause();
+      _imageTimer?.cancel();
+    }
     if (state == AppLifecycleState.resumed) {
       print('📺 TV reanudada o encendida (AppLifecycleState.resumed)');
       if (!kIsWeb) {
@@ -137,12 +174,19 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
       }
       if (!_startupReady || _agenciaId == null) return;
       // Solo reanudar lo local; no se consulta la API
-      if (_controller != null && _controller!.value.isInitialized && !_controller!.value.isPlaying) {
+      if (_controller != null &&
+          _controller!.value.isInitialized &&
+          !_controller!.value.isPlaying) {
         _controller!.play();
       } else if (_playlist.isNotEmpty && _controller == null) {
         _playCurrent();
       }
-      if (socket == null || socket!.disconnected) _initSocket();
+      if (socket == null || socket!.disconnected) {
+        _initSocket();
+      } else {
+        _requestClock(register: true);
+      }
+      _syncPlayback();
     }
   }
 
@@ -168,7 +212,9 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
 
       _startupReady = true;
       _initSocket();
-      _loadPlaylist();
+      _bootstrapRetry = Timer(const Duration(seconds: 5), () {
+        if (_desired == null && !(socket?.connected ?? false)) _loadPlaylist();
+      });
     } finally {
       _initializing = false;
     }
@@ -179,8 +225,10 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
 
     try {
       final status =
-          await _autoStartChannel.invokeMapMethod<String, dynamic>('getStatus') ??
-              <String, dynamic>{};
+          await _autoStartChannel.invokeMapMethod<String, dynamic>(
+            'getStatus',
+          ) ??
+          <String, dynamic>{};
       if (!mounted) return;
 
       // Nunca abrir pantallas de configuracion durante un arranque automatico.
@@ -191,7 +239,8 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
 
       if (!homeConfigured) {
         setState(() => _status = 'Configurando aplicacion de inicio...');
-        homeConfigured = await _autoStartChannel
+        homeConfigured =
+            await _autoStartChannel
                 .invokeMethod<bool>('requestHomeRole')
                 .timeout(const Duration(seconds: 90), onTimeout: () => false) ??
             false;
@@ -201,7 +250,8 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
       // permiso de superposicion es el respaldo que permite al servicio de boot
       // abrir la pantalla desde segundo plano en Android 11+.
       if (!overlayGranted && mounted) {
-        final configureOverlay = await showDialog<bool>(
+        final configureOverlay =
+            await showDialog<bool>(
               context: context,
               barrierDismissible: false,
               builder: (dialogContext) => AlertDialog(
@@ -228,9 +278,13 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
 
         if (configureOverlay && mounted) {
           setState(() => _status = 'Esperando permiso de inicio automatico...');
-          overlayGranted = await _autoStartChannel
+          overlayGranted =
+              await _autoStartChannel
                   .invokeMethod<bool>('requestOverlayPermission')
-                  .timeout(const Duration(seconds: 90), onTimeout: () => false) ??
+                  .timeout(
+                    const Duration(seconds: 90),
+                    onTimeout: () => false,
+                  ) ??
               false;
         }
       }
@@ -241,7 +295,9 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
       } else if (homeConfigured) {
         setState(() => _status = 'Inicio automatico HOME configurado');
       } else {
-        setState(() => _status = 'Falta activar el permiso de inicio automatico');
+        setState(
+          () => _status = 'Falta activar el permiso de inicio automatico',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             duration: Duration(seconds: 8),
@@ -264,78 +320,124 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
   }
 
   void _initSocket() {
-    try {
-      socket?.dispose();
-      print('Inicializando Socket.IO en: $socketUrl');
-
-      socket = IO.io(socketUrl, IO.OptionBuilder()
-        .setTransports(['websocket', 'polling'])
-        .enableAutoConnect()
-        .enableReconnection()
-        .setReconnectionAttempts(double.infinity)
-        .setReconnectionDelay(1000)
-        .setReconnectionDelayMax(5000)
-        .enableForceNew()
-        .build());
-
-      socket?.connect();
-      socket?.onConnect((_) => print('✅ Conectado a Socket Server: $socketUrl'));
-      socket?.onDisconnect((reason) => print('⚠️ Socket desconectado: $reason'));
-      socket?.onError((err) => print('❌ Error en Socket: $err'));
-
-      // Único evento que cambia la reproducción. No se reacciona a otros eventos
-      // ni a reconexiones: así la pantalla nunca vuelve a consultar la API sola.
-      socket?.on('publicidad_play', _onPlayCommand);
-    } catch (e) {
-      print('Error iniciando socket: $e');
-    }
-  }
-
-  void _onPlayCommand(dynamic data) {
-    if (!mounted || data is! Map || data['items'] is! List) return;
-    final target = data['agencia_id'];
-    if (target != null && target.toString() != _agenciaId) return;
-    print('▶️ Orden de reproducción recibida (inicio: ${data['start_id'] ?? "principio"})');
-    _enqueue(() => _applyPlaylist(
-          data['items'] as List,
-          startId: data['start_id']?.toString(),
-          restart: true,
-        ));
-  }
-
-  void _enqueue(Future<void> Function() task) {
-    _playlistQueue = _playlistQueue.then((_) async {
-      try {
-        await task();
-      } catch (e) {
-        print('Error actualizando playlist; se mantiene la reproducción local: $e');
-      }
+    socket?.dispose();
+    socket = IO.io(
+      socketUrl,
+      IO.OptionBuilder()
+          .setTransports(['websocket', 'polling'])
+          .disableAutoConnect()
+          .enableReconnection()
+          .setReconnectionAttempts(double.infinity)
+          .setReconnectionDelay(1000)
+          .setReconnectionDelayMax(30000)
+          .enableForceNew()
+          .build(),
+    );
+    socket!.onConnect((_) {
+      _socketClock = false;
+      _requestClock(register: true);
     });
+    socket!.on('ad_schedule', _receiveSchedule);
+    socket!.connect();
+  }
+
+  void _requestClock({bool register = false}) {
+    final connection = socket;
+    if (!mounted ||
+        connection == null ||
+        !connection.connected ||
+        _agenciaId == null)
+      return;
+    final scope = _scope;
+    final start = _serverClock.tick;
+    var completed = false;
+    _clockRetry?.cancel();
+    _clockRetry = Timer(const Duration(seconds: 15), () {
+      if (!completed && mounted && scope == _scope)
+        _requestClock(register: true);
+    });
+    connection.emitWithAck(
+      register ? 'ad_register' : 'ad_clock',
+      {
+        'agencia_id': int.parse(_agenciaId!),
+        'revision': _desired?['revision'] ?? 0,
+      },
+      ack: (dynamic data) {
+        if (completed ||
+            !mounted ||
+            connection != socket ||
+            scope != _scope ||
+            data is! Map)
+          return;
+        completed = true;
+        _clockRetry?.cancel();
+        if (data['success'] != true) {
+          _clockRetry = Timer(
+            const Duration(seconds: 15),
+            () => _requestClock(register: true),
+          );
+          return;
+        }
+        if (!_socketClock) _serverClock.clear();
+        _socketClock = true;
+        if (data['server_time_ms'] is num)
+          _serverClock.sample(data['server_time_ms'], start, _serverClock.tick);
+        if (data['schedule'] is Map) _receiveSchedule(data['schedule']);
+        if (data['needs_snapshot'] == true) _loadPlaylist();
+        if (data['pending_bootstrap'] == true) {
+          _clockRetry = Timer(
+            const Duration(seconds: 16),
+            () => _requestClock(register: true),
+          );
+        }
+        _syncPlayback();
+      },
+    );
+  }
+
+  void _receiveSchedule(dynamic data) {
+    if (!mounted ||
+        data is! Map ||
+        data['protocol'] != 2 ||
+        data['items'] is! List ||
+        data['agencia_id'].toString() != _agenciaId ||
+        data['revision'] is! int)
+      return;
+    socket?.emit('ad_received', {'revision': data['revision']});
+    if (_desired != null && data['revision'] <= _desired!['revision']) return;
+    _desired = Map<String, dynamic>.from(data);
+    _preparedManifest = null;
+    _preparedItems = null;
+    _prepareRetry?.cancel();
+    _retrySeconds = 5;
+    _prepareSchedule();
   }
 
   Future<void> _loadSavedState() async {
     final prefs = await SharedPreferences.getInstance();
     _agenciaId = prefs.getString('agencia_id');
-    _rotationTurns = prefs.getInt('rotation_turns') ?? 1; // Default 90°
+    _rotationTurns = prefs.getInt('rotation_turns') ?? 1;
     if (_agenciaId == null) return;
-
-    final cachedJson = prefs.getString(_cacheKey);
-    if (cachedJson == null || cachedJson.isEmpty) return;
+    final saved = prefs.getString(_cacheKey);
+    final legacy =
+        prefs.getString('playlist_v2:' + _scope) ??
+        prefs.getString('cached_playlist:' + _scope);
     try {
-      final cached = (jsonDecode(cachedJson) as List)
-          .map((e) => Map<String, dynamic>.from(e))
-          .where((ad) => kIsWeb || File(ad['path'] ?? '').existsSync())
-          .toList();
-      if (cached.isEmpty || !mounted) return;
+      final decoded = jsonDecode(saved ?? legacy ?? '[]');
+      final List items = decoded is Map ? decoded['items'] : decoded;
+      // Keep slot positions even when a cached file is missing; show fallback in its slot.
+      final cached = items.map((e) => Map<String, dynamic>.from(e)).toList();
+      if (decoded is Map && decoded['manifest'] is Map)
+        _manifest = Map<String, dynamic>.from(decoded['manifest']);
+      if (!mounted || cached.isEmpty) return;
       setState(() {
         _playlist = cached;
         _currentIndex = 0;
         _isLoading = false;
-        _status = 'Iniciando reproducción local...';
       });
       _playCurrent();
     } catch (e) {
-      print('Error cargando playlist en caché: $e');
+      print('Error reading advertising cache: $e');
     }
   }
 
@@ -354,7 +456,8 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
           agencias = response.data;
         } else if (response.data is Map && response.data['data'] is List) {
           agencias = response.data['data'];
-        } else if (response.data is Map && response.data['sucursales'] is List) {
+        } else if (response.data is Map &&
+            response.data['sucursales'] is List) {
           agencias = response.data['sucursales'];
         }
 
@@ -375,14 +478,27 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
                 autofocus: true,
                 child: Container(
                   width: 340,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF16162A).withOpacity(0.95),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.08),
+                      width: 1,
+                    ),
                     boxShadow: [
-                      BoxShadow(color: Colors.blueAccent.withOpacity(0.15), blurRadius: 30, spreadRadius: 2),
-                      BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20),
+                      BoxShadow(
+                        color: Colors.blueAccent.withOpacity(0.15),
+                        blurRadius: 30,
+                        spreadRadius: 2,
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 20,
+                      ),
                     ],
                   ),
                   child: Column(
@@ -399,24 +515,44 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
                                   color: Colors.blueAccent.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Icon(Icons.store, color: Colors.blueAccent, size: 16),
+                                child: const Icon(
+                                  Icons.store,
+                                  color: Colors.blueAccent,
+                                  size: 16,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               const Text(
                                 'Seleccionar Sucursal',
-                                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [Colors.blueAccent.withOpacity(0.3), Colors.purpleAccent.withOpacity(0.3)]),
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.blueAccent.withOpacity(0.3),
+                                  Colors.purpleAccent.withOpacity(0.3),
+                                ],
+                              ),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Text(
                               appVersion,
-                              style: TextStyle(color: Colors.lightBlueAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                color: Colors.lightBlueAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -424,9 +560,15 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
                       const SizedBox(height: 4),
                       Text(
                         'Usa las flechas (▲/▼) y OK del control remoto:',
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.4),
+                          fontSize: 10,
+                        ),
                       ),
-                      Divider(color: Colors.white.withOpacity(0.08), height: 16),
+                      Divider(
+                        color: Colors.white.withOpacity(0.08),
+                        height: 16,
+                      ),
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxHeight: 250),
                         child: SingleChildScrollView(
@@ -434,12 +576,15 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
                             mainAxisSize: MainAxisSize.min,
                             children: List.generate(agencias.length, (index) {
                               final agencia = agencias[index];
-                              final String nombre = agencia['nombre'] ?? 'Sucursal ${agencia['id']}';
+                              final String nombre =
+                                  agencia['nombre'] ??
+                                  'Sucursal ${agencia['id']}';
                               final String idStr = agencia['id'].toString();
                               return _FocusableSucursalItem(
                                 nombre: nombre,
                                 isFirst: index == 0,
-                                onTap: () => Navigator.pop(dialogContext, idStr),
+                                onTap: () =>
+                                    Navigator.pop(dialogContext, idStr),
                               );
                             }),
                           ),
@@ -458,9 +603,15 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
           await prefs.setString('agencia_id', selected);
           if (mounted) {
             if (_agenciaId != selected) {
+              _desired = _preparedManifest = _manifest = null;
+              _preparedItems = null;
+              _serverClock.clear();
+              _socketClock = false;
+              _prepareRetry?.cancel();
               _clearAdvertising();
             }
             setState(() => _agenciaId = selected);
+            if (_startupReady) _requestClock(register: true);
           }
         }
       }
@@ -485,210 +636,351 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
   }
 
   /// Única consulta HTTP de publicidad: al iniciar la app o al cambiar de sucursal.
-  void _loadPlaylist() {
-    _enqueue(() async {
-      if (!mounted || _agenciaId == null) return;
-      final agencia = _agenciaId;
-      final response = await _adHttp().get('$apiBaseUrl/publicidad-actual',
-          queryParameters: {'agencia_id': agencia});
-      if (!mounted || agencia != _agenciaId) return;
-      if (response.data is List) {
-        await _applyPlaylist(response.data as List);
-      } else if (response.data is Map && response.data['message'] != null) {
-        await _applyPlaylist(const []);
+  Future<void> _loadPlaylist() async {
+    if (!mounted || _agenciaId == null || _bootstrapBusy) return;
+    _bootstrapBusy = true;
+    final scope = _scope;
+    final start = _serverClock.tick;
+    try {
+      final response =
+          await Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 15),
+              receiveTimeout: const Duration(seconds: 30),
+            ),
+          ).get(
+            apiBaseUrl + '/publicidad-sync',
+            queryParameters: {'agencia_id': _agenciaId},
+          );
+      if (!mounted || scope != _scope) return;
+      final state = response.data;
+      if (state is! Map || state['protocol'] != 2)
+        throw StateError('Backend de publicidad pendiente de actualizar');
+      if (!_socketClock)
+        _serverClock.sample(state['server_time_ms'], start, _serverClock.tick);
+      _receiveSchedule(state);
+    } catch (e) {
+      print('Advertising startup failed: $e');
+      if (mounted && scope == _scope) {
+        _bootstrapRetry?.cancel();
+        _bootstrapRetry = Timer(
+          Duration(seconds: _retrySeconds),
+          _loadPlaylist,
+        );
+        _retrySeconds = (_retrySeconds * 2).clamp(5, 300);
       }
-    });
+    } finally {
+      _bootstrapBusy = false;
+    }
   }
 
-  Dio _adHttp() => Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 10),
-    receiveTimeout: const Duration(seconds: 30),
-    headers: {'Cache-Control': 'no-cache'},
-  ));
-
-  /// HTTP client sin timeout de recepción para descargas de archivos grandes
-  Dio _adDownloadHttp() => Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 15),
-    receiveTimeout: Duration.zero, // Sin timeout — videos de 130MB+ en WiFi lento
-  ));
-
-  /// Nombre local estable por anuncio: un anuncio nuevo siempre tiene id nuevo.
-  String _localFileName(Map<String, dynamic> ad) {
-    final base = ad['file_id'].toString().split('/').last.replaceAll('\\', '_');
-    return 'publicidad_${ad['id']}_$base';
-  }
-
-  /// Aplica una playlist: descarga solo lo que falta, la guarda en caché y
-  /// reproduce. Con [restart] empieza en [startId] (o desde el principio).
-  Future<void> _applyPlaylist(List<dynamic> raw, {String? startId, bool restart = false}) async {
-    final agencia = _agenciaId;
-    if (!mounted || agencia == null) return;
-
-    // Una orden global trae anuncios de todas las sucursales: quedarse con los propios
-    final ads = raw
-        .whereType<Map>()
-        .map((e) => Map<String, dynamic>.from(e))
-        .where((ad) => ad['agencia_id'] == null || ad['agencia_id'].toString() == agencia)
-        .toList();
-
-    final directory = kIsWeb ? null : await getApplicationDocumentsDirectory();
-    final prepared = <Map<String, dynamic>>[];
-    for (var i = 0; i < ads.length; i++) {
-      if (!mounted || agencia != _agenciaId) return;
-      final ad = ads[i];
-      final url = ad['url'].toString();
-      final path = kIsWeb ? url : '${directory!.path}/${_localFileName(ad)}';
-
-      if (!kIsWeb && !await File(path).exists()) {
-        if (mounted) setState(() => _status = 'Descargando ${i + 1}/${ads.length}: ${ad['name']}...');
-        // Descarga atómica: archivo .part → rename al completar
-        final partial = File('$path.part');
-        try {
-          await _adDownloadHttp().download(url, partial.path);
-          await partial.rename(path);
-        } catch (e) {
-          print('Error descargando ${ad['name']}: $e');
-          if (await partial.exists()) await partial.delete();
-          continue;
+  Future<void> _prepareSchedule() async {
+    if (_preparing || _desired == null || !mounted) return;
+    final state = _desired!;
+    final scope = _scope;
+    final media = AdMediaStore(scope);
+    _preparing = true;
+    try {
+      final keep = _playlist.map((ad) => ad['path'].toString()).toList();
+      for (final raw in state['items'] as List) {
+        keep.add(await media.mediaPath(Map<String, dynamic>.from(raw)));
+      }
+      await media.cleanup(
+        keep,
+        stillCurrent: () => mounted && scope == _scope && state == _desired,
+      );
+      final prepared = <Map<String, dynamic>>[];
+      final durations = <Map<String, dynamic>>[];
+      for (final raw in state['items'] as List) {
+        if (!mounted || scope != _scope || state != _desired) return;
+        final ad = Map<String, dynamic>.from(raw);
+        final path = await media.prepare(ad);
+        prepared.add({...ad, 'path': path});
+        if (ad['type'] == 'video' && ad['duration_ms'] == null) {
+          durations.add({
+            'id': ad['id'],
+            'media_version': ad['media_version'],
+            'duration_ms': await media.duration(path),
+          });
         }
       }
-      prepared.add({
-        'id': ad['id'].toString(),
-        'file_id': ad['file_id'],
-        'path': path,
-        'type': ad['type'],
-        'name': ad['name'],
+      if (!mounted || scope != _scope || state != _desired) return;
+      if (durations.isNotEmpty) {
+        final dio = Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 15),
+            receiveTimeout: const Duration(seconds: 30),
+          ),
+        );
+        for (var i = 0; i < durations.length; i += 100) {
+          await dio.post(
+            apiBaseUrl + '/publicidad-sync/durations',
+            data: {
+              'agencia_id': int.parse(_agenciaId!),
+              'items': durations.skip(i).take(100).toList(),
+            },
+          );
+        }
+        return;
+      }
+      if (state['ready'] != true) return;
+      _preparedManifest = state;
+      _preparedItems = prepared;
+      socket?.emit('ad_status', {
+        'revision': state['revision'],
+        'status': 'ready',
       });
+      _activatePrepared();
+      _retrySeconds = 5;
+    } catch (e) {
+      print('Keeping previous advertising: $e');
+      socket?.emit('ad_status', {
+        'revision': state['revision'],
+        'status': 'error',
+      });
+      if (mounted && scope == _scope) {
+        _prepareRetry?.cancel();
+        _prepareRetry = Timer(
+          Duration(seconds: _retrySeconds),
+          _prepareSchedule,
+        );
+        _retrySeconds = (_retrySeconds * 2).clamp(5, 300);
+        if (_playlist.isEmpty)
+          setState(() {
+            _isLoading = false;
+            _mediaFailed = true;
+            _status = 'Preparando publicidad; reintentando descarga';
+          });
+      }
+    } finally {
+      _preparing = false;
+      if (mounted && _preparedManifest == null && identical(state, _manifest))
+        await _cleanupMedia();
+      if (mounted && _desired != null && state != _desired) _prepareSchedule();
     }
-    if (!mounted || agencia != _agenciaId) return;
+  }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_cacheKey, jsonEncode(prepared));
-    if (!mounted || agencia != _agenciaId) return;
-
-    if (prepared.isEmpty) {
+  void _activatePrepared() {
+    if (_dialogOpen || !_foreground || !mounted) return;
+    final state = _preparedManifest;
+    final now = _serverClock.time;
+    if (state == null || now == null || now < state['epoch_ms']) return;
+    _manifest = state;
+    _playlist = _preparedItems!;
+    _preparedManifest = null;
+    _preparedItems = null;
+    _currentIndex = _target?.index ?? 0;
+    if (_playlist.isEmpty) {
       _clearAdvertising();
     } else {
-      final currentId = _playlist.isNotEmpty && _currentIndex < _playlist.length
-          ? _playlist[_currentIndex]['id']
-          : null;
-      var index = restart
-          ? (startId == null ? 0 : prepared.indexWhere((a) => a['id'] == startId))
-          : prepared.indexWhere((a) => a['id'] == currentId);
-
-      setState(() {
-        _playlist = prepared;
-        _isLoading = false;
-        _status = 'Playlist: ${prepared.length} items';
-      });
-
-      if (restart || index < 0) {
-        _currentIndex = index < 0 ? 0 : index;
-        _playCurrent();
-      } else {
-        // El anuncio actual sigue en la playlist: no cortar la reproducción
-        _currentIndex = index;
-      }
+      _playCurrent();
     }
+    final key = _cacheKey;
+    final data = jsonEncode({'manifest': state, 'items': _playlist});
+    SharedPreferences.getInstance().then((prefs) => prefs.setString(key, data));
+    socket?.emit('ad_status', {
+      'revision': state['revision'],
+      'status': 'applied',
+    });
+    // Prune after downloads settle; retain both active and newer pending files.
+    if (!_preparing) _cleanupMedia();
+  }
 
-    // Borrar archivos que ya no pertenecen a la playlist (incluye .part huérfanos)
-    if (directory != null) {
-      final active = prepared.map((a) => File(a['path']).uri.pathSegments.last).toSet();
-      for (final file in directory.listSync().whereType<File>()) {
-        final name = file.uri.pathSegments.last;
-        if (name.startsWith('publicidad_') && !active.contains(name)) {
-          try { await file.delete(); } catch (_) {}
-        }
-      }
-    }
+  Future<void> _cleanupMedia() async {
+    if (_preparing || _preparedItems != null) return;
+    try {
+      await AdMediaStore(_scope).cleanup(
+        _playlist.map((a) => a['path'].toString()),
+        stillCurrent: () => !_preparing && mounted,
+      );
+    } catch (_) {}
   }
 
   void _clearAdvertising() {
     _imageTimer?.cancel();
     _playGeneration++;
-    _controller?.dispose();
+    final previous = _controller;
+    previous?.removeListener(_videoListener);
     _controller = null;
     setState(() {
-      _playlist = []; _localPath = null; _isLoading = false;
+      _playlist = [];
+      _localPath = null;
+      _isLoading = false;
+      _mediaFailed = true;
       _status = 'No hay publicidad activa';
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => previous?.dispose());
   }
 
   void _playCurrent() {
-    if (_playlist.isEmpty || !mounted) return;
+    if (_playlist.isEmpty || !mounted || _dialogOpen || !_foreground) return;
+    final target = _target;
+    if (target != null) _currentIndex = target.index;
     if (_currentIndex >= _playlist.length) _currentIndex = 0;
-    final currentAd = _playlist[_currentIndex];
-
+    final ad = _playlist[_currentIndex];
+    final generation = ++_playGeneration;
+    final previous = _controller;
+    previous?.removeListener(_videoListener);
     _imageTimer?.cancel();
-    if (currentAd['type'] != 'video') {
-      _playGeneration++;
-      _controller?.dispose();
-      _controller = null;
-    }
-
+    _controller = null;
+    _lastPositionMs = -1;
+    _seekRecoveries = 0;
+    _lastProgressTick = _serverClock.tick;
+    _slotEndsAt = target == null ? 0 : _serverClock.time! + target.remainingMs;
     setState(() {
-      _localPath = currentAd['path'];
-      _status = 'Reproduciendo: ${currentAd['name']}';
+      _localPath = ad['path'];
+      _mediaFailed = false;
+      _isLoading = false;
+      _status = 'Reproduciendo: ' + ad['name'].toString();
     });
+    if (target != null || ad['type'] != 'video') {
+      _imageTimer = Timer(
+        Duration(
+          milliseconds:
+              (target?.remainingMs ??
+                      ad['duration_ms'] ??
+                      _imageDuration.inMilliseconds)
+                  .clamp(20, 86400000),
+        ),
+        _nextItem,
+      );
+    }
+    _replacePlayer(ad, previous, generation);
+  }
 
-    if (currentAd['type'] == 'video') {
-      _playVideo(currentAd['path']);
-    } else {
-      _displayImage();
+  Future<void> _replacePlayer(
+    Map<String, dynamic> ad,
+    VideoPlayerController? previous,
+    int generation,
+  ) async {
+    await WidgetsBinding.instance.endOfFrame;
+    try {
+      await previous?.dispose().timeout(const Duration(seconds: 5));
+    } catch (_) {}
+    if (!mounted || generation != _playGeneration || ad['type'] != 'video')
+      return;
+    final controller = VideoPlayerController.file(File(ad['path']));
+    _controller = controller;
+    try {
+      await controller.initialize().timeout(const Duration(seconds: 20));
+      if (!mounted || generation != _playGeneration) return;
+      await controller.setVolume(
+        1,
+      ); // Android's media volume remains under remote-control control.
+      final target = _target;
+      if (target != null && target.index == _currentIndex)
+        await controller.seekTo(Duration(milliseconds: target.offsetMs));
+      controller.addListener(_videoListener);
+      setState(() {});
+      if (!_dialogOpen && _foreground) await controller.play();
+    } catch (e) {
+      print('Video playback failed: $e');
+      if (mounted && generation == _playGeneration) _showFallback();
     }
   }
 
   void _nextItem() {
     if (_playlist.isEmpty || !mounted) return;
-    _currentIndex = (_currentIndex + 1) % _playlist.length;
+    final target = _target;
+    if (target != null &&
+        target.index == _currentIndex &&
+        _serverClock.time! < _slotEndsAt - 100) {
+      _showFallback();
+      return;
+    }
+    _currentIndex = target?.index ?? ((_currentIndex + 1) % _playlist.length);
     _playCurrent();
   }
 
-  Future<void> _playVideo(String path) async {
-    final generation = ++_playGeneration;
-    final previous = _controller;
-    _controller = null;
-    // Diferir dispose para que AnimatedSwitcher complete su exit animation (300ms)
-    if (previous != null) {
-      previous.removeListener(_videoListener);
-      Future.delayed(const Duration(milliseconds: 350), () async {
-        try { await previous.dispose(); } catch (_) {}
-      });
-    }
-    if (!mounted || generation != _playGeneration) return;
-    final controller = kIsWeb
-        ? VideoPlayerController.networkUrl(Uri.parse(path))
-        : VideoPlayerController.file(File(path));
-    _controller = controller;
-    try {
-      await controller.initialize().timeout(const Duration(seconds: 15));
-      if (!mounted || generation != _playGeneration || !identical(controller, _controller)) return;
-      setState(() => _isLoading = false);
-      controller.addListener(_videoListener);
-      if (!_dialogOpen) await controller.play();
-    } catch (err) {
-      print('Error cargando video: $err');
-      // Pausa corta para no girar en bucle si todos los videos fallan
-      await Future.delayed(const Duration(seconds: 1));
-      if (mounted && generation == _playGeneration) _nextItem();
-    }
-  }
-
   void _videoListener() {
-    final controller = _controller;
-    if (controller == null || !mounted) return;
-    final value = controller.value;
-    if (value.duration > Duration.zero && value.position >= value.duration && !value.isPlaying) {
-      controller.removeListener(_videoListener);
-      _nextItem();
+    final value = _controller?.value;
+    if (value == null || !mounted) return;
+    if (value.hasError) {
+      _showFallback();
+      return;
     }
+    if (value.duration > Duration.zero &&
+        value.position >= value.duration &&
+        !value.isPlaying)
+      _nextItem();
   }
 
-  void _displayImage() {
-    if (mounted) setState(() => _isLoading = false);
-    // Solo iniciar timer si no hay un diálogo abierto
-    if (!_dialogOpen) {
-      _imageTimer = Timer(_imageDuration, _nextItem);
+  void _showFallback() {
+    if (!mounted || _mediaFailed) return;
+    _playGeneration++;
+    final previous = _controller;
+    previous?.removeListener(_videoListener);
+    _controller = null;
+    setState(() {
+      _mediaFailed = true;
+      _isLoading = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => previous?.dispose());
+    _imageTimer?.cancel();
+    _imageTimer = Timer(
+      Duration(
+        milliseconds: (_target?.remainingMs ?? 10000).clamp(200, 86400000),
+      ),
+      _nextItem,
+    );
+    socket?.emit('ad_status', {
+      'revision': _manifest?['revision'],
+      'status': 'error',
+    });
+  }
+
+  void _syncPlayback() {
+    if (!mounted || _dialogOpen || !_foreground) return;
+    _activatePrepared();
+    final target = _target;
+    if (target != null && target.index != _currentIndex) {
+      _currentIndex = target.index;
+      _playCurrent();
+      return;
+    }
+    final controller = _controller;
+    if (controller == null || _mediaFailed) return;
+    final value = controller.value;
+    if (value.position.inMilliseconds != _lastPositionMs) {
+      _lastPositionMs = value.position.inMilliseconds;
+      _lastProgressTick = _serverClock.tick;
+    } else if (_serverClock.tick - _lastProgressTick > 15000) {
+      _showFallback();
+      return;
+    }
+    if (!value.isInitialized || _aligning || target == null) return;
+    _alignVideo(controller, target);
+  }
+
+  Future<void> _alignVideo(
+    VideoPlayerController controller,
+    AdPosition target,
+  ) async {
+    _aligning = true;
+    try {
+      final drift = target.offsetMs - controller.value.position.inMilliseconds;
+      if (drift.abs() > 2000) {
+        if (++_seekRecoveries > 2) {
+          _showFallback();
+          return;
+        }
+        await controller.seekTo(Duration(milliseconds: target.offsetMs));
+      }
+      final speed = drift.abs() < 200
+          ? 1.0
+          : drift > 0
+          ? 1.04
+          : 0.96;
+      if (controller.value.playbackSpeed != speed)
+        await controller.setPlaybackSpeed(speed);
+      if (!controller.value.isPlaying &&
+          !_dialogOpen &&
+          _foreground &&
+          identical(controller, _controller))
+        await controller.play();
+    } catch (_) {
+    } finally {
+      _aligning = false;
     }
   }
 
@@ -701,7 +993,8 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
           key == LogicalKeyboardKey.gameButtonA) {
         final now = DateTime.now();
         if (_lastEnterPress != null &&
-            now.difference(_lastEnterPress!) < const Duration(milliseconds: 500)) {
+            now.difference(_lastEnterPress!) <
+                const Duration(milliseconds: 500)) {
           _lastEnterPress = null;
           _showSecretSettingsMenu();
         } else {
@@ -743,14 +1036,27 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
                 color: Colors.transparent,
                 child: Container(
                   width: 340,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF16162A).withOpacity(0.95),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.08),
+                      width: 1,
+                    ),
                     boxShadow: [
-                      BoxShadow(color: Colors.blueAccent.withOpacity(0.15), blurRadius: 30, spreadRadius: 2),
-                      BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20),
+                      BoxShadow(
+                        color: Colors.blueAccent.withOpacity(0.15),
+                        blurRadius: 30,
+                        spreadRadius: 2,
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 20,
+                      ),
                     ],
                   ),
                   child: Column(
@@ -769,28 +1075,60 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
                                   color: Colors.blueAccent.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Icon(Icons.settings, color: Colors.blueAccent, size: 16),
+                                child: const Icon(
+                                  Icons.settings,
+                                  color: Colors.blueAccent,
+                                  size: 16,
+                                ),
                               ),
                               const SizedBox(width: 8),
-                              const Text('Configuración', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                              const Text(
+                                'Configuración',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(colors: [Colors.blueAccent.withOpacity(0.3), Colors.purpleAccent.withOpacity(0.3)]),
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.blueAccent.withOpacity(0.3),
+                                  Colors.purpleAccent.withOpacity(0.3),
+                                ],
+                              ),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Text(appVersion, style: TextStyle(color: Colors.lightBlueAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                            child: const Text(
+                              appVersion,
+                              style: TextStyle(
+                                color: Colors.lightBlueAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Sucursal: ${_agenciaId ?? "—"}  •  ${_playlist.length} items',
-                        style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.4),
+                          fontSize: 10,
+                        ),
                       ),
-                      Divider(color: Colors.white.withOpacity(0.08), height: 16),
+                      Divider(
+                        color: Colors.white.withOpacity(0.08),
+                        height: 16,
+                      ),
 
                       // Botón de rotación con contador visual
                       Focus(
@@ -805,8 +1143,12 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
                               tempRotation = (tempRotation + 1) % 4;
                               setDialogState(() {});
                               // Aplicar rotación en tiempo real
-                              setState(() { _rotationTurns = tempRotation; });
-                              SharedPreferences.getInstance().then((p) => p.setInt('rotation_turns', tempRotation));
+                              setState(() {
+                                _rotationTurns = tempRotation;
+                              });
+                              SharedPreferences.getInstance().then(
+                                (p) => p.setInt('rotation_turns', tempRotation),
+                              );
                               return KeyEventResult.handled;
                             }
                           }
@@ -819,38 +1161,84 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
                               onTap: () {
                                 tempRotation = (tempRotation + 1) % 4;
                                 setDialogState(() {});
-                                setState(() { _rotationTurns = tempRotation; });
-                                SharedPreferences.getInstance().then((p) => p.setInt('rotation_turns', tempRotation));
+                                setState(() {
+                                  _rotationTurns = tempRotation;
+                                });
+                                SharedPreferences.getInstance().then(
+                                  (p) =>
+                                      p.setInt('rotation_turns', tempRotation),
+                                );
                               },
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 150),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: hasFocus ? Colors.amberAccent.withOpacity(0.15) : Colors.white.withOpacity(0.04),
+                                  color: hasFocus
+                                      ? Colors.amberAccent.withOpacity(0.15)
+                                      : Colors.white.withOpacity(0.04),
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: hasFocus ? Colors.amberAccent.withOpacity(0.5) : Colors.transparent),
+                                  border: Border.all(
+                                    color: hasFocus
+                                        ? Colors.amberAccent.withOpacity(0.5)
+                                        : Colors.transparent,
+                                  ),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.screen_rotation, color: Colors.amberAccent, size: 18),
+                                    Icon(
+                                      Icons.screen_rotation,
+                                      color: Colors.amberAccent,
+                                      size: 18,
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          const Text('Rotación', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                                          Text(_getRotationText(tempRotation), style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10)),
+                                          const Text(
+                                            'Rotación',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          Text(
+                                            _getRotationText(tempRotation),
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(
+                                                0.5,
+                                              ),
+                                              fontSize: 10,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
                                     // Indicador visual de grados
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: Colors.amberAccent.withOpacity(0.2),
+                                        color: Colors.amberAccent.withOpacity(
+                                          0.2,
+                                        ),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
-                                      child: Text('${tempRotation * 90}°', style: const TextStyle(color: Colors.amberAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                                      child: Text(
+                                        '${tempRotation * 90}°',
+                                        style: const TextStyle(
+                                          color: Colors.amberAccent,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -863,32 +1251,55 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
 
                       // Cambiar Sucursal
                       _CompactMenuItem(
-                        icon: Icons.store, color: Colors.blueAccent, label: 'Cambiar Sucursal',
+                        icon: Icons.store,
+                        color: Colors.blueAccent,
+                        label: 'Cambiar Sucursal',
                         onTap: () {
                           Navigator.pop(dialogContext);
-                          Future.delayed(const Duration(milliseconds: 300), () async {
-                            if (!mounted) return;
-                            await _selectAgencia();
-                            if (mounted) _loadPlaylist();
-                          });
+                          Future.delayed(
+                            const Duration(milliseconds: 300),
+                            () async {
+                              if (!mounted) return;
+                              await _selectAgencia();
+                              if (mounted) {
+                                _requestClock(register: true);
+                                if (!(socket?.connected ?? false))
+                                  _loadPlaylist();
+                              }
+                            },
+                          );
                         },
                       ),
                       // Reiniciar
                       _CompactMenuItem(
-                        icon: Icons.refresh, color: Colors.greenAccent, label: 'Reiniciar App',
-                        onTap: () { Navigator.pop(dialogContext); _initApp(); },
+                        icon: Icons.refresh,
+                        color: Colors.greenAccent,
+                        label: 'Reiniciar App',
+                        onTap: () {
+                          Navigator.pop(dialogContext);
+                          _initApp();
+                        },
                       ),
                       // Salir
                       _CompactMenuItem(
-                        icon: Icons.power_settings_new, color: Colors.redAccent, label: 'Salir',
-                        onTap: () { Navigator.pop(dialogContext); SystemNavigator.pop(); exit(0); },
+                        icon: Icons.power_settings_new,
+                        color: Colors.redAccent,
+                        label: 'Salir',
+                        onTap: () {
+                          Navigator.pop(dialogContext);
+                          SystemNavigator.pop();
+                          exit(0);
+                        },
                       ),
 
                       const SizedBox(height: 6),
                       // Info compacta
                       Text(
                         'API: $apiBaseUrl',
-                        style: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 8),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.2),
+                          fontSize: 8,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -909,6 +1320,43 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
     });
   }
 
+  Widget _fallbackImage() =>
+      Image.asset('image/publi.png', fit: BoxFit.contain, cacheWidth: 1080);
+
+  Widget _buildMedia() {
+    final controller = _controller;
+    if (!_mediaFailed && controller != null && controller.value.isInitialized) {
+      return SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: controller.value.size.width,
+            height: controller.value.size.height,
+            child: VideoPlayer(controller),
+          ),
+        ),
+      );
+    }
+    if (!_mediaFailed &&
+        _localPath != null &&
+        _playlist.isNotEmpty &&
+        _playlist[_currentIndex]['type'] != 'video') {
+      return Image.file(
+        File(_localPath!),
+        fit: BoxFit.cover,
+        cacheWidth: 1080,
+        errorBuilder: (_, error, stack) {
+          final generation = _playGeneration;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (generation == _playGeneration) _showFallback();
+          });
+          return _fallbackImage();
+        },
+      );
+    }
+    return _fallbackImage();
+  }
+
   @override
   Widget build(BuildContext context) {
     return KeyboardListener(
@@ -926,46 +1374,35 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
                 quarterTurns: _rotationTurns,
                 child: SizedBox.expand(
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
+                    duration: Duration.zero,
                     switchInCurve: Curves.easeInOutCubic,
                     switchOutCurve: Curves.easeInOutCubic,
-                    transitionBuilder: (Widget child, Animation<double> animation) {
-                      final fadeAnimation = CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.easeInOutCubic,
-                      );
-                      final scaleAnimation = Tween<double>(begin: 0.96, end: 1.0).animate(fadeAnimation);
-                      return FadeTransition(
-                        opacity: fadeAnimation,
-                        child: ScaleTransition(
-                          scale: scaleAnimation,
-                          child: child,
-                        ),
-                      );
-                    },
+                    transitionBuilder:
+                        (Widget child, Animation<double> animation) {
+                          final fadeAnimation = CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeInOutCubic,
+                          );
+                          final scaleAnimation = Tween<double>(
+                            begin: 0.96,
+                            end: 1.0,
+                          ).animate(fadeAnimation);
+                          return FadeTransition(
+                            opacity: fadeAnimation,
+                            child: ScaleTransition(
+                              scale: scaleAnimation,
+                              child: child,
+                            ),
+                          );
+                        },
                     child: Container(
-                      key: ValueKey<String>(_localPath ?? 'empty_$_currentIndex'),
+                      key: ValueKey<String>(
+                        _localPath ?? 'empty_$_currentIndex',
+                      ),
                       color: Colors.black,
                       width: double.infinity,
                       height: double.infinity,
-                      child: _controller != null && _controller!.value.isInitialized
-                          ? SizedBox.expand(
-                              child: FittedBox(
-                                fit: BoxFit.cover,
-                                child: SizedBox(
-                                  width: _controller!.value.size.width > 0 ? _controller!.value.size.width : 1080,
-                                  height: _controller!.value.size.height > 0 ? _controller!.value.size.height : 1920,
-                                  child: VideoPlayer(_controller!),
-                                ),
-                              ),
-                            )
-                          : _localPath != null
-                              ? SizedBox.expand(
-                                  child: kIsWeb 
-                                      ? Image.network(_localPath!, fit: BoxFit.cover)
-                                      : Image.file(File(_localPath!), fit: BoxFit.cover),
-                                )
-                              : const SizedBox.shrink(),
+                      child: _buildMedia(),
                     ),
                   ),
                 ),
@@ -979,7 +1416,10 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
                       children: [
                         const CircularProgressIndicator(),
                         const SizedBox(height: 20),
-                        Text(_status, style: const TextStyle(color: Colors.white)),
+                        Text(
+                          _status,
+                          style: const TextStyle(color: Colors.white),
+                        ),
                       ],
                     ),
                   ),
@@ -988,7 +1428,10 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
                 Positioned(
                   bottom: 10,
                   right: 10,
-                  child: Text(_status, style: const TextStyle(color: Colors.white24, fontSize: 10)),
+                  child: Text(
+                    _status,
+                    style: const TextStyle(color: Colors.white24, fontSize: 10),
+                  ),
                 ),
             ],
           ),
@@ -999,6 +1442,11 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
 
   @override
   void dispose() {
+    _syncTimer?.cancel();
+    _clockTimer?.cancel();
+    _prepareRetry?.cancel();
+    _bootstrapRetry?.cancel();
+    _clockRetry?.cancel();
     _playGeneration++;
     WidgetsBinding.instance.removeObserver(this);
     socket?.dispose();
@@ -1009,7 +1457,6 @@ class _PublicidadPlayerState extends State<PublicidadPlayer> with WidgetsBinding
     super.dispose();
   }
 }
-
 
 class _FocusableSucursalItem extends StatefulWidget {
   final String nombre;
@@ -1061,7 +1508,9 @@ class _FocusableSucursalItemState extends State<_FocusableSucursalItem> {
           margin: const EdgeInsets.symmetric(vertical: 3),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: _isFocused ? const Color(0xFF1E88E5).withOpacity(0.3) : Colors.white.withOpacity(0.04),
+            color: _isFocused
+                ? const Color(0xFF1E88E5).withOpacity(0.3)
+                : Colors.white.withOpacity(0.04),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: _isFocused ? Colors.lightBlueAccent : Colors.transparent,
@@ -1071,7 +1520,9 @@ class _FocusableSucursalItemState extends State<_FocusableSucursalItem> {
           child: Row(
             children: [
               Icon(
-                _isFocused ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                _isFocused
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
                 color: _isFocused ? Colors.lightBlueAccent : Colors.white38,
                 size: 16,
               ),
@@ -1082,7 +1533,9 @@ class _FocusableSucursalItemState extends State<_FocusableSucursalItem> {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 13,
-                    fontWeight: _isFocused ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: _isFocused
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -1168,7 +1621,9 @@ class _FocusableMenuItemState extends State<_FocusableMenuItem> {
           margin: const EdgeInsets.symmetric(vertical: 4),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: _isFocused ? Colors.white.withOpacity(0.15) : Colors.transparent,
+            color: _isFocused
+                ? Colors.white.withOpacity(0.15)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: _isFocused ? Colors.white54 : Colors.transparent,
@@ -1185,7 +1640,9 @@ class _FocusableMenuItemState extends State<_FocusableMenuItem> {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15,
-                    fontWeight: _isFocused ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: _isFocused
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -1240,15 +1697,31 @@ class _CompactMenuItem extends StatelessWidget {
               decoration: BoxDecoration(
                 color: hasFocus ? color.withOpacity(0.15) : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: hasFocus ? color.withOpacity(0.4) : Colors.transparent),
+                border: Border.all(
+                  color: hasFocus ? color.withOpacity(0.4) : Colors.transparent,
+                ),
               ),
               child: Row(
                 children: [
                   Icon(icon, color: color, size: 16),
                   const SizedBox(width: 10),
-                  Text(label, style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: hasFocus ? FontWeight.w600 : FontWeight.normal)),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: hasFocus
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
                   const Spacer(),
-                  if (hasFocus) Icon(Icons.chevron_right, color: color.withOpacity(0.6), size: 16),
+                  if (hasFocus)
+                    Icon(
+                      Icons.chevron_right,
+                      color: color.withOpacity(0.6),
+                      size: 16,
+                    ),
                 ],
               ),
             ),

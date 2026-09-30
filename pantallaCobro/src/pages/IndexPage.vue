@@ -10,7 +10,7 @@
         >
           <!-- Video Player -->
           <video
-            v-if="currentAd.type === 'video'"
+            v-if="currentAd.type === 'video' && !mediaFailed"
             ref="videoPlayer"
             class="fullscreen-media"
             :src="currentAd.url"
@@ -19,13 +19,20 @@
             autoplay
             muted
             playsinline
+            @loadedmetadata="onVideoReady"
             @ended="nextAd"
             @error="onVideoError"
-            @vnode-unmounted="onVideoUnmounted"
+            @vue:unmounted="onVideoUnmounted"
           ></video>
 
           <!-- Image Player -->
-          <img v-else class="fullscreen-media" :src="currentAd.url" alt="Publicidad" />
+          <img
+            v-else
+            class="fullscreen-media"
+            :src="mediaFailed ? '/publi.png' : currentAd.url"
+            alt="Publicidad"
+            @error="onVideoError"
+          />
         </div>
 
         <!-- Pantalla por defecto si no hay anuncios -->
@@ -203,7 +210,11 @@
             Establezca los parámetros de red para el reproductor
           </div>
           <div class="q-mt-xs flex flex-center">
-            <q-badge color="teal" :label="'Versión: v' + appVersion" class="text-bold q-px-sm q-py-xs" />
+            <q-badge
+              color="teal"
+              :label="'Versión: v' + appVersion"
+              class="text-bold q-px-sm q-py-xs"
+            />
           </div>
         </q-card-section>
 
@@ -376,12 +387,22 @@ const serverClock = new ServerClock()
 let syncManifest = null
 let playlistBusy = false
 let playlistPoll = null
-let lastManifestAt = -Infinity
 let syncTimer = null
 let destroyed = false
-let lastCompletedId = null
-let consecutivePlayCount = 0
-let lastPlayedMediaId = null
+let desiredManifest = null
+let preparedManifest = null
+let preparedItems = null
+let retryTimer = null
+let adClockRetry = null
+let bootstrapTimer = null
+let retryDelay = 5000
+let socketClock = false
+let bootstrapBusy = false
+let lastVideoProgress = 0
+let slotEndsAt = 0
+let lastVideoPosition = -1
+let seekRecoveries = 0
+const mediaFailed = ref(false)
 const scopeKey = () => config.value.serverIp + '|' + config.value.agencia
 let activeScope = null
 let legacyCacheAllowed = true
@@ -429,10 +450,7 @@ const hasClientData = computed(() => {
 
 const isBusyWithCustomer = computed(() => {
   return Boolean(
-    clientData.value.visible ||
-    showThanks.value ||
-    qrData.value.visible ||
-    showConfigModal.value
+    clientData.value.visible || showThanks.value || qrData.value.visible || showConfigModal.value,
   )
 })
 
@@ -542,7 +560,6 @@ function saveConfiguration() {
 
   // Inicializar todo
   initSocket()
-  fetchPlaylist()
 }
 
 function openConfig(bringToFront = true) {
@@ -562,93 +579,137 @@ function cancelConfig() {
   }
 }
 
-// The legacy endpoint stays available during a rolling backend/app update.
-async function readSyncManifest(base, scope) {
-  const start = performance.now()
-  const manifest = await fetchJson(base + '/api/publicidad-sync?agencia_id=' + config.value.agencia)
-  const end = performance.now()
-  if (
-    manifest.protocol !== 1 ||
-    !Array.isArray(manifest.items) ||
-    String(manifest.agencia_id) !== String(config.value.agencia)
-  ) {
-    throw new Error('Invalid advertising manifest')
-  }
-  if (scope !== scopeKey() || destroyed) throw new Error('Configuration changed')
-  serverClock.sample(manifest.server_time_ms, start, end)
-  lastManifestAt = end
-  return manifest
+function ensureAdScope() {
+  if (activeScope === scopeKey()) return
+  activeScope = scopeKey()
+  syncManifest = desiredManifest = preparedManifest = preparedItems = null
+  serverClock.samples = []
+  socketClock = false
+  clearTimeout(retryTimer)
+  clearImageTimer()
+  playlist.value = []
+  mediaFailed.value = false
+  loadCachedPlaylist()
 }
 
-// Los cambios de publicidad llegan por socket (new_publicidad y al reconectar),
-// así que el sondeo solo es respaldo. Se consulta seguido mientras la lista no esté
-// lista (descargas o duraciones de video pendientes) o si el socket está caído.
-function pollPlaylist() {
-  let intervalMs = 5 * 60 * 1000
-  if (!syncManifest?.ready) intervalMs = 15 * 1000
-  else if (!socketConnected.value) intervalMs = 60 * 1000
-  if (performance.now() - lastManifestAt >= intervalMs) fetchPlaylist()
+function retryAdvertising(task) {
+  clearTimeout(retryTimer)
+  if (destroyed) return
+  retryTimer = setTimeout(task, retryDelay + Math.random() * 1000)
+  retryDelay = Math.min(retryDelay * 2, 300000)
 }
 
+// Only on startup, missing socket state or recovery from an actual error.
 async function fetchPlaylist() {
-  if (!configured.value || showConfigModal.value || destroyed) return
+  if (!configured.value || destroyed || bootstrapBusy) return
+  ensureAdScope()
   const scope = scopeKey()
-  const base = config.value.serverIp.replace(/\/$/, '')
-  if (activeScope !== scope) {
-    activeScope = scope
-    syncManifest = null
-    serverClock.samples = []
-    playlist.value = []
-    clearImageTimer()
-    loadCachedPlaylist()
-  }
-  if (playlistBusy) return
-  playlistBusy = true
+  const start = performance.now()
+  bootstrapBusy = true
   try {
-    let manifest = null
-    let data
-    try {
-      manifest = await readSyncManifest(base, scope)
-      data = manifest.items
-    } catch (error) {
-      // Once synchronized, a temporary outage must not replace the shared cycle.
-      if (syncManifest) throw error
-      data = await fetchJson(base + '/api/publicidad-actual?agencia_id=' + config.value.agencia)
-      if (!Array.isArray(data)) data = []
-    }
+    const state = await fetchJson(
+      config.value.serverIp.replace(/\/$/, '') +
+        '/api/publicidad-sync?agencia_id=' +
+        config.value.agencia,
+    )
     if (scope !== scopeKey() || destroyed) return
-    const changed = data.map(localMediaId).join(',') !== playlist.value.map(localMediaId).join(',')
-    const mediaReady =
-      !window.mediaAPI ||
-      (await Promise.all(data.map((ad) => window.mediaAPI.exists(localMediaId(ad))))).every(Boolean)
-    if (!changed && mediaReady && (!manifest || manifest.version === syncManifest?.version)) {
+    if (!socketClock) serverClock.sample(state.server_time_ms, start, performance.now())
+    receiveSchedule(state)
+    retryDelay = 5000
+  } catch (error) {
+    console.error('Advertising bootstrap failed:', error)
+    if (scope === scopeKey()) retryAdvertising(fetchPlaylist)
+  } finally {
+    bootstrapBusy = false
+  }
+}
+
+function requestAdClock(register = false) {
+  if (!socketConn?.connected || destroyed) return
+  ensureAdScope()
+  const scope = scopeKey()
+  const connection = socketConn
+  const start = performance.now()
+  connection.timeout(8000).emit(
+    register ? 'ad_register' : 'ad_clock',
+    {
+      agencia_id: Number(config.value.agencia),
+      revision: desiredManifest?.revision || 0,
+    },
+    (error, response) => {
+      if (destroyed || connection !== socketConn || scope !== scopeKey()) return
+      if (error || !response?.success) {
+        clearTimeout(adClockRetry)
+        adClockRetry = setTimeout(() => requestAdClock(true), 15000)
+        return
+      }
+      if (!socketClock) serverClock.samples = []
+      socketClock = true
+      serverClock.sample(response.server_time_ms, start, performance.now())
+      if (response.schedule) receiveSchedule(response.schedule)
+      if (response.needs_snapshot) fetchPlaylist()
+      if (response.pending_bootstrap) {
+        clearTimeout(adClockRetry)
+        adClockRetry = setTimeout(() => requestAdClock(true), 16000)
+      }
       syncPlayback()
-      return
-    }
-    isDownloading.value = changed && data.length > 0
+    },
+  )
+}
+
+function receiveSchedule(state) {
+  if (
+    destroyed ||
+    state?.protocol !== 2 ||
+    !Array.isArray(state.items) ||
+    String(state.agencia_id) !== String(config.value.agencia)
+  )
+    return
+  socketConn?.emit('ad_received', { revision: state.revision })
+  if (desiredManifest && state.revision <= desiredManifest.revision) return
+  desiredManifest = state
+  preparedManifest = preparedItems = null
+  clearTimeout(retryTimer)
+  retryDelay = 5000
+  prepareSchedule()
+}
+
+async function prepareSchedule() {
+  if (playlistBusy || !desiredManifest || destroyed) return
+  const state = desiredManifest
+  const scope = scopeKey()
+  playlistBusy = true
+  isDownloading.value = true
+  try {
+    // Free abandoned downloads while retaining the active and incoming schedules.
+    if (window.mediaAPI)
+      await window.mediaAPI.cleanup([...playlist.value, ...state.items].map(localMediaId))
     const prepared = []
     const durations = []
-    for (const ad of data) {
-      if (scope !== scopeKey() || destroyed) return
-      const item = { ...ad }
-      const id = localMediaId(item)
+    for (const raw of state.items) {
+      if (scope !== scopeKey() || state !== desiredManifest || destroyed) return
+      const ad = { ...raw }
+      const id = localMediaId(ad)
       if (window.mediaAPI) {
-        const result = await window.mediaAPI.download(id, item.type, item.url)
-        if (!result?.success) throw new Error(result?.error || 'Media download failed')
-        item.url = localMediaUrl(id)
-      }
-      if (manifest && item.type === 'video' && !item.duration_ms) {
-        durations.push({
-          id: item.id,
-          media_version: item.media_version,
-          duration_ms: await measureVideo(item.url),
+        const result = await window.mediaAPI.download(id, ad.type, ad.url, {
+          size: ad.size_bytes,
+          sha256: ad.sha256,
         })
+        if (!result?.success) throw new Error(result?.error || 'Download failed')
+        ad.url = localMediaUrl(id)
       }
-      prepared.push(item)
+      if (ad.type === 'video' && !ad.duration_ms)
+        durations.push({
+          id: ad.id,
+          media_version: ad.media_version,
+          duration_ms: await measureVideo(ad.url),
+        })
+      prepared.push(ad)
     }
+    if (scope !== scopeKey() || state !== desiredManifest || destroyed) return
     if (durations.length) {
-      if (scope !== scopeKey() || destroyed) return
-      for (let i = 0; i < durations.length; i += 100) {
+      const base = config.value.serverIp.replace(/\/$/, '')
+      for (let i = 0; i < durations.length; i += 100)
         await fetchJson(base + '/api/publicidad-sync/durations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -657,39 +718,45 @@ async function fetchPlaylist() {
             items: durations.slice(i, i + 100),
           }),
         })
-      }
-      const refreshed = await readSyncManifest(base, scope)
-      if (refreshed.items.map(localMediaId).join(',') !== data.map(localMediaId).join(',')) return
-      manifest = refreshed
-      prepared.forEach((ad, i) => {
-        ad.duration_ms = manifest.items[i].duration_ms
-      })
+      return // A new ready revision arrives through the socket.
     }
-    if (scope !== scopeKey() || destroyed || (manifest && !manifest.ready)) return
-    syncManifest = manifest
-    const currentId = currentAd.value ? localMediaId(currentAd.value) : null
-    playlist.value = prepared
-
-    // Conservar el elemento que se estaba reproduciendo para no reiniciar a 0 cada 15 segundos
-    const existingIdx = currentId ? prepared.findIndex((a) => localMediaId(a) === currentId) : -1
-    if (existingIdx !== -1) {
-      currentIndex.value = existingIdx
-    } else {
-      const target = targetPosition()
-      currentIndex.value = target && target.index < prepared.length ? target.index : 0
-      playCurrentAd(true)
-    }
-
-    localStorage.setItem(cacheKey(), JSON.stringify({ items: prepared, manifest }))
-    if (window.mediaAPI) await window.mediaAPI.cleanup(prepared.map(localMediaId))
+    if (!state.ready) return
+    preparedItems = prepared
+    preparedManifest = state
+    socketConn?.emit('ad_status', { revision: state.revision, status: 'ready' })
+    activatePrepared()
+    retryDelay = 5000
   } catch (error) {
-    console.error('Advertising update failed; keeping local playback:', error)
-    if (!playlist.value.length) loadCachedPlaylist()
+    console.error('Keeping previous advertising schedule:', error)
+    socketConn?.emit('ad_status', { revision: state.revision, status: 'error' })
+    if (scope === scopeKey()) retryAdvertising(prepareSchedule)
   } finally {
     playlistBusy = false
     isDownloading.value = false
-    if (!destroyed && scope !== scopeKey()) fetchPlaylist()
+    if (!destroyed && desiredManifest && state !== desiredManifest) prepareSchedule()
   }
+}
+
+function activatePrepared() {
+  if (
+    !preparedManifest ||
+    serverClock.time === null ||
+    serverClock.time < preparedManifest.epoch_ms
+  )
+    return
+  syncManifest = preparedManifest
+  playlist.value = preparedItems
+  preparedManifest = preparedItems = null
+  clearImageTimer()
+  currentIndex.value = targetPosition()?.index || 0
+  playCurrentAd()
+  localStorage.setItem(
+    cacheKey(),
+    JSON.stringify({ items: playlist.value, manifest: syncManifest }),
+  )
+  socketConn?.emit('ad_status', { revision: syncManifest.revision, status: 'applied' })
+  // No download is active here; the old playlist is no longer in use.
+  window.mediaAPI?.cleanup(playlist.value.map(localMediaId)).catch(console.error)
 }
 
 function loadCachedPlaylist() {
@@ -732,159 +799,105 @@ function targetPosition() {
   return playbackPosition(syncManifest, serverClock.time)
 }
 
+function onVideoReady() {
+  const video = videoPlayer.value
+  if (!video || !currentAd.value || video.dataset.mediaId !== localMediaId(currentAd.value)) return
+  const target = targetPosition()
+  if (target?.index === currentIndex.value && Number.isFinite(video.duration)) {
+    video.currentTime = Math.min(target.offsetMs / 1000, Math.max(0, video.duration - 0.05))
+  }
+  video.play().catch(() => {})
+}
+
 function alignVideo() {
   const video = videoPlayer.value
-  if (
-    !video ||
-    !currentAd.value ||
-    video.dataset.mediaId !== localMediaId(currentAd.value) ||
-    video.readyState < 1
-  )
+  if (!video || mediaFailed.value) return
+  if (video.readyState < 1 || video.seeking) {
+    if (performance.now() - lastVideoProgress > 20000) onVideoError()
     return
-
-  // No alterar si está buscando o ya terminó
-  if (video.seeking || video.ended) return
-
+  }
   const target = targetPosition()
-  if (target && target.index === currentIndex.value && Number.isFinite(video.duration)) {
-    const targetSeconds = Math.min(target.offsetMs / 1000, Math.max(0, video.duration - 0.05))
-    const drift = targetSeconds - video.currentTime
-
-    // Sincronización suave sin saltos ni tirones:
-    // NUNCA hacemos saltos bruscos (video.currentTime) mid-playback porque causa reinicios y parpadeos.
-    // Solo ajustamos suavemente playbackRate.
-    if (drift > 2.0) {
-      video.playbackRate = 1.08
-    } else if (drift > 0.3) {
-      video.playbackRate = 1.04
-    } else if (drift < -2.0) {
-      video.playbackRate = 0.92
-    } else if (drift < -0.3) {
-      video.playbackRate = 0.96
-    } else {
-      video.playbackRate = 1.0
+  if (target?.index === currentIndex.value && Number.isFinite(video.duration)) {
+    const seconds = Math.min(target.offsetMs / 1000, Math.max(0, video.duration - 0.05))
+    const drift = seconds - video.currentTime
+    // Large drift follows resume/stall. Normal playback only adjusts speed gently.
+    if (Math.abs(drift) > 2) {
+      if (++seekRecoveries > 2) {
+        onVideoError()
+        return
+      }
+      video.currentTime = seconds
     }
+    video.playbackRate = Math.abs(drift) < 0.2 ? 1 : drift > 0 ? 1.04 : 0.96
   }
-
-  if (video.paused && !video.ended && !video.error) {
-    video.play().catch(() => {})
+  const progress = video.getVideoPlaybackQuality?.().totalVideoFrames ?? video.currentTime
+  if (progress !== lastVideoPosition) {
+    lastVideoPosition = progress
+    lastVideoProgress = performance.now()
+  } else if (performance.now() - lastVideoProgress > 15000) {
+    onVideoError()
+    return
   }
+  if (video.paused && !video.ended && !video.error) video.play().catch(() => {})
 }
 
 function syncPlayback() {
+  activatePrepared()
   const target = targetPosition()
-  if (!target || !playlist.value.length) return
-
-  // Si un video está reproduciéndose, NUNCA lo cortamos a mitad de reproducción ni lo reiniciamos
-  // Dejamos que complete su ciclo naturalmente y que alignVideo ajuste el ritmo sin que se note
-  if (currentAd.value?.type === 'video') {
-    alignVideo()
-    return
-  }
-
-  // Si estamos en una imagen, solo cambiamos al siguiente si:
-  // 1. El timeline del servidor marca otro anuncio
-  // 2. Y ese anuncio del servidor NO es el que acabamos de terminar (evita bucles y regresos)
-  if (currentIndex.value !== target.index) {
-    const targetAd = playlist.value[target.index]
-    const targetId = targetAd ? localMediaId(targetAd) : null
-
-    if (targetId && targetId === lastCompletedId) {
-      // El servidor todavía tiene tiempo residual del anuncio que acaba de terminar;
-      // no regresar hacia atrás, dejar que el anuncio actual continúe
-      return
-    }
-
+  if (!playlist.value.length) return
+  if (target && currentIndex.value !== target.index) {
     currentIndex.value = target.index
-    playCurrentAd(true)
+    playCurrentAd()
+  } else if (currentAd.value?.type === 'video' && !mediaFailed.value) {
+    alignVideo()
   }
 }
 
-function playCurrentAd(fromSync = true) {
+function playCurrentAd() {
   clearImageTimer()
   if (!playlist.value.length) return
   const target = targetPosition()
-  if (fromSync && target) {
-    currentIndex.value = target.index
-  }
+  if (target) currentIndex.value = target.index
+  slotEndsAt = target ? serverClock.time + target.remainingMs : 0
+  mediaFailed.value = false
+  lastVideoPosition = -1
+  seekRecoveries = 0
+  lastVideoProgress = performance.now()
   const ad = currentAd.value
   if (!ad) return
-
-  // Protección anti-bucle: si el mismo anuncio se ejecuta 2 veces seguidas cuando hay más de 1 item
-  const adId = localMediaId(ad)
-  if (adId === lastPlayedMediaId && playlist.value.length > 1) {
-    consecutivePlayCount++
-    if (consecutivePlayCount >= 1) {
-      console.warn('Anti-bucle activado: Anuncio repetido consecutivamente detectado, forzando avance:', ad.name)
-      consecutivePlayCount = 0
-      lastCompletedId = adId
-      currentIndex.value = (currentIndex.value + 1) % playlist.value.length
-      playCurrentAd(false)
-      return
-    }
-  } else {
-    consecutivePlayCount = 0
-    lastPlayedMediaId = adId
-  }
-
   if (ad.type === 'video') {
     nextTick(() => {
       const video = videoPlayer.value
-      if (video) {
-        video.playbackRate = 1.0
-        // Solo al iniciar un nuevo video, si entramos tarde al anuncio por más de 2 segundos,
-        // ajustamos la posición inicial antes de que arranque
-        if (fromSync && target && target.index === currentIndex.value && target.offsetMs > 2000) {
-          const initialSec = Math.min(target.offsetMs / 1000, Math.max(0, (video.duration || 10) - 0.5))
-          video.currentTime = initialSec
-        } else {
-          if (video.ended || (Number.isFinite(video.duration) && video.currentTime >= video.duration - 0.1)) {
-            video.currentTime = 0
-          }
-        }
-        alignVideo()
-        if (video.paused && !video.ended && !video.error) {
-          video.play().catch(() => {})
-        }
-      }
+      if (!video) return
+      video.playbackRate = 1
+      if (video.readyState >= 1) onVideoReady()
     })
-  } else {
-    // Para imágenes: calcular la duración restante real según el reloj del servidor
-    let displayMs = ad.duration_ms || 10000
-    if (target && target.index === currentIndex.value && target.remainingMs > 0) {
-      displayMs = target.remainingMs
-    }
-    // Garantizar duración mínima de 3 segundos para legibilidad
-    if (displayMs < 3000) displayMs = 3000
-    imageTimer.value = setTimeout(nextAd, displayMs)
   }
+  // The canonical slot, rather than decoder timing, drives every transition.
+  if (target || ad.type !== 'video')
+    imageTimer.value = setTimeout(
+      nextAd,
+      Math.max(20, target?.remainingMs ?? ad.duration_ms ?? 10000),
+    )
 }
 
-function nextAd() {
+function nextAd(event) {
+  if (
+    event?.target?.dataset?.mediaId &&
+    (!currentAd.value || event.target.dataset.mediaId !== localMediaId(currentAd.value))
+  )
+    return
   if (!playlist.value.length) return
-
-  // Guardar el anuncio que acaba de terminar para evitar que syncPlayback lo regrese en bucle
-  if (currentAd.value) {
-    lastCompletedId = localMediaId(currentAd.value)
-  }
-
   const target = targetPosition()
   if (target) {
-    const targetAd = playlist.value[target.index]
-    const targetId = targetAd ? localMediaId(targetAd) : null
-
-    // Si el video/imagen terminó y el timeline del servidor ya apunta a un anuncio diferente al que acaba de terminar
-    if (target.index !== currentIndex.value && targetId !== lastCompletedId) {
-      currentIndex.value = target.index
-    } else {
-      // Si el reloj del servidor todavía tiene milisegundos residuales del anuncio que acaba
-      // de terminar, avanzar limpiamente al siguiente elemento de la lista para evitar bucle
-      currentIndex.value = (currentIndex.value + 1) % playlist.value.length
+    if (target.index === currentIndex.value && serverClock.time < slotEndsAt - 100) {
+      // A decoder ended early. Keep its slot so the other screens stay aligned.
+      onVideoError()
+      return
     }
-  } else {
-    currentIndex.value = (currentIndex.value + 1) % playlist.value.length
-  }
-  playCurrentAd(false)
+    currentIndex.value = target.index
+  } else currentIndex.value = (currentIndex.value + 1) % playlist.value.length
+  playCurrentAd()
 }
 
 function clearImageTimer() {
@@ -905,35 +918,18 @@ function onVideoUnmounted(vnode) {
   }
 }
 
-function onVideoError(e) {
-  console.error('Video error playing ad:', e)
-  if (socketConn?.connected && currentAd.value) {
-    socketConn.emit('terminal_error', {
-      error_type: 'video_playback_failed',
-      ad_name: currentAd.value.name,
-      file_id: currentAd.value.file_id,
-      url: currentAd.value.url,
-      agencia_id: config.value.agencia,
-      message: 'No se pudo reproducir: ' + currentAd.value.name,
-    })
-  }
-
-  // Intentar recargar una vez el video si el decoder colapsó
-  const video = videoPlayer.value
-  if (video && !video.dataset.retried) {
-    video.dataset.retried = 'true'
-    try {
-      video.currentTime = 0
-      video.load()
-      video.play().catch(() => {})
-      return
-    } catch (_) {}
-  }
-
-  // Si no se puede recuperar, saltar al siguiente anuncio para no dejar la pantalla en negro
-  setTimeout(() => {
-    nextAd()
-  }, 1000)
+function onVideoError(event) {
+  if (
+    event?.target?.dataset?.mediaId &&
+    event.target.dataset.mediaId !== localMediaId(currentAd.value)
+  )
+    return
+  if (mediaFailed.value || !currentAd.value) return
+  mediaFailed.value = true
+  clearImageTimer()
+  const remaining = targetPosition()?.remainingMs ?? currentAd.value.duration_ms ?? 10000
+  imageTimer.value = setTimeout(nextAd, Math.max(200, remaining))
+  socketConn?.emit('ad_status', { revision: syncManifest?.revision, status: 'error' })
 }
 
 // Verificar si un evento de cobro/QR va dirigido estrictamente a esta pantalla y caja
@@ -956,6 +952,11 @@ function isTargetMe(data) {
 
 // Configurar WebSockets
 function initSocket() {
+  ensureAdScope()
+  clearTimeout(bootstrapTimer)
+  bootstrapTimer = setTimeout(() => {
+    if (!socketConn?.connected && !desiredManifest) fetchPlaylist()
+  }, 5000)
   if (socketConn) {
     socketConn.removeAllListeners()
     socketConn.disconnect()
@@ -986,14 +987,11 @@ function initSocket() {
     console.log('Socket conectado con éxito:', socketConn.id)
     registerTerminalRoom()
     sendStatusHeartbeat()
-    fetchPlaylist()
+    socketClock = false
+    requestAdClock(true)
   })
 
-  // Escuchar actualizaciones de publicidad
-  socketConn.on('new_publicidad', () => {
-    console.log('Nueva publicidad recibida')
-    fetchPlaylist()
-  })
+  socketConn.on('ad_schedule', receiveSchedule)
 
   // Escuchar sincronización de datos de facturación
   socketConn.on('clienteDisplayData', (data) => {
@@ -1143,8 +1141,8 @@ function handleKeyPress(e) {
 onMounted(async () => {
   updateTime()
   clockInterval = setInterval(updateTime, 1000)
-  playlistPoll = setInterval(pollPlaylist, 15000)
-  syncTimer = setInterval(syncPlayback, 1000)
+  playlistPoll = setInterval(() => requestAdClock(), 300000)
+  syncTimer = setInterval(syncPlayback, 250)
   window.addEventListener('keydown', handleKeyPress)
 
   // Obtener versión real de la app desde Electron
@@ -1170,7 +1168,6 @@ onMounted(async () => {
       window.terminalWindowAPI.moveToSecondary()
     }
     initSocket()
-    fetchPlaylist()
   } else {
     // Si no está configurado (primera instalación), traer a pantalla principal
     if (window.terminalWindowAPI?.moveToPrimary) {
@@ -1185,6 +1182,9 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   destroyed = true
+  clearTimeout(adClockRetry)
+  clearTimeout(bootstrapTimer)
+  clearTimeout(retryTimer)
   clearInterval(playlistPoll)
   clearInterval(syncTimer)
   if (clockInterval) clearInterval(clockInterval)

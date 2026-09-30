@@ -6,6 +6,7 @@ use App\Models\Publicidad;
 use App\Services\PublicidadSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Aws\S3\S3Client;
 use Aws\Exception\AwsException;
 
@@ -45,7 +46,7 @@ class PublicidadController extends Controller
             $mimeType   = $file->getMimeType();
             $type       = str_contains($mimeType, 'video') ? 'video' : 'image';
             $extension  = $file->getClientOriginalExtension();
-            $fileName   = $name . '.' . $extension;
+            $fileName   = (string) \Illuminate\Support\Str::uuid() . '.' . $extension;
             $filePath   = 'publicidad/' . $fileName;
 
             // Subir a Cloudflare R2 usando S3Client directo (sin chunked encoding)
@@ -66,7 +67,9 @@ class PublicidadController extends Controller
                 'type'       => $type,
                 'url'        => $url,
                 'active'     => true,
-                'agencia_id' => $agencia_id
+                'agencia_id' => $agencia_id,
+                'media_sha256' => hash_file('sha256', $file->getRealPath()),
+                'size_bytes' => $file->getSize()
             ]);
 
             app(PublicidadSyncService::class)->changed($publicidad);
@@ -151,31 +154,27 @@ class PublicidadController extends Controller
         ]);
         $agencia = $data['agencia_id'] ?? null;
 
-        // Sin sucursal se envían todas las activas y cada pantalla filtra las suyas
-        $items = Publicidad::where('active', true)
-            ->when($agencia, fn ($q) => $q->where(fn ($q) => $q->whereNull('agencia_id')->orWhere('agencia_id', $agencia)))
-            ->orderBy('id', 'desc')
-            ->get(['id', 'name', 'file_id', 'type', 'url', 'agencia_id']);
-
-        $sent = app(PublicidadSyncService::class)->notify('publicidad_play', [
-            'agencia_id' => $agencia,
-            'start_id'   => $data['start_id'] ?? null,
-            'items'      => $items,
+        $states = app(PublicidadSyncService::class)->publish($agencia ? (int) $agencia : null, true, $data['start_id'] ?? null);
+        $legacyItems = collect($states)->flatMap(fn ($state) => $state['items'])->unique('id')->values();
+        app(PublicidadSyncService::class)->notify('publicidad_play', [
+            'agencia_id' => $agencia, 'start_id' => $data['start_id'] ?? null, 'items' => $legacyItems,
         ]);
-
-        if (!$sent) {
-            return response()->json(['error' => 'No se pudo contactar al servidor de sockets'], 502);
-        }
-        return response()->json(['message' => 'Orden enviada', 'items' => $items->count()]);
+        $items = $legacyItems->count();
+        return response()->json(['message' => 'Programación guardada; se enviará a las pantallas', 'items' => $items]);
     }
 
-    public function toggleActive($id)
+    public function toggleActive(Request $request, $id)
     {
-        $publicidad = Publicidad::findOrFail($id);
-        $publicidad->active = !$publicidad->active;
-        $publicidad->save();
-
-        app(PublicidadSyncService::class)->changed($publicidad);
+        $data = $request->validate(['active' => 'sometimes|required|boolean']);
+        $publicidad = DB::transaction(function () use ($id, $data) {
+            $publicidad = Publicidad::lockForUpdate()->findOrFail($id);
+            // Older clients can still toggle; newer clients send the intended state.
+            $publicidad->active = array_key_exists('active', $data) ? (bool) $data['active'] : !$publicidad->active;
+            $publicidad->save();
+            // Persist the schedules atomically; notify sockets only after commit.
+            app(PublicidadSyncService::class)->changed($publicidad);
+            return $publicidad;
+        });
 
         return response()->json($publicidad);
     }

@@ -6,7 +6,7 @@
   "author": "RONALD <RONALD10CEC@GMAIL.COM>",
   "private": true,
   "scripts": {
-    "test:sync": "node --test tests/adSync.test.mjs tests/mediaDownload.test.mjs",
+    "test:sync": "node --test tests/adSync.test.mjs tests/adPlayer.test.mjs tests/mediaDownload.test.mjs tests/localMediaResponse.test.mjs",
     "lint": "prettier --write \"**/*.{js,vue,css,scss,html,md,json}\" --ignore-path .gitignore && eslint --fix -c ./eslint.config.js \"./src*/**/*.{js,cjs,mjs,vue}\"",
     "lint:check": "prettier \"**/*.{js,vue,css,scss,html,md,json}\" --ignore-path .gitignore && eslint -c ./eslint.config.js \"./src*/**/*.{js,cjs,mjs,vue}\"",
     "dev": "quasar dev",

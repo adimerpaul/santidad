@@ -37,6 +37,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        volumeControlStream = android.media.AudioManager.STREAM_MUSIC
 
         // Capturar solo el Intent que creo la Activity. Al conceder ROLE_HOME,
         // algunos TV envian un onNewIntent HOME; no debe convertir una
@@ -58,6 +59,25 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AUTOSTART_CHANNEL)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "freeMediaBytes" -> result.success(android.os.StatFs(filesDir.absolutePath).availableBytes)
+                    "mediaDuration" -> {
+                        val mediaPath = call.argument<String>("path")
+                        Thread {
+                            try {
+                                val file = java.io.File(mediaPath ?: "").canonicalFile
+                                val root = java.io.File(applicationInfo.dataDir).canonicalPath + java.io.File.separator
+                                require(file.path.startsWith(root)) { "Invalid media path" }
+                                val reader = android.media.MediaMetadataRetriever()
+                                val duration = try {
+                                    reader.setDataSource(file.path)
+                                    reader.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong()
+                                } finally { reader.release() }
+                                runOnUiThread { result.success(duration) }
+                            } catch (e: Exception) {
+                                runOnUiThread { result.error("MEDIA", e.message, null) }
+                            }
+                        }.start()
+                    }
                     "getStatus" -> result.success(getAutoStartStatus())
                     "requestHomeRole" -> requestHomeRole(result)
                     "requestOverlayPermission" -> requestOverlayPermission(result)
