@@ -566,6 +566,13 @@
           </q-card-section>
           <q-separator/>
           <q-card-section>
+            <q-checkbox
+              v-model="facturaPequena"
+              dense
+              class="q-mb-sm"
+              :label="facturaPequena ? 'Imprimir factura pequeña' : 'Imprimir factura grande (normal)'"
+              @update:model-value="guardarFormatoFactura"
+            />
             <div class="row">
               <div class="col-6">
                 <q-btn type="submit" class="full-width" icon="o_add_circle" label="Realizar venta" :loading="loading"
@@ -716,6 +723,15 @@ function productosCacheSet (clave, data) {
 
 const TERMINAL_CONFIG_PASSWORD = '2202'
 const CAJA_STORAGE_KEY = 'caja_numero'
+const FORMATO_FACTURA_KEY = 'formato_factura'
+
+function leerFormatoFactura () {
+  try {
+    return localStorage.getItem(FORMATO_FACTURA_KEY) !== 'grande'
+  } catch (e) {
+    return true
+  }
+}
 const CAJAS_VALIDAS = [1, 2, 3, 4]
 const EVENTOS_PANTALLA_CLIENTE = new Set([
   'clienteDisplayData',
@@ -738,6 +754,8 @@ export default {
   data () {
     return {
       agencia_id: parseInt(localStorage.getItem('agencia_id')),
+      // Formato de impresión de la factura; por defecto el ticket pequeño
+      facturaPequena: leerFormatoFactura(),
       // El administrador eligió una agencia distinta a la suya en el selector
       agenciaElegidaManual: false,
       caja_numero: normalizarCaja(localStorage.getItem(CAJA_STORAGE_KEY)),
@@ -1227,7 +1245,7 @@ export default {
         const ventaRegistrada = res.data
         const tieneFactura = ventaRegistrada.venta === 'F' && Number(ventaRegistrada.numeroFactura) > 0
         const printAction = tieneFactura
-          ? Imprimir.factura(ventaRegistrada)
+          ? (this.facturaPequena ? Imprimir.facturaPequena(ventaRegistrada) : Imprimir.factura(ventaRegistrada))
           : Imprimir.nota(ventaRegistrada)
         printAction.then(r => {})
       }).catch(err => {
@@ -1236,6 +1254,12 @@ export default {
         const primerError = errores ? Object.values(errores).flat()[0] : null
         this.$alert.error(primerError || err.response?.data?.message || 'No se pudo registrar la venta.')
       })
+    },
+
+    guardarFormatoFactura (val) {
+      try {
+        localStorage.setItem(FORMATO_FACTURA_KEY, val ? 'pequena' : 'grande')
+      } catch (e) {}
     },
 
     guardarCajaNumero (val) {

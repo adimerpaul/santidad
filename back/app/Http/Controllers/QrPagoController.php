@@ -112,22 +112,24 @@ class QrPagoController extends Controller
     }
 
     /**
-     * Ventas candidatas para vincular un pago QR: ventas de ingreso del día del pago
-     * (o del texto buscado), ordenadas por cercanía al monto pagado.
+     * Ventas candidatas para vincular un pago QR: ventas de ingreso filtradas por fecha,
+     * agencia y/o texto buscado, ordenadas por cercanía al monto pagado.
      */
     public function ventasCandidatas(Request $request)
     {
         $request->validate([
-            'fecha'  => 'required|date_format:Y-m-d',
+            'fecha'  => 'nullable|date_format:Y-m-d',
             'monto'  => 'nullable|numeric',
             'search' => 'nullable|string|max:100',
+            'agencia_id' => 'nullable|integer',
         ]);
 
         $query = Sales::with(self::VENTA_RELACIONES)
             ->where('tipoVenta', 'Ingreso')
             ->where(function ($q) {
                 $q->whereNull('estado')->orWhere('estado', '!=', 'ANULADO');
-            });
+            })
+            ->when($request->filled('agencia_id'), fn ($q) => $q->where('agencia_id', $request->agencia_id));
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -137,8 +139,11 @@ class QrPagoController extends Controller
                     ->orWhereHas('client', fn ($c) => $c->where('nombreRazonSocial', 'like', "%{$search}%")
                         ->orWhere('numeroDocumento', 'like', "%{$search}%"));
             });
-        } else {
-            $query->whereDate('fechaEmision', $request->fecha);
+        }
+
+        if ($request->filled('fecha')) {
+            // Rango en vez de whereDate(): DATE(fechaEmision) impide que MySQL use el índice
+            $query->whereBetween('fechaEmision', [$request->fecha . ' 00:00:00', $request->fecha . ' 23:59:59']);
         }
 
         $monto = (float) $request->monto;

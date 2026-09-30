@@ -63,6 +63,8 @@
       flat
       bordered
       dense
+      wrap-cells
+      class="tabla-compacta"
       title="Pagos recibidos"
       :rows="pagosFiltrados"
       :columns="columns"
@@ -71,25 +73,48 @@
       :rows-per-page-options="[0]"
       no-data-label="No hay pagos QR en estas fechas"
     >
+      <template #body-cell-fecha="props">
+        <q-td :props="props">
+          <div>{{ formatFecha(props.row.paymentDate) }}</div>
+          <div class="text-grey-7">{{ props.row.paymentTime }}</div>
+        </q-td>
+      </template>
+      <template #body-cell-pagador="props">
+        <q-td :props="props">
+          <div class="ellipsis" style="max-width: 220px">{{ props.row.senderName }}</div>
+          <div class="text-grey-7 ellipsis" style="max-width: 220px">
+            {{ props.row.senderAccount }}<span v-if="props.row.senderBankCode"> · {{ props.row.senderBankCode }}</span>
+          </div>
+        </q-td>
+      </template>
+      <template #body-cell-qrId="props">
+        <q-td :props="props">
+          <div>{{ props.row.qrId }}</div>
+          <div class="text-grey-7">{{ props.row.transactionId }}</div>
+        </q-td>
+      </template>
       <template #body-cell-venta="props">
         <q-td :props="props">
           <template v-if="props.row.venta">
-            <q-chip dense square color="green" text-color="white" size="11px" clickable icon="visibility" @click="verVenta(props.row)">
-              #{{ props.row.venta.id }}
-            </q-chip>
-            <span class="text-caption">
+            <div>
+              <q-badge color="green" class="cursor-pointer" @click="verVenta(props.row)">
+                #{{ props.row.venta.id }}
+                <q-icon name="visibility" size="12px" class="q-ml-xs" />
+              </q-badge>
+              <span class="q-ml-xs">Bs {{ Number(props.row.venta.montoTotal).toFixed(2) }}</span>
+              <q-badge v-if="props.row.venta.estado === 'ANULADO'" color="red" class="q-ml-xs">Anulada</q-badge>
+              <q-badge
+                v-else-if="Math.abs(Number(props.row.venta.montoQr || props.row.venta.montoTotal) - Number(props.row.amount)) > 0.009"
+                color="orange"
+                class="q-ml-xs"
+              >Monto distinto</q-badge>
+            </div>
+            <div class="text-grey-7 ellipsis" style="max-width: 280px">
               {{ props.row.venta.client?.nombreRazonSocial || 'S/N' }} · {{ props.row.venta.user?.name }}
               <span v-if="props.row.venta.agencia"> · {{ props.row.venta.agencia.nombre }}</span>
-              · Bs {{ Number(props.row.venta.montoTotal).toFixed(2) }}
-            </span>
-            <q-badge v-if="props.row.venta.estado === 'ANULADO'" color="red" class="q-ml-xs">Anulada</q-badge>
-            <q-badge
-              v-else-if="Math.abs(Number(props.row.venta.montoQr || props.row.venta.montoTotal) - Number(props.row.amount)) > 0.009"
-              color="orange"
-              class="q-ml-xs"
-            >Monto distinto</q-badge>
+            </div>
           </template>
-          <q-chip v-else dense square color="orange" text-color="white" size="11px">Sin venta</q-chip>
+          <q-badge v-else color="orange">Sin venta</q-badge>
         </q-td>
       </template>
       <template #body-cell-acciones="props">
@@ -123,7 +148,7 @@
 
     <q-table
       v-if="ventasSinPagoFiltradas.length"
-      class="q-mt-md"
+      class="q-mt-md tabla-compacta"
       flat
       bordered
       dense
@@ -135,7 +160,7 @@
     />
 
     <q-dialog v-model="dialogVincular">
-      <q-card style="width: 760px; max-width: 95vw">
+      <q-card style="width: 640px; max-width: 95vw">
         <q-card-section class="row items-center q-pb-sm">
           <div>
             <div class="text-subtitle1 text-bold">Vincular pago QR a una venta</div>
@@ -149,23 +174,51 @@
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
-        <q-card-section class="q-pt-none">
-          <q-input
-            v-model="searchVenta"
-            outlined
-            dense
-            clearable
-            debounce="400"
-            placeholder="Buscar por N° de venta, factura, cliente o CI (vacío = ventas del día del pago)"
-            @update:model-value="cargarCandidatas"
-          >
-            <template #prepend><q-icon name="search" /></template>
-          </q-input>
+        <q-card-section class="q-pt-none row q-col-gutter-sm">
+          <div class="col-12 col-sm-5">
+            <q-input
+              v-model="searchVenta"
+              outlined
+              dense
+              clearable
+              debounce="400"
+              placeholder="N° venta, factura, cliente o CI"
+              @update:model-value="cargarCandidatas"
+            >
+              <template #prepend><q-icon name="search" /></template>
+            </q-input>
+          </div>
+          <div class="col-6 col-sm-4">
+            <q-input
+              v-model="fechaCandidatas"
+              type="date"
+              outlined
+              dense
+              clearable
+              label="Fecha"
+              stack-label
+              @update:model-value="cargarCandidatas"
+            />
+          </div>
+          <div class="col-6 col-sm-3">
+            <q-select
+              v-model="agenciaCandidatas"
+              :options="agenciaCandidatasOptions"
+              emit-value
+              map-options
+              outlined
+              dense
+              label="Sucursal"
+              @update:model-value="cargarCandidatas"
+            />
+          </div>
         </q-card-section>
 
         <q-table
           flat
           dense
+          wrap-cells
+          class="tabla-compacta"
           :rows="candidatas"
           :columns="columnsCandidatas"
           row-key="id"
@@ -173,17 +226,34 @@
           :rows-per-page-options="[10]"
           no-data-label="No se encontraron ventas"
         >
+          <template #body-cell-id="props">
+            <q-td :props="props">
+              <div class="text-bold">#{{ props.row.id }}</div>
+              <div class="text-caption text-grey-7">{{ props.row.fechaEmision ? formatHoraCorta(props.row.fechaEmision) : '' }}</div>
+            </q-td>
+          </template>
+          <template #body-cell-cliente="props">
+            <q-td :props="props">
+              <div class="ellipsis" style="max-width: 260px">{{ props.row.client?.nombreRazonSocial || 'S/N' }}</div>
+              <div class="text-caption text-grey-7 ellipsis" style="max-width: 260px">
+                {{ props.row.user?.name }}
+                <span v-if="props.row.agencia"> · {{ props.row.agencia.nombre }}</span>
+                <span v-if="props.row.metodoPago"> · {{ props.row.metodoPago }}</span>
+              </div>
+            </q-td>
+          </template>
           <template #body-cell-montoTotal="props">
             <q-td :props="props">
               <span :class="Math.abs(Number(props.row.montoTotal) - Number(pagoSel?.amount)) < 0.01 ? 'text-green-8 text-bold' : ''">
                 {{ Number(props.row.montoTotal).toFixed(2) }}
               </span>
-            </q-td>
-          </template>
-          <template #body-cell-qrId="props">
-            <q-td :props="props">
-              <q-badge v-if="props.row.qrId && props.row.qrId === pagoSel?.qrId" color="green">Actual</q-badge>
-              <span v-else class="text-caption text-grey-7">{{ props.row.qrId || '—' }}</span>
+              <div v-if="props.row.qrId">
+                <q-badge v-if="props.row.qrId === pagoSel?.qrId" color="green">Actual</q-badge>
+                <q-badge v-else color="orange" outline>
+                  Con QR
+                  <q-tooltip>{{ props.row.qrId }}</q-tooltip>
+                </q-badge>
+              </div>
             </q-td>
           </template>
           <template #body-cell-acciones="props">
@@ -289,16 +359,12 @@ export default {
       dialogVenta: false,
       pagoVer: null,
       columns: [
-        { name: 'fecha', label: 'Fecha', align: 'left', field: 'paymentDate', format: val => this.formatFecha(val), sortable: true },
-        { name: 'hora', label: 'Hora', align: 'left', field: 'paymentTime', sortable: true },
+        { name: 'acciones', label: '', align: 'left', field: 'acciones' },
+        { name: 'fecha', label: 'Fecha', align: 'left', field: row => `${row.paymentDate} ${row.paymentTime}`, sortable: true },
         { name: 'monto', label: 'Monto', align: 'right', field: row => `${row.currency} ${Number(row.amount).toFixed(2)}`, sortable: true, sort: (a, b, ra, rb) => ra.amount - rb.amount },
-        { name: 'pagador', label: 'Pagador', align: 'left', field: 'senderName', sortable: true },
-        { name: 'cuenta', label: 'Cuenta', align: 'left', field: 'senderAccount' },
-        { name: 'banco', label: 'Banco', align: 'left', field: 'senderBankCode' },
-        { name: 'transaccion', label: 'Transacción', align: 'left', field: 'transactionId' },
-        { name: 'qrId', label: 'QR', align: 'left', field: 'qrId' },
-        { name: 'venta', label: 'Venta', align: 'left', field: 'venta' },
-        { name: 'acciones', label: '', align: 'center', field: 'acciones' }
+        { name: 'pagador', label: 'Pagador / Cuenta', align: 'left', field: 'senderName', sortable: true },
+        { name: 'qrId', label: 'QR / Transacción', align: 'left', field: 'qrId' },
+        { name: 'venta', label: 'Venta', align: 'left', field: 'venta' }
       ],
       columnsVentas: [
         { name: 'id', label: 'Venta', align: 'left', field: 'id' },
@@ -308,15 +374,13 @@ export default {
         { name: 'montoQr', label: 'Monto QR', align: 'right', field: row => Number(row.montoQr || 0).toFixed(2) },
         { name: 'qrId', label: 'QR', align: 'left', field: 'qrId' }
       ],
+      agenciaCandidatas: 0,
+      fechaCandidatas: '',
       columnsCandidatas: [
+        { name: 'acciones', label: '', align: 'left', field: 'acciones' },
         { name: 'id', label: 'Venta', align: 'left', field: 'id' },
-        { name: 'fecha', label: 'Fecha', align: 'left', field: 'fechaEmision', format: val => val ? moment(val).format('DD/MM HH:mm') : '' },
-        { name: 'cliente', label: 'Cliente', align: 'left', field: row => row.client?.nombreRazonSocial || 'S/N' },
-        { name: 'usuario', label: 'Usuario', align: 'left', field: row => row.user?.name },
-        { name: 'metodoPago', label: 'Pago', align: 'left', field: 'metodoPago' },
-        { name: 'montoTotal', label: 'Total', align: 'right', field: 'montoTotal' },
-        { name: 'qrId', label: 'QR actual', align: 'left', field: 'qrId' },
-        { name: 'acciones', label: '', align: 'center', field: 'acciones' }
+        { name: 'cliente', label: 'Cliente / Vendedor', align: 'left', field: row => row.client?.nombreRazonSocial || 'S/N' },
+        { name: 'montoTotal', label: 'Total', align: 'right', field: 'montoTotal' }
       ]
     }
   },
@@ -326,6 +390,12 @@ export default {
         { label: 'Todas las agencias', value: 0 },
         ...(this.$store.agencias || []).map(a => ({ label: a.nombre, value: a.id })),
         { label: 'Pagos sin venta', value: -1 }
+      ]
+    },
+    agenciaCandidatasOptions () {
+      return [
+        { label: 'Todas', value: 0 },
+        ...(this.$store.agencias || []).map(a => ({ label: a.nombre, value: a.id }))
       ]
     },
     // El banco no informa la agencia: se toma la de la venta vinculada
@@ -357,6 +427,9 @@ export default {
     formatFechaHora (val) {
       return val ? moment(val).format('DD/MM/YYYY HH:mm') : ''
     },
+    formatHoraCorta (val) {
+      return val ? moment(val).format('DD/MM HH:mm') : ''
+    },
     verVenta (pago) {
       this.pagoVer = pago
       this.dialogVenta = true
@@ -387,6 +460,9 @@ export default {
       this.pagoSel = pago
       this.searchVenta = ''
       this.candidatas = []
+      this.fechaCandidatas = moment(pago.paymentDate).format('YYYY-MM-DD')
+      // Por defecto la sucursal de la venta ya vinculada, o la del filtro principal
+      this.agenciaCandidatas = Number(pago.venta?.agencia_id) || (this.agenciaFiltro > 0 ? this.agenciaFiltro : 0)
       this.dialogVincular = true
       this.cargarCandidatas()
     },
@@ -395,9 +471,10 @@ export default {
       this.loadingCandidatas = true
       this.$axios.get('qr/ventas-candidatas', {
         params: {
-          fecha: moment(this.pagoSel.paymentDate).format('YYYY-MM-DD'),
+          fecha: this.fechaCandidatas || undefined,
           monto: this.pagoSel.amount,
-          search: this.searchVenta || undefined
+          search: this.searchVenta || undefined,
+          agencia_id: this.agenciaCandidatas || undefined
         }
       }).then(res => {
         this.candidatas = res.data
@@ -454,3 +531,16 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.tabla-compacta :deep(th),
+.tabla-compacta :deep(td) {
+  font-size: 11px;
+  padding: 2px 6px;
+  line-height: 1.25;
+}
+.tabla-compacta :deep(.q-table__title) {
+  font-size: 14px;
+  font-weight: 600;
+}
+</style>

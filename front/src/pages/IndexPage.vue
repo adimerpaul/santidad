@@ -156,6 +156,12 @@
                     </q-btn>
                   </q-item>
                   <q-item clickable v-close-popup class="text-center" v-if="props.row.venta === 'F' && props.row.cuf">
+                    <q-btn dense label="Imprimir pequeño" color="teal-6" size="10px" class="full-width"
+                           no-caps no-wrap icon="receipt" @click="imprimirFacturaPequena(props.row)">
+                      <q-tooltip>Imprimir factura en formato reducido</q-tooltip>
+                    </q-btn>
+                  </q-item>
+                  <q-item clickable v-close-popup class="text-center" v-if="props.row.venta === 'F' && props.row.cuf">
                     <q-btn dense label="Imprimir impuestos" color="blue-6" size="10px" class="full-width"
                            no-caps no-wrap icon="qr_code_2" @click="imprimirImpuestos(props.row)">
                       <q-tooltip>Abrir consulta QR de impuestos</q-tooltip>
@@ -498,6 +504,11 @@ export default {
       const printAction = sale.venta === 'F' ? Imprimir.factura(sale) : Imprimir.nota(sale)
       printAction.then(r => {
         // console.log(r)
+      })
+    },
+    imprimirFacturaPequena (sale) {
+      Imprimir.facturaPequena(sale).catch(() => {
+        this.$alert.error('No se pudo imprimir la factura')
       })
     },
     imprimirImpuestos (sale) {
