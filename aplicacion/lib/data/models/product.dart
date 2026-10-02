@@ -27,6 +27,9 @@ class Product {
   final double precioAntes;
   final bool enOferta;
   final double porcentaje;
+
+  /// Nombre de la promoción que define el precio (null si no hay).
+  final String? promocion;
   final String? imagen;
   final String descripcion;
   final String registroSanitario;
@@ -47,6 +50,7 @@ class Product {
     required this.precioAntes,
     required this.enOferta,
     required this.porcentaje,
+    this.promocion,
     this.imagen,
     this.descripcion = '',
     this.registroSanitario = '',
@@ -92,6 +96,7 @@ class Product {
       precioAntes: precioAntes,
       enOferta: json['en_oferta'] == true,
       porcentaje: porcentaje,
+      promocion: json['promocion'],
       imagen: json['imagen'],
       descripcion: json['descripcion'] ?? '',
       registroSanitario: json['registro_sanitario'] ?? '',

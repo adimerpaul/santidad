@@ -10,6 +10,7 @@ import '../viewmodels/carrito_viewmodel.dart';
 import '../viewmodels/catalogo_viewmodel.dart';
 import 'producto_detalle_view.dart';
 import 'widgets/hero_carousel.dart';
+import 'widgets/promociones_section.dart';
 import 'widgets/ui_widgets.dart';
 
 class HomeView extends StatefulWidget {
@@ -453,6 +454,14 @@ class _HomeViewState extends State<HomeView> {
             ),
           ),
         ],
+
+        // Promociones vigentes (debajo de las ofertas de la semana)
+        if (catalogo.promociones.isNotEmpty)
+          PromocionesSection(
+            promociones: catalogo.promociones,
+            onVerProducto: _verDetalle,
+            onAgregar: carrito.agregar,
+          ),
 
         const SizedBox(height: 14),
 

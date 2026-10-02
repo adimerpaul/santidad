@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../data/models/categoria.dart';
 import '../data/models/product.dart';
+import '../data/models/promocion.dart';
 import '../data/models/sucursal.dart';
 import '../data/repositories/catalogo_repository.dart';
 
@@ -37,6 +38,7 @@ class CatalogoViewModel extends ChangeNotifier {
   List<Sucursal> sucursales = [];
   int umbralStockBajo = 20;
   List<Product> ofertas = [];
+  List<Promocion> promociones = [];
   List<String> carrusel = [];
   bool cargandoInicio = false;
   String? errorInicio;
@@ -59,6 +61,7 @@ class CatalogoViewModel extends ChangeNotifier {
     agenciaId = id;
     cargarProductos();
     cargarOfertas();
+    cargarPromociones();
   }
 
   Future<void> cargarOfertas() async {
@@ -71,6 +74,31 @@ class CatalogoViewModel extends ChangeNotifier {
       ofertas = pagina.items;
       notifyListeners();
     } catch (_) {}
+  }
+
+  /// Páginas de ofertas (de 50) que se revisan para armar las promociones.
+  static const _paginasPromociones = 3;
+
+  /// Promociones vigentes en la app, agrupadas desde los productos en oferta
+  /// (cada producto trae el nombre de la promoción que define su precio).
+  Future<void> cargarPromociones() async {
+    try {
+      final productos = <Product>[];
+      for (var page = 1; page <= _paginasPromociones; page++) {
+        final pag = await repo.productos(
+          ofertas: true,
+          page: page,
+          perPage: 50,
+          agenciaId: agenciaId,
+        );
+        productos.addAll(pag.items);
+        if (!pag.hayMas) break;
+      }
+      promociones = Promocion.agrupar(productos);
+      notifyListeners();
+    } catch (_) {
+      // las promociones son informativas: si fallan, el inicio sigue igual
+    }
   }
 
   int? get categoriaSeleccionada =>
@@ -91,6 +119,7 @@ class CatalogoViewModel extends ChangeNotifier {
         agenciaId: agenciaId,
       );
       ofertas = pagOfertas.items;
+      cargarPromociones();
       try {
         carrusel = await repo.carousels();
       } catch (_) {
