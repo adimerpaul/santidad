@@ -10,6 +10,14 @@
   var slug = function (s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'producto'; };
   var reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Quitar el service worker y la caché de la tienda anterior (Quasar PWA), si siguen en el navegador
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function (regs) { regs.forEach(function (r) { r.unregister(); }); }).catch(function () {});
+  }
+  if (window.caches && caches.keys) {
+    caches.keys().then(function (keys) { keys.forEach(function (k) { caches.delete(k); }); }).catch(function () {});
+  }
+
   // ---------- Toast ----------
   var toastEl = $('[data-toast]'), toastT;
   function toast(msg) {
