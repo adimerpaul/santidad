@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Services\PromotionPricingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class TiendaController extends Controller
 {
@@ -24,6 +25,12 @@ class TiendaController extends Controller
         $categoryId = (int) $request->get('category_id', 0);
         $subcategoryId = (int) $request->get('subcategory_id', 0);
         $ofertas = $request->boolean('ofertas');
+        // Solo productos con stock en esa sucursal (columna cantidadSucursal{id})
+        $disponibleEn = (int) $request->get('disponible_en', 0);
+        $colDisponible = $disponibleEn > 0 && Schema::hasColumn('products', 'cantidadSucursal' . $disponibleEn)
+            ? 'cantidadSucursal' . $disponibleEn
+            : null;
+        $orden = (string) $request->get('orden', '');
         $scopeOfertas = $ofertas
             ? $this->promotionPricing->activeScopeIds('web', $agenciaId ?: null)
             : ['product_ids' => [], 'category_ids' => []];
@@ -77,6 +84,10 @@ class TiendaController extends Controller
                     }
                 });
             })
+            ->when($colDisponible, fn ($q) => $q->where($colDisponible, '>', 0))
+            ->when($orden === 'menor', fn ($q) => $q->orderBy('precio'))
+            ->when($orden === 'mayor', fn ($q) => $q->orderByDesc('precio'))
+            ->when($orden === 'descuento', fn ($q) => $q->orderByDesc('porcentaje'))
             ->orderBy('en_oferta', 'desc')
             ->orderByDesc('id')
             ->paginate($paginate);

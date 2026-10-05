@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <title>Farmacias Santidad Divina · Farmacia 24 horas en Oruro, Bolivia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Farmacias Santidad Divina en Oruro: medicamentos, dermocosmética, cuidado de mamá y bebé y vitaminas a precio solidario. Atención 24 horas, stock por sucursal y pedidos por WhatsApp.">
+  <meta name="keywords" content="farmacia Oruro, farmacia 24 horas Oruro, medicamentos Bolivia, Santidad Divina, dermocosmética, vitaminas">
+  <meta name="theme-color" content="#0088b0">
+  <link rel="canonical" href="https://farmaciasantidaddivina.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_BO">
+  <meta property="og:site_name" content="Farmacias Santidad Divina">
+  <meta property="og:title" content="Farmacias Santidad Divina · Precio Solidario">
+  <meta property="og:description" content="Farmacia 24 horas en Oruro. Busca tu producto, mira en qué sucursal está disponible y pide por WhatsApp.">
+  <meta property="og:url" content="https://farmaciasantidaddivina.com/">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://farmaciasantidaddivina.com/#org","name":"Farmacias Santidad Divina","url":"https://farmaciasantidaddivina.com/","email":"farmaciasantidaddivinacentral@gmail.com","telephone":"+59172319869","slogan":"Precio Solidario"},{"@type":"WebSite","url":"https://farmaciasantidaddivina.com/","potentialAction":{"@type":"SearchAction","target":"https://farmaciasantidaddivina.com/#/buscar?q={q}","query-input":"required name=q"}},{"@type":"Pharmacy","name":"FCIA Santidad Divina S.R.L. 1","parentOrganization":{"@id":"https://farmaciasantidaddivina.com/#org"},"address":{"@type":"PostalAddress","streetAddress":"Velazco Galvarro Nº 2268 entre Santa Bárbara y Arce","addressLocality":"Oruro","addressCountry":"BO"},"telephone":"+591 2 5210798","openingHours":"Mo-Su 00:00-23:59"},{"@type":"Pharmacy","name":"Santidad Divina I (Ex Terminal)","address":{"@type":"PostalAddress","streetAddress":"Rodríguez Nº 15 entre Brasil y Tejerina","addressLocality":"Oruro","addressCountry":"BO"},"telephone":"+591 2 5282487","openingHours":"Mo-Su 08:00-22:00"},{"@type":"Pharmacy","name":"Santidad Divina II (Parque de la Unión)","address":{"@type":"PostalAddress","streetAddress":"Rodríguez Nº 526 entre 6 de Octubre y La Paz","addressLocality":"Oruro","addressCountry":"BO"},"telephone":"+591 2 5256598","openingHours":"Mo-Su 08:00-22:00"}]}</script>
+  <link rel="stylesheet" href="_ds/broadsheet-01d58ce5-9a71-4b4e-896b-bca795933b3f/styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css">
+  <script src="_ds/broadsheet-01d58ce5-9a71-4b4e-896b-bca795933b3f/_ds_bundle.js"></script>
+  <script src="./image-slot.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&display=swap">
+  <link rel="icon" href="assets/logo.png">
+  <style>
+    :root { --font-heading: "Plus Jakarta Sans", system-ui, sans-serif; --font-body: "Plus Jakarta Sans", system-ui, sans-serif; --font-heading-weight: 700;
+      --color-bg:#f5f9fd; --color-surface:#e9f2fb;
+      --grad-brand: linear-gradient(120deg, #12b5b0 0%, #1f86e6 50%, #1a4fa8 100%);
+      --grad-hero: linear-gradient(125deg, #0fb3ad 0%, #1f86e6 45%, #2160c9 75%, #1a3f8a 100%);
+      --grad-pink: linear-gradient(120deg, #ff6b86 0%, #f0457a 50%, #d6006c 100%);
+      --grad-sun: linear-gradient(135deg, #fff1c2 0%, #ffe08a 100%);
+      --grad-soft: linear-gradient(135deg, #e3f7f6 0%, #e4f1ff 55%, #f5f9fd 100%);
+      --grad-tile: linear-gradient(150deg, #e3f5f5 0%, var(--color-accent-100) 60%, #dfe8f3 100%);
+      --grad-deep: linear-gradient(135deg, #0b2a4a 0%, #1d3f73 50%, #0a6f7a 100%); }
+    .btn-primary { background: var(--grad-brand); border-color: transparent; color: #fff; border-radius: 999px; box-shadow: 0 6px 16px rgba(31,134,230,.28); }
+    .btn-secondary, .btn-ghost { border-radius: 999px; }
+    .card { border-radius: 20px; }
+    .btn-primary:hover { background: linear-gradient(120deg, #089897 0%, #2780b2 55%, #17345f 100%); }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); text-wrap: pretty; }
+    a { color: var(--color-accent-700); }
+    a:hover { color: var(--color-accent-800); }
+    @keyframes sdToast { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  </style>
+</helmet>
+
+<header style="position:sticky;top:0;z-index:40;background:var(--grad-brand);color:#fff;border-radius:0 0 28px 28px;box-shadow:0 10px 30px rgba(31,110,200,.28)">
+  <div style="max-width:1240px;margin:0 auto;padding:12px clamp(16px,4vw,48px);display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px">
+    <a href="#/" aria-label="Farmacias Santidad Divina, inicio" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:#fff;flex:0 0 auto">
+      <span style="display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm);flex:0 0 auto"><img src="assets/logo.png" alt="" width="40" height="40" style="width:40px;height:40px;object-fit:contain;border-radius:50%"></span>
+      <span style="display:flex;flex-direction:column">
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:21px;line-height:1.1;letter-spacing:-.02em;color:#fff">Santidad Divina</span>
+        <span style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;color:#d6f4ff">Precio Solidario</span>
+      </span>
+    </a>
+    <div role="search" style="position:relative;flex:1 1 340px;display:flex;gap:8px;order:3;min-width:0" onKeyDown="{{ onSearchKey }}">
+      <label for="sd-q" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Buscar producto</label>
+      <div style="position:relative;flex:1;min-width:0">
+        <i class="ph-duotone ph-magnifying-glass" aria-hidden="true" style="position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:19px;color:#1f86e6;z-index:1"></i>
+        <input id="sd-q" class="input" type="search" autocomplete="off" placeholder="Busca un producto, principio activo o laboratorio" value="{{ q }}" onChange="{{ onQ }}" onFocus="{{ onQFocus }}" onBlur="{{ onQBlur }}" style="width:100%;box-sizing:border-box;padding-left:42px;min-height:48px;border-radius:999px;border:0;background:#fff;color:#1d2b3a;box-shadow:0 6px 18px rgba(0,0,0,.10)">
+      </div>
+      <button type="button" class="btn" onClick="{{ doSearch }}" style="min-height:48px;padding-inline:22px;border-radius:999px;border:0;background:var(--grad-pink);color:#fff;font-weight:700;box-shadow:0 6px 16px rgba(214,0,108,.30)">Buscar</button>
+      <sc-if value="{{ suggOpen }}" hint-placeholder-val="{{ false }}">
+        <div role="listbox" style="position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--color-bg);box-shadow:var(--shadow-lg);border-radius:var(--radius-lg);z-index:50;padding:8px;max-height:70vh;overflow:auto">
+          <sc-if value="{{ hasSugg }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ sugg }}" as="s" hint-placeholder-count="4">
+              <a href="{{ s.href }}" role="option" style="display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;padding:8px;border-radius:var(--radius-md);text-decoration:none;color:var(--color-text)" style-hover="background:var(--color-accent-100)">
+                <span style="position:relative;display:grid;place-items:center;width:52px;height:52px;background:var(--color-neutral-200);border-radius:var(--radius-md);font-family:var(--font-heading);font-style:italic;font-size:26px;color:var(--color-accent-700)">{{ s.initial }}</span>
+                <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.name }}</span>
+                  <span style="font-size:12.5px;color:color-mix(in srgb, var(--color-text) 70%, transparent)">{{ s.lab }} · {{ s.stockTxt }} · {{ s.availTxt }}</span>
+                </span>
+                <span style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+                  <span style="font-weight:600;font-feature-settings:'tnum' 1">{{ s.priceTxt }}</span>
+                  <sc-if value="{{ s.disc }}" hint-placeholder-val="{{ true }}">
+                    <span style="display:flex;gap:6px;align-items:center;font-size:12px"><s style="color:color-mix(in srgb, var(--color-text) 70%, transparent)">{{ s.oldTxt }}</s><span style="background:var(--color-accent-2);color:#fff;padding:0 6px;border-radius:var(--radius-md);font-weight:600">{{ s.discTxt }}</span></span>
+                  </sc-if>
+                </span>
+              </a>
+            </sc-for>
+            <a href="{{ allHref }}" style="display:block;padding:10px 8px 4px;font-size:14px;font-weight:600">Ver los {{ suggCount }} resultados para “{{ q }}” →</a>
+          </sc-if>
+          <sc-if value="{{ noSugg }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:0;padding:12px 8px;font-size:14px">Sin resultados para “{{ q }}”. Escríbenos y lo cotizamos.</p>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+    <nav aria-label="Principal" style="display:flex;align-items:center;gap:6px 18px;order:2;margin-left:auto;flex-wrap:wrap">
+      <a href="#/categorias" style="font-size:15px;font-weight:600;text-decoration:none;color:#fff;opacity:.95" style-hover="opacity:1;text-decoration:underline">Categorías</a>
+      <a href="#/descuentos" style="font-size:15px;font-weight:600;text-decoration:none;color:#fff;opacity:.95" style-hover="opacity:1;text-decoration:underline">Descuentos</a>
+      <a href="#/sucursales" style="font-size:15px;font-weight:600;text-decoration:none;color:#fff;opacity:.95" style-hover="opacity:1;text-decoration:underline">Sucursales</a>
+      <button type="button" class="btn" onClick="{{ openCart }}" aria-label="Abrir carrito" style="display:flex;align-items:center;gap:8px;background:#fff;color:#1a4fa8;border:0;border-radius:999px;font-weight:700;min-height:44px;padding-inline:16px">
+        <i class="ph-duotone ph-shopping-cart" aria-hidden="true" style="font-size:20px"></i>
+        <span>Carrito</span>
+        <span style="min-width:22px;padding:0 6px;border-radius:999px;background:var(--grad-pink);color:#fff;font-size:13px;font-weight:700;text-align:center">{{ cartCount }}</span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+  <div>
+  <div style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,48px)">
+    <section data-screen-label="Inicio" style="position:relative;overflow:hidden;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:36px clamp(24px,5vw,72px);align-items:center;margin-top:28px;padding:clamp(28px,5vw,64px);border-radius:32px;background:var(--grad-hero);color:#fff;box-shadow:0 24px 60px rgba(31,110,200,.30)">
+      <span aria-hidden="true" style="position:absolute;width:420px;height:420px;border-radius:50%;right:-120px;top:-160px;background:radial-gradient(circle, rgba(255,255,255,.22), rgba(255,255,255,0) 70%)"></span>
+      <span aria-hidden="true" style="position:absolute;width:260px;height:260px;border-radius:50%;left:-90px;bottom:-120px;background:radial-gradient(circle, rgba(255,107,134,.45), rgba(255,107,134,0) 70%)"></span>
+      <div>
+        <h1 style="font-family:var(--font-heading);font-weight:600;font-size:clamp(40px,5.6vw,72px);line-height:1.06;letter-spacing:-.02em;margin:0">
+          <span style="display:block">Tu farmacia en Oruro.</span>
+          <span style="display:block;color:#bff1ff">Abierta las 24 horas.</span>
+        </h1>
+        <span style="display:inline-flex;align-items:center;gap:8px;margin-top:22px;padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.18);font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase"><i class="ph-duotone ph-clock"></i>{{ openNowTxt }}</span>
+        <p style="font-size:18px;line-height:1.6;max-width:52ch;margin:24px 0 0;color:#eef8ff">Medicamentos, dermocosmética y cuidado personal a precio solidario. Busca tu producto, revisa en qué sucursal hay stock y recógelo o recíbelo en casa.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:28px">
+          <a class="btn" href="#/descuentos" style="text-decoration:none;background:var(--grad-pink);color:#fff;border:0;border-radius:999px;font-weight:700;min-height:48px;padding-inline:24px;display:flex;align-items:center;box-shadow:0 8px 20px rgba(214,0,108,.35)">Ver descuentos</a>
+          <a class="btn" href="#/sucursales" style="text-decoration:none;display:flex;align-items:center;gap:8px;background:#fff;color:#1a4fa8;border:0;border-radius:999px;font-weight:700;min-height:48px;padding-inline:22px"><i class="ph-duotone ph-map-pin" aria-hidden="true"></i>Encontrar sucursal</a>
+        </div>
+      </div>
+      <figure style="margin:0;position:relative">
+        <div style="aspect-ratio:4/3;border-radius:24px;overflow:hidden;border:6px solid rgba(255,255,255,.35);background:rgba(255,255,255,.15)"><image-slot id="hero-fachada" shape="rect" placeholder="Foto de la fachada de la Sucursal 1" role="img" aria-label="Fachada de Farmacia Santidad Divina, Velazco Galvarro, Oruro"></image-slot></div>
+        <figcaption style="font-size:13px;margin-top:12px;color:#e3f4ff">Sucursal 1 · Velazco Galvarro Nº 2268 entre Santa Bárbara y Arce · 52 10798</figcaption>
+      </figure>
+    </section>
+  </div>
+  </div>
+    <div style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,48px)">
+    <section aria-label="Promociones" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px;padding-top:28px">
+      <a href="#/buscar?cat=dermo" style="position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:26px;border-radius:24px;background:var(--grad-sun);color:#3a2a00;text-decoration:none;min-height:170px" style-hover="transform:translateY(-3px)">
+        <span style="align-self:flex-start;padding:4px 12px;border-radius:999px;background:#1d2b3a;color:#fff;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Promo primavera</span>
+        <span style="font-size:44px;font-weight:800;line-height:1;letter-spacing:-.03em;background:var(--grad-pink);-webkit-background-clip:text;background-clip:text;color:transparent">15% OFF</span>
+        <span style="font-size:17px;font-weight:700">En toda la línea de dermocosmética</span>
+        <span style="font-size:14px;font-weight:700;color:#d6006c;margin-top:auto">Ver productos →</span>
+        <span aria-hidden="true" style="position:absolute;right:-40px;bottom:-40px;width:150px;height:150px;border-radius:50%;background:var(--grad-pink);opacity:.85"></span>
+      </a>
+      <a href="{{ waQuote }}" target="_blank" rel="noopener" style="position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:26px;border-radius:24px;background:#fff;border-radius:22px;box-shadow:0 10px 28px rgba(31,110,200,.10);color:var(--color-text);text-decoration:none;min-height:170px" style-hover="transform:translateY(-3px)">
+        <span style="display:grid;place-items:center;width:48px;height:48px;border-radius:16px;background:var(--grad-brand);color:#fff;font-size:24px"><i class="ph-duotone ph-file-text"></i></span>
+        <span style="font-size:20px;font-weight:800;letter-spacing:-.01em">Envía tu receta</span>
+        <span style="font-size:14.5px;line-height:1.5;color:color-mix(in srgb, var(--color-text) 70%, transparent)">Mándanos una foto por WhatsApp y te decimos qué tenemos y cuánto cuesta.</span>
+        <span style="align-self:flex-start;margin-top:auto;padding:8px 16px;border-radius:999px;background:var(--grad-pink);color:#fff;font-size:14px;font-weight:700">Cotizar ahora</span>
+      </a>
+      <a href="tel:+59125210798" style="position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:26px;border-radius:24px;background:linear-gradient(135deg,#1a3f8a,#1f86e6);color:#fff;text-decoration:none;min-height:170px" style-hover="transform:translateY(-3px)">
+        <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#bff1ff">Atención 24 horas</span>
+        <span style="font-size:40px;font-weight:800;line-height:1;letter-spacing:-.02em">52 10798</span>
+        <span style="font-size:15px;color:#e3f4ff">Lunes a domingo, incluye feriados · Velazco Galvarro Nº 2268</span>
+        <span style="font-size:14px;font-weight:700;margin-top:auto">Llamar ahora →</span>
+        <span aria-hidden="true" style="position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle, rgba(18,181,176,.8), rgba(18,181,176,0) 70%)"></span>
+      </a>
+    </section>
+
+    <section aria-label="Servicios" style="padding:28px 0 clamp(24px,4vw,48px)">
+      
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:20px">
+        <div style="background:#fff;border-radius:22px;box-shadow:0 10px 28px rgba(31,110,200,.10);padding:22px"><h2 style="font-family:var(--font-heading);font-weight:700;font-size:18px;margin:0;display:flex;gap:12px;align-items:center"><i class="ph-duotone ph-moped" aria-hidden="true" style="flex:0 0 auto;display:grid;place-items:center;width:46px;height:46px;border-radius:15px;background:var(--grad-brand);color:#fff;font-size:23px"></i>Envíos a domicilio</h2><p style="margin:12px 0 0;font-size:15px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 70%, transparent)">Pide desde donde estés.</p></div>
+        <div style="background:#fff;border-radius:22px;box-shadow:0 10px 28px rgba(31,110,200,.10);padding:22px"><h2 style="font-family:var(--font-heading);font-weight:700;font-size:18px;margin:0;display:flex;gap:12px;align-items:center"><i class="ph-duotone ph-receipt" aria-hidden="true" style="flex:0 0 auto;display:grid;place-items:center;width:46px;height:46px;border-radius:15px;background:var(--grad-brand);color:#fff;font-size:23px"></i>Cotiza con nosotros</h2><p style="margin:12px 0 0;font-size:15px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 70%, transparent)">Solicita una cotización rápida y sin compromiso. <a href="{{ waQuote }}" target="_blank" rel="noopener">Enviar receta</a></p></div>
+        <div style="background:#fff;border-radius:22px;box-shadow:0 10px 28px rgba(31,110,200,.10);padding:22px"><h2 style="font-family:var(--font-heading);font-weight:700;font-size:18px;margin:0;display:flex;gap:12px;align-items:center"><i class="ph-duotone ph-tag" aria-hidden="true" style="flex:0 0 auto;display:grid;place-items:center;width:46px;height:46px;border-radius:15px;background:var(--grad-brand);color:#fff;font-size:23px"></i>Descuentos por volumen</h2><p style="margin:12px 0 0;font-size:15px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 70%, transparent)">Aprovecha grandes descuentos en compras en grandes cantidades.</p></div>
+        <div style="background:#fff;border-radius:22px;box-shadow:0 10px 28px rgba(31,110,200,.10);padding:22px"><h2 style="font-family:var(--font-heading);font-weight:700;font-size:18px;margin:0;display:flex;gap:12px;align-items:center"><i class="ph-duotone ph-device-mobile" aria-hidden="true" style="flex:0 0 auto;display:grid;place-items:center;width:46px;height:46px;border-radius:15px;background:var(--grad-brand);color:#fff;font-size:23px"></i>Aplicación móvil</h2><p style="margin:12px 0 0;font-size:15px;line-height:1.55;color:color-mix(in srgb, var(--color-text) 70%, transparent)">Compra desde donde estés con nuestra app móvil. <a href="#app">Descargar</a></p></div>
+      </div>
+    </section>
+
+    <section id="descuentos" aria-labelledby="h-desc" style="padding:clamp(32px,5vw,64px) 0">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px">
+        <div>
+          <span style="display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-2-700, var(--color-accent-2));margin-bottom:8px">Promo primavera</span>
+          <h2 id="h-desc" style="font-family:var(--font-heading);font-weight:800;letter-spacing:-.02em;font-size:clamp(26px,3vw,38px);line-height:1.1;margin:0">Explora nuestros descuentos</h2>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent);font-feature-settings:'tnum' 1">{{ desc.label }}</span>
+          <button type="button" class="btn btn-secondary btn-icon" aria-label="Anteriores" onClick="{{ desc.prev }}"><i class="ph-duotone ph-caret-left"></i></button>
+          <button type="button" class="btn btn-secondary btn-icon" aria-label="Siguientes" onClick="{{ desc.next }}"><i class="ph-duotone ph-caret-right"></i></button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:20px">
+        <sc-for list="{{ desc.items }}" as="item" hint-placeholder-count="4">
+          <dc-import name="ProductCard" p="{{ item }}" hint-size="100%,400px"></dc-import>
+        </sc-for>
+      </div>
+      <div style="display:flex;justify-content:center;gap:8px;margin-top:20px">
+        <sc-for list="{{ desc.dots }}" as="d" hint-placeholder-count="3">
+          <button type="button" aria-label="{{ d.label }}" onClick="{{ d.go }}" style="width:{{ d.w }};height:8px;border:0;padding:0;border-radius:999px;background:{{ d.bg }};cursor:pointer;transition:width .2s"></button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section id="categorias" aria-labelledby="h-cat" style="margin:clamp(24px,4vw,48px) 0;padding:clamp(28px,4vw,48px);border-radius:32px;background:linear-gradient(160deg,#e3f7f6 0%,#e4f0ff 60%,#eef4ff 100%)">
+      <h2 id="h-cat" style="font-family:var(--font-heading);font-weight:800;letter-spacing:-.02em;font-size:clamp(26px,3vw,38px);line-height:1.1;margin:0 0 28px">Explorá nuestras categorías</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr));gap:16px">
+        <sc-for list="{{ cats }}" as="c" hint-placeholder-count="8">
+          <a href="{{ c.href }}" style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding:22px 12px;border-radius:22px;background:#fff;text-decoration:none;color:var(--color-text);box-shadow:0 10px 26px rgba(31,110,200,.10);transition:transform .2s, box-shadow .2s;height:100%;box-sizing:border-box" style-hover="transform:translateY(-4px);box-shadow:0 16px 34px rgba(31,110,200,.20)">
+            <span style="display:grid;place-items:center;width:66px;height:66px;border-radius:22px;background:linear-gradient(150deg,#e3f7f6,#d6e9ff)"><i class="{{ c.icon }}" aria-hidden="true" style="font-size:34px;color:#1f86e6"></i></span>
+            <span style="font-weight:700;font-size:14.5px;line-height:1.3">{{ c.name }}</span>
+            <span style="font-size:12.5px;color:color-mix(in srgb, var(--color-text) 70%, transparent)">{{ c.count }} productos</span>
+          </a>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-top" style="padding:clamp(32px,5vw,64px) 0">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px">
+        <h2 id="h-top" style="font-family:var(--font-heading);font-weight:800;letter-spacing:-.02em;font-size:clamp(26px,3vw,38px);line-height:1.1;margin:0">Productos más vendidos</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent);font-feature-settings:'tnum' 1">{{ top.label }}</span>
+          <button type="button" class="btn btn-secondary btn-icon" aria-label="Anteriores" onClick="{{ top.prev }}"><i class="ph-duotone ph-caret-left"></i></button>
+          <button type="button" class="btn btn-secondary btn-icon" aria-label="Siguientes" onClick="{{ top.next }}"><i class="ph-duotone ph-caret-right"></i></button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:20px">
+        <sc-for list="{{ top.items }}" as="item" hint-placeholder-count="4">
+          <dc-import name="ProductCard" p="{{ item }}" hint-size="100%,400px"></dc-import>
+        </sc-for>
+      </div>
+      <div style="display:flex;justify-content:center;gap:8px;margin-top:20px">
+        <sc-for list="{{ top.dots }}" as="d" hint-placeholder-count="3">
+          <button type="button" aria-label="{{ d.label }}" onClick="{{ d.go }}" style="width:{{ d.w }};height:8px;border:0;padding:0;border-radius:999px;background:{{ d.bg }};cursor:pointer;transition:width .2s"></button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section id="sucursales" aria-labelledby="h-suc" style="margin:clamp(24px,4vw,48px) 0;padding:clamp(28px,4vw,48px);border-radius:32px;background:#fff;border-radius:22px;box-shadow:0 10px 28px rgba(31,110,200,.10)">
+      <h2 id="h-suc" style="font-family:var(--font-heading);font-weight:800;letter-spacing:-.02em;font-size:clamp(26px,3vw,38px);line-height:1.1;margin:0 0 8px">Nuestras sucursales</h2>
+      <p style="margin:0 0 28px;font-size:16px;max-width:60ch">Elige una sucursal para verla en el mapa, llamar o pedir indicaciones.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:32px">
+        <div style="min-height:380px;border-radius:12px;overflow:hidden;box-shadow:var(--shadow-md);background:var(--color-surface);padding:4px;background:var(--grad-brand)">
+          <iframe title="Mapa de {{ branch.name }}" src="{{ mapSrc }}" loading="lazy" style="width:100%;height:100%;min-height:380px;border:0;display:block"></iframe>
+        </div>
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ branches }}" as="b" hint-placeholder-count="4">
+            <li>
+              <button type="button" onClick="{{ b.select }}" aria-pressed="{{ b.active }}" style="width:100%;text-align:left;font:inherit;color:var(--color-text);background:{{ b.bg }};border:0;border-radius:var(--radius-md);padding:14px 16px;cursor:pointer;display:flex;flex-direction:column;gap:4px" style-hover="background:var(--color-accent-100)">
+                <span style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
+                  <span style="font-family:var(--font-heading);font-weight:600;font-size:18px">{{ b.name }}</span>
+                  <span class="{{ b.tagClass }}">{{ b.openTxt }}</span>
+                </span>
+                <span style="font-size:14.5px">{{ b.addr }}</span>
+                <span style="font-size:13.5px;color:color-mix(in srgb, var(--color-text) 70%, transparent)">{{ b.hours }} · Tel. {{ b.tel }}</span>
+              </button>
+            </li>
+          </sc-for>
+          <li style="display:flex;gap:10px;flex-wrap:wrap;padding:10px 16px 0">
+            <a class="btn btn-primary" href="{{ branch.dirHref }}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;gap:8px;align-items:center"><i class="ph-duotone ph-navigation-arrow"></i>Cómo llegar</a>
+            <a class="btn btn-secondary" href="{{ branch.telHref }}" style="text-decoration:none;display:flex;gap:8px;align-items:center"><i class="ph-duotone ph-phone"></i>Llamar</a>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-mejor" style="padding:clamp(32px,5vw,64px) 0">
+      <h2 id="h-mejor" style="font-family:var(--font-heading);font-weight:800;letter-spacing:-.02em;font-size:clamp(26px,3vw,38px);line-height:1.1;margin:0 0 28px">Te ofrecemos lo mejor</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:28px clamp(24px,4vw,64px)">
+        <div><h3 style="font-family:var(--font-heading);font-weight:600;font-size:21px;margin:0">Innovación constante</h3><p style="margin:8px 0 0;font-size:15.5px;line-height:1.6">Innovación constante para servirte mejor.</p></div>
+        <div><h3 style="font-family:var(--font-heading);font-weight:600;font-size:21px;margin:0">Atención profesional</h3><p style="margin:8px 0 0;font-size:15.5px;line-height:1.6">Profesionales farmacéuticos a tu servicio.</p></div>
+        <div><h3 style="font-family:var(--font-heading);font-weight:600;font-size:21px;margin:0">Precios solidarios</h3><p style="margin:8px 0 0;font-size:15.5px;line-height:1.6">Ahora todos los días de la semana.</p></div>
+      </div>
+    </section>
+
+    <section id="app" aria-labelledby="h-app" style="position:relative;overflow:hidden;margin:clamp(24px,4vw,48px) 0;padding:clamp(28px,4vw,56px);border-radius:32px;background:var(--grad-hero);color:#fff;--color-text:#fff;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:32px clamp(24px,5vw,80px);align-items:center">
+      <div>
+        <span style="display:block;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#bff1ff;margin-bottom:8px">Aplicación móvil</span>
+        <h2 id="h-app" style="font-family:var(--font-heading);font-weight:800;letter-spacing:-.02em;font-size:clamp(26px,3vw,38px);line-height:1.1;margin:0">Santidad Divina en tu bolsillo</h2>
+        <ul style="list-style:none;margin:20px 0 0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:17px">
+          <li style="display:flex;gap:10px;align-items:center"><i class="ph-duotone ph-magnifying-glass" style="color:#bff1ff"></i>Busca tu producto</li>
+          <li style="display:flex;gap:10px;align-items:center"><i class="ph-duotone ph-package" style="color:#bff1ff"></i>Ver disponibilidad</li>
+          <li style="display:flex;gap:10px;align-items:center"><i class="ph-duotone ph-shopping-cart" style="color:#bff1ff"></i>Carrito de compras</li>
+        </ul>
+        <a class="btn" href="https://play.google.com/store" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;gap:8px;align-items:center;margin-top:24px;background:#fff;color:#1a4fa8;border:0;border-radius:999px;font-weight:700;min-height:48px;padding-inline:22px"><i class="ph-duotone ph-google-play-logo"></i>Descargar en Google Play</a>
+      </div>
+      <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap">
+        <div style="width:180px;height:180px;padding:10px;background:#fff;border-radius:22px"><image-slot id="app-qr" shape="rect" placeholder="Código QR de la app"></image-slot></div>
+        <p style="margin:0;font-size:14px;max-width:22ch;color:#e3f4ff">Escanea el código con la cámara de tu teléfono.</p>
+      </div>
+    </section>
+
+    <section aria-labelledby="h-labs" style="padding:clamp(32px,5vw,64px) 0">
+      <h2 id="h-labs" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(24px,2.6vw,32px);line-height:1.1;margin:0 0 20px">Laboratorios y distribuidoras</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:12px">
+        <sc-for list="{{ labs }}" as="l" hint-placeholder-count="12">
+          <a href="{{ l.href }}" style="font-size:15px;font-weight:700;text-decoration:none;color:#1a4fa8;background:#fff;padding:10px 18px;border-radius:999px;box-shadow:0 6px 16px rgba(31,110,200,.10)" style-hover="background:var(--grad-brand);color:#fff">{{ l.name }}</a>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+  <div data-screen-label="Resultados" style="max-width:1240px;margin:0 auto;padding:clamp(24px,4vw,48px) clamp(16px,4vw,48px) 64px">
+    <nav aria-label="Ruta" style="font-size:14px;margin-bottom:16px"><a href="#/">Inicio</a> / <span>{{ sr.crumb }}</span></nav>
+    <h1 style="font-family:var(--font-heading);font-weight:600;font-size:clamp(28px,3.6vw,44px);line-height:1.1;margin:0">{{ sr.title }}</h1>
+    <p style="margin:8px 0 0;font-size:15px;color:color-mix(in srgb, var(--color-text) 70%, transparent)">{{ sr.countTxt }}</p>
+    <div style="display:flex;flex-wrap:wrap;gap:14px 20px;align-items:flex-end;margin:28px 0">
+      <div class="field" style="display:flex;flex-direction:column;gap:4px;flex:1 1 200px"><label for="f-cat">Categoría</label>
+        <select id="f-cat" class="input" value="{{ sr.cat }}" onChange="{{ sr.onCat }}">
+          <option value="">Todas</option>
+          <sc-for list="{{ catOpts }}" as="o" hint-placeholder-count="8"><option value="{{ o.id }}">{{ o.name }}</option></sc-for>
+        </select></div>
+      <div class="field" style="display:flex;flex-direction:column;gap:4px;flex:1 1 200px"><label for="f-suc">Disponible en</label>
+        <select id="f-suc" class="input" value="{{ sr.suc }}" onChange="{{ sr.onSuc }}">
+          <option value="">Cualquier sucursal</option>
+          <sc-for list="{{ branches }}" as="o" hint-placeholder-count="4"><option value="{{ o.id }}">{{ o.name }}</option></sc-for>
+        </select></div>
+      <div class="field" style="display:flex;flex-direction:column;gap:4px;flex:1 1 180px"><label for="f-ord">Ordenar por</label>
+        <select id="f-ord" class="input" value="{{ sr.sort }}" onChange="{{ sr.onSort }}">
+          <option value="relevancia">Relevancia</option><option value="menor">Precio: menor a mayor</option><option value="mayor">Precio: mayor a menor</option><option value="descuento">Mayor descuento</option>
+        </select></div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:15px;min-height:40px;cursor:pointer"><input type="checkbox" checked="{{ sr.desc }}" onChange="{{ sr.onDesc }}" style="accent-color:var(--color-accent);width:18px;height:18px">Solo con descuento</label>
+    </div>
+    <sc-if value="{{ sr.empty }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:48px 0">
+        <h2 style="font-family:var(--font-heading);font-weight:600;font-size:24px;margin:0">No encontramos ese producto</h2>
+        <p style="margin:10px 0 20px;font-size:16px;max-width:52ch">Puede que lo tengamos con otro nombre o lo podamos conseguir. Envíanos la receta o el nombre y te cotizamos.</p>
+        <a class="btn btn-primary" href="{{ waQuote }}" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;gap:8px;align-items:center"><i class="ph-duotone ph-whatsapp-logo"></i>Cotizar por WhatsApp</a>
+      </div>
+    </sc-if>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:20px">
+      <sc-for list="{{ sr.items }}" as="item" hint-placeholder-count="8">
+        <dc-import name="ProductCard" p="{{ item }}" hint-size="100%,400px"></dc-import>
+      </sc-for>
+    </div>
+    <nav aria-label="Paginación" style="display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:36px">
+      <sc-for list="{{ sr.pages }}" as="pg" hint-placeholder-count="2">
+        <a href="{{ pg.href }}" aria-current="{{ pg.current }}" style="min-width:40px;height:40px;display:grid;place-items:center;border-radius:var(--radius-md);text-decoration:none;font-feature-settings:'tnum' 1;background:{{ pg.bg }};color:{{ pg.fg }}" style-hover="background:var(--color-accent-200)">{{ pg.label }}</a>
+      </sc-for>
+    </nav>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isProduct }}" hint-placeholder-val="{{ false }}">
+  <article data-screen-label="Producto" itemscope="" itemtype="https://schema.org/Product" style="max-width:1240px;margin:0 auto;padding:clamp(24px,4vw,48px) clamp(16px,4vw,48px) 64px">
+    <nav aria-label="Ruta" style="font-size:14px;margin-bottom:24px;display:flex;flex-wrap:wrap;gap:6px"><a href="#/">Inicio</a><span>/</span><a href="{{ pd.catHref }}">{{ pd.catName }}</a><span>/</span><span>{{ pd.name }}</span></nav>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:32px clamp(24px,5vw,72px);align-items:start">
+      <div style="position:relative;display:grid;place-items:center;aspect-ratio:1;background:var(--grad-tile);border-radius:12px">
+        <span aria-hidden="true" style="font-family:var(--font-heading);font-style:italic;font-size:160px;line-height:1;color:var(--color-accent-700)">{{ pd.initial }}</span>
+        <span style="position:absolute;left:20px;bottom:16px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 70%, transparent)">{{ pd.form }}</span>
+        <sc-if value="{{ pd.disc }}" hint-placeholder-val="{{ true }}">
+          <span style="position:absolute;top:16px;left:16px;background:var(--color-accent-2);color:#fff;font-size:18px;font-weight:600;padding:4px 12px;border-radius:var(--radius-md)">{{ pd.discTxt }}</span>
+        </sc-if>
+        <span class="tag tag-accent" style="position:absolute;top:16px;right:16px;display:flex;gap:6px;align-items:center"><i class="ph-duotone ph-seal-check"></i>Original</span>
+      </div>
+      <div>
+        <span itemprop="brand" style="display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb, var(--color-text) 70%, transparent)">{{ pd.lab }}</span>
+        <h1 itemprop="name" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(28px,3.4vw,42px);line-height:1.12;letter-spacing:-.01em;margin:10px 0 0">{{ pd.name }}</h1>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 14px;align-items:baseline;margin-top:20px">
+          <span style="font-size:36px;font-weight:600;font-feature-settings:'tnum' 1">{{ pd.priceTxt }}</span>
+          <sc-if value="{{ pd.disc }}" hint-placeholder-val="{{ true }}">
+            <s style="font-size:18px;color:color-mix(in srgb, var(--color-text) 70%, transparent)">Antes {{ pd.oldTxt }}</s>
+            <span class="tag tag-accent-2" style="white-space:nowrap;flex:0 0 auto">{{ pd.saveTxt }}</span>
+          </sc-if>
+        </div>
+        <p style="margin:10px 0 0;font-size:15px;display:flex;gap:8px;align-items:center;color:{{ pd.availColor }}"><i class="ph-duotone ph-package"></i><span>{{ pd.stockTxt }} · {{ pd.availTxt }}</span></p>
+        <dl style="display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:8px 24px;margin:28px 0 0;font-size:15.5px">
+          <sc-for list="{{ pd.specs }}" as="sp" hint-placeholder-count="5">
+            <dt style="color:color-mix(in srgb, var(--color-text) 70%, transparent)">{{ sp.k }}</dt><dd style="margin:0">{{ sp.v }}</dd>
+          </sc-for>
+        </dl>
+        <div style="display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center;margin-top:32px">
+          <div style="display:flex;align-items:center;gap:4px" role="group" aria-label="Cantidad">
+            <button type="button" class="btn btn-secondary btn-icon" aria-label="Quitar uno" onClick="{{ pd.dec }}"><i class="ph-duotone ph-minus"></i></button>
+            <span style="min-width:48px;text-align:center;font-size:20px;font-weight:600;font-feature-settings:'tnum' 1" aria-live="polite">{{ pd.qty }}</span>
+            <button type="button" class="btn btn-secondary btn-icon" aria-label="Agregar uno" onClick="{{ pd.inc }}"><i class="ph-duotone ph-plus"></i></button>
+            <span style="margin-left:8px;font-size:14px;color:color-mix(in srgb, var(--color-text) 70%, transparent)">{{ pd.unitTxt }}</span>
+          </div>
+          <span style="font-size:15px">Total <strong style="font-size:22px;font-feature-settings:'tnum' 1">{{ pd.totalTxt }}</strong></span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:20px">
+          <button type="button" class="btn btn-primary" onClick="{{ pd.add }}" disabled="{{ pd.soldOut }}" style="display:flex;gap:8px;align-items:center;min-height:46px;padding-inline:22px"><i class="ph-duotone ph-shopping-cart-simple"></i>Añadir al carrito</button>
+          <a class="btn btn-secondary" href="{{ pd.waBuy }}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;gap:8px;align-items:center;min-height:46px"><i class="ph-duotone ph-whatsapp-logo"></i>Pedir por WhatsApp</a>
+          <button type="button" class="btn btn-ghost" onClick="{{ pd.share }}" style="display:flex;gap:8px;align-items:center;min-height:46px"><i class="ph-duotone ph-share-network"></i>Compartir</button>
+        </div>
+        <p style="display:flex;gap:16px;flex-wrap:wrap;margin:12px 0 0;font-size:14px">
+          <a href="{{ pd.waShare }}" target="_blank" rel="noopener">Compartir en WhatsApp</a>
+          <a href="{{ pd.fbShare }}" target="_blank" rel="noopener">Compartir en Facebook</a>
+        </p>
+      </div>
+    </div>
+
+    <section aria-labelledby="h-disp" style="padding-top:clamp(40px,6vw,72px)">
+      <h2 id="h-disp" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(24px,2.6vw,32px);margin:0 0 20px">¿En qué sucursal está disponible?</h2>
+      <ul style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:24px 40px">
+        <sc-for list="{{ pd.avail }}" as="a" hint-placeholder-count="4">
+          <li style="display:flex;flex-direction:column;gap:4px;opacity:{{ a.op }}">
+            <span style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">
+              <span style="font-family:var(--font-heading);font-weight:600;font-size:18px">{{ a.name }}</span>
+              <span style="font-weight:600;font-feature-settings:'tnum' 1;color:{{ a.color }}">{{ a.qtyTxt }}</span>
+            </span>
+            <span style="font-size:14.5px">{{ a.addr }}</span>
+            <span style="font-size:13.5px;color:color-mix(in srgb, var(--color-text) 70%, transparent)">{{ a.openTxt }} · <a href="{{ a.mapHref }}">Ver en mapa</a></span>
+          </li>
+        </sc-for>
+      </ul>
+    </section>
+
+    <section aria-labelledby="h-rel" style="padding-top:clamp(40px,6vw,72px)">
+      <h2 id="h-rel" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(24px,2.6vw,32px);margin:0 0 20px">Productos relacionados</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:20px">
+        <sc-for list="{{ pd.related }}" as="item" hint-placeholder-count="4">
+          <dc-import name="ProductCard" p="{{ item }}" hint-size="100%,400px"></dc-import>
+        </sc-for>
+      </div>
+    </section>
+  </article>
+</sc-if>
+</main>
+
+<footer style="margin-top:48px;border-radius:32px 32px 0 0;padding:56px clamp(16px,4vw,48px) 32px;background:var(--grad-deep);color:#fff;--color-text:#fff;--color-accent-700:#9fe3f0;--color-accent-800:#ffffff;--color-accent:#7fd6e6">
+  <div style="max-width:1240px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:36px">
+    <div>
+      <p style="margin:0;display:flex;align-items:center;gap:10px;font-family:var(--font-heading);font-weight:700;font-size:22px"><span style="display:grid;place-items:center;width:48px;height:48px;border-radius:50%;background:#fff"><img src="assets/logo.png" alt="" style="width:40px;height:40px;object-fit:contain"></span>Farmacia Santidad Divina</p>
+      <p style="margin:2px 0 0;font-size:14px;color:var(--color-accent-700)">Precio Solidario</p>
+      <p style="margin:16px 0 0;font-size:15px;line-height:1.6">Atendemos con ética y responsabilidad. Encuentra medicamentos, dermocosmética y cuidado personal a precios justos.</p>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <a class="btn btn-ghost btn-icon" href="https://facebook.com" aria-label="Facebook" target="_blank" rel="noopener"><i class="ph-duotone ph-facebook-logo" style="font-size:20px"></i></a>
+        <a class="btn btn-ghost btn-icon" href="https://instagram.com" aria-label="Instagram" target="_blank" rel="noopener"><i class="ph-duotone ph-instagram-logo" style="font-size:20px"></i></a>
+        <a class="btn btn-ghost btn-icon" href="https://tiktok.com" aria-label="TikTok" target="_blank" rel="noopener"><i class="ph-duotone ph-tiktok-logo" style="font-size:20px"></i></a>
+        <a class="btn btn-ghost btn-icon" href="https://wa.me/59172319869" aria-label="WhatsApp" target="_blank" rel="noopener"><i class="ph-duotone ph-whatsapp-logo" style="font-size:20px"></i></a>
+      </div>
+    </div>
+    <nav aria-label="Navegación"><p style="margin:0 0 12px;font-weight:600">Navegación</p>
+      <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:15px">
+        <li><a href="#/">Inicio</a></li><li><a href="#/sucursales">Sucursales</a></li><li><a href="#/categorias">Categorías</a></li><li><a href="tel:+59172319869">Llámanos</a></li>
+      </ul></nav>
+    <nav aria-label="Legales"><p style="margin:0 0 12px;font-weight:600">Legales</p>
+      <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:15px">
+        <li><a href="#/">Políticas de privacidad</a></li><li><a href="#/">Política de envío</a></li><li><a href="#/">Términos y condiciones</a></li><li><a href="#/">Quiénes somos</a></li>
+      </ul></nav>
+    <address style="font-style:normal"><p style="margin:0 0 12px;font-weight:600">Contacto</p>
+      <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:15px">
+        <li style="display:flex;flex-wrap:wrap;gap:4px 8px;align-items:flex-start;line-height:1.45"><i class="ph-duotone ph-map-pin" style="color:var(--color-accent)"></i>Oruro, Bolivia</li>
+        <li style="display:flex;flex-wrap:wrap;gap:4px 8px;align-items:flex-start;line-height:1.45"><i class="ph-duotone ph-clock" style="color:var(--color-accent)"></i>Lun–Dom: 08:00–22:00 · Sucursal 1: 24 h</li>
+        <li style="display:flex;flex-wrap:wrap;gap:4px 8px;align-items:flex-start;line-height:1.45"><i class="ph-duotone ph-phone" style="color:var(--color-accent)"></i><a href="tel:+59172319869" style="white-space:nowrap">+591 72319869</a></li>
+        <li style="display:flex;gap:4px 8px;align-items:flex-start;line-height:1.45;word-break:break-all"><i class="ph-duotone ph-envelope" style="color:var(--color-accent)"></i><a href="mailto:farmaciasantidaddivinacentral@gmail.com">farmaciasantidaddivinacentral@gmail.com</a></li>
+      </ul>
+      <form onSubmit="{{ onNews }}" style="display:flex;gap:8px;margin-top:16px">
+        <input class="input" type="email" required="" placeholder="Tu correo electrónico" aria-label="Correo para ofertas" style="flex:1;min-width:0">
+        <button type="submit" class="btn btn-primary">Suscribir</button>
+      </form>
+    </address>
+  </div>
+  <p style="max-width:1240px;margin:40px auto 0;font-size:13px;color:color-mix(in srgb, var(--color-text) 70%, transparent)">© 2026 Farmacia Santidad Divina. Todos los derechos reservados.</p>
+</footer>
+
+<sc-if value="{{ cartOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" onClick="{{ closeCart }}" style="position:fixed;inset:0;z-index:60"></div>
+  <aside role="dialog" aria-modal="true" aria-label="Carrito de compras" style="position:fixed;top:0;right:0;bottom:0;z-index:61;width:min(440px,100vw);background:var(--color-bg);box-shadow:var(--shadow-lg);display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px">
+      <h2 style="font-family:var(--font-heading);font-weight:600;font-size:26px;margin:0">Tu carrito</h2>
+      <button type="button" class="btn btn-ghost btn-icon" aria-label="Cerrar carrito" onClick="{{ closeCart }}"><i class="ph-duotone ph-x" style="font-size:20px"></i></button>
+    </div>
+    <div style="flex:1;overflow:auto;padding:0 24px">
+      <sc-if value="{{ cartEmpty }}" hint-placeholder-val="{{ false }}">
+        <p style="font-size:16px;margin:24px 0">Aún no agregaste productos. <a href="#/descuentos" onClick="{{ closeCart }}">Ver descuentos</a></p>
+      </sc-if>
+      <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:20px">
+        <sc-for list="{{ cartItems }}" as="ci" hint-placeholder-count="2">
+          <li style="display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:12px;align-items:start">
+            <span style="display:grid;place-items:center;width:56px;height:56px;background:var(--color-neutral-200);border-radius:var(--radius-md);font-family:var(--font-heading);font-style:italic;font-size:26px;color:var(--color-accent-700)">{{ ci.initial }}</span>
+            <span style="display:flex;flex-direction:column;gap:6px;min-width:0">
+              <a href="{{ ci.href }}" onClick="{{ closeCart }}" style="font-weight:600;font-size:15px;color:var(--color-text);text-decoration:none">{{ ci.name }}</a>
+              <span style="display:flex;align-items:center;gap:4px">
+                <button type="button" class="btn btn-ghost btn-icon" aria-label="Quitar uno" onClick="{{ ci.dec }}"><i class="ph-duotone ph-minus"></i></button>
+                <span style="min-width:28px;text-align:center;font-feature-settings:'tnum' 1">{{ ci.qty }}</span>
+                <button type="button" class="btn btn-ghost btn-icon" aria-label="Agregar uno" onClick="{{ ci.inc }}"><i class="ph-duotone ph-plus"></i></button>
+                <button type="button" class="btn btn-ghost" onClick="{{ ci.remove }}" style="font-size:13px">Eliminar</button>
+              </span>
+            </span>
+            <span style="font-weight:600;font-feature-settings:'tnum' 1">{{ ci.lineTxt }}</span>
+          </li>
+        </sc-for>
+      </ul>
+    </div>
+    <sc-if value="{{ cartHas }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:20px 24px;box-shadow:0 -1px 0 var(--color-divider);display:flex;flex-direction:column;gap:14px">
+        <div class="seg" role="radiogroup" aria-label="Entrega" style="display:flex">
+          <button type="button" class="seg-opt" aria-pressed="{{ isPickup }}" onClick="{{ setPickup }}" style="flex:1;background:{{ pickupBg }}">Recojo en sucursal</button>
+          <button type="button" class="seg-opt" aria-pressed="{{ isDelivery }}" onClick="{{ setDelivery }}" style="flex:1;background:{{ deliveryBg }}">Envío a domicilio</button>
+        </div>
+        <sc-if value="{{ isPickup }}" hint-placeholder-val="{{ true }}">
+          <select class="input" aria-label="Sucursal de recojo" value="{{ pickup }}" onChange="{{ onPickup }}">
+            <sc-for list="{{ pickupOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.id }}">{{ o.label }}</option></sc-for>
+          </select>
+        </sc-if>
+        <div style="display:flex;justify-content:space-between;font-size:14px;color:var(--color-accent-2-700, var(--color-accent-2))"><span>Ahorras</span><span>{{ cartSaveTxt }}</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:16px">Total</span><span style="font-size:26px;font-weight:700;font-feature-settings:'tnum' 1">{{ cartTotalTxt }}</span></div>
+        <a class="btn btn-primary btn-block" href="{{ waOrder }}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;gap:8px;align-items:center;justify-content:center;min-height:48px;background:var(--grad-brand);border:0;color:#fff"><i class="ph-duotone ph-whatsapp-logo" style="font-size:20px"></i>Enviar pedido por WhatsApp</a>
+        <p style="margin:0;font-size:12.5px;color:color-mix(in srgb, var(--color-text) 70%, transparent)">Un farmacéutico confirma stock y te responde. Medicamentos con receta requieren la receta al recoger.</p>
+      </div>
+    </sc-if>
+  </aside>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+  <div role="status" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:70;background:var(--grad-brand);color:#fff;padding:12px 20px;border-radius:999px;box-shadow:var(--shadow-lg);font-size:15px;display:flex;gap:8px;align-items:center"><i class="ph-duotone ph-check-circle"></i>{{ toast }}</div>
+</sc-if>
+
+<a href="https://wa.me/59172319869" target="_blank" rel="noopener" aria-label="Escríbenos por WhatsApp" style="position:fixed;right:20px;bottom:20px;z-index:35;width:56px;height:56px;border-radius:50%;display:grid;place-items:center;background:var(--grad-brand);color:#fff;box-shadow:var(--shadow-lg);text-decoration:none"><i class="ph-duotone ph-whatsapp-logo" style="font-size:28px"></i></a>">{{ cartTotalTxt }}
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const CATS = [
+  { id: 'salud', name: 'Salud y medicamentos', icon: 'ph-duotone ph-pill' },
+  { id: 'dermo', name: 'Dermocosmética', icon: 'ph-duotone ph-drop' },
+  { id: 'bebe', name: 'Cuidado de mamá y bebé', icon: 'ph-duotone ph-baby' },
+  { id: 'personal', name: 'Cuidado personal e higiene', icon: 'ph-duotone ph-tooth' },
+  { id: 'adulto', name: 'Adulto mayor', icon: 'ph-duotone ph-person-simple-walk' },
+  { id: 'suplementos', name: 'Suplementos, vitaminas y minerales', icon: 'ph-duotone ph-leaf' },
+  { id: 'sexual', name: 'Salud sexual', icon: 'ph-duotone ph-heart' },
+  { id: 'insumos', name: 'Insumos médicos', icon: 'ph-duotone ph-first-aid-kit' }
+];
+const BR = [
+  { id: 's1', name: 'Sucursal 1 · Central', short: 'Sucursal 1', addr: 'Velazco Galvarro Nº 2268 entre Santa Bárbara y Arce', tel: '52 10798', hours: '24 horas, incluye feriados', h24: true, lat: -17.9712, lon: -67.1092 },
+  { id: 's2', name: 'Santidad Divina I (Ex Terminal)', short: 'Ex Terminal', addr: 'Rodríguez Nº 15 entre Brasil y Tejerina', tel: '52 82487', hours: '8:00 a 22:00, lunes a domingo y feriados', lat: -17.9618, lon: -67.1066 },
+  { id: 's3', name: 'Santidad Divina II (Parque de la Unión)', short: 'Parque de la Unión', addr: 'Rodríguez Nº 526 entre 6 de Octubre y La Paz', tel: '52 56598', hours: '8:00 a 22:00, lunes a domingo y feriados', lat: -17.9655, lon: -67.1120 },
+  { id: 's4', name: 'Santidad Divina III (Mercado Young)', short: 'Mercado Young', addr: 'Mercado Young, Oruro', tel: '72319869', hours: '8:00 a 22:00, lunes a domingo', lat: -17.9760, lon: -67.1040 }
+];
+const P = [
+  { id: 8130, name: 'Camera Mini Feeder 40 ml / 1 1/2 oz', cat: 'bebe', lab: 'Camera Baby', dist: 'Gismardi SRL.', pais: 'Taiwán', reg: 'DI-5240672020', form: 'Biberón', unit: 'Unidad', old: 32.5, price: 27.6, stock: { s1: 8, s2: 3, s3: 0, s4: 0 }, sold: 140 },
+  { id: 101, name: 'Serum Leave-in Liso Espelhado 90 ml', cat: 'dermo', lab: 'Farmax', form: 'Serum', unit: 'Unidad', old: 93.6, price: 79.6, stock: { s1: 5, s2: 0, s3: 2, s4: 0 }, sold: 60 },
+  { id: 102, name: 'Crema de Almendras 120 g', cat: 'personal', lab: 'Alcos', form: 'Crema', unit: 'Unidad', old: 100.4, price: 85.3, stock: { s1: 12, s2: 6, s3: 4, s4: 2 }, sold: 75 },
+  { id: 103, name: 'Dermocutyl Jabón Carbón Activado', cat: 'dermo', lab: 'Dermocutyl', form: 'Jabón', unit: 'Unidad', old: 24.7, price: 21, stock: { s1: 20, s2: 0, s3: 0, s4: 0 }, sold: 90 },
+  { id: 104, name: 'Repelente Spray Oil Free Moskitoff 100 ml', cat: 'personal', lab: 'Moskitoff', form: 'Spray', unit: 'Unidad', old: 32.5, price: 27.6, stock: { s1: 9, s2: 4, s3: 0, s4: 1 }, sold: 50 },
+  { id: 105, name: 'Leblon Ungüento Labial 8 g', cat: 'dermo', lab: 'Maver', form: 'Ungüento', unit: 'Unidad', old: 21, price: 17.9, stock: { s1: 7, s2: 2, s3: 3, s4: 0 }, sold: 66 },
+  { id: 201, name: 'Carbamazepina 200 mg', cat: 'salud', lab: 'Laboratorio Chile', pa: 'Carbamazepina', form: 'Comprimido', unit: 'Comprimido', old: 2.28, price: 2.1, stock: { s1: 300, s2: 120, s3: 80, s4: 40 }, sold: 410 },
+  { id: 202, name: 'Dioxadol 500 mg', cat: 'salud', lab: 'Bagó', pa: 'Metamizol sódico', form: 'Comprimido', unit: 'Comprimido', old: 3.68, price: 3.4, stock: { s1: 500, s2: 200, s3: 150, s4: 90 }, sold: 620 },
+  { id: 203, name: 'Glucovance 500/5 mg Tabletas recubiertas', cat: 'salud', lab: 'Merck', pa: 'Metformina + Glibenclamida', form: 'Tableta', unit: 'Tableta', old: 3.61, price: 3.3, stock: { s1: 90, s2: 0, s3: 30, s4: 0 }, sold: 280 },
+  { id: 204, name: 'Complejo B Vimin', cat: 'suplementos', lab: 'Inti', pa: 'Vitaminas B1, B6, B12', form: 'Tableta', unit: 'Tableta', old: 1.65, price: 1.5, stock: { s1: 400, s2: 100, s3: 100, s4: 60 }, sold: 350 },
+  { id: 205, name: 'Gastroxell Omeprazol 20 mg', cat: 'salud', lab: 'Roxell', pa: 'Omeprazol', form: 'Cápsula', unit: 'Cápsula', old: 0.67, price: 0.6, stock: { s1: 600, s2: 300, s3: 200, s4: 100 }, sold: 540 },
+  { id: 301, name: 'Pañal para adulto talla M x 10', cat: 'adulto', lab: 'Plenitud', form: 'Paquete', unit: 'Paquete', old: 78, price: 72, stock: { s1: 10, s2: 5, s3: 0, s4: 3 }, sold: 40 },
+  { id: 302, name: 'Preservativos lubricados x 3', cat: 'sexual', lab: 'Prudence', form: 'Caja', unit: 'Caja', old: 15, price: 15, stock: { s1: 40, s2: 20, s3: 12, s4: 8 }, sold: 120 },
+  { id: 401, name: 'Mascarilla quirúrgica triple capa x 50', cat: 'insumos', lab: 'Promedical', form: 'Caja', unit: 'Caja', old: 35, price: 35, stock: { s1: 25, s2: 10, s3: 6, s4: 0 }, sold: 85 },
+  { id: 402, name: 'Oxímetro de pulso digital', cat: 'insumos', lab: 'Sodiphar', form: 'Equipo', unit: 'Unidad', old: 160, price: 139, stock: { s1: 3, s2: 0, s3: 0, s4: 0 }, sold: 22 },
+  { id: 206, name: 'Refrianex', cat: 'salud', lab: 'Cofar', pa: 'Paracetamol + Clorfenamina + Fenilefrina', form: 'Comprimido', unit: 'Comprimido', old: 2, price: 1.5, stock: { s1: 200, s2: 80, s3: 60, s4: 40 }, sold: 300 }
+];
+const LABS = ['Bagó', 'Cofar', 'Inti', 'Alfa', 'Delta S.A.', 'LH Hahnemann', 'IFA', 'Ifarbo', 'Lafar', 'Promedical', 'Sodiphar', 'Laqfagal', 'Cormesa', 'Farma Shopping', 'Alcos'];
+const WA = '59172319869';
+const norm = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const slug = s => norm(s).replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+const bs = n => 'Bs ' + n.toFixed(2);
+const pct = p => Math.round((p.old - p.price) / p.old * 100);
+const total = p => Object.values(p.stock).reduce((a, b) => a + b, 0);
+const isOpen = b => { if (b.h24) return true; const h = new Date().getHours(); return h >= 8 && h < 22; };
+const MUTED = 'color-mix(in srgb, var(--color-text) 70%, transparent)';
+
+class Component extends DCLogic {
+  state = { route: { view: 'inicio' }, q: '', suggOpen: false, cart: {}, cartOpen: false, delivery: 'recojo', pickup: 's1', qty: 1, car: { desc: 0, top: 0 }, branchSel: 's1', toast: '' };
+
+  componentDidMount() {
+    this.onHash = () => this.applyRoute();
+    window.addEventListener('hashchange', this.onHash);
+    let cart = {};
+    try { cart = JSON.parse(localStorage.getItem('sd_cart') || '{}'); } catch (e) {}
+    this.setState({ cart });
+    this.applyRoute(true);
+  }
+  componentWillUnmount() { window.removeEventListener('hashchange', this.onHash); }
+
+  parse() {
+    const h = location.hash.replace(/^#\/?/, '');
+    const [path, qs] = h.split('?');
+    const ps = new URLSearchParams(qs || '');
+    const seg = (path || '').split('/');
+    if (seg[0] === 'producto') return { view: 'producto', id: +(seg[1] || '').split('-')[0] };
+    if (seg[0] === 'buscar') return { view: 'buscar', q: ps.get('q') || '', cat: ps.get('cat') || '', suc: ps.get('suc') || '', desc: ps.get('desc') === '1', sort: ps.get('orden') || 'relevancia', p: Math.max(1, +(ps.get('p') || 1)) };
+    if (['sucursales', 'categorias', 'descuentos'].includes(seg[0])) return { view: 'inicio', anchor: seg[0], suc: ps.get('id') };
+    return { view: 'inicio' };
+  }
+  applyRoute(first) {
+    const route = this.parse();
+    const upd = { route, qty: 1, suggOpen: false };
+    if (route.suc) upd.branchSel = route.suc;
+    if (route.view === 'buscar') upd.q = route.q;
+    this.setState(upd, () => {
+      this.updateSEO();
+      if (route.anchor) setTimeout(() => { const el = document.getElementById(route.anchor); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' }); }, 60);
+      else if (!first) window.scrollTo(0, 0);
+    });
+  }
+  updateSEO() {
+    const r = this.state.route;
+    let title = 'Farmacias Santidad Divina · Farmacia 24 horas en Oruro, Bolivia';
+    let desc = 'Medicamentos, dermocosmética y cuidado personal a precio solidario en Oruro. Stock por sucursal y pedidos por WhatsApp.';
+    let ld = null;
+    if (r.view === 'producto') {
+      const p = P.find(x => x.id === r.id);
+      if (p) {
+        title = p.name + ' · ' + bs(p.price) + ' | Santidad Divina Oruro';
+        desc = p.name + ' de ' + p.lab + ' a ' + bs(p.price) + (p.old > p.price ? ' (' + pct(p) + '% de descuento)' : '') + '. Disponible en ' + BR.filter(b => p.stock[b.id] > 0).map(b => b.short).join(', ') + '.';
+        ld = { '@context': 'https://schema.org', '@type': 'Product', name: p.name, brand: { '@type': 'Brand', name: p.lab }, sku: String(p.id), category: (CATS.find(c => c.id === p.cat) || {}).name, offers: { '@type': 'Offer', priceCurrency: 'BOB', price: p.price.toFixed(2), availability: total(p) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', seller: { '@type': 'Organization', name: 'Farmacias Santidad Divina' } } };
+      }
+    } else if (r.view === 'buscar') {
+      const c = CATS.find(x => x.id === r.cat);
+      title = (r.q ? 'Resultados para “' + r.q + '”' : c ? c.name : 'Todos los productos') + ' | Santidad Divina';
+    }
+    document.title = title;
+    const m = document.querySelector('meta[name="description"]'); if (m) m.setAttribute('content', desc);
+    let s = document.getElementById('ld-product');
+    if (ld) { if (!s) { s = document.createElement('script'); s.type = 'application/ld+json'; s.id = 'ld-product'; document.head.appendChild(s); } s.textContent = JSON.stringify(ld); }
+    else if (s) s.remove();
+  }
+
+  go(h) { location.hash = h; }
+  searchHref(o) {
+    const r = { q: '', cat: '', suc: '', desc: false, sort: 'relevancia', p: 1, ...o };
+    const ps = new URLSearchParams();
+    if (r.q) ps.set('q', r.q); if (r.cat) ps.set('cat', r.cat); if (r.suc) ps.set('suc', r.suc);
+    if (r.desc) ps.set('desc', '1'); if (r.sort !== 'relevancia') ps.set('orden', r.sort); if (r.p > 1) ps.set('p', r.p);
+    const s = ps.toString();
+    return '#/buscar' + (s ? '?' + s : '');
+  }
+  match(q) {
+    const n = norm(q).trim(); if (!n) return P.slice();
+    const words = n.split(/\s+/);
+    return P.filter(p => { const hay = norm([p.name, p.lab, p.pa, p.form, (CATS.find(c => c.id === p.cat) || {}).name].join(' ')); return words.every(w => hay.includes(w)); });
+  }
+  save(cart) { try { localStorage.setItem('sd_cart', JSON.stringify(cart)); } catch (e) {} }
+  showToast(t) { clearTimeout(this.tt); this.setState({ toast: t }); this.tt = setTimeout(() => this.setState({ toast: '' }), 2200); }
+  add(id, n = 1) {
+    const p = P.find(x => x.id === id); const max = total(p);
+    const cart = { ...this.state.cart }; cart[id] = Math.min(max, (cart[id] || 0) + n);
+    this.save(cart); this.setState({ cart }); this.showToast('Añadido: ' + p.name);
+  }
+  setQty(id, q) {
+    const cart = { ...this.state.cart }; const p = P.find(x => x.id === id);
+    if (q <= 0) delete cart[id]; else cart[id] = Math.min(total(p), q);
+    this.save(cart); this.setState({ cart });
+  }
+
+  deco(p) {
+    const t = total(p); const where = BR.filter(b => p.stock[b.id] > 0); const disc = p.old > p.price;
+    const availTxt = t === 0 ? 'Agotado' : where.length === 1 ? 'Solo en ' + where[0].short : where.length === BR.length ? 'En todas las sucursales' : 'En ' + where.length + ' sucursales';
+    return {
+      id: p.id, name: p.name, lab: p.lab, form: p.form, initial: p.name[0],
+      href: '#/producto/' + p.id + '-' + slug(p.name),
+      priceTxt: bs(p.price), oldTxt: bs(p.old), disc, discTxt: '-' + pct(p) + '%',
+      stockTxt: t + (t === 1 ? ' disponible' : ' disponibles'), availTxt,
+      availColor: t === 0 ? 'var(--color-accent-2)' : where.length === 1 ? 'var(--color-accent-2-700, var(--color-accent-2))' : 'var(--color-accent-700)',
+      soldOut: t === 0,
+      add: e => { if (e) e.preventDefault(); this.add(p.id); }
+    };
+  }
+  carousel(key, list) {
+    const per = 4; const pages = Math.max(1, Math.ceil(list.length / per));
+    const pg = Math.min(this.state.car[key], pages - 1);
+    const set = n => this.setState(s => ({ car: { ...s.car, [key]: (n + pages) % pages } }));
+    return {
+      items: list.slice(pg * per, pg * per + per).map(p => this.deco(p)),
+      label: (pg + 1) + ' / ' + pages,
+      prev: () => set(pg - 1), next: () => set(pg + 1),
+      dots: Array.from({ length: pages }, (_, i) => ({ label: 'Página ' + (i + 1), go: () => set(i), w: i === pg ? '28px' : '8px', bg: i === pg ? 'var(--grad-brand)' : 'var(--color-neutral-300)' }))
+    };
+  }
+
+  renderVals() {
+    const s = this.state; const r = s.route;
+    const q = s.q || '';
+    const suggAll = q.trim().length >= 2 ? this.match(q) : [];
+    const branch = BR.find(b => b.id === s.branchSel) || BR[0];
+    const d = 0.008;
+    const mapSrc = 'https://www.openstreetmap.org/export/embed.html?bbox=' + (branch.lon - d) + ',' + (branch.lat - d * 0.7) + ',' + (branch.lon + d) + ',' + (branch.lat + d * 0.7) + '&layer=mapnik&marker=' + branch.lat + ',' + branch.lon;
+
+    const cartList = Object.entries(s.cart).map(([id, qty]) => ({ p: P.find(x => x.id === +id), qty })).filter(x => x.p);
+    const cartCount = cartList.reduce((a, x) => a + x.qty, 0);
+    const cartTotal = cartList.reduce((a, x) => a + x.qty * x.p.price, 0);
+    const cartSave = cartList.reduce((a, x) => a + x.qty * (x.p.old - x.p.price), 0);
+    const pickupB = BR.find(b => b.id === s.pickup) || BR[0];
+    const orderMsg = 'Hola Santidad Divina, quiero hacer un pedido:\n' + cartList.map(x => '• ' + x.qty + ' x ' + x.p.name + ' (' + bs(x.p.price * x.qty) + ')').join('\n') + '\nTotal: ' + bs(cartTotal) + '\n' + (s.delivery === 'recojo' ? 'Recojo en: ' + pickupB.name : 'Envío a domicilio. Mi dirección es: ');
+
+    const out = {
+      q, suggOpen: s.suggOpen && q.trim().length >= 2,
+      sugg: suggAll.slice(0, 6).map(p => this.deco(p)), suggCount: suggAll.length,
+      hasSugg: suggAll.length > 0, noSugg: suggAll.length === 0,
+      allHref: this.searchHref({ q }),
+      onQ: e => this.setState({ q: e.target.value, suggOpen: true }),
+      onQFocus: () => this.setState({ suggOpen: true }),
+      onQBlur: () => setTimeout(() => this.setState({ suggOpen: false }), 180),
+      doSearch: () => this.go(this.searchHref({ q })),
+      onSearchKey: e => { if (e.key === 'Enter') this.go(this.searchHref({ q })); if (e.key === 'Escape') this.setState({ suggOpen: false }); },
+      cartCount, openCart: () => this.setState({ cartOpen: true }), closeCart: () => this.setState({ cartOpen: false }), cartOpen: s.cartOpen,
+      isHome: r.view === 'inicio', isSearch: r.view === 'buscar', isProduct: r.view === 'producto',
+      openNowTxt: 'Sucursal 1 abierta ahora · 24 h',
+      waQuote: 'https://wa.me/' + WA + '?text=' + encodeURIComponent('Hola, quiero cotizar estos productos / esta receta:'),
+      desc: this.carousel('desc', P.filter(p => p.old > p.price).sort((a, b) => pct(b) - pct(a))),
+      top: this.carousel('top', P.slice().sort((a, b) => b.sold - a.sold)),
+      cats: CATS.map(c => ({ ...c, href: this.searchHref({ cat: c.id }), count: P.filter(p => p.cat === c.id).length })),
+      catOpts: CATS,
+      branch: { name: branch.name, dirHref: 'https://www.google.com/maps/dir/?api=1&destination=' + branch.lat + ',' + branch.lon, telHref: 'tel:+5912' + branch.tel.replace(/\s/g, '') },
+      mapSrc,
+      branches: BR.map(b => ({ id: b.id, name: b.name, addr: b.addr, hours: b.hours, tel: b.tel, active: b.id === branch.id, bg: b.id === branch.id ? 'var(--grad-soft)' : 'transparent', openTxt: isOpen(b) ? (b.h24 ? 'Abierto 24 h' : 'Abierto ahora') : 'Cerrado', tagClass: isOpen(b) ? 'tag tag-accent' : 'tag tag-neutral', select: () => this.setState({ branchSel: b.id }) })),
+      labs: LABS.map(n => ({ name: n, href: this.searchHref({ q: n }) })),
+      onNews: e => { e.preventDefault(); e.target.reset(); this.showToast('Listo, te enviaremos nuestras ofertas'); },
+      cartItems: cartList.map(x => ({ name: x.p.name, initial: x.p.name[0], qty: x.qty, lineTxt: bs(x.qty * x.p.price), href: '#/producto/' + x.p.id + '-' + slug(x.p.name), inc: () => this.setQty(x.p.id, x.qty + 1), dec: () => this.setQty(x.p.id, x.qty - 1), remove: () => this.setQty(x.p.id, 0) })),
+      cartEmpty: cartList.length === 0, cartHas: cartList.length > 0,
+      cartTotalTxt: bs(cartTotal), cartSaveTxt: bs(cartSave),
+      isPickup: s.delivery === 'recojo', isDelivery: s.delivery === 'envio',
+      pickupBg: s.delivery === 'recojo' ? 'var(--color-accent-200)' : 'transparent', deliveryBg: s.delivery === 'envio' ? 'var(--color-accent-200)' : 'transparent',
+      setPickup: () => this.setState({ delivery: 'recojo' }), setDelivery: () => this.setState({ delivery: 'envio' }),
+      pickup: s.pickup, onPickup: e => this.setState({ pickup: e.target.value }),
+      pickupOpts: BR.map(b => { const ok = cartList.every(x => x.p.stock[b.id] >= x.qty); return { id: b.id, label: b.name + (ok ? ' · tiene todo' : ' · stock parcial') }; }),
+      waOrder: 'https://wa.me/' + WA + '?text=' + encodeURIComponent(orderMsg),
+      toast: s.toast, hasToast: !!s.toast
+    };
+
+    if (r.view === 'buscar') {
+      let list = this.match(r.q);
+      if (r.cat) list = list.filter(p => p.cat === r.cat);
+      if (r.suc) list = list.filter(p => p.stock[r.suc] > 0);
+      if (r.desc) list = list.filter(p => p.old > p.price);
+      if (r.sort === 'menor') list.sort((a, b) => a.price - b.price);
+      if (r.sort === 'mayor') list.sort((a, b) => b.price - a.price);
+      if (r.sort === 'descuento') list.sort((a, b) => pct(b) - pct(a));
+      const per = 8; const pages = Math.max(1, Math.ceil(list.length / per)); const pg = Math.min(r.p, pages);
+      const cat = CATS.find(c => c.id === r.cat);
+      const nav = o => e => this.go(this.searchHref({ ...r, p: 1, ...o(e) }));
+      out.sr = {
+        title: r.q ? 'Resultados para “' + r.q + '”' : cat ? cat.name : 'Todos los productos',
+        crumb: cat ? cat.name : 'Búsqueda',
+        countTxt: list.length + (list.length === 1 ? ' producto' : ' productos') + (pages > 1 ? ' · página ' + pg + ' de ' + pages : ''),
+        cat: r.cat, suc: r.suc, sort: r.sort, desc: r.desc,
+        onCat: nav(e => ({ cat: e.target.value })), onSuc: nav(e => ({ suc: e.target.value })),
+        onSort: nav(e => ({ sort: e.target.value })), onDesc: nav(e => ({ desc: e.target.checked })),
+        empty: list.length === 0,
+        items: list.slice((pg - 1) * per, pg * per).map(p => this.deco(p)),
+        pages: pages > 1 ? Array.from({ length: pages }, (_, i) => ({ label: String(i + 1), href: this.searchHref({ ...r, p: i + 1 }), current: i + 1 === pg ? 'page' : 'false', bg: i + 1 === pg ? 'var(--grad-brand)' : 'transparent', fg: i + 1 === pg ? '#fff' : 'var(--color-text)' })) : []
+      };
+    }
+
+    if (r.view === 'producto') {
+      const p = P.find(x => x.id === r.id) || P[0];
+      const dd = this.deco(p); const t = total(p);
+      const cat = CATS.find(c => c.id === p.cat);
+      const url = 'https://farmaciasantidaddivina.com/#/producto/' + p.id + '-' + slug(p.name);
+      const qty = Math.min(s.qty, Math.max(1, t));
+      const rel = P.filter(x => x.id !== p.id && x.cat === p.cat).concat(P.filter(x => x.id !== p.id && x.cat !== p.cat).sort((a, b) => b.sold - a.sold)).slice(0, 4);
+      out.pd = {
+        ...dd, catName: cat.name, catHref: this.searchHref({ cat: cat.id }),
+        saveTxt: 'Ahorras ' + bs(p.old - p.price),
+        stockTxt: t + ' ' + (t === 1 ? 'unidad disponible' : 'unidades disponibles'),
+        specs: [['Unidad de venta', p.unit], ['Principio activo', p.pa || 'N/A'], ['Laboratorio', p.lab], ['Distribuidora', p.dist], ['País de origen', p.pais], ['Reg. sanitario', p.reg], ['Código', String(p.id)]].filter(x => x[1]).map(([k, v]) => ({ k, v })),
+        qty, unitTxt: p.unit.toLowerCase() + (qty > 1 ? 's' : ''), totalTxt: bs(qty * p.price),
+        inc: () => this.setState({ qty: Math.min(t, qty + 1) }), dec: () => this.setState({ qty: Math.max(1, qty - 1) }),
+        add: () => this.add(p.id, qty),
+        waBuy: 'https://wa.me/' + WA + '?text=' + encodeURIComponent('Hola, quiero ' + qty + ' x ' + p.name + ' (' + bs(p.price) + ' c/u). ' + url),
+        waShare: 'https://wa.me/?text=' + encodeURIComponent(p.name + ' a ' + bs(p.price) + ' en Santidad Divina: ' + url),
+        fbShare: 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url),
+        share: async () => {
+          if (navigator.share) { try { await navigator.share({ title: p.name, text: p.name + ' a ' + bs(p.price), url }); } catch (e) {} }
+          else { try { await navigator.clipboard.writeText(url); this.showToast('Enlace copiado'); } catch (e) { this.showToast(url); } }
+        },
+        avail: BR.map(b => { const n = p.stock[b.id] || 0; return { name: b.name, addr: b.addr, qtyTxt: n ? n + ' disp.' : 'Sin stock', color: n ? 'var(--color-accent-700)' : MUTED, op: n ? 1 : 0.55, openTxt: isOpen(b) ? (b.h24 ? 'Abierto 24 h' : 'Abierto ahora') : 'Cerrado ahora', mapHref: '#/sucursales?id=' + b.id }; }),
+        related: rel.map(x => this.deco(x))
+      };
+    }
+    return out;
+  }
+}
+</script>
+</body>
+</html>
