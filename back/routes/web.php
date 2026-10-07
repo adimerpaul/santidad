@@ -22,3 +22,9 @@ Route::controller(TiendaWebController::class)->group(function () {
     // Enlaces de la tienda anterior (frontTienda)
     Route::get('/detalle-producto/{id}/{nombre?}', 'legacyProducto')->whereNumber('id');
 });
+
+// Páginas legales e institucionales (mismas URLs que tenía frontTienda)
+Route::view('/privacidad', 'tienda.legal.privacidad')->name('tienda.privacidad');
+Route::view('/envio', 'tienda.legal.envio')->name('tienda.envio');
+Route::view('/terminos', 'tienda.legal.terminos')->name('tienda.terminos');
+Route::view('/quienes-somos', 'tienda.legal.quienes-somos')->name('tienda.quienes-somos');

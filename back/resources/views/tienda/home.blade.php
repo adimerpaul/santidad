@@ -103,13 +103,19 @@
 
   {{-- ===== Categorías ===== --}}
   <section id="categorias" class="cats" aria-labelledby="h-cat">
-    <h2 id="h-cat" class="h2" style="margin-bottom:28px">Explorá nuestras categorías</h2>
+    <div class="cats-head">
+      <span class="kicker">Todo lo que necesitás en un solo lugar</span>
+      <h2 id="h-cat" class="h2">Explorá nuestras categorías</h2>
+    </div>
     <div class="cats-grid">
       @foreach($categorias as $c)
-        <a href="{{ $c->url }}" class="cat">
+        <a href="{{ $c->url }}" class="cat" style="--c:{{ $c->color }}">
           <span class="cat-ico"><i class="{{ $c->icono }}" aria-hidden="true"></i></span>
-          <span class="cat-name">{{ $c->nombre }}</span>
-          <span class="muted" style="font-size:12.5px">Ver productos</span>
+          <span class="cat-txt">
+            <span class="cat-name">{{ $c->nombre }}</span>
+            <span class="cat-count">{{ $c->total ? number_format($c->total, 0, '.', '.') . ' productos' : 'Ver productos' }}</span>
+          </span>
+          <span class="cat-go" aria-hidden="true"><i class="ph-duotone ph-arrow-right"></i></span>
         </a>
       @endforeach
     </div>
@@ -166,11 +172,11 @@
         <li><i class="ph-duotone ph-package"></i>Ver disponibilidad</li>
         <li><i class="ph-duotone ph-shopping-cart"></i>Carrito de compras</li>
       </ul>
-      <a class="btn btn-white" href="https://play.google.com/store" target="_blank" rel="noopener" style="margin-top:24px;min-height:48px;padding-inline:22px"><i class="ph-duotone ph-google-play-logo"></i>Descargar en Google Play</a>
+      <a class="btn btn-white" href="https://play.google.com/store/apps/details?id=com.adimer.san2" target="_blank" rel="noopener" style="margin-top:24px;min-height:48px;padding-inline:22px"><i class="ph-duotone ph-google-play-logo"></i>Descargar en Google Play</a>
     </div>
     <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap">
       <div style="width:180px;height:180px;padding:10px;background:#fff;border-radius:22px;box-sizing:border-box">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=320x320&amp;data={{ rawurlencode('https://play.google.com/store') }}" alt="Código QR para descargar la app" width="160" height="160" loading="lazy" style="width:100%;height:100%">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=320x320&amp;data={{ rawurlencode('https://play.google.com/store/apps/details?id=com.adimer.san2') }}" alt="Código QR para descargar la app" width="160" height="160" loading="lazy" style="width:100%;height:100%">
       </div>
       <p style="margin:0;font-size:14px;max-width:22ch;color:#e3f4ff">Escanea el código con la cámara de tu teléfono.</p>
     </div>
@@ -195,19 +201,5 @@
     </section>
   @endif
 
-  {{-- ===== Laboratorios / distribuidoras ===== --}}
-  @if(count($labs))
-    <section class="sec" aria-labelledby="h-labs">
-      <h2 id="h-labs" class="h2" style="font-size:clamp(24px,2.6vw,32px);font-weight:700;margin-bottom:20px">Laboratorios y distribuidoras</h2>
-      <div class="labs" data-labs>
-        @foreach($labs as $i => $l)
-          <a href="{{ route('tienda.buscar', ['q' => $l]) }}" class="lab" @if($i >= 24) hidden data-lab-extra @endif>{{ $l }}</a>
-        @endforeach
-        @if(count($labs) > 24)
-          <button type="button" class="lab" data-labs-more style="border:0;cursor:pointer;font:inherit;font-weight:700;font-size:14px">Ver todas ({{ count($labs) }}) →</button>
-        @endif
-      </div>
-    </section>
-  @endif
 </div>
 @endsection

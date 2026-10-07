@@ -5,6 +5,11 @@
   $canonical = trim($__env->yieldContent('canonical')) ?: url()->current();
   $ogImage = trim($__env->yieldContent('og_image')) ?: asset('tienda/logo.png');
   $wa = T::WHATSAPP;
+  $redes = [
+    'facebook'  => 'https://www.facebook.com/farmacia.santidaddivina',
+    'instagram' => 'https://www.instagram.com/farmacias_santidad_divina/',
+    'tiktok'    => 'https://www.tiktok.com/@santidad_divina',
+  ];
   $v = @filemtime(public_path('tienda/tienda.css')) . @filemtime(public_path('tienda/tienda.js'));
 @endphp
 <!DOCTYPE html>
@@ -40,7 +45,7 @@
     '@graph' => [
       ['@type' => 'Organization', '@id' => url('/') . '/#org', 'name' => 'Farmacias Santidad Divina', 'url' => url('/') . '/', 'logo' => asset('tienda/logo.png'),
        'email' => 'farmaciasantidaddivinacentral@gmail.com', 'telephone' => '+' . $wa, 'slogan' => 'Precio Solidario',
-       'sameAs' => ['https://www.facebook.com/farmacia.santidaddivina']],
+       'sameAs' => array_values($redes)],
       ['@type' => 'WebSite', '@id' => url('/') . '/#web', 'url' => url('/') . '/', 'name' => 'Farmacias Santidad Divina', 'inLanguage' => 'es-BO',
        'potentialAction' => ['@type' => 'SearchAction', 'target' => route('tienda.buscar') . '?q={q}', 'query-input' => 'required name=q']],
     ],
@@ -93,9 +98,9 @@
       <p style="margin:2px 0 0;font-size:14px;color:var(--color-accent-700)">Precio Solidario</p>
       <p style="margin:16px 0 0;font-size:15px;line-height:1.6">Atendemos con ética y responsabilidad. Encuentra medicamentos, dermocosmética y cuidado personal a precios justos.</p>
       <div style="display:flex;gap:8px;margin-top:16px">
-        <a class="btn btn-ghost btn-icon" href="https://www.facebook.com/farmacia.santidaddivina" aria-label="Facebook" target="_blank" rel="noopener"><i class="ph-duotone ph-facebook-logo" style="font-size:20px"></i></a>
-        <a class="btn btn-ghost btn-icon" href="https://instagram.com" aria-label="Instagram" target="_blank" rel="noopener"><i class="ph-duotone ph-instagram-logo" style="font-size:20px"></i></a>
-        <a class="btn btn-ghost btn-icon" href="https://tiktok.com" aria-label="TikTok" target="_blank" rel="noopener"><i class="ph-duotone ph-tiktok-logo" style="font-size:20px"></i></a>
+        <a class="btn btn-ghost btn-icon" href="{{ $redes['facebook'] }}" aria-label="Facebook" target="_blank" rel="noopener"><i class="ph-duotone ph-facebook-logo" style="font-size:20px"></i></a>
+        <a class="btn btn-ghost btn-icon" href="{{ $redes['instagram'] }}" aria-label="Instagram" target="_blank" rel="noopener"><i class="ph-duotone ph-instagram-logo" style="font-size:20px"></i></a>
+        <a class="btn btn-ghost btn-icon" href="{{ $redes['tiktok'] }}" aria-label="TikTok" target="_blank" rel="noopener"><i class="ph-duotone ph-tiktok-logo" style="font-size:20px"></i></a>
         <a class="btn btn-ghost btn-icon" href="https://wa.me/{{ $wa }}" aria-label="WhatsApp" target="_blank" rel="noopener"><i class="ph-duotone ph-whatsapp-logo" style="font-size:20px"></i></a>
       </div>
     </div>
@@ -106,6 +111,14 @@
         <li><a href="{{ route('tienda.sucursales') }}">Sucursales</a></li>
         <li><a href="{{ route('tienda.buscar') }}">Todos los productos</a></li>
         <li><a href="tel:+{{ $wa }}">Llámanos</a></li>
+      </ul>
+    </nav>
+    <nav aria-label="Legales"><p style="margin:0 0 12px;font-weight:600">Legales</p>
+      <ul>
+        <li><a href="{{ route('tienda.privacidad') }}">Políticas de Privacidad</a></li>
+        <li><a href="{{ route('tienda.envio') }}">Política de Envío</a></li>
+        <li><a href="{{ route('tienda.terminos') }}">Términos y Condiciones</a></li>
+        <li><a href="{{ route('tienda.quienes-somos') }}">Quiénes Somos</a></li>
       </ul>
     </nav>
     <nav aria-label="Categorías"><p style="margin:0 0 12px;font-weight:600">Categorías</p>
@@ -128,7 +141,14 @@
       </form>
     </address>
   </div>
-  <p class="muted" style="max-width:1240px;margin:40px auto 0;font-size:13px">© {{ date('Y') }} Farmacia Santidad Divina. Todos los derechos reservados.</p>
+  <div style="max-width:1240px;margin:40px auto 0;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 20px;font-size:13px">
+    <p class="muted" style="margin:0">© {{ date('Y') }} Farmacia Santidad Divina. Todos los derechos reservados.</p>
+    <p style="margin:0;display:flex;flex-wrap:wrap;gap:6px 16px">
+      <a href="{{ route('tienda.privacidad') }}">Privacidad</a>
+      <a href="{{ route('tienda.terminos') }}">Términos</a>
+      <a href="{{ route('tienda.envio') }}">Envíos</a>
+    </p>
+  </div>
 </footer>
 
 {{-- Carrito: se llena con JS desde localStorage; el pedido se envía por WhatsApp --}}

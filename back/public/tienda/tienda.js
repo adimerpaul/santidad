@@ -137,8 +137,6 @@
   });
 
   // ---------- Laboratorios: ver todos ----------
-  var labsMore = $('[data-labs-more]');
-  if (labsMore) labsMore.addEventListener('click', function () { $$('[data-lab-extra]').forEach(function (a) { a.hidden = false; }); labsMore.remove(); });
 
   // ---------- Filtros de búsqueda: enviar al cambiar ----------
   var filters = $('[data-filters]');
@@ -174,7 +172,7 @@
             }
             box.innerHTML = items.map(function (p) {
               var old = Number(p.precio) || 0, price = Number(p.precioVenta) || old;
-              var pct = old > price ? Math.round((old - price) / old * 100) : 0;
+              var pct = old > price ? (Number(p.porcentajeEfectivo) || Math.round((old - price) / old * 100)) : 0;
               return '<a class="sugg-item" role="option" href="' + SD.base + '/producto/' + p.id + '/' + slug(p.nombre) + '">' +
                 '<span class="thumb"><img src="' + esc(imgUrl(p.imagen)) + '" alt="" loading="lazy" onerror="this.onerror=null;this.src=\'' + SD.imgDefault + '\'"></span>' +
                 '<span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="ellipsis" style="font-weight:600;font-size:15px">' + esc(p.nombre) + '</span>' +
@@ -256,12 +254,70 @@
       o.textContent = o.dataset.name + (items.length ? (ok ? ' · tiene todo' : ' · stock parcial') : '');
     });
 
+  }
+
+  // ---------- Enviar pedido: se registra en el sistema (PEDIDOWEB_Nº…) y luego se abre WhatsApp ----------
+  function fechaHora() {
+    var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  function mensajePedido(numero, sucursal, items, order) {
+    var subtotal = order ? Number(order.calculated_total) : items.reduce(function (a, x) { return a + x.qty * x.price; }, 0);
+    var totalPedido = order ? Number(order.total) : subtotal;
+    var ajuste = order ? Number(order.rounding_adjustment) || 0 : 0;
+    var filas = order && order.items && order.items.length
+      ? order.items.map(function (i) { return { name: i.name, qty: Number(i.quantity), price: Number(i.price), sub: Number(i.subtotal) }; })
+      : items.map(function (x) { return { name: x.name, qty: x.qty, price: x.price, sub: x.qty * x.price }; });
+
+    var m = '*PEDIDO WEB: ' + (numero || 'sin número (no se pudo registrar)') + '*\n';
+    m += '📅 Fecha: ' + fechaHora() + '\n';
+    m += delivery === 'recojo' ? '📍 Sucursal: ' + sucursal + '\n' : '🚚 Entrega: Envío a domicilio\n';
+    m += '\n*PRODUCTOS*\n';
+    filas.forEach(function (f, i) {
+      m += (i + 1) + '. ' + f.name + '\n';
+      m += '    ' + f.qty + ' x ' + bs(f.price) + ' = ' + bs(f.sub) + '\n';
+    });
+    m += '\n────────────\n';
+    if (ajuste) m += 'Subtotal: ' + bs(subtotal) + '\nRedondeo: ' + (ajuste > 0 ? '+' : '') + ajuste.toFixed(2) + '\n';
+    m += '*TOTAL: ' + bs(totalPedido) + '*\n';
+    if (delivery !== 'recojo') m += '\n📌 Mi dirección es: \n';
+    m += '\nPor favor, confirmen mi pedido. ¡Gracias!';
+    return m;
+  }
+
+  function enviarPedido(btn) {
+    var items = list();
+    if (!items.length || btn.dataset.busy) return;
     var opt = pickup.options[pickup.selectedIndex];
-    var lines = items.map(function (x) { return '• ' + x.qty + ' x ' + x.name + ' (' + bs(x.qty * x.price) + ')'; }).join('\n');
-    var msg = 'Hola Santidad Divina, quiero hacer un pedido:\n' + lines + '\nTotal: ' + bs(total) + '\n' +
-      (delivery === 'recojo' ? 'Recojo en: ' + (opt ? opt.dataset.name : '') : 'Envío a domicilio. Mi dirección es: ');
+    var sucursal = opt ? opt.dataset.name : '';
     var wa = delivery === 'recojo' && opt && opt.dataset.wa ? opt.dataset.wa : SD.whatsapp;
-    $('[data-cart-wa]', drawer).href = 'https://wa.me/' + wa + '?text=' + encodeURIComponent(msg);
+    // Abrir la pestaña ya, dentro del clic, para que el navegador no la bloquee
+    var win = window.open('', '_blank');
+    btn.dataset.busy = '1'; btn.setAttribute('aria-disabled', 'true'); btn.style.opacity = '.7';
+
+    fetch(SD.api + '/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        source: 'web',
+        sucursal_id: delivery === 'recojo' && opt ? +opt.value : null,
+        sucursal_nombre: delivery === 'recojo' ? sucursal : 'Envío a domicilio',
+        items: items.map(function (x) { return { product_id: +x.id, nombre: x.name, precio: x.price, cantidad: x.qty, imagen: x.img }; }),
+      }),
+    })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (order) { return { numero: order.order_number, order: order }; })
+      .catch(function () { return { numero: '', order: null }; })
+      .then(function (res) {
+        var url = 'https://wa.me/' + wa + '?text=' + encodeURIComponent(mensajePedido(res.numero, sucursal, items, res.order));
+        if (win && !win.closed) win.location.href = url; else location.href = url;
+        delete btn.dataset.busy; btn.removeAttribute('aria-disabled'); btn.style.opacity = '';
+        if (res.numero) {
+          cart = {}; save(); renderCart(); closeCart();
+          toast('Pedido ' + res.numero + ' generado');
+        }
+      });
   }
 
   if (drawer) {
@@ -275,6 +331,7 @@
     });
     $$('[data-delivery]', drawer).forEach(function (b) { b.addEventListener('click', function () { delivery = b.dataset.delivery; renderCart(); }); });
     pickup.addEventListener('change', renderCart);
+    $('[data-cart-wa]', drawer).addEventListener('click', function (e) { e.preventDefault(); enviarPedido(this); });
   }
 
   // Botones "Añadir"
@@ -283,15 +340,63 @@
     var b = e.target.closest('[data-add]'); if (!b || b.disabled) return;
     e.preventDefault();
     try { add(JSON.parse(b.getAttribute('data-add')), b.hasAttribute('data-add-qty') ? pdQty : 1); } catch (err) {}
+    if (b.hasAttribute('data-add-open') && drawer) openCart();
   });
+
+  // ---------- Detalle de producto: zoom de imagen ----------
+  var zoom = $('[data-zoom]');
+  if (zoom) {
+    var zImg = $('img', zoom);
+    var canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    if (canHover) {
+      zoom.addEventListener('mousemove', function (e) {
+        var r = zoom.getBoundingClientRect();
+        zImg.style.transformOrigin = ((e.clientX - r.left) / r.width * 100) + '% ' + ((e.clientY - r.top) / r.height * 100) + '%';
+        zoom.classList.add('is-zooming');
+      });
+      zoom.addEventListener('mouseleave', function () { zoom.classList.remove('is-zooming'); });
+    }
+    var box = document.createElement('div');
+    box.className = 'zoom-box'; box.hidden = true;
+    box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', zImg.alt);
+    box.innerHTML = '<button type="button" class="zoom-close" aria-label="Cerrar"><i class="ph-duotone ph-x"></i></button><img alt="">';
+    document.body.appendChild(box);
+    var bImg = $('img', box), closeBtn = $('.zoom-close', box);
+    var openBox = function () {
+      bImg.src = zImg.currentSrc || zImg.src; bImg.alt = zImg.alt;
+      box.classList.remove('is-big'); box.hidden = false;
+      document.body.style.overflow = 'hidden'; closeBtn.focus();
+    };
+    var closeBox = function () { box.hidden = true; document.body.style.overflow = ''; zoom.focus(); };
+    zoom.addEventListener('click', openBox);
+    zoom.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBox(); } });
+    closeBtn.addEventListener('click', function (e) { e.stopPropagation(); closeBox(); });
+    box.addEventListener('click', function (e) {
+      if (e.target === bImg) { box.classList.toggle('is-big'); return; }
+      closeBox();
+    });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !box.hidden) closeBox(); });
+  }
 
   // ---------- Detalle de producto: cantidad y compartir ----------
   var pd = $('[data-pd]');
   if (pd) {
     var price = +pd.dataset.price, max = +pd.dataset.max || 1;
-    var upd = function () { $('[data-pd-qty]', pd).textContent = pdQty; $('[data-pd-total]', pd).textContent = bs(pdQty * price); };
-    $('[data-pd-dec]', pd).addEventListener('click', function () { pdQty = Math.max(1, pdQty - 1); upd(); });
-    $('[data-pd-inc]', pd).addEventListener('click', function () { pdQty = Math.min(max, pdQty + 1); upd(); });
+    var qtyIn = $('[data-pd-qty]', pd);
+    var upd = function () { qtyIn.value = pdQty; $('[data-pd-total]', pd).textContent = bs(pdQty * price); };
+    var setPd = function (n) {
+      if (n > max) toast('Llegaste a la cantidad máxima disponible');
+      pdQty = Math.min(max, Math.max(1, Math.floor(n) || 1)); upd();
+    };
+    $('[data-pd-dec]', pd).addEventListener('click', function () { setPd(pdQty - 1); });
+    $('[data-pd-inc]', pd).addEventListener('click', function () { setPd(pdQty + 1); });
+    // Escritura libre: actualiza el total mientras se escribe y corrige al salir del campo
+    qtyIn.addEventListener('input', function () {
+      var n = parseInt(qtyIn.value, 10);
+      if (n >= 1) { pdQty = Math.min(max, n); $('[data-pd-total]', pd).textContent = bs(pdQty * price); }
+    });
+    qtyIn.addEventListener('change', function () { setPd(parseInt(qtyIn.value, 10)); });
+    qtyIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); setPd(parseInt(qtyIn.value, 10)); qtyIn.blur(); } });
   }
   $$('[data-share]').forEach(function (b) {
     b.addEventListener('click', function () {

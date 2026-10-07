@@ -36,10 +36,6 @@ class TiendaWebController extends Controller
             'marcas'      => $this->tienda->carrusel('Mini'),
             'descuentos'  => $descuentos,
             'masVendidos' => $this->tienda->masVendidos(),
-            'labs'        => Cache::remember('tienda_web_labs', now()->addHour(), fn () =>
-                Product::whereNotNull('distribuidora')->where('distribuidora', '!=', '')
-                    ->distinct()->orderBy('distribuidora')->pluck('distribuidora')->all()
-            ),
         ]);
     }
 
@@ -160,6 +156,10 @@ class TiendaWebController extends Controller
                 [route('tienda.home'), 'daily', '1.0'],
                 [route('tienda.descuentos'), 'daily', '0.9'],
                 [route('tienda.sucursales'), 'monthly', '0.8'],
+                [route('tienda.quienes-somos'), 'yearly', '0.5'],
+                [route('tienda.privacidad'), 'yearly', '0.3'],
+                [route('tienda.envio'), 'yearly', '0.3'],
+                [route('tienda.terminos'), 'yearly', '0.3'],
             ];
             foreach ($this->tienda->categorias() as $c) {
                 $urls[] = [$c->url, 'weekly', '0.8'];

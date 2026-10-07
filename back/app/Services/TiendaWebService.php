@@ -65,14 +65,29 @@ class TiendaWebService
     public function categorias(): Collection
     {
         // Mismo caché que CategoryController@index
+        $totales = Cache::remember('tienda_web_cat_totales', now()->addHour(), fn () =>
+            Product::where('activo', 'ACTIVO')
+                ->whereNotNull('category_id')
+                ->selectRaw('category_id, COUNT(*) as total')
+                ->groupBy('category_id')
+                ->pluck('total', 'category_id')
+                ->all()
+        );
+
         return collect(Cache::rememberForever('categories_list', fn () => Category::all()))
-            ->map(fn ($c) => (object) [
-                'id'     => $c->id,
-                'nombre' => $c->name,
-                'slug'   => Str::slug($c->name),
-                'url'    => route('tienda.categoria', [$c->id, Str::slug($c->name)]),
-                'icono'  => $this->iconoCategoria($c->name),
-            ]);
+            ->map(function ($c) use ($totales) {
+                [$icono, $color] = $this->estiloCategoria($c->name);
+
+                return (object) [
+                    'id'     => $c->id,
+                    'nombre' => $c->name,
+                    'slug'   => Str::slug($c->name),
+                    'url'    => route('tienda.categoria', [$c->id, Str::slug($c->name)]),
+                    'icono'  => $icono,
+                    'color'  => $color,
+                    'total'  => (int) ($totales[$c->id] ?? 0),
+                ];
+            });
     }
 
     /** Carruseles por tipo: Normal (principal), Medio, Mini (marcas). */
@@ -132,7 +147,9 @@ class TiendaWebService
         $pricing = $this->promotionPricing->resolve($p, 'web', null);
         $antes  = (float) $pricing['precio_original'];
         $precio = (float) $pricing['precio_venta'];
-        $pct    = $antes > $precio && $antes > 0 ? (int) round(($antes - $precio) / $antes * 100) : 0;
+        // Porcentaje configurado en el sistema, no el recalculado desde precios redondeados
+        $pct    = $antes > $precio ? (float) $pricing['porcentaje'] : 0;
+        $pct    = fmod($pct, 1.0) == 0.0 ? (int) $pct : rtrim(rtrim(number_format($pct, 2, '.', ''), '0'), '.');
 
         $stock = [];
         $total = 0;
@@ -172,7 +189,11 @@ class TiendaWebService
             'total'       => $total,
             'agotado'     => $total <= 0,
             'disponibilidad' => $disponibilidad,
-            'stockTxt'    => $total <= 0 ? 'Sin stock' : $total . ($total === 1 ? ' unidad disponible' : ' unidades disponibles'),
+            'stockTxt'    => match (true) {
+                $total <= 0  => 'Sin stock',
+                $total > 100 => 'Más de 100 unidades disponibles',
+                default      => $total . ($total === 1 ? ' unidad disponible' : ' unidades disponibles'),
+            },
             'colorDisp'   => $total <= 0 ? 'var(--color-accent-2)' : (count($donde) === 1 ? 'var(--color-accent-2-700)' : 'var(--color-accent-700)'),
             'topVentas'   => $topVentas,
             'raw'         => $p,
@@ -282,25 +303,28 @@ class TiendaWebService
         return $nombre;
     }
 
-    private function iconoCategoria(string $nombre): string
+    /** Ícono (Phosphor duotone) y color de acento según el nombre de la categoría. */
+    private function estiloCategoria(string $nombre): array
     {
         $n = Str::lower(Str::ascii($nombre));
         $mapa = [
-            '/derm|cosm|belleza|piel/'               => 'ph-drop',
-            '/beb|mama|infant|nin/'                  => 'ph-baby',
-            '/higien|personal|dental|bucal/'         => 'ph-tooth',
-            '/adulto|mayor|geri/'                    => 'ph-person-simple-walk',
-            '/vitamin|suplement|mineral|natural/'    => 'ph-leaf',
-            '/sexual|intim/'                         => 'ph-heart',
-            '/insumo|material|equipo|ortop/'         => 'ph-first-aid-kit',
-            '/medic|salud|farma/'                    => 'ph-pill',
+            '/oferta|promo|descuento/'               => ['ph-seal-percent',       '#d6006c'],
+            '/market|super|abarrote/'                => ['ph-basket',             '#ea6a0c'],
+            '/derm|cosm|belleza|piel/'               => ['ph-drop-half',          '#8b5cf6'],
+            '/beb|mama|infant|nin/'                  => ['ph-baby',               '#f08a00'],
+            '/higien|personal|dental|bucal/'         => ['ph-tooth',              '#0f9f9a'],
+            '/adulto|mayor|geri/'                    => ['ph-person-simple-walk', '#4f6bed'],
+            '/vitamin|suplement|mineral|natural/'    => ['ph-leaf',               '#16a34a'],
+            '/sexual|intim/'                         => ['ph-heart',              '#e11d48'],
+            '/insumo|material|equipo|ortop/'         => ['ph-bandaids',           '#0284c7'],
+            '/medic|salud|farma/'                    => ['ph-pill',               '#1f86e6'],
         ];
-        foreach ($mapa as $re => $icono) {
+        foreach ($mapa as $re => [$icono, $color]) {
             if (preg_match($re, $n)) {
-                return 'ph-duotone ' . $icono;
+                return ['ph-duotone ' . $icono, $color];
             }
         }
 
-        return 'ph-duotone ph-first-aid-kit';
+        return ['ph-duotone ph-first-aid-kit', '#0088b0'];
     }
 }
