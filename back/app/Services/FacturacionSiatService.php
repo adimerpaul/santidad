@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Client;
 use App\Models\Cufd;
 use App\Models\Cuis;
+use App\Models\FacturaNumeracion;
 use App\Models\Sales;
 use App\Models\SiatEnvio;
 use Carbon\Carbon;
@@ -108,7 +109,7 @@ class FacturacionSiatService
 
         $numeroFactura = $sales->numeroFactura && (int) $sales->numeroFactura > 0
             ? (int) $sales->numeroFactura
-            : ((int) Sales::max('numeroFactura') + 1);
+            : FacturaNumeracion::siguiente();
 
         $leyenda = $this->leyendaSiat();
 
@@ -540,7 +541,7 @@ class FacturacionSiatService
             $fechaEmision  = Carbon::now('America/La_Paz');
             $mili          = str_pad((string) ((int) floor(((int) $fechaEmision->format('u')) / 1000)), 3, '0', STR_PAD_LEFT);
             $fechaSiat     = $fechaEmision->format('Y-m-d\TH:i:s') . '.' . $mili;
-            $numeroFactura = $numeroFactura > 0 ? $numeroFactura : ((int) Sales::max('numeroFactura') + 1);
+            $numeroFactura = $numeroFactura > 0 ? $numeroFactura : FacturaNumeracion::siguiente();
 
             $cuf = $this->generarCuf(
                 (string) config('siat.nit'),

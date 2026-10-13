@@ -8,6 +8,7 @@ use App\Models\Agencia;
 use App\Models\Buy;
 use App\Models\Client;
 use App\Models\Detail;
+use App\Models\FacturaNumeracion;
 use App\Models\Product;
 use App\Models\Sales;
 use App\Http\Requests\StoreSalesRequest;
@@ -82,8 +83,10 @@ class SalesController extends Controller
         // Con NIT/CI distinto de 0 la venta se factura, así que necesita un CUFD
         // vigente. El CUFD caduca a diario: si no hay, se pide a SIAT en el
         // momento en lugar de rechazar la venta.
+        $seFactura = false;
         if ($request->client['numeroDocumento'] !== '0') {
             $codigoSucursal = (int) (Agencia::find($this->agenciaDeLaVenta($request))?->sucursal ?? 0);
+            $seFactura = $codigoSucursal > 0;
 
             // Sucursal 0 = agencia sin habilitación SIAT: sale como nota de venta.
             if ($codigoSucursal > 0 && !$this->facturacionService->asegurarCufdVigente($codigoSucursal)) {
@@ -95,6 +98,12 @@ class SalesController extends Controller
 
         DB::beginTransaction();
         try {
+            // Lo primero de la transacción: reservar el número de factura. La
+            // fila del contador queda bloqueada hasta el commit, así dos ventas
+            // simultáneas no pueden tomar el mismo número; si la venta falla,
+            // el rollback devuelve el número al contador.
+            $numeroFactura = $seFactura ? FacturaNumeracion::siguiente() : 0;
+
             $agencia_id = $this->agenciaDeLaVenta($request);
             $orderNumbers = collect($request->products)->pluck('online_order_number')->filter()->unique()->sort()->values();
             $onlineOrders = \App\Models\Order::whereIn('order_number', $orderNumbers)->orderBy('id')->lockForUpdate()->get();
@@ -190,7 +199,7 @@ class SalesController extends Controller
 
             $sale = new Sales();
             $sale->fill([
-                'numeroFactura' => 0,
+                'numeroFactura' => $numeroFactura,
                 'fechaEmision'  => date('Y-m-d H:i:s'),
                 'montoTotal'    => $montoTotal,
                 'montoCalculado'=> $montoCalculado,
