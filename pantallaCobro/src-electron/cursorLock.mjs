@@ -1,7 +1,6 @@
 ﻿import { spawn, execFile } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 
 let lockProcess = null
 let isEnabled = true
@@ -11,9 +10,15 @@ export function getCursorLockExePath(userDataDir) {
     const p = path.join(process.resourcesPath, 'cursor-lock.exe')
     if (fs.existsSync(p)) return p
   }
-  const dir = path.dirname(fileURLToPath(import.meta.url))
-  const local = path.join(dir, 'cursor-lock.exe')
-  if (fs.existsSync(local)) return local
+  // Quasar bundles Electron as CommonJS, where import.meta.url is unavailable.
+  const localDirs = [
+    ...(typeof __dirname === 'string' ? [__dirname] : []),
+    path.join(process.cwd(), 'src-electron'),
+  ]
+  for (const dir of localDirs) {
+    const local = path.join(dir, 'cursor-lock.exe')
+    if (fs.existsSync(local)) return local
+  }
 
   if (userDataDir) {
     const userExe = path.join(userDataDir, 'cursor-lock.exe')

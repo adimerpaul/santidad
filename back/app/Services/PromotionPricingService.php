@@ -14,6 +14,29 @@ class PromotionPricingService
     private array $requestCache = [];
     private ?array $promotionExcludedSubcategoryIds = null;
 
+    public function resolveSale(Product $product, ?int $agenciaId, ?string $orderNumber = null): array
+    {
+        $channel = 'physical';
+        if ($orderNumber) {
+            $order = \App\Models\Order::with('items')->where('order_number', $orderNumber)->first();
+            if (!$order || in_array($order->status, ['sold', 'cancelled'], true) || !in_array($order->source, ['web', 'app'], true)
+                || !$order->items->contains('product_id', $product->id)) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'products' => 'El producto no pertenece a un pedido online válido.',
+                ]);
+            }
+            $branch = $order->meta['sucursal_id'] ?? null;
+            if ($branch && (int) $branch !== $agenciaId) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'products' => 'El pedido online corresponde a otra sucursal.',
+                ]);
+            }
+            $channel = $order->source;
+        }
+        // Reevaluate eligibility now: expired/paused promotions never survive checkout.
+        return $this->resolve($product, $channel, $agenciaId);
+    }
+
     public function resolve(Product $product, string $channel, ?int $agenciaId = null): array
     {
         // Conservar los centavos del precio base; redondear a décimas solo al cobrar.
@@ -67,6 +90,13 @@ class PromotionPricingService
             ->first();
 
         $porcentaje = (float) ($winner['porcentaje'] ?? 0);
+        $promotionLabel = $candidates->filter(fn (array $candidate) =>
+            $candidate['id'] !== null && $candidate['porcentaje'] > 0
+        )->sort(fn (array $left, array $right) =>
+            ($right['porcentaje'] <=> $left['porcentaje'])
+            ?: ($right['especificidad'] <=> $left['especificidad'])
+            ?: ((int) $right['id'] <=> (int) $left['id'])
+        )->first();
         $precioVenta = Money::roundToTenth($precioOriginal * (1 - ($porcentaje / 100)));
 
         return [
@@ -75,6 +105,7 @@ class PromotionPricingService
             'porcentaje' => $porcentaje,
             'promocion_id' => $winner['id'] ?? null,
             'promocion_nombre' => $winner['nombre'] ?? null,
+            'promocion_etiqueta' => $promotionLabel['nombre'] ?? null,
             'origen' => $winner['origen'] ?? null,
             'mostrar_en_ofertas' => $mostrarEnOfertas,
         ];

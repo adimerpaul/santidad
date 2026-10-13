@@ -78,7 +78,11 @@
           <span class="tag tag-accent-2" style="white-space:nowrap">Ahorras {{ $T::bs($p->antes - $p->precio) }}</span>
         @endif
       </div>
-      @if($p->promocion)<p style="margin:8px 0 0;font-size:14px;font-weight:700;color:var(--color-accent-2-700)"><i class="ph-duotone ph-tag"></i> {{ $p->promocion }}</p>@endif
+      @if($p->promocionEtiqueta)
+        <span class="product-promo product-promo-detail"><i class="ph-duotone ph-tag" aria-hidden="true"></i><span>{{ $p->promocionEtiqueta }}</span></span>
+      @elseif($p->promocion)
+        <p class="muted" style="margin:8px 0 0;font-size:13px">{{ $p->promocion }}</p>
+      @endif
       <p style="margin:10px 0 0;font-size:15px;display:flex;gap:8px;align-items:center;color:{{ $p->colorDisp }}"><i class="ph-duotone ph-package"></i><span>{{ $p->stockTxt }} · {{ $p->disponibilidad }}</span></p>
 
       @if($specs->isNotEmpty())

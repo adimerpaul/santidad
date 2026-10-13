@@ -96,6 +96,11 @@ class SalesController extends Controller
         DB::beginTransaction();
         try {
             $agencia_id = $this->agenciaDeLaVenta($request);
+            $orderNumbers = collect($request->products)->pluck('online_order_number')->filter()->unique()->sort()->values();
+            $onlineOrders = \App\Models\Order::whereIn('order_number', $orderNumbers)->orderBy('id')->lockForUpdate()->get();
+            if ($onlineOrders->count() !== $orderNumbers->count() || $onlineOrders->contains(fn ($order) => in_array($order->status, ['sold', 'cancelled'], true))) {
+                throw new \DomainException('Uno de los pedidos online ya fue vendido, cancelado o no existe.');
+            }
             $productosProcesados = [];
             $montoBaseCentavos = 0;
             $descuentoProductoCentavos = 0;
@@ -121,7 +126,10 @@ class SalesController extends Controller
                     throw new \DomainException('No hay suficiente stock del producto ' . $productModel->nombre);
                 }
 
-                $pricing = $this->promotionPricing->resolve($productModel, 'physical', $agencia_id);
+                $pricing = $this->promotionPricing->resolveSale($productModel, $agencia_id, $product['online_order_number'] ?? null);
+                if (!empty($product['online_order_number']) && Money::toCents($product['precioVenta']) !== Money::toCents($pricing['precio_venta'])) {
+                    throw new \DomainException('El precio del pedido online cambió. Cierre el cobro y vuelva a verificar la canasta antes de pagar.');
+                }
                 $precioOriginalCentavos = Money::toCents($pricing['precio_original']);
                 $precioVenta = $pricing['precio_venta'];
                 $precioVentaCentavos = Money::toCents($precioVenta);
@@ -246,9 +254,21 @@ class SalesController extends Controller
 
             $sale->concepto           = rtrim($concepto, ',');
             $sale->descuento_producto = Money::fromCents($descuentoProductoCentavos);
+            $sale->online_orders = $onlineOrders->map(fn ($order) => [
+                'id' => $order->id, 'number' => $order->order_number, 'source' => $order->source,
+            ])->values()->all();
             $sale->save();
 
+            foreach ($onlineOrders as $onlineOrder) {
+                $onlineOrder->status = 'sold';
+                $onlineOrder->meta = array_merge($onlineOrder->meta ?? [], ['sale_id' => $sale->id]);
+                $onlineOrder->save();
+            }
+
             DB::commit();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return response()->json(['message' => collect($e->errors())->flatten()->first(), 'errors' => $e->errors()], 422);
         } catch (\DomainException $e) {
             DB::rollBack();
             return response()->json(['message' => $e->getMessage()], 422);
@@ -334,46 +354,77 @@ class SalesController extends Controller
 
     public function salesAnular($id, Request $request)
     {
-        $sale = Sales::find($id);
-
         try {
-            $this->facturacionService->anular($sale);
+            $sale = DB::transaction(function () use ($id) {
+                $sale = Sales::lockForUpdate()->findOrFail($id);
+                if ($sale->estado === 'ANULADO') {
+                    throw new \RuntimeException('Esta venta ya está anulada.');
+                }
+                // Metadata lookup also supports online sales recorded before this migration.
+                $orders = \App\Models\Order::where('meta->sale_id', $sale->id)
+                    ->orderBy('id')->lockForUpdate()->get();
+                $this->facturacionService->anular($sale);
+                $sale->estado = 'ANULADO';
+                if (!$sale->online_orders && $orders->isNotEmpty()) {
+                    $sale->online_orders = $orders->map(fn ($order) => [
+                        'id' => $order->id, 'number' => $order->order_number, 'source' => $order->source,
+                    ])->values()->all();
+                }
+                $sale->save();
+                if ($sale->tipoVenta === 'Ingreso') {
+                    foreach (Detail::whereSaleId($id)->orderBy('product_id')->get() as $detail) {
+                        $product = Product::lockForUpdate()->findOrFail($detail->product_id);
+                        $product->cantidad += $detail->cantidad;
+                        $this->ajustarStockSucursal($product, $sale->agencia_id, $detail->cantidad);
+                        $product->save();
+                    }
+                }
+                foreach ($orders as $order) {
+                    if ($order->status !== 'sold') continue;
+                    $meta = $order->meta ?? [];
+                    unset($meta['sale_id']);
+                    $meta['cancelled_sale_id'] = $sale->id;
+                    $order->meta = $meta;
+                    $order->status = 'pending';
+                    $order->save();
+                }
+                return $sale;
+            });
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
-
-        $sale->estado = 'ANULADO';
-        $sale->save();
-
-        if ($sale->tipoVenta === 'Ingreso') {
-            foreach (Detail::whereSaleId($id)->get() as $detail) {
-                $product            = Product::find($detail->product_id);
-                $product->cantidad += $detail->cantidad;
-                $this->ajustarStockSucursal($product, $sale->agencia_id, $detail->cantidad);
-                $product->save();
-            }
-        }
-
         $this->enviarCorreoEstado($sale, 'anulacion');
+        return response()->json(['message' => 'Venta anulada; stock devuelto y pedidos online reabiertos.']);
     }
 
     // ─────────────────────────── Revertir anulación ───────────────────────────
 
     public function salesRevertir($id)
     {
-        $sale = Sales::find($id);
+        DB::beginTransaction();
+        $sale = Sales::lockForUpdate()->find($id);
 
         if (!$sale) {
+            DB::rollBack();
             return response()->json(['message' => 'Venta no encontrada'], 404);
         }
 
         if ($sale->estado !== 'ANULADO') {
+            DB::rollBack();
             return response()->json(['message' => 'La venta no está anulada'], 422);
         }
 
+        $orderIds = collect($sale->online_orders ?? [])->pluck('id');
+        $orders = \App\Models\Order::whereIn('id', $orderIds)->orderBy('id')->lockForUpdate()->get();
+        if ($orders->count() !== $orderIds->count() || $orders->contains(fn ($order) =>
+            $order->status !== 'pending' || (int) ($order->meta['cancelled_sale_id'] ?? 0) !== (int) $sale->id)) {
+            DB::rollBack();
+            return response()->json(['message' => 'El pedido ya se vendió nuevamente o cambió de estado. No se puede revertir esta anulación.'], 422);
+        }
         try {
             $this->facturacionService->revertirAnulacion($sale);
         } catch (\RuntimeException $e) {
+            DB::rollBack();
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
@@ -382,13 +433,22 @@ class SalesController extends Controller
 
         if ($sale->tipoVenta === 'Ingreso') {
             foreach (Detail::whereSaleId($id)->get() as $detail) {
-                $product            = Product::find($detail->product_id);
+                $product            = Product::lockForUpdate()->findOrFail($detail->product_id);
                 $product->cantidad -= $detail->cantidad;
                 $this->ajustarStockSucursal($product, $sale->agencia_id, -$detail->cantidad);
                 $product->save();
             }
         }
 
+        foreach ($orders as $order) {
+            $meta = $order->meta ?? [];
+            $meta['sale_id'] = $sale->id;
+            unset($meta['cancelled_sale_id']);
+            $order->meta = $meta;
+            $order->status = 'sold';
+            $order->save();
+        }
+        DB::commit();
         $this->enviarCorreoEstado($sale, 'reversion');
     }
 

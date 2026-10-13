@@ -222,6 +222,17 @@
     save(); renderCart();
   }
 
+  function tieneStock(items, sucursalId) {
+    return items.length > 0 && items.every(function (x) {
+      return x.stock && Number(x.stock[sucursalId] || 0) >= x.qty;
+    });
+  }
+
+  function puedeEnviar(items) {
+    var opt = pickup.options[pickup.selectedIndex];
+    return items.length > 0 && (delivery !== 'recojo' || (opt && tieneStock(items, opt.value)));
+  }
+
   function renderCart() {
     var items = list();
     var count = items.reduce(function (a, x) { return a + x.qty; }, 0);
@@ -245,14 +256,40 @@
     $('[data-cart-total]', drawer).textContent = bs(total);
     $('[data-cart-save]', drawer).textContent = bs(saveAmt);
     $('[data-cart-save-row]', drawer).hidden = saveAmt <= 0;
-    pickup.hidden = delivery !== 'recojo';
+    $('[data-pickup-panel]', drawer).hidden = delivery !== 'recojo';
     $$('[data-delivery]', drawer).forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.delivery === delivery)); });
 
     // Indica qué sucursal tiene todo el pedido
     $$('option', pickup).forEach(function (o) {
-      var ok = items.every(function (x) { return !x.stock || (x.stock[o.value] || 0) >= x.qty; });
-      o.textContent = o.dataset.name + (items.length ? (ok ? ' · tiene todo' : ' · stock parcial') : '');
+      var ok = tieneStock(items, o.value);
+      o.disabled = items.length > 0 && !ok;
+      var agotado = items.length > 0 && items.every(function (x) {
+        return !x.stock || Number(x.stock[o.value] || 0) <= 0;
+      });
+      var estado = ok ? 'Disponible' : agotado ? 'Agotado' : 'Stock insuficiente';
+      o.dataset.status = ok ? 'available' : agotado ? 'empty' : 'partial';
+      o.dataset.label = estado;
+      o.textContent = o.dataset.name + (items.length ? ' — ' + estado : '');
     });
+
+    var selected = pickup.options[pickup.selectedIndex];
+    if (!selected || selected.disabled) {
+      var available = $$('option', pickup).find(function (o) { return !o.disabled; });
+      pickup.value = available ? available.value : '';
+    }
+    $('[data-pickup-options]', drawer).innerHTML = $$('option', pickup).map(function (o) {
+      var active = o.value === pickup.value;
+      return '<button type="button" class="pickup-option' + (active ? ' is-selected' : '') + '" data-pickup-id="' + esc(o.value) + '" aria-pressed="' + active + '"' + (o.disabled ? ' disabled' : '') + '>' +
+        '<span class="pickup-radio" aria-hidden="true"></span><span class="pickup-name">' + esc(o.dataset.name) + '</span>' +
+        '<span class="pickup-status pickup-status--' + o.dataset.status + '"><span aria-hidden="true"></span>' + esc(o.dataset.label) + '</span></button>';
+    }).join('');
+    var ready = puedeEnviar(items);
+    var warning = $('[data-cart-stock-warning]', drawer);
+    warning.hidden = !items.length || delivery !== 'recojo' || ready;
+    warning.textContent = 'Ninguna sucursal tiene todos los productos en las cantidades solicitadas. Reduzca las cantidades o retire los productos sin stock.';
+    var send = $('[data-cart-wa]', drawer);
+    send.setAttribute('aria-disabled', String(!ready || !!send.dataset.busy));
+    send.style.opacity = ready && !send.dataset.busy ? '' : '.5';
 
   }
 
@@ -289,6 +326,10 @@
   function enviarPedido(btn) {
     var items = list();
     if (!items.length || btn.dataset.busy) return;
+    if (!puedeEnviar(items)) {
+      toast('Seleccione una sucursal con stock suficiente para todo el pedido.');
+      return;
+    }
     var opt = pickup.options[pickup.selectedIndex];
     var sucursal = opt ? opt.dataset.name : '';
     var wa = delivery === 'recojo' && opt && opt.dataset.wa ? opt.dataset.wa : SD.whatsapp;
@@ -306,9 +347,16 @@
         items: items.map(function (x) { return { product_id: +x.id, nombre: x.name, precio: x.price, cantidad: x.qty, imagen: x.img }; }),
       }),
     })
-      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (r) {
+        return r.json().then(function (data) {
+          if (!r.ok) {
+            var errors = data.errors ? Object.keys(data.errors).reduce(function (all, key) { return all.concat(data.errors[key]); }, []) : [];
+            throw new Error(errors[0] || data.message || 'No se pudo registrar el pedido. Intente nuevamente.');
+          }
+          return data;
+        });
+      })
       .then(function (order) { return { numero: order.order_number, order: order }; })
-      .catch(function () { return { numero: '', order: null }; })
       .then(function (res) {
         var url = 'https://wa.me/' + wa + '?text=' + encodeURIComponent(mensajePedido(res.numero, sucursal, items, res.order));
         if (win && !win.closed) win.location.href = url; else location.href = url;
@@ -317,6 +365,14 @@
           cart = {}; save(); renderCart(); closeCart();
           toast('Pedido ' + res.numero + ' generado');
         }
+      })
+      .catch(function (error) {
+        if (win && !win.closed) win.close();
+        toast(error.message || 'No se pudo registrar el pedido. Revise su conexión e intente nuevamente.');
+      })
+      .finally(function () {
+        delete btn.dataset.busy;
+        renderCart();
       });
   }
 
@@ -331,6 +387,14 @@
     });
     $$('[data-delivery]', drawer).forEach(function (b) { b.addEventListener('click', function () { delivery = b.dataset.delivery; renderCart(); }); });
     pickup.addEventListener('change', renderCart);
+    $('[data-pickup-options]', drawer).addEventListener('click', function (e) {
+      var choice = e.target.closest('[data-pickup-id]');
+      if (!choice || choice.disabled || $('[data-cart-wa]', drawer).dataset.busy) return;
+      pickup.value = choice.dataset.pickupId;
+      renderCart();
+      var selectedChoice = $('[data-pickup-id="' + pickup.value + '"]', drawer);
+      if (selectedChoice) selectedChoice.focus({ preventScroll: true });
+    });
     $('[data-cart-wa]', drawer).addEventListener('click', function (e) { e.preventDefault(); enviarPedido(this); });
   }
 
@@ -356,26 +420,26 @@
       });
       zoom.addEventListener('mouseleave', function () { zoom.classList.remove('is-zooming'); });
     }
-    var box = document.createElement('div');
-    box.className = 'zoom-box'; box.hidden = true;
-    box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', zImg.alt);
-    box.innerHTML = '<button type="button" class="zoom-close" aria-label="Cerrar"><i class="ph-duotone ph-x"></i></button><img alt="">';
-    document.body.appendChild(box);
-    var bImg = $('img', box), closeBtn = $('.zoom-close', box);
+    var zoomBox = document.createElement('div');
+    zoomBox.className = 'zoom-box'; zoomBox.hidden = true;
+    zoomBox.setAttribute('role', 'dialog'); zoomBox.setAttribute('aria-modal', 'true'); zoomBox.setAttribute('aria-label', zImg.alt);
+    zoomBox.innerHTML = '<button type="button" class="zoom-close" aria-label="Cerrar"><i class="ph-duotone ph-x"></i></button><img alt="">';
+    document.body.appendChild(zoomBox);
+    var bImg = $('img', zoomBox), closeBtn = $('.zoom-close', zoomBox);
     var openBox = function () {
       bImg.src = zImg.currentSrc || zImg.src; bImg.alt = zImg.alt;
-      box.classList.remove('is-big'); box.hidden = false;
+      zoomBox.classList.remove('is-big'); zoomBox.hidden = false;
       document.body.style.overflow = 'hidden'; closeBtn.focus();
     };
-    var closeBox = function () { box.hidden = true; document.body.style.overflow = ''; zoom.focus(); };
+    var closeBox = function () { zoomBox.hidden = true; document.body.style.overflow = ''; zoom.focus(); };
     zoom.addEventListener('click', openBox);
     zoom.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBox(); } });
     closeBtn.addEventListener('click', function (e) { e.stopPropagation(); closeBox(); });
-    box.addEventListener('click', function (e) {
-      if (e.target === bImg) { box.classList.toggle('is-big'); return; }
+    zoomBox.addEventListener('click', function (e) {
+      if (e.target === bImg) { zoomBox.classList.toggle('is-big'); return; }
       closeBox();
     });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !box.hidden) closeBox(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !zoomBox.hidden) closeBox(); });
   }
 
   // ---------- Detalle de producto: cantidad y compartir ----------

@@ -30,6 +30,7 @@ class StoreSalesRequest extends FormRequest
             'client.email' => ['nullable', 'string'],
             'products' => ['required', 'array', 'min:1'],
             'products.*.id' => ['required', 'integer', 'distinct', 'exists:products,id'],
+            'products.*.online_order_number' => ['nullable', 'string', 'max:100', 'exists:orders,order_number'],
             'products.*.cantidadPedida' => ['required', 'integer', 'min:1'],
             'products.*.precioVenta' => ['required', 'numeric', 'gt:0'],
             'products.*.buys' => ['nullable', 'array'],

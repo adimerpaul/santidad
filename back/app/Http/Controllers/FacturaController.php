@@ -78,6 +78,13 @@ class FacturaController extends Controller
      */
     public function store(Request $request)
     {
+        return app(\App\Services\PurchaseSubmissionService::class)->run(
+            $request, 'invoice', fn () => $this->registrarFactura($request)
+        );
+    }
+
+    private function registrarFactura(Request $request)
+    {
         DB::beginTransaction();
         try {
             $request->validate([

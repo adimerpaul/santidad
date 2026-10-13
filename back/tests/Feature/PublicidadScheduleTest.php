@@ -45,21 +45,37 @@ class PublicidadScheduleTest extends TestCase
         $this->assertSame($b, $service->snapshot(2));
         $this->assertFalse((bool) DB::table('publicidad_schedules')->where('agencia_id', 1)->value('pending'));
     }
-    public function test_unknown_duration_is_measured_once_without_changing_file_version(): void
+    public function test_players_cannot_poll_the_disabled_sync_api(): void
     {
-        $video = $this->ad(1, 'video');
-        $service = app(PublicidadSyncService::class);
-        $state = $service->snapshot(1);
-        $this->assertFalse($state['ready']);
-        $payload = ['agencia_id' => 1, 'items' => [['id' => $video->id, 'media_version' => $service->mediaVersion($video), 'duration_ms' => 30000]]];
-        $this->postJson('/api/publicidad-sync/durations', $payload)->assertOk();
-        $ready = $service->snapshot(1);
-        $this->assertTrue($ready['ready']);
-        $this->assertSame(30000, $ready['items'][0]['duration_ms']);
-        $payload['items'][0]['duration_ms'] = 1000;
-        $this->postJson('/api/publicidad-sync/durations', $payload)->assertOk();
-        $this->assertSame($ready, $service->snapshot(1));
+        $this->getJson('/api/publicidad-sync?agencia_id=1')->assertNotFound();
+        $this->postJson('/api/publicidad-sync/durations', [])->assertNotFound();
     }
+
+    public function test_daily_publication_restarts_all_branches_with_the_same_epoch(): void
+    {
+        $this->ad(null);
+        $this->artisan('publicidad:publish-pending --daily')->assertSuccessful();
+        $service = app(PublicidadSyncService::class);
+        $this->assertSame($service->snapshot(1)['epoch_ms'], $service->snapshot(2)['epoch_ms']);
+        Http::assertSentCount(2);
+        $events = app(\Illuminate\Console\Scheduling\Schedule::class)->events();
+        $this->assertCount(1, $events);
+        $this->assertSame('0 9 * * *', $events[0]->expression);
+        $this->assertSame('America/La_Paz', $events[0]->timezone);
+    }
+
+    public function test_manual_play_publishes_once_to_the_selected_branch(): void
+    {
+        $this->ad(null);
+        $response = app(\App\Http\Controllers\PublicidadController::class)->play(
+            \Illuminate\Http\Request::create('/play', 'POST', ['agencia_id' => 1])
+        );
+        $this->assertSame(1, $response->getData(true)['items']);
+        $this->assertFalse($response->getData(true)['pending']);
+        Http::assertSentCount(1);
+        $this->assertSame(1, DB::table('publicidad_schedules')->count());
+    }
+
     public function test_failed_delivery_is_durable_and_retries_only_pending_states(): void
     {
         $this->ad(1);
@@ -73,37 +89,13 @@ class PublicidadScheduleTest extends TestCase
         $service->retryPending();
         $this->assertFalse((bool) DB::table('publicidad_schedules')->value('pending'));
     }
-    public function test_toggle_rolls_back_without_notifying_when_schedule_cannot_be_saved(): void
+    public function test_toggle_only_saves_until_manual_or_daily_publication(): void
     {
         $ad = $this->ad(null);
-        Schema::drop('publicidad_schedules');
-        $request = \Illuminate\Http\Request::create('/toggle', 'POST', ['active' => 0]);
-        try {
-            app(\App\Http\Controllers\PublicidadController::class)->toggleActive($request, $ad->id);
-            $this->fail('Expected missing schedule table to reject the operation');
-        } catch (\Illuminate\Database\QueryException $e) {
-            $this->assertTrue((bool) $ad->fresh()->active);
-            Http::assertNothingSent();
-        }
-    }
-    public function test_setting_active_is_idempotent_and_commits_before_socket_delivery(): void
-    {
-        $ad = $this->ad(null);
-        Http::swap(new \Illuminate\Http\Client\Factory());
-        Http::fake(function () {
-            $this->assertSame(0, DB::transactionLevel());
-            return Http::response([], 503);
-        });
         $controller = app(\App\Http\Controllers\PublicidadController::class);
-        $request = \Illuminate\Http\Request::create('/toggle', 'POST', ['active' => 0]);
-        $controller->toggleActive($request, $ad->id);
-        $revision = DB::table('publicidad_schedules')->where('agencia_id', 1)->value('revision');
-        $controller->toggleActive($request, $ad->id);
+        $controller->toggleActive(\Illuminate\Http\Request::create('/toggle', 'POST', ['active' => 0]), $ad->id);
         $this->assertFalse((bool) $ad->fresh()->active);
-        $this->assertSame($revision, DB::table('publicidad_schedules')->where('agencia_id', 1)->value('revision'));
-        $this->assertSame(2, DB::table('publicidad_schedules')->where('pending', true)->count());
-        $controller->toggleActive(\Illuminate\Http\Request::create('/toggle', 'POST'), $ad->id);
-        $this->assertTrue((bool) $ad->fresh()->active);
+        Http::assertNothingSent();
+        $this->assertSame(0, DB::table('publicidad_schedules')->count());
     }
-
 }

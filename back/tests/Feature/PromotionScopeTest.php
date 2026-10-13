@@ -73,6 +73,63 @@ class PromotionScopeTest extends TestCase
         return $this->postJson('/api/promotions', $this->payload($overrides))->assertCreated()->json('id');
     }
 
+    public function test_cart_prices_identify_managed_promotions_but_not_normal_product_discounts(): void
+    {
+        DB::table('products')->where('id', 1)->update(['porcentaje' => 15]);
+        $payload = ['agencia_id' => 1, 'productos' => [['id' => 1, 'cantidadVenta' => 0]]];
+        $this->postJson('/api/verificar-stock-venta', $payload)->assertOk()
+            ->assertJsonPath('precios.0.promocion_id', null)
+            ->assertJsonPath('precios.0.porcentajeEfectivo', 15);
+        $promo = $this->createPromotion(['nombre' => 'PROMO PRUEBA', 'porcentaje' => 50]);
+        $this->postJson('/api/verificar-stock-venta', $payload)->assertOk()
+            ->assertJsonPath('precios.0.promocion_id', $promo)
+            ->assertJsonPath('precios.0.promocion', 'PROMO PRUEBA')
+            ->assertJsonPath('precios.0.porcentajeEfectivo', 50);
+    }
+
+    public function test_online_checkout_uses_saved_channel_and_rejects_expired_promotions(): void
+    {
+        Schema::create('orders', function (Blueprint $t) {
+            $t->id(); $t->string('order_number'); $t->string('source'); $t->text('meta')->nullable();
+        });
+        Schema::create('order_items', function (Blueprint $t) {
+            $t->id(); $t->integer('order_id'); $t->integer('product_id');
+        });
+        DB::table('orders')->insert(['id' => 1, 'order_number' => 'TESTONLINE', 'source' => 'app', 'meta' => json_encode(['sucursal_id' => 1])]);
+        DB::table('order_items')->insert(['order_id' => 1, 'product_id' => 1]);
+        $promo = $this->createPromotion(['porcentaje' => 30, 'canal_fisico' => false, 'canal_web' => false]);
+        $pricing = app(PromotionPricingService::class);
+        $product = Product::findOrFail(1);
+        $this->assertEquals(70, $pricing->resolveSale($product, 1, 'TESTONLINE')['precio_venta']);
+        $this->assertEquals(100, $pricing->resolveSale($product, 1)['precio_venta']);
+        DB::table('promotions')->where('id', $promo)->update(['permanente' => false, 'fecha_fin' => now()->subDay()]);
+        $pricing->clearCache();
+        $this->assertEquals(100, $pricing->resolveSale($product, 1, 'TESTONLINE')['precio_venta']);
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        $pricing->resolveSale($product, 2, 'TESTONLINE');
+    }
+
+    public function test_web_product_label_uses_only_the_applicable_active_web_promotion(): void
+    {
+        $id = $this->createPromotion(['nombre' => 'PROMO PRIMAVERA', 'alcance' => 'CATEGORIA', 'category_id' => 2]);
+        $store = app(\App\Services\TiendaWebService::class);
+        $affected = $store->presentar(Product::findOrFail(2), collect());
+        $this->assertSame('PROMO PRIMAVERA', $affected->promocionEtiqueta);
+        $this->assertStringContainsString('PROMO PRIMAVERA', view('tienda.partials.card', ['p' => $affected])->render());
+        $this->assertNull($store->presentar(Product::findOrFail(1), collect())->promocionEtiqueta);
+
+        DB::table('products')->where('id', 2)->update(['porcentaje' => 20]);
+        $this->assertSame('PROMO PRIMAVERA', $store->presentar(Product::findOrFail(2), collect())->promocionEtiqueta);
+
+        DB::table('promotions')->where('id', $id)->update(['canal_web' => false]);
+        app(PromotionPricingService::class)->clearCache();
+        $this->assertNull($store->presentar(Product::findOrFail(2), collect())->promocionEtiqueta);
+
+        DB::table('promotions')->where('id', $id)->update(['canal_web' => true, 'activo' => false]);
+        app(PromotionPricingService::class)->clearCache();
+        $this->assertNull($store->presentar(Product::findOrFail(2), collect())->promocionEtiqueta);
+    }
+
     public function test_base_price_cents_survive_saving_and_manual_discount_checkout(): void
     {
         $product = Product::findOrFail(1);

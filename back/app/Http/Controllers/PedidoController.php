@@ -8,6 +8,7 @@ use App\Models\Agencia;
 use App\Models\Product;
 use App\Models\PedidoModificacion;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 
 class PedidoController extends Controller
@@ -252,7 +253,12 @@ class PedidoController extends Controller
             'pedido_id' => 'required|exists:pedidos,id',
             'accion' => 'required|string',
             'observacion' => 'nullable|string',
-            'modificaciones' => 'nullable|array'
+            'modificaciones' => 'nullable|array',
+            'modificaciones.*.pedido_detail_id' => [
+                'required', 'integer', 'distinct',
+                Rule::exists('pedido_details', 'id')->where('pedido_id', $request->input('pedido_id')),
+            ],
+            'modificaciones.*.cantidad_aprobada' => 'required|integer|min:0',
         ]);
 
         try {
@@ -290,7 +296,7 @@ class PedidoController extends Controller
 
                     $cantidadNueva = isset($modProducto['cantidad_aprobada']) ? $modProducto['cantidad_aprobada'] : 0;
                     
-                    $detalle = PedidoDetail::find($modProducto['pedido_detail_id']);
+                    $detalle = $pedido->detalles()->whereKey($modProducto['pedido_detail_id'])->firstOrFail();
                     
                     if ($detalle) {
                         DB::table('pedido_modificacion_detalles')->insert([

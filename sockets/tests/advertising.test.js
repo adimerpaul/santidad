@@ -11,6 +11,36 @@ const state = (agencia_id, revision = 1) => ({ protocol: 2, agencia_id, revision
 const ack = (s, event, data) => new Promise((resolve, reject) => s.timeout(1000).emit(event, data, (err, response) => err ? reject(err) : resolve(response)));
 const once = (s, event) => new Promise(resolve => s.once(event, resolve));
 
+test('missing video duration is resolved through the socket and reused on manual restart', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ad-duration-'));
+  const io = new Server(0);
+  const hub = attachAdvertising(io, { directory });
+  if (!io.httpServer.listening) await once(io.httpServer, 'listening');
+  const client = connect('http://127.0.0.1:' + io.httpServer.address().port, { transports: ['websocket'] });
+  try {
+    await once(client, 'connect');
+    await ack(client, 'ad_register', { agencia_id: 1 });
+    const initial = state(1);
+    initial.ready = false; initial.items[0].duration_ms = null;
+    const pending = once(client, 'ad_schedule'); hub.publish(initial); await pending;
+    const ready = once(client, 'ad_schedule');
+    assert.equal((await ack(client, 'ad_durations', { revision: 1, items: [{ id: 1, media_version: 'abc', duration_ms: 45000 }] })).success, true);
+    const measured = await ready;
+    assert.equal(measured.ready, true); assert.equal(measured.revision, 1);
+    assert.equal(measured.items[0].duration_ms, 45000);
+    assert.ok(measured.server_time_ms > 0);
+    const next = { ...state(1, 2), ready: false };
+    next.items[0].duration_ms = null;
+    const restarted = once(client, 'ad_schedule'); hub.publish(next);
+    assert.equal((await restarted).items[0].duration_ms, 45000);
+    assert.equal((await ack(client, 'ad_register', { agencia_id: 1, revision: 2 })).schedule.ready, true);
+  } finally {
+    client.disconnect(); hub.close(); await io.close();
+    for (const f of fs.readdirSync(directory)) fs.unlinkSync(path.join(directory, f));
+    fs.rmdirSync(directory);
+  }
+});
+
 test('branch delivery, time from memory, revision replay and persistent restart', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ad-hub-'));
   const io = new Server(0);
@@ -21,7 +51,7 @@ test('branch delivery, time from memory, revision replay and persistent restart'
   const b = connect(url, { transports: ['websocket'] });
   try {
     await Promise.all([once(a, 'connect'), once(b, 'connect')]);
-    assert.equal((await ack(a, 'ad_register', { agencia_id: 1, revision: 0 })).needs_snapshot, true);
+    assert.equal((await ack(a, 'ad_register', { agencia_id: 1, revision: 0 })).needs_snapshot, false);
     await ack(b, 'ad_register', { agencia_id: 2, revision: 0 });
     let otherReceived = false; b.on('ad_schedule', () => { otherReceived = true; });
     const received = once(a, 'ad_schedule'); hub.publish(state(1));

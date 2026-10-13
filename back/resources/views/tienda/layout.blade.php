@@ -93,27 +93,26 @@
 
 <footer class="ftr">
   <div class="ftr-grid">
-    <div>
-      <p style="margin:0;display:flex;align-items:center;gap:10px;font-family:var(--font-heading);font-weight:700;font-size:22px"><span class="brand-logo"><img src="{{ asset('tienda/logo.png') }}" alt="" width="40" height="40"></span>Farmacia Santidad Divina</p>
-      <p style="margin:2px 0 0;font-size:14px;color:var(--color-accent-700)">Precio Solidario</p>
-      <p style="margin:16px 0 0;font-size:15px;line-height:1.6">Atendemos con ética y responsabilidad. Encuentra medicamentos, dermocosmética y cuidado personal a precios justos.</p>
-      <div style="display:flex;gap:8px;margin-top:16px">
+    <div class="ftr-brand">
+      <p class="ftr-logo"><span class="brand-logo"><img src="{{ asset('tienda/logo.png') }}" alt="" width="40" height="40"></span><span>Santidad Divina<small>Precio Solidario</small></span></p>
+      <p class="ftr-description">Atención profesional y precios solidarios para cuidar tu salud en Oruro.</p>
+      <div class="ftr-social">
         <a class="btn btn-ghost btn-icon" href="{{ $redes['facebook'] }}" aria-label="Facebook" target="_blank" rel="noopener"><i class="ph-duotone ph-facebook-logo" style="font-size:20px"></i></a>
         <a class="btn btn-ghost btn-icon" href="{{ $redes['instagram'] }}" aria-label="Instagram" target="_blank" rel="noopener"><i class="ph-duotone ph-instagram-logo" style="font-size:20px"></i></a>
         <a class="btn btn-ghost btn-icon" href="{{ $redes['tiktok'] }}" aria-label="TikTok" target="_blank" rel="noopener"><i class="ph-duotone ph-tiktok-logo" style="font-size:20px"></i></a>
         <a class="btn btn-ghost btn-icon" href="https://wa.me/{{ $wa }}" aria-label="WhatsApp" target="_blank" rel="noopener"><i class="ph-duotone ph-whatsapp-logo" style="font-size:20px"></i></a>
       </div>
     </div>
-    <nav aria-label="Navegación"><p style="margin:0 0 12px;font-weight:600">Navegación</p>
+    <div class="ftr-links">
+    <nav aria-label="Navegación"><p class="ftr-title">Explora</p>
       <ul>
         <li><a href="{{ route('tienda.home') }}">Inicio</a></li>
         <li><a href="{{ route('tienda.descuentos') }}">Descuentos</a></li>
         <li><a href="{{ route('tienda.sucursales') }}">Sucursales</a></li>
         <li><a href="{{ route('tienda.buscar') }}">Todos los productos</a></li>
-        <li><a href="tel:+{{ $wa }}">Llámanos</a></li>
       </ul>
     </nav>
-    <nav aria-label="Legales"><p style="margin:0 0 12px;font-weight:600">Legales</p>
+    <nav aria-label="Legales"><p class="ftr-title">Información</p>
       <ul>
         <li><a href="{{ route('tienda.privacidad') }}">Políticas de Privacidad</a></li>
         <li><a href="{{ route('tienda.envio') }}">Política de Envío</a></li>
@@ -121,28 +120,29 @@
         <li><a href="{{ route('tienda.quienes-somos') }}">Quiénes Somos</a></li>
       </ul>
     </nav>
-    <nav aria-label="Categorías"><p style="margin:0 0 12px;font-weight:600">Categorías</p>
+    </div>
+    <nav aria-label="Categorías"><p class="ftr-title">Categorías</p>
       <ul>
         @foreach(app(T::class)->categorias()->take(8) as $c)
           <li><a href="{{ $c->url }}">{{ $c->nombre }}</a></li>
         @endforeach
       </ul>
     </nav>
-    <address style="font-style:normal"><p style="margin:0 0 12px;font-weight:600">Contacto</p>
+    <address class="ftr-contact"><p class="ftr-title">Estamos para ayudarte</p>
       <ul>
         <li class="ico"><i class="ph-duotone ph-map-pin"></i>Oruro, Bolivia</li>
         <li class="ico"><i class="ph-duotone ph-clock"></i>Lun–Dom: 08:00–22:00 · Sucursal 1: 24 h</li>
         <li class="ico"><i class="ph-duotone ph-phone"></i><a href="tel:+{{ $wa }}" style="white-space:nowrap">+591 72319869</a></li>
-        <li class="ico" style="word-break:break-all"><i class="ph-duotone ph-envelope"></i><a href="mailto:farmaciasantidaddivinacentral@gmail.com">farmaciasantidaddivinacentral@gmail.com</a></li>
+        <li class="ico"><i class="ph-duotone ph-envelope"></i><a class="ftr-email" href="mailto:farmaciasantidaddivinacentral@gmail.com">farmaciasantidaddivinacentral@gmail.com</a></li>
       </ul>
-      <form data-news style="display:flex;gap:8px;margin-top:16px">
+      <form data-news class="ftr-news">
         <input class="input" type="email" required placeholder="Tu correo electrónico" aria-label="Correo para ofertas">
         <button type="submit" class="btn btn-primary">Suscribir</button>
       </form>
     </address>
   </div>
-  <div style="max-width:1240px;margin:40px auto 0;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 20px;font-size:13px">
-    <p class="muted" style="margin:0">© {{ date('Y') }} Farmacia Santidad Divina. Todos los derechos reservados.</p>
+  <div class="ftr-bottom">
+    <p style="margin:0">© {{ date('Y') }} Farmacia Santidad Divina. Todos los derechos reservados.</p>
     <p style="margin:0;display:flex;flex-wrap:wrap;gap:6px 16px">
       <a href="{{ route('tienda.privacidad') }}">Privacidad</a>
       <a href="{{ route('tienda.terminos') }}">Términos</a>
@@ -167,11 +167,16 @@
       <button type="button" class="seg-opt" data-delivery="recojo" aria-pressed="true" style="flex:1">Recojo en sucursal</button>
       <button type="button" class="seg-opt" data-delivery="envio" aria-pressed="false" style="flex:1">Envío a domicilio</button>
     </div>
-    <select class="input" aria-label="Sucursal de recojo" data-pickup>
+    <div class="pickup-panel" data-pickup-panel>
+      <div class="pickup-heading"><span>Elige dónde recoger</span><span class="pickup-hint">Stock de tu carrito</span></div>
+      <div class="pickup-options" data-pickup-options role="group" aria-label="Sucursal de recojo"></div>
+    </div>
+    <select aria-label="Sucursal de recojo" data-pickup hidden>
       @foreach(app(T::class)->sucursales() as $s)
         <option value="{{ $s->id }}" data-wa="{{ $s->whatsapp }}" data-name="{{ $s->nombre }}">{{ $s->nombre }}</option>
       @endforeach
     </select>
+    <p data-cart-stock-warning role="status" hidden style="margin:0;font-size:14px;color:var(--color-accent-2-700)"></p>
     <div data-cart-save-row style="display:flex;justify-content:space-between;font-size:14px;color:var(--color-accent-2-700)"><span>Ahorras</span><span class="tnum" data-cart-save></span></div>
     <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:16px">Total</span><span class="tnum" style="font-size:26px;font-weight:800" data-cart-total></span></div>
     <a class="btn btn-primary btn-block" data-cart-wa href="https://wa.me/{{ $wa }}" target="_blank" rel="noopener" style="text-decoration:none;display:flex;gap:8px;align-items:center;justify-content:center;min-height:48px"><i class="ph-duotone ph-whatsapp-logo" style="font-size:20px"></i>Enviar pedido por WhatsApp</a>

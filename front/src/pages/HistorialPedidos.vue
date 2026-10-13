@@ -593,7 +593,7 @@
                <template v-slot:body-cell-cantidad_aprobada="props">
                   <q-td :props="props">
                     <q-chip dense :color="props.row.cantidad_aprobada !== props.row.cantidad_original ? 'orange' : 'green-2'" :text-color="props.row.cantidad_aprobada !== props.row.cantidad_original ? 'white' : 'green-9'">
-                      {{ props.row.cantidad_aprobada || props.row.cantidad }}
+                      {{ props.row.cantidad_aprobada ?? props.row.cantidad }}
                     </q-chip>
                   </q-td>
                 </template>
@@ -706,6 +706,7 @@
             unelevated
             icon="check_circle"
             @click="aprobarConModificaciones"
+            :disable="cargandoDetalles || !detallesPedido.length || procesandoAccion"
           />
         </q-card-actions>
 
@@ -825,6 +826,8 @@
             unelevated
             :icon="iconoAccion"
             @click="confirmarAccion"
+            :loading="procesandoAccion"
+            :disable="cargandoDetalles || procesandoAccion"
           />
         </q-card-actions>
       </q-card>
@@ -884,6 +887,9 @@ export default {
       pedidos: [],
       pedidoSeleccionado: {},
       detallesPedido: [],
+      cargandoDetalles: false,
+      procesandoAccion: false,
+      solicitudDetalles: 0,
       historialModificaciones: [],
       dialogDetalle: false,
       dialogStock: false,
@@ -1136,12 +1142,21 @@ export default {
     },
 
     async verDetallePedido (pedido) {
+      if (this.procesandoAccion) return
+      const solicitud = ++this.solicitudDetalles
       this.pedidoSeleccionado = pedido
+      this.detallesPedido = []
+      this.detallesParaModificar = []
+      this.historialModificaciones = []
+      this.observacionAccion = ''
+      this.vendedorSeleccionado = null
+      this.cargandoDetalles = true
       this.tab = 'productos'
       this.dialogDetalle = true
 
       try {
         const res = await this.$axios.get(`pedidos/${pedido.id}/detalles`)
+        if (solicitud !== this.solicitudDetalles) return
 
         this.detallesPedido = res.data.detalles.map(d => {
           let accionGuardada = d.accion || d.accion_aplicada
@@ -1163,22 +1178,27 @@ export default {
 
         // Cargar info adicional para TODOS (historial) y stock solo para admin
         if (this.esAdmin) {
-          await this.cargarInfoAdicional()
+          await this.cargarInfoAdicional(pedido.id, solicitud)
         } else {
           // Sucursales: cargar historial de modificaciones
           try {
             const resHist = await this.$axios.get(`pedidos/${pedido.id}/modificaciones`)
-            this.historialModificaciones = resHist.data
+            if (solicitud === this.solicitudDetalles) this.historialModificaciones = resHist.data
           } catch (e) {
-            this.historialModificaciones = []
+            if (solicitud === this.solicitudDetalles) this.historialModificaciones = []
           }
         }
       } catch (error) {
         console.error('Error', error)
+        if (solicitud === this.solicitudDetalles) {
+          this.$q.notify({ color: 'negative', message: 'No se pudieron cargar los productos del pedido. Intente nuevamente.' })
+        }
+      } finally {
+        if (solicitud === this.solicitudDetalles) this.cargandoDetalles = false
       }
     },
 
-    async cargarInfoAdicional () {
+    async cargarInfoAdicional (pedidoId, solicitud) {
       const promesas = this.detallesPedido.map(async (detalle) => {
         try {
           const resStock = await this.$axios.get(`products/${detalle.product_id}/stock-sucursales`)
@@ -1207,14 +1227,20 @@ export default {
       await Promise.all(promesas)
 
       try {
-        const resHist = await this.$axios.get(`pedidos/${this.pedidoSeleccionado.id}/modificaciones`)
-        this.historialModificaciones = resHist.data
+        const resHist = await this.$axios.get(`pedidos/${pedidoId}/modificaciones`)
+        if (solicitud === this.solicitudDetalles) this.historialModificaciones = resHist.data
       } catch (error) {
-        this.historialModificaciones = []
+        if (solicitud === this.solicitudDetalles) this.historialModificaciones = []
       }
     },
 
     async abrirDialogoAccion (accion, row) {
+      if (this.procesandoAccion) return
+      const solicitud = ++this.solicitudDetalles
+      this.cargandoDetalles = true
+      this.detallesPedido = []
+      this.detallesParaModificar = []
+      this.observacionAccion = ''
       // CORRECCIÓN: Usar los nombres correctos definidos en data()
       this.accionActual = accion // Antes decías: this.accionSeleccionada
       this.pedidoSeleccionado = row
@@ -1225,9 +1251,10 @@ export default {
       this.vendedorSeleccionado = null
       this.enviarWhatsapp = true
 
-      if (accion === 'APROBAR' && this.pedidoSeleccionado.proveedor_id) {
+      if (['APROBAR', 'APROBADO'].includes(accion.toUpperCase()) && row.proveedor_id) {
         try {
           const { data } = await this.$axios.get(`vendedores-por-proveedor/${this.pedidoSeleccionado.proveedor_id}`)
+          if (solicitud !== this.solicitudDetalles) return
           this.vendedores = data
 
           if (this.pedidoSeleccionado.vendedor) {
@@ -1246,23 +1273,41 @@ export default {
       }
 
       // Cargar detalles para que no de error si intentas leerlos
-      this.detallesPedido = [] // Usar variable correcta detallesPedido en lugar de detalles
+      if (solicitud !== this.solicitudDetalles) return
       try {
         const { data } = await this.$axios.get(`pedidos/${row.id}/detalles`)
+        if (solicitud !== this.solicitudDetalles) return
         const lista = data.detalles || data
 
         // CORRECCIÓN: Usar this.detallesPedido que es lo que usas en el template
         this.detallesPedido = lista.map(d => ({
           ...d,
-          cantidad_aprobada: d.cantidad_aprobada || d.cantidad,
-          accion_aplicada: d.accion_aplicada || 'SIN_CAMBIOS'
+          cantidad_aprobada: d.cantidad_aprobada ?? d.cantidad,
+          accion_aplicada: d.accion_aplicada
         }))
       } catch (error) {
         console.error(error)
+        if (solicitud === this.solicitudDetalles) {
+          this.dialogAccion = false
+          this.$q.notify({ color: 'negative', message: 'No se pudieron cargar los productos del pedido. Intente nuevamente.' })
+        }
+      } finally {
+        if (solicitud === this.solicitudDetalles) this.cargandoDetalles = false
       }
     },
 
     async confirmarAccion () {
+      if (this.cargandoDetalles || this.procesandoAccion) return
+      const pedido = this.pedidoSeleccionado
+      const vendedor = this.vendedorSeleccionado
+      const enviarWhatsapp = this.enviarWhatsapp
+      const detalles = this.detallesPedido.map(d => ({ ...d }))
+      const modificaciones = this.detallesParaModificar.map(d => ({ ...d }))
+      if (modificaciones.some(m => !detalles.some(d => d.id === m.pedido_detail_id))) {
+        this.$q.notify({ color: 'negative', message: 'Los productos no corresponden al pedido seleccionado. Vuelva a abrirlo.' })
+        return
+      }
+      this.procesandoAccion = true
       try {
         let accionFinal = this.accionActual.toUpperCase()
         if (accionFinal === 'ANULAR') accionFinal = 'ANULADO'
@@ -1270,13 +1315,13 @@ export default {
         if (accionFinal === 'APROBADO') accionFinal = 'APROBADO'
 
         const data = {
-          pedido_id: this.pedidoSeleccionado.id,
+          pedido_id: pedido.id,
           accion: accionFinal,
           observacion: this.observacionAccion
         }
 
-        if (this.detallesParaModificar.length > 0) {
-          data.modificaciones = this.detallesParaModificar
+        if (modificaciones.length > 0) {
+          data.modificaciones = modificaciones
         }
 
         await this.$axios.post('pedidos/accion', data)
@@ -1289,12 +1334,14 @@ export default {
         })
 
         // WHATSAPP AUTOMÁTICO
-        if (this.enviarWhatsapp && this.vendedorSeleccionado && (this.accionActual === 'aprobado' || this.accionActual === 'APROBADO')) {
-          this.enviarMensajeWhatsapp()
+        if (enviarWhatsapp && vendedor && accionFinal === 'APROBADO') {
+          this.enviarMensajeWhatsapp(pedido, detalles, vendedor)
         }
 
         this.dialogAccion = false
         this.dialogDetalle = false
+        this.detallesParaModificar = []
+        this.detallesPedido = []
         this.cargarPedidos()
       } catch (error) {
         this.$q.notify({
@@ -1303,10 +1350,14 @@ export default {
           icon: 'error',
           position: 'top'
         })
+      } finally {
+        this.procesandoAccion = false
       }
     },
 
     async aprobarConModificaciones () {
+      if (this.cargandoDetalles || this.procesandoAccion || !this.detallesPedido.length) return
+      const solicitud = this.solicitudDetalles
       // 1. Preparar los detalles para modificar
       const modificaciones = this.detallesPedido.map(det => ({
         pedido_detail_id: det.id,
@@ -1327,6 +1378,7 @@ export default {
       if (this.pedidoSeleccionado.proveedor_id) {
         try {
           const { data } = await this.$axios.get(`vendedores-por-proveedor/${this.pedidoSeleccionado.proveedor_id}`)
+          if (solicitud !== this.solicitudDetalles) return
           this.vendedores = data
 
           if (this.pedidoSeleccionado.vendedor) {
@@ -1351,7 +1403,7 @@ export default {
         }
       }
 
-      this.dialogAccion = true
+      if (solicitud === this.solicitudDetalles) this.dialogAccion = true
     },
     async cargarStockProducto (productId) {
       try {
@@ -1467,10 +1519,8 @@ export default {
       return detalle.producto_nombre || 'Producto'
     },
 
-    enviarMensajeWhatsapp () {
-      if (!this.vendedorSeleccionado || !this.vendedorSeleccionado.celular) return
-
-      const pedido = this.pedidoSeleccionado
+    enviarMensajeWhatsapp (pedido, detalles, vendedor) {
+      if (!vendedor || !vendedor.celular) return
       const sucursal = pedido.agencia ? pedido.agencia.nombre : 'Principal'
       let direccion = pedido.agencia?.direccion
       if (!direccion && pedido.agencia_id && this.agencias?.length) {
@@ -1480,7 +1530,7 @@ export default {
       // Usamos tu función formatFecha si existe, sino usamos la fecha directa
       const fecha = typeof this.formatFecha === 'function' ? this.formatFecha(pedido.fecha_pedido) : pedido.fecha_pedido
       // 1. CABECERA ELEGANTE
-      let texto = `👋 *HOLA ${this.vendedorSeleccionado.nombre.toUpperCase()}*\n`
+      let texto = `👋 *HOLA ${vendedor.nombre.toUpperCase()}*\n`
       texto += 'Le envío una nueva orden de compra aprobada. 📝\n\n'
       // 2. DATOS DEL PEDIDO (Bloque separado)
       texto += '━━━━━━━━━━━━━━━━━━\n'
@@ -1496,9 +1546,9 @@ export default {
       // 3. DETALLE DE PRODUCTOS
       texto += '📦 *LISTA DE PRODUCTOS:*\n'
 
-      this.detallesPedido.forEach(d => {
+      detalles.forEach(d => {
         const accion = d.accion_recomendada || d.accion_aplicada
-        const cantidad = d.cantidad_aprobada || d.cantidad
+        const cantidad = d.cantidad_aprobada ?? d.cantidad
 
         // Solo enviamos lo que tiene acción COMPRAR y cantidad > 0
         if ((accion === 'COMPRAR' || !accion) && cantidad > 0) {
@@ -1515,7 +1565,7 @@ export default {
       texto += '✅ *Por favor confirmar recepción.*'
 
       // Limpieza del número de celular
-      let celular = this.vendedorSeleccionado.celular.replace(/\D/g, '')
+      let celular = vendedor.celular.replace(/\D/g, '')
       if (celular.length === 8) celular = '591' + celular // Prefijo Bolivia
 
       // Abrir WhatsApp

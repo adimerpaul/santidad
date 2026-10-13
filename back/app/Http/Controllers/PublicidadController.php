@@ -154,14 +154,18 @@ class PublicidadController extends Controller
         ]);
         $agencia = $data['agencia_id'] ?? null;
 
-        // $states = app(PublicidadSyncService::class)->publish($agencia ? (int) $agencia : null, true, $data['start_id'] ?? null);
+        $states = app(PublicidadSyncService::class)->publish($agencia ? (int) $agencia : null, true, $data['start_id'] ?? null);
         // $legacyItems = collect($states)->flatMap(fn ($state) => $state['items'])->unique('id')->values();
         // app(PublicidadSyncService::class)->notify('publicidad_play', [
         //     'agencia_id' => $agencia, 'start_id' => $data['start_id'] ?? null, 'items' => $legacyItems,
         // ]);
         // $items = $legacyItems->count();
-        $items = 0;
-        return response()->json(['message' => 'Programación guardada; se enviará a las pantallas', 'items' => $items]);
+        $items = collect($states)->flatMap(fn ($state) => $state['items'])->unique('id')->count();
+        $pending = DB::table('publicidad_schedules')->whereIn('agencia_id', array_column($states, 'agencia_id'))->where('pending', true)->exists();
+        return response()->json(['message' => $pending
+            ? 'Programación guardada, pero el socket no respondió. Compruebe su conexión y vuelva a pulsar Reproducir.'
+            : 'Programación enviada al socket; las pantallas se sincronizarán al terminar las descargas.',
+            'items' => $items, 'pending' => $pending]);
     }
 
     public function toggleActive(Request $request, $id)

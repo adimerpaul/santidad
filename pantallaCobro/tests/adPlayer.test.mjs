@@ -29,6 +29,26 @@ const state = (revision, epoch = 1000, ids = [1]) => ({ protocol: 2, ready: true
   items: ids.map(id => ({ id, type: 'image', name: 'Test', file_id: id + '.png', media_version: String(id), url: 'https://example.com/' + id, duration_ms: 10000 })) })
 const settle = () => new Promise(resolve => setImmediate(resolve))
 
+test('video duration is reported over socket without HTTP and a ready update of the same revision activates', async () => {
+  const { api, statuses } = player()
+  api.clock(1000)
+  const pending = state(1)
+  pending.ready = false
+  pending.items[0].type = 'video'
+  pending.items[0].duration_ms = null
+  api.receiveSchedule(pending); await settle()
+  assert.equal(api.manifest, null)
+  const measurement = statuses.find(s => s.event === 'ad_durations')
+  assert.equal(measurement.data.revision, 1)
+  assert.equal(measurement.data.items[0].duration_ms, 30000)
+  const ready = { ...pending, ready: true, epoch_ms: 5000,
+    items: [{ ...pending.items[0], duration_ms: 30000 }] }
+  api.receiveSchedule(ready); await settle()
+  api.clock(6000); api.syncPlayback()
+  assert.equal(api.manifest.revision, 1)
+  assert.equal(api.manifest.ready, true)
+});
+
 test('cobro prepares once, waits for activation and replays identical files with a new revision', async () => {
   const { api, downloads } = player()
   api.clock(500)

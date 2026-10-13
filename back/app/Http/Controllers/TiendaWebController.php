@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Services\TiendaWebService;
+use App\Services\RelatedProductsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -125,10 +126,8 @@ class TiendaWebController extends Controller
             return redirect($p->url, 301);
         }
 
-        $relacionados = $producto->category_id
-            ? $this->listar(['category_id' => $producto->category_id, 'per_page' => 9], $sucursales)
-                ->reject(fn ($r) => $r->id === $p->id)->take(8)->values()
-            : collect();
+        $relacionados = app(RelatedProductsService::class)->find($producto)
+            ->map(fn ($r) => $this->tienda->presentar($r, $sucursales));
 
         return view('tienda.producto', [
             'p'            => $p,

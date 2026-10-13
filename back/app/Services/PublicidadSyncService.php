@@ -20,9 +20,9 @@ class PublicidadSyncService
         return $row ? json_decode($row->payload, true) : $this->build($agencia);
     }
 
-    private function build(int $agencia, bool $restart = false, ?int $startId = null): array
+    private function build(int $agencia, bool $restart = false, ?int $startId = null, ?int $epoch = null): array
     {
-        return DB::transaction(function () use ($agencia, $restart, $startId) {
+        return DB::transaction(function () use ($agencia, $restart, $startId, $epoch) {
             DB::table('publicidad_schedules')->insertOrIgnore([
                 'agencia_id' => $agencia, 'revision' => 0, 'payload' => '{}',
                 'pending' => true, 'created_at' => now(), 'updated_at' => now(),
@@ -49,7 +49,7 @@ class PublicidadSyncService
             $state = [
                 'protocol' => 2, 'agencia_id' => $agencia, 'revision' => (int) $row->revision + 1,
                 'version' => $version, 'ready' => $ready, 'start_id' => $startId,
-                'epoch_ms' => (int) round(microtime(true) * 1000) + 5000, 'items' => $items,
+                'epoch_ms' => $epoch ?? (int) round(microtime(true) * 1000) + 5000, 'items' => $items,
             ];
             DB::table('publicidad_schedules')->where('agencia_id', $agencia)->update([
                 'revision' => $state['revision'], 'payload' => json_encode($state), 'pending' => true, 'updated_at' => now(),
@@ -68,8 +68,9 @@ class PublicidadSyncService
     {
         $states = [];
         $ids = $agencia ? [$agencia] : Agencia::pluck('id')->all();
+        $epoch = (int) round(microtime(true) * 1000) + 5000;
         foreach ($ids as $id) {
-            $state = $this->build((int) $id, $restart, $startId);
+            $state = $this->build((int) $id, $restart, $startId, $epoch);
             $states[] = $state;
             DB::afterCommit(fn () => $this->deliver($state));
         }

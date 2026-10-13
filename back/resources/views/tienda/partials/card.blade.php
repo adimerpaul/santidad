@@ -9,6 +9,9 @@
   <div class="pcard-body">
     <span class="pcard-lab ellipsis">{{ $p->lab ?: 'Santidad Divina' }}</span>
     <h3 class="pcard-name"><a href="{{ $p->url }}">{{ $p->nombre }}</a></h3>
+    @if($p->promocionEtiqueta)
+      <span class="product-promo" title="{{ $p->promocionEtiqueta }}"><i class="ph-duotone ph-tag" aria-hidden="true"></i><span>{{ $p->promocionEtiqueta }}</span></span>
+    @endif
     <span class="pcard-avail" style="color:{{ $p->colorDisp }}"><i class="ph-duotone ph-package" aria-hidden="true"></i>{{ $p->disponibilidad }}</span>
     <span class="pcard-price">
       <strong class="tnum">{{ $T::bs($p->precio) }}</strong>

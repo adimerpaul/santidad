@@ -20,7 +20,7 @@ const String _env = String.fromEnvironment(
   'ENV',
   defaultValue: kReleaseMode ? 'production' : 'development',
 );
-const String appVersion = 'v6.4.0';
+const String appVersion = 'v11.10.26';
 const MethodChannel _autoStartChannel = MethodChannel(
   'com.santidad.app/autostart',
 );
@@ -120,10 +120,7 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
   Map<String, dynamic>? _manifest, _desired, _preparedManifest;
   List<Map<String, dynamic>>? _preparedItems;
   Timer? _syncTimer, _clockTimer, _prepareRetry, _bootstrapRetry, _clockRetry;
-  bool _preparing = false,
-      _bootstrapBusy = false,
-      _foreground = true,
-      _mediaFailed = false;
+  bool _preparing = false, _foreground = true, _mediaFailed = false;
   bool _aligning = false;
   bool _socketClock = false;
   int _retrySeconds = 5;
@@ -146,10 +143,6 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
     _syncTimer = Timer.periodic(
       const Duration(milliseconds: 250),
       (_) => _syncPlayback(),
-    );
-    _clockTimer = Timer.periodic(
-      const Duration(minutes: 5),
-      (_) => _requestClock(),
     );
     _initApp();
   }
@@ -212,9 +205,6 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
 
       _startupReady = true;
       _initSocket();
-      _bootstrapRetry = Timer(const Duration(seconds: 5), () {
-        if (_desired == null && !(socket?.connected ?? false)) _loadPlaylist();
-      });
     } finally {
       _initializing = false;
     }
@@ -352,10 +342,6 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
     final start = _serverClock.tick;
     var completed = false;
     _clockRetry?.cancel();
-    _clockRetry = Timer(const Duration(seconds: 15), () {
-      if (!completed && mounted && scope == _scope)
-        _requestClock(register: true);
-    });
     connection.emitWithAck(
       register ? 'ad_register' : 'ad_clock',
       {
@@ -371,25 +357,12 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
           return;
         completed = true;
         _clockRetry?.cancel();
-        if (data['success'] != true) {
-          _clockRetry = Timer(
-            const Duration(seconds: 15),
-            () => _requestClock(register: true),
-          );
-          return;
-        }
+        if (data['success'] != true) return;
         if (!_socketClock) _serverClock.clear();
         _socketClock = true;
         if (data['server_time_ms'] is num)
           _serverClock.sample(data['server_time_ms'], start, _serverClock.tick);
         if (data['schedule'] is Map) _receiveSchedule(data['schedule']);
-        if (data['needs_snapshot'] == true) _loadPlaylist();
-        if (data['pending_bootstrap'] == true) {
-          _clockRetry = Timer(
-            const Duration(seconds: 16),
-            () => _requestClock(register: true),
-          );
-        }
         _syncPlayback();
       },
     );
@@ -404,7 +377,16 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
         data['revision'] is! int)
       return;
     socket?.emit('ad_received', {'revision': data['revision']});
-    if (_desired != null && data['revision'] <= _desired!['revision']) return;
+    if (data['server_time_ms'] is num) {
+      _serverClock.clear();
+      final tick = _serverClock.tick;
+      _serverClock.sample(data['server_time_ms'], tick, tick);
+    }
+    if (_desired != null &&
+        (data['revision'] < _desired!['revision'] ||
+            (data['revision'] == _desired!['revision'] &&
+                (_desired!['ready'] == true || data['ready'] != true))))
+      return;
     _desired = Map<String, dynamic>.from(data);
     _preparedManifest = null;
     _preparedItems = null;
@@ -635,43 +617,9 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
     }
   }
 
-  /// Única consulta HTTP de publicidad: al iniciar la app o al cambiar de sucursal.
+  // La recuperación usa únicamente la programación persistida en el socket.
   Future<void> _loadPlaylist() async {
-    if (!mounted || _agenciaId == null || _bootstrapBusy) return;
-    _bootstrapBusy = true;
-    final scope = _scope;
-    final start = _serverClock.tick;
-    try {
-      final response =
-          await Dio(
-            BaseOptions(
-              connectTimeout: const Duration(seconds: 15),
-              receiveTimeout: const Duration(seconds: 30),
-            ),
-          ).get(
-            apiBaseUrl + '/publicidad-sync',
-            queryParameters: {'agencia_id': _agenciaId},
-          );
-      if (!mounted || scope != _scope) return;
-      final state = response.data;
-      if (state is! Map || state['protocol'] != 2)
-        throw StateError('Backend de publicidad pendiente de actualizar');
-      if (!_socketClock)
-        _serverClock.sample(state['server_time_ms'], start, _serverClock.tick);
-      _receiveSchedule(state);
-    } catch (e) {
-      print('Advertising startup failed: $e');
-      if (mounted && scope == _scope) {
-        _bootstrapRetry?.cancel();
-        _bootstrapRetry = Timer(
-          Duration(seconds: _retrySeconds),
-          _loadPlaylist,
-        );
-        _retrySeconds = (_retrySeconds * 2).clamp(5, 300);
-      }
-    } finally {
-      _bootstrapBusy = false;
-    }
+    _requestClock(register: true);
   }
 
   Future<void> _prepareSchedule() async {
@@ -706,20 +654,11 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
       }
       if (!mounted || scope != _scope || state != _desired) return;
       if (durations.isNotEmpty) {
-        final dio = Dio(
-          BaseOptions(
-            connectTimeout: const Duration(seconds: 15),
-            receiveTimeout: const Duration(seconds: 30),
-          ),
-        );
         for (var i = 0; i < durations.length; i += 100) {
-          await dio.post(
-            apiBaseUrl + '/publicidad-sync/durations',
-            data: {
-              'agencia_id': int.parse(_agenciaId!),
-              'items': durations.skip(i).take(100).toList(),
-            },
-          );
+          socket?.emit('ad_durations', {
+            'revision': state['revision'],
+            'items': durations.skip(i).take(100).toList(),
+          });
         }
         return;
       }

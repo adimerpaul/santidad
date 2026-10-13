@@ -298,8 +298,7 @@ export default {
         start_id: row ? row.id : null
       })
         .then(res => {
-          const desde = row ? `desde "${row.name}"` : 'desde el inicio'
-          this.$q.notify({ message: `Orden de reproducción guardada ${desde} (${res.data.items} publicidades)`, color: 'positive' })
+          this.$q.notify({ message: `${res.data.message} (${res.data.items} publicidades)`, color: res.data.pending ? 'warning' : 'positive' })
         })
         .catch(err => {
           this.$q.notify({ message: 'Error: ' + (err.response?.data?.error || err.message), color: 'negative' })

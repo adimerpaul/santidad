@@ -18,7 +18,7 @@
     <div>
       <ul class="suc-list">
         @foreach($sucursales as $s)
-          <li itemscope itemtype="https://schema.org/Pharmacy">
+          <li class="suc-card" itemscope itemtype="https://schema.org/Pharmacy">
             <button type="button" class="suc-btn {{ $sel && $s->id === $sel->id ? 'on' : '' }}" aria-pressed="{{ $sel && $s->id === $sel->id ? 'true' : 'false' }}"
                     data-suc-item data-id="{{ $s->id }}" data-dir="{{ $s->comoLlegar }}" data-tel="{{ $s->telHref }}" data-wa="{{ $s->whatsapp }}" data-name="{{ $s->nombre }}">
               <span style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline">
@@ -28,6 +28,16 @@
               <span style="font-size:14.5px" itemprop="address">{{ $s->direccion }}, Oruro</span>
               <span class="muted" style="font-size:13.5px">{{ $s->horario }}@if($s->telefono) · Tel. <span itemprop="telephone">{{ $s->telefono }}</span>@endif</span>
             </button>
+            @if($s->whatsappHref || $s->whatsappTurno2Href)
+              <div class="suc-contacts" aria-label="WhatsApp de {{ $s->nombre }}">
+                @if($s->whatsappHref)
+                  <a class="suc-whatsapp" href="{{ $s->whatsappHref }}" target="_blank" rel="noopener"><i class="ph-duotone ph-whatsapp-logo" aria-hidden="true"></i><span>WhatsApp <strong>Turno 1</strong></span><i class="ph-duotone ph-arrow-up-right" aria-hidden="true"></i></a>
+                @endif
+                @if($s->whatsappTurno2Href)
+                  <a class="suc-whatsapp" href="{{ $s->whatsappTurno2Href }}" target="_blank" rel="noopener"><i class="ph-duotone ph-whatsapp-logo" aria-hidden="true"></i><span>WhatsApp <strong>Turno 2</strong></span><i class="ph-duotone ph-arrow-up-right" aria-hidden="true"></i></a>
+                @endif
+              </div>
+            @endif
           </li>
         @endforeach
       </ul>
@@ -35,7 +45,6 @@
         <div style="display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px 0">
           <a class="btn btn-primary" href="{{ $sel->comoLlegar ?: '#' }}" target="_blank" rel="noopener" data-suc-dir style="text-decoration:none;display:flex;gap:8px;align-items:center"><i class="ph-duotone ph-navigation-arrow"></i>Cómo llegar</a>
           <a class="btn btn-secondary" href="{{ $sel->telHref ?: '#' }}" data-suc-tel style="text-decoration:none;display:flex;gap:8px;align-items:center"><i class="ph-duotone ph-phone"></i>Llamar</a>
-          <a class="btn btn-secondary" href="https://wa.me/{{ $sel->whatsapp ?: \App\Services\TiendaWebService::WHATSAPP }}" target="_blank" rel="noopener" data-suc-wa style="text-decoration:none;display:flex;gap:8px;align-items:center"><i class="ph-duotone ph-whatsapp-logo"></i>WhatsApp</a>
         </div>
       @endif
     </div>

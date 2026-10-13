@@ -355,7 +355,7 @@ import { backendAddress, socketTarget, normalizeTerminalConfig } from '../utils/
 const configured = ref(false)
 const showConfigModal = ref(false)
 const loadingAgencias = ref(false)
-const appVersion = ref('0.0.9')
+const appVersion = ref('11.10.26')
 
 const config = ref({
   serverIp: process.env.SERVER_IP || 'http://192.168.100.2:8000',
@@ -397,7 +397,6 @@ let adClockRetry = null
 let bootstrapTimer = null
 let retryDelay = 5000
 let socketClock = false
-let bootstrapBusy = false
 let lastVideoProgress = 0
 let slotEndsAt = 0
 let lastVideoPosition = -1
@@ -599,30 +598,8 @@ function retryAdvertising(task) {
   retryDelay = Math.min(retryDelay * 2, 300000)
 }
 
-// Only on startup, missing socket state or recovery from an actual error.
-async function fetchPlaylist() {
-  if (!configured.value || destroyed || bootstrapBusy) return
-  ensureAdScope()
-  const scope = scopeKey()
-  const start = performance.now()
-  bootstrapBusy = true
-  try {
-    const state = await fetchJson(
-      config.value.serverIp.replace(/\/$/, '') +
-        '/api/publicidad-sync?agencia_id=' +
-        config.value.agencia,
-    )
-    if (scope !== scopeKey() || destroyed) return
-    if (!socketClock) serverClock.sample(state.server_time_ms, start, performance.now())
-    receiveSchedule(state)
-    retryDelay = 5000
-  } catch (error) {
-    console.error('Advertising bootstrap failed:', error)
-    if (scope === scopeKey()) retryAdvertising(fetchPlaylist)
-  } finally {
-    bootstrapBusy = false
-  }
-}
+// Recuperar únicamente desde el socket, sin consultar la API.
+async function fetchPlaylist() { requestAdClock(true) }
 
 function requestAdClock(register = false) {
   if (!socketConn?.connected || destroyed) return
@@ -638,20 +615,11 @@ function requestAdClock(register = false) {
     },
     (error, response) => {
       if (destroyed || connection !== socketConn || scope !== scopeKey()) return
-      if (error || !response?.success) {
-        clearTimeout(adClockRetry)
-        adClockRetry = setTimeout(() => requestAdClock(true), 15000)
-        return
-      }
+      if (error || !response?.success) return
       if (!socketClock) serverClock.samples = []
       socketClock = true
       serverClock.sample(response.server_time_ms, start, performance.now())
       if (response.schedule) receiveSchedule(response.schedule)
-      if (response.needs_snapshot) fetchPlaylist()
-      if (response.pending_bootstrap) {
-        clearTimeout(adClockRetry)
-        adClockRetry = setTimeout(() => requestAdClock(true), 16000)
-      }
       syncPlayback()
     },
   )
@@ -666,7 +634,13 @@ function receiveSchedule(state) {
   )
     return
   socketConn?.emit('ad_received', { revision: state.revision })
-  if (desiredManifest && state.revision <= desiredManifest.revision) return
+  if (Number.isFinite(state.server_time_ms)) {
+    serverClock.samples = []
+    const tick = performance.now()
+    serverClock.sample(state.server_time_ms, tick, tick)
+  }
+  if (desiredManifest && (state.revision < desiredManifest.revision ||
+    (state.revision === desiredManifest.revision && (desiredManifest.ready || !state.ready)))) return
   desiredManifest = state
   preparedManifest = preparedItems = null
   clearTimeout(retryTimer)
@@ -708,15 +682,9 @@ async function prepareSchedule() {
     }
     if (scope !== scopeKey() || state !== desiredManifest || destroyed) return
     if (durations.length) {
-      const base = config.value.serverIp.replace(/\/$/, '')
       for (let i = 0; i < durations.length; i += 100)
-        await fetchJson(base + '/api/publicidad-sync/durations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            agencia_id: Number(config.value.agencia),
-            items: durations.slice(i, i + 100),
-          }),
+        socketConn?.emit('ad_durations', {
+          revision: state.revision, items: durations.slice(i, i + 100),
         })
       return // A new ready revision arrives through the socket.
     }
@@ -954,9 +922,6 @@ function isTargetMe(data) {
 function initSocket() {
   ensureAdScope()
   clearTimeout(bootstrapTimer)
-  bootstrapTimer = setTimeout(() => {
-    if (!socketConn?.connected && !desiredManifest) fetchPlaylist()
-  }, 5000)
   if (socketConn) {
     socketConn.removeAllListeners()
     socketConn.disconnect()
@@ -1141,7 +1106,6 @@ function handleKeyPress(e) {
 onMounted(async () => {
   updateTime()
   clockInterval = setInterval(updateTime, 1000)
-  playlistPoll = setInterval(() => requestAdClock(), 300000)
   syncTimer = setInterval(syncPlayback, 250)
   window.addEventListener('keydown', handleKeyPress)
 

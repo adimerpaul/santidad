@@ -492,8 +492,8 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="Cancelar" color="negative" @click="cancelarFactura" />
-          <q-btn label="Crear sin Factura" color="grey" @click="finalizarSinFactura" />
+          <q-btn flat label="Cancelar" color="negative" @click="cancelarFactura" :disable="loadingFactura" />
+          <q-btn :label="compraRegistrada ? 'Finalizar sin Factura' : 'Crear sin Factura'" color="grey" @click="finalizarSinFactura" :disable="loadingFactura" />
           <q-btn label="Guardar Factura" color="primary" @click="crearFacturaCompleta" :loading="loadingFactura" />
         </q-card-actions>
       </q-card>
@@ -537,7 +537,7 @@
 </template>
 
 <script>
-import { date } from 'quasar'
+import { date, uid } from 'quasar'
 import { formatCurrency as formatMoney, roundCurrency, hasProductSavings } from 'src/utils/money'
 
 export default {
@@ -607,6 +607,9 @@ export default {
       crearFactura: true,
       dialogoFactura: false,
       datosCompra: null,
+      compraRegistrada: null,
+      compraEnviada: null,
+      facturaEnviada: null,
       loadingFactura: false,
       loadingPedidoDigital: false,
       dialogVendedor: false,
@@ -635,6 +638,7 @@ export default {
     this.agencia_id = this.$store.agencia_id
   },
   mounted () {
+    this.restaurarCompraPendiente()
     this.proveedoresGet()
     this.productsGet()
     this.categoriesGet()
@@ -681,6 +685,11 @@ export default {
       this.calcularTotalFactura()
     },
     async compraInsert () {
+      if (this.loading || this.loadingFactura) return
+      if (this.datosCompra && (this.compraEnviada || this.compraRegistrada)) {
+        this.dialogoFactura = true
+        return
+      }
       // Validar que todos los productos tengan datos completos
       for (const p of this.$store.productosCompra) {
         p._fechaVencimientoError = false
@@ -764,7 +773,9 @@ export default {
           this.facturaData.numero_factura = this.factura
 
           // Guardar datos de compra temporalmente
+          this.compraRegistrada = this.compraEnviada = this.facturaEnviada = null
           this.datosCompra = {
+            request_id: uid(),
             buys: this.$store.productosCompra.map(p => ({
               id: p.id,
               lote: p.lote,
@@ -814,62 +825,131 @@ export default {
         this.loading = false
       }
     },
+    async registrarCompraParaFactura () {
+      if (this.compraRegistrada) return this.compraRegistrada
+      if (!this.compraEnviada) {
+        this.compraEnviada = JSON.parse(JSON.stringify({
+          ...this.datosCompra,
+          vendedor_id: this.facturaData.vendedor_id
+        }))
+      }
+      this.guardarCompraPendiente()
+      const { data } = await this.$axios.post('compraInsert', this.compraEnviada)
+      if (!Array.isArray(data.buy_ids) || !data.buy_ids.length) throw new Error('No se obtuvieron IDs de compra')
+      this.compraRegistrada = data
+      this.guardarCompraPendiente()
+      return data
+    },
+    cerrarCompraRegistrada () {
+      sessionStorage.removeItem(this.claveCompraPendiente())
+      this.dialogoFactura = false
+      this.$store.productosCompra = []
+      this.$store.pedidoId = null
+      this.datosCompra = this.compraRegistrada = this.compraEnviada = this.facturaEnviada = null
+      this.factura = ''
+      this.resetFacturaData()
+      this.productsGet()
+    },
     async crearFacturaCompleta () {
+      if (this.loadingFactura) return
+      if (!this.facturaData.fecha_compra) {
+        this.$alert.error('Complete los campos obligatorios de la factura')
+        return
+      }
+      this.loadingFactura = true
       try {
-        // Validar datos de factura
-        if (!this.facturaData.fecha_compra) {
-          this.$alert.error('Complete los campos obligatorios de la factura')
-          return
+        const compra = await this.registrarCompraParaFactura()
+        // A lost response must retry the same payload/key, not create another invoice.
+        if (!this.facturaEnviada) {
+          this.facturaEnviada = JSON.parse(JSON.stringify({
+            ...this.facturaData,
+            request_id: this.datosCompra.request_id,
+            detalle_compras: compra.buy_ids,
+            fecha_compra: this.facturaData.fecha_compra.replace('T', ' '),
+            user_id: this.$store.user.id
+          }))
         }
-
-        this.loadingFactura = true
-        this.datosCompra.vendedor_id = this.facturaData.vendedor_id
-        // -----------------------------
-        // --- AGREGAR ESTO: Preparar datos para envío ---
-
-        // 1. Primero crear la compra
-        const compraResponse = await this.$axios.post('compraInsert', this.datosCompra)
-
-        if (!compraResponse.data.buy_ids) {
-          throw new Error('No se obtuvieron IDs de compra')
-        }
-
-        // 2. Crear la factura con los IDs de compra
-        const facturaRequest = {
-          ...this.facturaData,
-          detalle_compras: compraResponse.data.buy_ids,
-          fecha_compra: this.facturaData.fecha_compra.replace('T', ' '),
-          user_id: this.$store.user.id
-        }
-
-        await this.$axios.post('facturas', facturaRequest)
-
+        this.guardarCompraPendiente()
+        await this.$axios.post('facturas', this.facturaEnviada)
         this.$alert.success('Compra y factura creadas exitosamente')
-
-        // Limpiar todo
-        this.dialogoFactura = false
-        this.$store.productosCompra = []
-        this.$store.pedidoId = null
-        this.loadingFactura = false
-        this.productsGet()
-        this.factura = ''
-        this.resetFacturaData()
+        this.cerrarCompraRegistrada()
       } catch (err) {
-        this.$alert.error(err.response?.data?.message || 'Error al crear factura')
+        if (err.response) {
+          this.facturaEnviada = null
+          if (!this.compraRegistrada) this.compraEnviada = null
+        }
+        this.guardarCompraPendiente()
+        const detalle = err.response?.data?.message || err.message || 'Error al crear factura'
+        this.$alert.error(this.compraRegistrada
+          ? `La compra ya está registrada. Reintente la factura; no se volverá a sumar stock. ${detalle}`
+          : `No se pudo confirmar la compra. Reintente para comprobar el resultado sin duplicarla. ${detalle}`)
+      } finally {
         this.loadingFactura = false
       }
     },
     async finalizarSinFactura () {
-      this.dialogoFactura = false
-      await this.procesarCompra({
-        ...this.datosCompra,
-        vendedor_id: this.facturaData.vendedor_id,
-        crear_factura: false
-      })
+      if (this.loadingFactura) return
+      if (this.facturaEnviada) {
+        this.$alert.error('Falta confirmar la respuesta de la factura. Pulse Guardar Factura para recuperar el resultado.')
+        return
+      }
+      this.loadingFactura = true
+      try {
+        await this.registrarCompraParaFactura()
+        this.$alert.success('Compra registrada sin factura')
+        this.cerrarCompraRegistrada()
+      } catch (err) {
+        if (err.response && !this.compraRegistrada) this.compraEnviada = null
+        this.guardarCompraPendiente()
+        this.$alert.error(err.response?.data?.message || 'No se pudo confirmar la compra. Reintente sin duplicarla.')
+      } finally {
+        this.loadingFactura = false
+      }
     },
     cancelarFactura () {
-      this.dialogoFactura = false
-      this.$alert.info('Compra cancelada')
+      if (this.loadingFactura) return
+      if (this.facturaEnviada || (this.compraEnviada && !this.compraRegistrada)) {
+        this.$alert.error('La respuesta del servidor está pendiente. Reintente antes de cerrar para comprobar qué quedó guardado.')
+        return
+      }
+      if (this.compraRegistrada) {
+        this.$alert.info('La compra ya quedó registrada; se cerró sin adjuntar factura.')
+        this.cerrarCompraRegistrada()
+      } else {
+        this.dialogoFactura = false
+        sessionStorage.removeItem(this.claveCompraPendiente())
+        this.datosCompra = null
+        this.$alert.info('Compra cancelada')
+      }
+    },
+    claveCompraPendiente () {
+      return `compra-factura-pendiente:${this.$store.user.id}`
+    },
+    guardarCompraPendiente () {
+      if (!this.datosCompra) return
+      sessionStorage.setItem(this.claveCompraPendiente(), JSON.stringify({
+        datosCompra: this.datosCompra,
+        compraEnviada: this.compraEnviada,
+        compraRegistrada: this.compraRegistrada,
+        facturaEnviada: this.facturaEnviada,
+        facturaData: this.facturaData
+      }))
+    },
+    restaurarCompraPendiente () {
+      const raw = sessionStorage.getItem(this.claveCompraPendiente())
+      if (!raw) return
+      try {
+        const pending = JSON.parse(raw)
+        if (!pending.datosCompra?.request_id) return
+        this.datosCompra = pending.datosCompra
+        this.compraEnviada = pending.compraEnviada
+        this.compraRegistrada = pending.compraRegistrada
+        this.facturaEnviada = pending.facturaEnviada
+        this.facturaData = pending.facturaData
+        this.dialogoFactura = true
+      } catch (err) {
+        this.$alert.error('No se pudo recuperar la compra pendiente. Compruebe Compras antes de registrar otra vez.')
+      }
     },
     resetFacturaData () {
       this.facturaData = {

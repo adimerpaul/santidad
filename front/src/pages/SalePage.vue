@@ -189,6 +189,12 @@
       <div class="col-12 col-md-4">
         <q-card>
           <q-card-section class="q-pa-none q-ma-none ">
+            <div v-if="onlineTickets.length" class="online-ticket-list">
+              <div v-for="ticket in onlineTickets" :key="ticket.number" class="online-ticket">
+                <q-icon :name="ticket.source === 'app' ? 'smartphone' : 'language'" size="22px" />
+                <div><strong>{{ ticket.source === 'app' ? 'PEDIDO · APLICACIÓN MÓVIL' : 'PEDIDO · PÁGINA WEB' }}</strong><span>{{ ticket.number }}</span></div>
+              </div>
+            </div>
             <div class="row">
               <div class="col-6 text-h6 q-pt-xs q-pl-lg">
                 Canasta
@@ -232,6 +238,10 @@
                             <q-icon name="sell" />
                             Precio de venta
                           </div>
+                          <q-badge v-if="props.row.promocion_id && Number(props.row.porcentajeEfectivo) > 0" class="cart-discount-badge">
+                            <q-icon name="local_offer" size="12px" class="q-mr-xs" />
+                            {{ props.row.promocion }} · {{ Number(props.row.porcentajeEfectivo) }}% de descuento
+                          </q-badge>
                           <q-input
                             v-model="props.row.precioVenta"
                             class="cart-sale-price-input"
@@ -904,6 +914,13 @@ export default {
     this.detenerPollingQr()
   },
   computed: {
+    onlineTickets () {
+      const tickets = new Map()
+      this.$store.productosVenta.forEach(p => {
+        if (p.online_order_number) tickets.set(p.online_order_number, { number: p.online_order_number, source: p.online_order_source })
+      })
+      return Array.from(tickets.values())
+    },
     MIN_CARACTERES_BUSQUEDA: () => MIN_CARACTERES_BUSQUEDA,
     buscarMuyCorto () {
       const largo = (this.search || '').trim().length
@@ -1527,7 +1544,8 @@ export default {
         // VERIFICACIÓN EN BACKEND
         const productos = this.$store.productosVenta.map(p => ({
           id: p.id,
-          cantidadVenta: p.cantidadVenta
+          cantidadVenta: p.cantidadVenta,
+          online_order_number: p.online_order_number || null
         }))
 
         const { data: verificacion } = await this.$axios.post('verificar-stock-venta', {
@@ -1544,6 +1562,7 @@ export default {
           producto.porcentajeEfectivo = Number(precioActual.porcentajeEfectivo ?? 0)
           producto.porcentaje = producto.porcentajeEfectivo
           producto.promocion = precioActual.promocion
+          producto.promocion_id = precioActual.promocion_id
         })
 
         this.aporte = 0
@@ -1789,6 +1808,7 @@ export default {
     },
 
     async importarPedidoDesdeApi (orderNumber) {
+      if (this.loadingPedidoOnline) return
       try {
         this.loadingPedidoOnline = true
 
@@ -1800,28 +1820,65 @@ export default {
           this.$alert.error('Ese pedido no tiene ítems o no existe.')
           return
         }
+        orderNumber = order.order_number
+        if (this.$store.productosVenta.some(p => p.online_order_number === orderNumber)) {
+          this.$alert.error('Este pedido ya está en la canasta. Modifique sus cantidades allí.')
+          return
+        }
+        const staged = []
+
+        // Validate current online prices before importing, rather than using physical catalog prices.
+        const { data: verification } = await this.$axios.post('verificar-stock-venta', {
+          agencia_id: this.agencia_id,
+          productos: order.items.map(it => ({
+            id: it.product_id,
+            cantidadVenta: Number(it.quantity ?? it.cantidad ?? 0),
+            online_order_number: orderNumber
+          }))
+        })
+        const onlinePrices = new Map((verification.precios || []).map(p => [Number(p.id), p]))
 
         // Para cada item del pedido: solo usamos product_id y quantity
         for (const it of order.items) {
           const cantidad = Number(it.quantity ?? it.cantidad ?? 0)
           const productId = it.product_id ?? it.id ?? it.productId
 
-          if (!productId || cantidad <= 0) continue
+          if (!productId || !Number.isInteger(cantidad) || cantidad <= 0) throw new Error('El pedido contiene cantidades inválidas.')
 
           const base = await this.obtenerProductoCanonico(productId)
           if (!base) {
-            this.$alert.error(`No se pudo cargar el producto ID ${productId}.`)
-            continue
+            throw new Error(`No se pudo cargar el producto ID ${productId}.`)
           }
 
-          // Agregar tal cual “click” N veces (aplica tus descuentos y validaciones)
-          this.agregarComoClicks(base, cantidad)
+          const existing = this.$store.productosVenta.find(p => Number(p.id) === Number(productId))
+          if (existing && existing.online_order_number !== orderNumber) {
+            this.$alert.error('Retire este producto de la canasta antes de importar un pedido de otro origen.')
+            return
+          }
+          base.online_order_number = orderNumber
+          base.online_order_source = order.source
+          const onlinePrice = onlinePrices.get(Number(productId))
+          if (!onlinePrice) throw new Error('No se pudo verificar el precio online del producto.')
+          base.precio = formatMoney(onlinePrice.precio)
+          base.precioVenta = formatMoney(onlinePrice.precioVenta)
+          base.porcentajeEfectivo = Number(onlinePrice.porcentajeEfectivo ?? 0)
+          base.porcentaje = base.porcentajeEfectivo
+          base.promocion = onlinePrice.promocion
+          base.promocion_id = onlinePrice.promocion_id
+          if (cantidad > Number(base.cantidadReal)) throw new Error(`Stock insuficiente para ${base.nombre}.`)
+          base.cantidadVenta = cantidad
+          base.cantidadPedida = cantidad
+          base.cantidad = Number(base.cantidadReal) - cantidad
+          staged.push(base)
         }
+
+        // Commit once: failures above leave the original basket untouched.
+        this.$store.productosVenta.push(...staged)
 
         this.$alert.success(`Pedido ${orderNumber} importado a la canasta.`)
       } catch (e) {
         console.error(e)
-        this.$alert.error(e?.response?.data?.message || 'No se pudo recuperar el pedido.')
+        this.$alert.error(e?.response?.data?.message || e.message || 'No se pudo recuperar el pedido.')
       } finally {
         this.loadingPedidoOnline = false
       }
@@ -1831,10 +1888,11 @@ export default {
       // 1) ¿Ya está cargado en tu grid?
       const enGrid = this.products.find(p => p.id === id)
       if (enGrid) {
-        // Aseguramos campos que usa tu canasta
-        if (!Array.isArray(enGrid.buys)) this.$set(enGrid, 'buys', [])
-        if (typeof enGrid.cantidadReal !== 'number') enGrid.cantidadReal = Number(enGrid.cantidad ?? 0)
-        return enGrid
+        // Online pricing and lot selection belong only to this basket, never to the grid.
+        const copy = JSON.parse(JSON.stringify(enGrid))
+        if (!Array.isArray(copy.buys)) copy.buys = []
+        if (typeof copy.cantidadReal !== 'number') copy.cantidadReal = Number(copy.cantidad ?? 0)
+        return copy
       }
 
       // 2) Si no está en el grid, pedir al backend
@@ -2031,6 +2089,11 @@ export default {
 </script>
 
 <style scoped>
+.online-ticket-list { padding: 10px 12px 0; display: grid; gap: 6px; }
+.online-ticket { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid #bce3ed; border-radius: 12px; background: #eff9fc; color: #12627a; }
+.online-ticket strong { display: block; font-size: 11px; letter-spacing: .035em; }
+.online-ticket span { display: block; font-size: 12px; margin-top: 2px; }
+.cart-discount-badge { background: #fff0f6; color: #a52665; border: 1px solid #f2cfe0; border-radius: 8px; font-size: 10px; padding: 4px 6px; margin: 3px 0 6px; }
 .product-sale-price-card__metric--saving,
 .product-sale-price-card__metric--saving small {
   color: #c62828;

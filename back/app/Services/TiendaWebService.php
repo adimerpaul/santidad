@@ -46,7 +46,9 @@ class TiendaWebService
                 'direccion' => $a['direccion'] ?: 'Oruro',
                 'telefono'  => $tel,
                 'telHref'   => $tel !== '' ? 'tel:+5912' . preg_replace('/\D/', '', $tel) : null,
-                'whatsapp'  => preg_replace('/\D/', '', (string) ($a['whatsapp'] ?? '')),
+                'whatsapp'  => $this->whatsappNumero($a['whatsapp'] ?? ''),
+                'whatsappHref' => $this->whatsappUrl($a['whatsapp'] ?? ''),
+                'whatsappTurno2Href' => $this->whatsappUrl($a['whatsapp_turno_2'] ?? ''),
                 'horario'   => trim(($a['horario'] ?? '') . (!empty($a['atencion']) ? ' · ' . $a['atencion'] : '')),
                 'h24'       => $horas['h24'],
                 'abierto'   => $abierto,
@@ -60,6 +62,29 @@ class TiendaWebService
                 'facebook'  => $a['facebook'] ?? null,
             ];
         })->values();
+    }
+
+    private function whatsappNumero(?string $valor): string
+    {
+        $valor = trim((string) $valor);
+        if (preg_match('~^https://wa\.me/(\d{8,15})(?:[/?].*)?$~i', $valor, $m)) {
+            return $m[1];
+        }
+        if (!preg_match('/^[+\d\s()-]+$/', $valor)) {
+            return '';
+        }
+        $numero = preg_replace('/\D/', '', $valor);
+        return preg_match('/^\d{8,15}$/', $numero) ? $numero : '';
+    }
+
+    private function whatsappUrl(?string $valor): ?string
+    {
+        $valor = trim((string) $valor);
+        $numero = $this->whatsappNumero($valor);
+        if ($numero !== '') {
+            return 'https://wa.me/' . $numero;
+        }
+        return preg_match('~^https://(?:wa\.link|walink\.co)/[a-z0-9]+/?$~i', $valor) ? $valor : null;
     }
 
     public function categorias(): Collection
@@ -185,6 +210,7 @@ class TiendaWebService
             'pct'         => $pct,
             'descuento'   => $pct > 0,
             'promocion'   => $pricing['promocion_nombre'] ?? null,
+            'promocionEtiqueta' => $pricing['promocion_etiqueta'] ?? null,
             'stock'       => $stock,
             'total'       => $total,
             'agotado'     => $total <= 0,

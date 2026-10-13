@@ -274,6 +274,12 @@ class BuyController extends Controller{
         return Buy::with(['product','user'])->findOrFail($buy->id);
     }
     public function compraInsert(Request $request){
+        return app(\App\Services\PurchaseSubmissionService::class)->run(
+            $request, 'purchase', fn () => $this->registrarCompra($request)
+        );
+    }
+
+    private function registrarCompra(Request $request){
         foreach ($request->buys as $buy) {
             if (
                 isset($buy['lote']) === false || isset($buy['fechaVencimiento']) === false ||

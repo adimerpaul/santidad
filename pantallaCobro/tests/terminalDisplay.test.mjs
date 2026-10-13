@@ -19,6 +19,7 @@ function terminal() {
     watch: (src, cb, opts) => { if (opts?.immediate) cb(typeof src === 'function' ? src() : src?.value) },
     onMounted() {}, onBeforeUnmount() {}, nextTick: () => Promise.resolve(), window: {},
     fetchJson: async () => [],
+    performance: { now: () => 0 },
     localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     setTimeout: fn => { timers.set(++timerId, fn); return timerId }, clearTimeout: id => timers.delete(id),
     io: (url, options) => {
@@ -32,7 +33,7 @@ function terminal() {
     },
   }
   vm.createContext(context)
-  vm.runInContext(source + '\nfetchPlaylist = () => {}; globalThis.terminal = { config, configDraft, showConfigModal, socketStatus, clientData, qrData, showThanks, saveConfiguration, openConfig, loadLocalConfig, loadCachedPlaylist, playlist, currentIndex, currentAd, syncPlayback, nextAd, playCurrentAd };', context)
+  vm.runInContext(source + '\nfetchPlaylist = () => {}; globalThis.terminal = { config, configDraft, showConfigModal, socketStatus, clientData, qrData, showThanks, saveConfiguration, openConfig, loadLocalConfig, loadCachedPlaylist, playlist, currentIndex, currentAd, syncPlayback, nextAd, playCurrentAd, timeline: (time) => { syncManifest = { ready: true, epoch_ms: 0, items: playlist.value }; serverClock.samples = []; serverClock.sample(time, 0, 0); } };', context)
   const page = context.terminal
   page.configDraft.value = { serverIp: 'localhost:8000/api', socketIp: 'localhost:3000/socket.io', agencia: 1, caja: 2 }
   page.saveConfiguration()
@@ -108,8 +109,8 @@ test('mostrarHora can be toggled and persists in localStorage', () => {
   assert.equal(storage.get('pcpubli_mostrar_hora'), 'false')
 })
 
-test('anti-pullback: when an ad finishes, syncPlayback does not pull back to it even if server clock has residual time', () => {
-  const { page, context } = terminal()
+test('canonical timeline keeps an early ending video in its slot until the shared boundary', () => {
+  const { page } = terminal()
   page.playlist.value = [
     { file_id: 'publicidad/ad1.png', type: 'image', duration_ms: 10000, name: 'Ad 1' },
     { file_id: 'publicidad/ad2.mp4', type: 'video', duration_ms: 50000, name: 'Ad 2' },
@@ -117,24 +118,27 @@ test('anti-pullback: when an ad finishes, syncPlayback does not pull back to it 
   page.currentIndex.value = 0
 
   // Server timeline still points to item 0 with residual time
-  context.syncManifest = { ready: true, epoch_ms: 0, items: page.playlist.value }
-  context.serverClock = { time: 5000 } // middle of item 0
+  page.timeline(5000)
+  page.playCurrentAd()
 
   // Item 0 finishes naturally via nextAd()
   page.nextAd()
 
   // Player must have advanced to item 1
-  assert.equal(page.currentIndex.value, 1)
+  assert.equal(page.currentIndex.value, 0)
 
   // 1 second later, syncPlayback() runs while server timeline is STILL at item 0 (e.g. at 5500ms)
-  context.serverClock = { time: 5500 }
+  page.timeline(5500)
   page.syncPlayback()
 
   // Anti-pullback must keep the player on item 1 instead of reverting to item 0!
+  assert.equal(page.currentIndex.value, 0)
+  page.timeline(10000)
+  page.syncPlayback()
   assert.equal(page.currentIndex.value, 1)
 })
 
-test('anti-loop: consecutive play of the same ad triggers watchdog advance', () => {
+test('reinitializing playback does not skip an advertisement before its duration', () => {
   const { page } = terminal()
   page.playlist.value = [
     { file_id: 'publicidad/ad1.png', type: 'image', duration_ms: 10000, name: 'Ad 1' },
@@ -148,6 +152,6 @@ test('anti-loop: consecutive play of the same ad triggers watchdog advance', () 
 
   // Immediate second play of the same ad (consecutive) triggers anti-loop advancement
   page.playCurrentAd(false)
-  assert.equal(page.currentIndex.value, 1)
+  assert.equal(page.currentIndex.value, 0)
 })
 

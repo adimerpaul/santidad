@@ -209,6 +209,12 @@
                          :class="`bg-${props.row.tipoVenta=='Ingreso'?'green':'red'}-2`" dense flat
                          style="padding: 0px; margin: 0px; border-radius: 0px;position: absolute;top: 5px;left: 0px;"/>
                   <div style="padding-left: 15px">
+                    <div v-if="props.row.online_orders?.length" class="q-mb-xs">
+                      <q-badge v-for="order in props.row.online_orders" :key="order.id" style="background:#edf7fa;color:#17647b;border:1px solid #c5e5ee;border-radius:7px;padding:3px 6px;font-size:10px;margin-right:4px">
+                        <q-icon :name="order.source === 'app' ? 'smartphone' : 'language'" size="12px" class="q-mr-xs" />
+                        {{ order.source === 'app' ? 'App móvil' : 'Página web' }} · {{ order.number }}
+                      </q-badge>
+                    </div>
                     <div class="text-grey q-ml-xs" style="width: 400px; line-height: 0.9;">
                       <span v-for="(item, i) in props.row.concepto.split(',')" :key="i">
                         <span class="text-weight-bold text-primary" style="font-size: 11px;">

@@ -42,13 +42,14 @@ class ProductController extends Controller
                 $errores[] = "Stock insuficiente para '{$producto->nombre}'. Solo hay {$stockDisponible} disponibles.";
             }
 
-            $pricing = $this->promotionPricing->resolve($producto, 'physical', $agencia_id ? (int) $agencia_id : null);
+            $pricing = $this->promotionPricing->resolveSale($producto, $agencia_id ? (int) $agencia_id : null, $item['online_order_number'] ?? null);
             $precios[] = [
                 'id' => (int) $producto->id,
                 'precio' => $pricing['precio_original'],
                 'precioVenta' => $pricing['precio_venta'],
                 'porcentajeEfectivo' => $pricing['porcentaje'],
                 'promocion' => $pricing['promocion_nombre'],
+                'promocion_id' => $pricing['promocion_id'],
             ];
         }
 
@@ -203,6 +204,7 @@ class ProductController extends Controller
             $product->setAttribute('precioVenta', $pricing['precio_venta']);
             $product->setAttribute('porcentajeEfectivo', $pricing['porcentaje']);
             $product->setAttribute('promocion', $pricing['promocion_nombre']);
+            $product->setAttribute('promocion_id', $pricing['promocion_id']);
             if (!file_exists(public_path() . '/images/' . $product->imagen)) {
                 $product->imagen = 'productDefault.jpg';
             }
@@ -403,6 +405,7 @@ class ProductController extends Controller
             $product->setAttribute('precioVenta', $pricing['precio_venta']);
             $product->setAttribute('porcentajeEfectivo', $pricing['porcentaje']);
             $product->setAttribute('promocion', $pricing['promocion_nombre']);
+            $product->setAttribute('promocion_id', $pricing['promocion_id']);
 
             if (empty($product->imagen) || !is_file(public_path('images/' . $product->imagen))) {
                 $product->imagen = 'productDefault.jpg';
@@ -439,6 +442,7 @@ class ProductController extends Controller
         $product->setAttribute('precioVenta', $pricing['precio_venta']);
         $product->setAttribute('porcentajeEfectivo', $pricing['porcentaje']);
         $product->setAttribute('promocion', $pricing['promocion_nombre']);
+            $product->setAttribute('promocion_id', $pricing['promocion_id']);
 
         return $product;
     }

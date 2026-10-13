@@ -9,6 +9,8 @@ use App\Support\Money;
 use App\Services\PromotionPricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class OrderController extends Controller
 {
@@ -20,7 +22,7 @@ class OrderController extends Controller
   {
     $data = $request->validate([
       'items' => 'required|array|min:1',
-      'items.*.product_id' => 'nullable|integer|exists:products,id',
+      'items.*.product_id' => 'required|integer|exists:products,id',
       'items.*.nombre' => 'required|string',
       'items.*.precio' => 'required|numeric|min:0',
       'items.*.cantidad' => 'required|integer|min:1',
@@ -30,12 +32,28 @@ class OrderController extends Controller
       'customer.phone' => 'nullable|string',
       'customer.address' => 'nullable|string',
       'source' => 'nullable|string|max:50',
-      'sucursal_id' => 'nullable|integer',
+      'sucursal_id' => ['nullable', 'integer', Rule::exists('agencias', 'id')->where('status', 'ACTIVO')],
       'sucursal_nombre' => 'nullable|string',
     ]);
 
     $order = DB::transaction(function () use ($data) {
       $agenciaId = !empty($data['sucursal_id']) ? (int) $data['sucursal_id'] : null;
+      if ($agenciaId !== null) {
+        // Sumar filas repetidas: dividir un producto no permite superar el stock.
+        $cantidades = collect($data['items'])->groupBy('product_id')
+          ->map(fn ($filas) => $filas->sum('cantidad'));
+        $productos = Product::whereIn('id', $cantidades->keys())->lockForUpdate()->get()->keyBy('id');
+        foreach ($cantidades as $productId => $cantidad) {
+          $producto = $productos->get($productId);
+          $disponible = $producto ? max(0, (int) ($producto->{'cantidadSucursal'.$agenciaId} ?? 0)) : 0;
+          if (!$producto || $producto->activo !== 'ACTIVO' || $cantidad > $disponible) {
+            throw ValidationException::withMessages([
+              'items' => 'Stock insuficiente en la sucursal seleccionada para '.($producto->nombre ?? 'el producto')
+                .'. Disponible: '.$disponible.'. Reduzca la cantidad o elija otra sucursal.',
+            ]);
+          }
+        }
+      }
       $channel = ($data['source'] ?? 'web') === 'app' ? 'app' : 'web';
       $items = collect($data['items'])->map(function ($item) use ($agenciaId, $channel) {
         $product = !empty($item['product_id']) ? Product::find($item['product_id']) : null;
@@ -128,6 +146,9 @@ class OrderController extends Controller
   public function showByNumber(string $orderNumber)
   {
     $order = Order::with('items')->where('order_number', $orderNumber)->firstOrFail();
+    if (in_array($order->status, ['sold', 'cancelled'], true)) {
+      return response()->json(['message' => 'Este pedido ya fue vendido o cancelado y no se puede importar.'], 422);
+    }
     return response()->json($order);
   }
 
