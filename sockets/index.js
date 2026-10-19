@@ -10,8 +10,7 @@ const io = new Server(server, {
   }
 });
 app.use(express.json({ limit: '2mb' }));
-const { attachAdvertising } = require('./advertising');
-const advertising = attachAdvertising(io, process.env.AD_STATE_DIR ? { directory: process.env.AD_STATE_DIR } : {});
+const advertising = require('./publicidad')(io);
 
 // Enable CORS for HTTP requests (like /notify)
 app.use((req, res, next) => {

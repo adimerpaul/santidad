@@ -1,4 +1,4 @@
-package com.example.san2
+package com.adimer.san2
 
 import io.flutter.embedding.android.FlutterActivity
 

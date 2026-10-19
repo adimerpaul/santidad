@@ -2,7 +2,7 @@ name: san2
 description: "App de pre-venta Farmacia Santidad — pedidos, stock por sucursal y sucursales en mapa."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 6.0.0+6
 
 environment:
   sdk: ^3.12.2
