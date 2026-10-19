@@ -29,7 +29,7 @@
           <img
             v-else
             class="fullscreen-media"
-            :src="mediaFailed ? '/publi.png' : currentAd.url"
+            :src="mediaFailed ? 'publi.png' : currentAd.url"
             alt="Publicidad"
             @error="onVideoError"
           />
@@ -625,6 +625,20 @@ function requestAdClock(register = false) {
   )
 }
 
+// Keep files referenced by every saved environment/branch, not only the visible one.
+function retainedMediaIds(extra = []) {
+  const ids = new Set(extra.map(localMediaId))
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    if (!key?.startsWith('pcpubli_sync_cache:')) continue
+    try {
+      const cached = JSON.parse(localStorage.getItem(key))
+      for (const ad of cached?.items || []) ids.add(localMediaId(ad))
+    } catch { /* Leave malformed cache for restoration to report. */ }
+  }
+  return [...ids]
+}
+
 function receiveSchedule(state) {
   if (
     destroyed ||
@@ -641,6 +655,12 @@ function receiveSchedule(state) {
   }
   if (desiredManifest && (state.revision < desiredManifest.revision ||
     (state.revision === desiredManifest.revision && (desiredManifest.ready || !state.ready)))) return
+  // Older production relays broadcast schedules without a server clock sample.
+  // Use the device clock only in that case; no HTTP polling is required.
+  if (serverClock.time === null) {
+    const tick = performance.now()
+    serverClock.sample(Date.now(), tick, tick)
+  }
   desiredManifest = state
   preparedManifest = preparedItems = null
   clearTimeout(retryTimer)
@@ -657,7 +677,7 @@ async function prepareSchedule() {
   try {
     // Free abandoned downloads while retaining the active and incoming schedules.
     if (window.mediaAPI)
-      await window.mediaAPI.cleanup([...playlist.value, ...state.items].map(localMediaId))
+      await window.mediaAPI.cleanup(retainedMediaIds([...playlist.value, ...state.items]))
     const prepared = []
     const durations = []
     for (const raw of state.items) {
@@ -724,10 +744,12 @@ function activatePrepared() {
   )
   socketConn?.emit('ad_status', { revision: syncManifest.revision, status: 'applied' })
   // No download is active here; the old playlist is no longer in use.
-  window.mediaAPI?.cleanup(playlist.value.map(localMediaId)).catch(console.error)
+  window.mediaAPI?.cleanup(retainedMediaIds(playlist.value)).catch(console.error)
 }
 
-function loadCachedPlaylist() {
+async function loadCachedPlaylist() {
+  const scope = scopeKey()
+  const pendingAtStart = desiredManifest
   try {
     let cached = JSON.parse(localStorage.getItem(cacheKey()) || 'null')
     if (!cached && legacyCacheAllowed) {
@@ -746,14 +768,20 @@ function loadCachedPlaylist() {
     legacyCacheAllowed = false
     if (!cached?.items?.length) return
     // Rebuild old cached URLs too, including when starting without internet.
-    playlist.value = cached.items.map((ad) => ({
+    const available = []
+    for (const ad of cached.items) {
+      if (!window.mediaAPI || await window.mediaAPI.exists(localMediaId(ad))) available.push(ad)
+    }
+    // A slow disk check must never overwrite a new publication or another branch.
+    if (destroyed || scope !== scopeKey() || desiredManifest !== pendingAtStart) return
+    playlist.value = available.map((ad) => ({
       ...ad,
       url:
         window.mediaAPI && ad.url?.startsWith('localmedia://')
           ? localMediaUrl(localMediaId(ad))
           : ad.url,
     }))
-    syncManifest = cached.manifest
+    syncManifest = available.length === cached.items.length ? cached.manifest : null
     currentIndex.value = 0
     // Without a fresh server sample, offline startup uses sequential playback.
     // It joins the shared timeline as soon as the connection returns.

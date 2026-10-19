@@ -20,7 +20,7 @@ function terminal() {
     onMounted() {}, onBeforeUnmount() {}, nextTick: () => Promise.resolve(), window: {},
     fetchJson: async () => [],
     performance: { now: () => 0 },
-    localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
+    localStorage: { get length() { return storage.size }, key: i => [...storage.keys()][i], getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
     setTimeout: fn => { timers.set(++timerId, fn); return timerId }, clearTimeout: id => timers.delete(id),
     io: (url, options) => {
       const socket = { url, options, connected: false, handlers: {},
@@ -33,7 +33,7 @@ function terminal() {
     },
   }
   vm.createContext(context)
-  vm.runInContext(source + '\nfetchPlaylist = () => {}; globalThis.terminal = { config, configDraft, showConfigModal, socketStatus, clientData, qrData, showThanks, saveConfiguration, openConfig, loadLocalConfig, loadCachedPlaylist, playlist, currentIndex, currentAd, syncPlayback, nextAd, playCurrentAd, timeline: (time) => { syncManifest = { ready: true, epoch_ms: 0, items: playlist.value }; serverClock.samples = []; serverClock.sample(time, 0, 0); } };', context)
+  vm.runInContext(source + '\nfetchPlaylist = () => {}; globalThis.terminal = { config, configDraft, showConfigModal, socketStatus, clientData, qrData, showThanks, saveConfiguration, openConfig, loadLocalConfig, loadCachedPlaylist, retainedMediaIds, playlist, currentIndex, currentAd, syncPlayback, nextAd, playCurrentAd, timeline: (time) => { syncManifest = { ready: true, epoch_ms: 0, items: playlist.value }; serverClock.samples = []; serverClock.sample(time, 0, 0); } };', context)
   const page = context.terminal
   page.configDraft.value = { serverIp: 'localhost:8000/api', socketIp: 'localhost:3000/socket.io', agencia: 1, caja: 2 }
   page.saveConfiguration()
@@ -86,14 +86,14 @@ test('the thanks timer from a previous sale cannot erase a newly received QR', (
   assert.equal(page.qrData.value.visible, true)
 })
 
-test('offline startup repairs previously cached local URLs with spaces', () => {
+test('offline startup repairs previously cached local URLs with spaces', async () => {
   const { page, storage, context } = terminal()
-  context.window.mediaAPI = {}
+  context.window.mediaAPI = { exists: async () => true }
   storage.set('pcpubli_sync_cache:http://localhost:8000|1', JSON.stringify({
     items: [{ file_id: 'publicidad/24 HRA.png', media_version: 'abc', type: 'image', url: 'localmedia://publicidad_24 HRA.png.abc.png' }],
     manifest: null,
   }))
-  page.loadCachedPlaylist()
+  await page.loadCachedPlaylist()
   assert.equal(page.playlist.value[0].url, 'localmedia://publicidad_24%20HRA.png.abc.png')
 })
 
@@ -155,3 +155,23 @@ test('reinitializing playback does not skip an advertisement before its duration
   assert.equal(page.currentIndex.value, 0)
 })
 
+
+
+test('missing cached media is excluded without network access', async () => {
+  const { page, storage, context } = terminal()
+  context.window.mediaAPI = { exists: async id => id === 'good.png' }
+  storage.set('pcpubli_sync_cache:http://localhost:8000|1', JSON.stringify({
+    items: ['missing.png', 'good.png'].map(file_id => ({ file_id, type: 'image', url: 'localmedia://' + file_id })),
+  }))
+  await page.loadCachedPlaylist()
+  assert.equal(page.playlist.value.length, 1)
+  assert.equal(page.playlist.value[0].file_id, 'good.png')
+})
+
+test('cleanup retains media referenced by another environment or branch', () => {
+  const { page, storage } = terminal()
+  storage.set('pcpubli_sync_cache:https://production.test|2', JSON.stringify({ items: [{file_id: 'production.png'}] }))
+  const retained = page.retainedMediaIds([{ file_id: 'incoming.png' }])
+  assert(retained.includes('production.png'))
+  assert(retained.includes('incoming.png'))
+})

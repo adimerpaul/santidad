@@ -25,6 +25,13 @@ void main() {
   assert((clock.time! - 50000).abs() < 100);
   clock.sample(999999, -10000, clock.tick);
   assert((clock.time! - 50000).abs() < 100);
+  final productionClock = AdServerClock();
+  productionClock.samplePublication(null, deviceTimeMs: 26000);
+  assert(adPosition(state, productionClock.time)!.index == 1);
+  productionClock.samplePublication(null, deviceTimeMs: 999999);
+  assert((productionClock.time! - 26000).abs() < 100);
+  productionClock.samplePublication(41000);
+  assert(adPosition(state, productionClock.time)!.index == 2);
   print(
     'Android: future activation, late join, durations and clock checks passed',
   );

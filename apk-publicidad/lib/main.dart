@@ -20,7 +20,7 @@ const String _env = String.fromEnvironment(
   'ENV',
   defaultValue: kReleaseMode ? 'production' : 'development',
 );
-const String appVersion = 'v11.10.26';
+const String appVersion = 'v18.10.26';
 const MethodChannel _autoStartChannel = MethodChannel(
   'com.santidad.app/autostart',
 );
@@ -377,11 +377,7 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
         data['revision'] is! int)
       return;
     socket?.emit('ad_received', {'revision': data['revision']});
-    if (data['server_time_ms'] is num) {
-      _serverClock.clear();
-      final tick = _serverClock.tick;
-      _serverClock.sample(data['server_time_ms'], tick, tick);
-    }
+    _serverClock.samplePublication(data['server_time_ms']);
     if (_desired != null &&
         (data['revision'] < _desired!['revision'] ||
             (data['revision'] == _desired!['revision'] &&
@@ -1267,7 +1263,7 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
     if (!_mediaFailed && controller != null && controller.value.isInitialized) {
       return SizedBox.expand(
         child: FittedBox(
-          fit: BoxFit.cover,
+          fit: BoxFit.contain,
           child: SizedBox(
             width: controller.value.size.width,
             height: controller.value.size.height,
@@ -1282,7 +1278,7 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
         _playlist[_currentIndex]['type'] != 'video') {
       return Image.file(
         File(_localPath!),
-        fit: BoxFit.cover,
+        fit: BoxFit.contain,
         cacheWidth: 1080,
         errorBuilder: (_, error, stack) {
           final generation = _playGeneration;
@@ -1308,7 +1304,7 @@ class _PublicidadPlayerState extends State<PublicidadPlayer>
           backgroundColor: Colors.black,
           body: Stack(
             children: [
-              // Visor multimedia rotado 90° para TV horizontal con ajuste COVER completo
+              // Visor multimedia rotado con proporción original y sin recortes
               RotatedBox(
                 quarterTurns: _rotationTurns,
                 child: SizedBox.expand(

@@ -111,3 +111,39 @@ test('advertising subscription never changes QR/data isolation by caja', async (
     fs.rmdirSync(directory);
   }
 });
+
+
+test('socket owns the start time and reconnect receives a fresh timestamp with the same timeline', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ad-server-clock-'));
+  const io = new Server(0);
+  const hub = attachAdvertising(io, { directory });
+  if (!io.httpServer.listening) await once(io.httpServer, 'listening');
+  const url = 'http://127.0.0.1:' + io.httpServer.address().port;
+  const a = connect(url, { transports: ['websocket'] });
+  const b = connect(url, { transports: ['websocket'] });
+  try {
+    await Promise.all([once(a, 'connect'), once(b, 'connect')]);
+    await ack(a, 'ad_register', { agencia_id: 1 });
+    const publication = { ...state(1), epoch_ms: 1, server_time_ms: 1 };
+    const pending = once(a, 'ad_schedule');
+    const before = Date.now();
+    hub.publish(publication);
+    const received = await pending;
+    assert(received.server_time_ms >= before);
+    assert(received.epoch_ms >= before + 5000);
+    assert(received.epoch_ms <= Date.now() + 5000);
+    const late = await ack(b, 'ad_register', { agencia_id: 1 });
+    assert.equal(late.schedule.epoch_ms, received.epoch_ms);
+    assert.equal(late.schedule.revision, received.revision);
+    assert(late.schedule.server_time_ms >= received.server_time_ms);
+    hub.publish(publication); // A duplicate cannot restart existing screens.
+    const duplicate = await ack(a, 'ad_register', { agencia_id: 1 });
+    assert.equal(duplicate.schedule.epoch_ms, received.epoch_ms);
+    const saved = JSON.parse(fs.readFileSync(path.join(directory, '1.json')));
+    assert.equal(saved.server_time_ms, undefined);
+    assert.equal(saved.epoch_ms, received.epoch_ms);
+  } finally {
+    a.disconnect(); b.disconnect(); hub.close(); await io.close();
+    fs.rmSync(directory, { recursive: true });
+  }
+});

@@ -76,7 +76,7 @@ class AdMediaStore {
       final dio = Dio(
         BaseOptions(
           connectTimeout: const Duration(seconds: 20),
-          receiveTimeout: const Duration(minutes: 2),
+          receiveTimeout: const Duration(minutes: 10),
         ),
       );
       final response = await dio.download(ad['url'].toString(), partial.path);

@@ -26,14 +26,16 @@ function attachAdvertising(io, { directory = path.join(__dirname, '.data', 'adve
       if (validSchedule(s)) states.set(Number(s.agencia_id), s);
     } catch (error) { console.error('Cannot restore advertising schedule:', file, error.message); }
   }
+  // Timestamp belongs to delivery, never to the persisted publication.
+  const delivery = state => state ? { ...state, server_time_ms: now() } : null;
   const response = (socket, revision) => {
     const state = states.get(socket.data.adAgency);
     return { success: true, server_time_ms: now(), revision: state?.revision ?? 0,
-      needs_snapshot: false, pending_bootstrap: false, schedule: state && state.revision !== Number(revision) ? state : null };
+      needs_snapshot: false, pending_bootstrap: false, schedule: state && state.revision !== Number(revision) ? delivery(state) : null };
   };
   function send(socket, state) {
     if (socket.data.adReceived === state.revision) return;
-    socket.emit('ad_schedule', { ...state, server_time_ms: now() });
+    socket.emit('ad_schedule', delivery(state));
     socket.data.adRetryAt = Date.now() + Math.min(60000, 5000 * (2 ** Math.min(socket.data.adAttempts || 0, 4)));
     socket.data.adAttempts = (socket.data.adAttempts || 0) + 1;
   }
@@ -46,7 +48,7 @@ function attachAdvertising(io, { directory = path.join(__dirname, '.data', 'adve
       socket.data.adAgency = agency;
       socket.data.adReceived = Number(data.revision) || 0;
       socket.data.adAttempts = 0;
-      if (typeof ack === 'function') ack({ ...response(socket, data.revision), schedule: states.get(agency) ?? null });
+      if (typeof ack === 'function') ack({ ...response(socket, data.revision), schedule: delivery(states.get(agency)) });
     });
     socket.on('ad_clock', (data, ack) => {
       if (typeof ack !== 'function') return;
@@ -109,6 +111,10 @@ function attachAdvertising(io, { directory = path.join(__dirname, '.data', 'adve
       const id = Number(state.agencia_id);
       const old = states.get(id);
       if (old && old.revision >= state.revision) return;
+      // One server-owned start per revision. Laravel/device clock skew must not
+      // change the common timeline. Duplicate revisions keep their original start.
+      state = { ...state, items: state.items.map(ad => ({ ...ad })), epoch_ms: now() + 5000 };
+      delete state.server_time_ms;
       // Reuse measured durations for unchanged media on the next manual/daily run.
       for (const ad of state.items) {
         const previous = old?.items.find(a => a.id === ad.id && a.media_version === ad.media_version);

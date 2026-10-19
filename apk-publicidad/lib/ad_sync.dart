@@ -14,6 +14,17 @@ class AdServerClock {
     if (_samples.length > 5) _samples.removeAt(0);
   }
 
+  // Legacy relays broadcast the schedule without an ACK or server timestamp.
+  // Anchor once to the TV clock, then use the monotonic stopwatch as usual.
+  void samplePublication(dynamic serverMs, {int? deviceTimeMs}) {
+    if (serverMs is num && serverMs.isFinite) {
+      clear();
+      sample(serverMs, tick, tick);
+    } else if (time == null) {
+      sample(deviceTimeMs ?? DateTime.now().millisecondsSinceEpoch, tick, tick);
+    }
+  }
+
   double? get time {
     if (_samples.isEmpty) return null;
     final best = _samples.reduce((a, b) => a.rtt < b.rtt ? a : b);

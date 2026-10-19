@@ -76,3 +76,13 @@ test('failed download keeps the complete previous schedule; stale and other-bran
   api.receiveSchedule({ ...state(3), agencia_id: 2 }); api.receiveSchedule(state(1)); await settle()
   assert.equal(api.manifest.revision, 1)
 })
+
+
+test('production broadcast without clock acknowledgment activates a complete playlist', async () => {
+  const { api } = player()
+  const schedule = state(11, Date.now() - 1000)
+  api.receiveSchedule(schedule)
+  await settle()
+  assert.equal(api.manifest.revision, 11)
+  assert.equal(api.playlist.length, 1)
+})

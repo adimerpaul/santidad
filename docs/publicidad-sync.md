@@ -66,3 +66,13 @@ Los dispositivos apagados recuperan la última programación al reconectarse.
 Verificar en equipos reales: dos cajas y una TV de la misma sucursal; envío manual,
 recuperación tras desconexión, video sin duración y recepción de QR/datos mientras
 se descarga publicidad. Una pantalla con errores o apagada no bloquea a las demás.
+
+## Reloj de reproducción
+
+El socket asigna el inicio común (`epoch_ms`) cinco segundos después de aceptar
+cada nueva revisión y adjunta `server_time_ms` al entregarla. La misma revisión
+conserva su inicio al reconectar o retransmitir; el timestamp de entrega siempre
+es actual. Así la línea de tiempo no depende del reloj de Laravel o del TV.
+Una pantalla que termina de descargar tarde se incorpora a la posición vigente.
+Los dispositivos necesitan este código desplegado en el socket de producción;
+un push a GitHub por sí solo no garantiza el despliegue ni el reinicio de Node.

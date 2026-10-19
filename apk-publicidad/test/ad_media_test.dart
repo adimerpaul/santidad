@@ -61,4 +61,40 @@ void main() {
       }
     },
   );
+  test(
+    '200 MiB video streams to disk and is reused without another download',
+    () async {
+      final root = await Directory.systemTemp.createTemp('tv-large-media-');
+      final chunk = List<int>.filled(1024 * 1024, 7);
+      var requests = 0;
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      server.listen((request) async {
+        requests++;
+        request.response.contentLength = chunk.length * 200;
+        for (var i = 0; i < 200; i++) {
+          request.response.add(chunk);
+          await request.response.flush();
+        }
+        await request.response.close();
+      });
+      final store = AdMediaStore('large', directoryProvider: () async => root);
+      final ad = <String, dynamic>{
+        'id': 200,
+        'file_id': 'large.mp4',
+        'media_version': 'v1',
+        'url': 'http://127.0.0.1:${server.port}/large',
+        'size_bytes': chunk.length * 200,
+      };
+      try {
+        final path = await store.prepare(ad);
+        expect(await File(path).length(), chunk.length * 200);
+        await store.prepare(ad);
+        expect(requests, 1);
+      } finally {
+        await server.close(force: true);
+        await root.delete(recursive: true);
+      }
+    },
+    timeout: const Timeout(Duration(minutes: 2)),
+  );
 }
