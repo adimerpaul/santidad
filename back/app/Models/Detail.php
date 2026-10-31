@@ -9,6 +9,7 @@ class Detail extends Model
 {
     use HasFactory;
     protected $fillable = [
+        'combo_id', 'combo_nombre', 'combo_grupo', 'combo_cantidad', 'combo_version',
         'actividadEconomica',
         'codigoProductoSin',
         'cantidad',

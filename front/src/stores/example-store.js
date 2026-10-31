@@ -21,6 +21,7 @@ export const useCounterStore = defineStore('counter', {
     agencia_id: parseInt(localStorage.getItem('agencia_id')),
     loading: false,
     productosVenta: [],
+    canalVenta: 'sucursal',
     productosCompra: [],
     pedidoId: null,
     // Cache de datos que cambian poco
@@ -42,6 +43,12 @@ export const useCounterStore = defineStore('counter', {
     doubleCount: (state) => state.counter * 2
   },
   actions: {
+    resetTraeSale () {
+      if (this.canalVenta === 'trae') {
+        this.productosVenta = []
+        this.canalVenta = 'sucursal'
+      }
+    },
     increment () {
       this.counter++
     },

@@ -14,8 +14,16 @@ class PromotionPricingService
     private array $requestCache = [];
     private ?array $promotionExcludedSubcategoryIds = null;
 
-    public function resolveSale(Product $product, ?int $agenciaId, ?string $orderNumber = null): array
+    public function resolveSale(Product $product, ?int $agenciaId, ?string $orderNumber = null, string $saleChannel = 'sucursal'): array
     {
+        if ($saleChannel === 'trae') {
+            if ($orderNumber) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'products' => 'Una venta TRAE no puede incluir pedidos de la web o de nuestra aplicación.',
+                ]);
+            }
+            return app(TraePricingService::class)->resolve($product);
+        }
         $channel = 'physical';
         if ($orderNumber) {
             $order = \App\Models\Order::with('items')->where('order_number', $orderNumber)->first();

@@ -1,9 +1,13 @@
 <template>
   <q-page class="bg-grey-2 q-pa-xs">
+    <q-banner v-if="pendingSale && !saleDialog" rounded class="bg-amber-1 text-brown-9 q-mb-sm">
+      {{ saleSubmissionMessage || 'Hay una venta pendiente de confirmación.' }}
+      <template #action><q-btn flat no-caps label="Comprobar venta" :loading="ventaEnviando" @click="checkPendingSale" /><q-btn outline no-caps label="Reintentar misma venta" :disable="ventaEnviando" @click="saleInsert" /></template>
+    </q-banner>
     <div class="row">
       <div class="col-12 col-md-8">
         <div class="row">
-          <div class="col-12 col-md-6 bg-white">
+          <div class="col-12 col-md-5 bg-white">
             <q-input outlined v-model="search" label="Buscar producto" dense clearable @update:model-value="buscarProductos" debounce="500"
                      :hint="buscarMuyCorto ? `Escribe al menos ${MIN_CARACTERES_BUSQUEDA} letras` : undefined">
               <template v-slot:prepend>
@@ -11,22 +15,17 @@
               </template>
             </q-input>
           </div>
-          <div class="col-12 col-md-6 flex">
-            <q-btn :loading="loading" icon="refresh" dense label="Actualizar" color="indigo" no-caps class="text-bold" @click="actualizarProductos">
-              <q-tooltip>Actualizar</q-tooltip>
-            </q-btn>
-             <q-btn
-              class="q-ml-sm"
-              icon="cloud_download"
-              dense
-              label="Pedido Online"
-              color="teal"
-              no-caps
-              :loading="loadingPedidoOnline"
-              @click="cargarPedidoOnline"
-            >
-              <q-tooltip>Cargar al carrito desde un número de pedido</q-tooltip>
-            </q-btn>
+          <div class="col-12 col-md-7 sale-toolbar-column">
+            <div class="sale-toolbar" role="group" aria-label="Acciones de venta">
+              <q-btn flat round icon="refresh" class="sale-refresh" aria-label="Actualizar" :loading="loading" @click="actualizarProductos"><q-tooltip>Actualizar productos</q-tooltip></q-btn>
+              <q-btn flat no-caps icon="cloud_download" label="Pedido Online" class="sale-online" :disable="canalVenta === 'trae' || cambiandoCanal" :loading="loadingPedidoOnline" @click="cargarPedidoOnline"><q-tooltip>Cargar un pedido por su número</q-tooltip></q-btn>
+              <span class="sale-action-divider" aria-hidden="true" />
+              <div class="trae-actions" role="group" aria-label="Canal TRAE">
+                <q-btn flat no-caps icon="delivery_dining" label="Venta TRAE" :aria-label="canalVenta === 'trae' ? 'Venta TRAE activa' : 'Venta TRAE'" class="sale-trae-toggle" :class="{ 'is-active': canalVenta === 'trae' }" :aria-pressed="canalVenta === 'trae'"
+                       :loading="cambiandoCanal" :disable="loading || saleDialog || loadingPedidoOnline" @click="cambiarCanalVenta" />
+                <SaleComboPicker :agencia-id="agencia_id" :disabled="loading || cambiandoCanal || saleDialog || loadingPedidoOnline" @select="cargarCombo" />
+              </div>
+            </div>
           </div>
           <div class="col-12 col-md-3 q-pa-xs">
             <q-select class="bg-white" emit-value map-options dense outlined
@@ -98,7 +97,7 @@
                           style="position: absolute; top: 24px; right: -4px; padding: 5px 8px; margin: 0px; font-weight: bold; font-size: 12px; z-index: 15;"
                           class="shadow-2"
                         >
-                          {{ $store.productosVenta.find(item => item.id === p.id)?.cantidadVenta }}
+                          {{ basketQuantity(p.id) }}
                         </q-badge>
 
                         <q-badge
@@ -189,7 +188,11 @@
       <div class="col-12 col-md-4">
         <q-card>
           <q-card-section class="q-pa-none q-ma-none ">
-            <div v-if="onlineTickets.length" class="online-ticket-list">
+            <q-banner v-if="canalVenta === 'trae'" dense class="bg-deep-purple-1 text-deep-purple-9">
+              <template v-slot:avatar><q-icon name="delivery_dining" /></template>
+              Venta TRAE · precios vigentes del delivery, sin descuento adicional.
+            </q-banner>
+            <div v-for="group in comboGroups" :key="group.grupo" class="q-pa-sm bg-purple-1"><div class="row items-center no-wrap"><q-icon name="inventory" color="deep-purple" class="q-mr-sm" /><div class="col"><strong>{{ group.nombre }}</strong><div class="text-caption">Combo interno TRAE · {{ group.cantidad }} unidad(es)</div></div><q-btn flat dense round icon="remove" :disable="cambiandoCanal || saleDialog" @click="ajustarCombo(group, -1)" /><q-btn flat dense round icon="add" :disable="cambiandoCanal || saleDialog" @click="ajustarCombo(group, 1)" /><q-btn flat dense round icon="delete_outline" :disable="cambiandoCanal || saleDialog" @click="quitarCombo(group.grupo)" /></div></div><div v-if="onlineTickets.length" class="online-ticket-list">
               <div v-for="ticket in onlineTickets" :key="ticket.number" class="online-ticket">
                 <q-icon :name="ticket.source === 'app' ? 'smartphone' : 'language'" size="22px" />
                 <div><strong>{{ ticket.source === 'app' ? 'PEDIDO · APLICACIÓN MÓVIL' : 'PEDIDO · PÁGINA WEB' }}</strong><span>{{ ticket.number }}</span></div>
@@ -212,7 +215,7 @@
               </div>
             </div>
             <q-scroll-area v-else style="height: 400px;">
-              <q-table dense flat bordered hide-bottom hide-header :rows="$store.productosVenta" :columns="columnsProductosVenta" :rows-per-page-options="[0]">
+              <q-table dense flat bordered hide-bottom hide-header :rows="$store.productosVenta" :row-key="comboLineKey" :columns="columnsProductosVenta" :rows-per-page-options="[0]">
                 <template v-slot:body="props">
                   <q-tr :props="props">
                     <q-td key="borrar" :props="props" style="padding: 0px;margin: 0px" auto-width>
@@ -228,7 +231,7 @@
                           <div class="text-caption" style="max-width: 120px; white-space: normal; overflow-wrap: break-word;line-height: 0.9;">
                             {{props.row.nombre}}
                           </div>
-                          <div class="text-grey">Stock Real: {{props.row.cantidadReal}}
+                          <div v-if="props.row.combo_grupo" class="text-caption text-deep-purple">{{ props.row.combo_nombre }}</div><div class="text-grey">Stock Real: {{props.row.cantidadReal}}
                             (
                             <span style="font-size: 10px">{{props.row.precio ? formatCurrency(props.row.precio) : props.row.precio}} Bs </span>
                             <span style="font-size: 10px" class="text-red text-bold" v-if="hasProductSavings(props.row)">{{formatCurrency(props.row.precioVenta)}} Bs</span>
@@ -238,7 +241,7 @@
                             <q-icon name="sell" />
                             Precio de venta
                           </div>
-                          <q-badge v-if="props.row.promocion_id && Number(props.row.porcentajeEfectivo) > 0" class="cart-discount-badge">
+                          <q-badge v-if="(props.row.promocion_id || canalVenta === 'trae') && Number(props.row.porcentajeEfectivo) > 0" class="cart-discount-badge">
                             <q-icon name="local_offer" size="12px" class="q-mr-xs" />
                             {{ props.row.promocion }} · {{ Number(props.row.porcentajeEfectivo) }}% de descuento
                           </q-badge>
@@ -260,17 +263,17 @@
                     </q-td>
                     <q-td key="cantidadVenta" :props="props">
                       <q-input dense outlined bottom-slots min="1"
-                               v-model="props.row.cantidadVenta"
+                               v-model="props.row.cantidadVenta" :readonly="!!props.row.combo_grupo" :disable="cambiandoCanal || saleDialog"
                                @update:model-value="cambioNumero(props.row,props.pageIndex)"
                                :rules="ruleNumber"
                                type="number"
                                input-class="text-center"
                                required>
                         <template v-slot:prepend>
-                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)"/>
+                          <q-btn style="cursor: pointer" dense flat icon="remove_circle_outline" @click="removeCantidad(props.row,props.pageIndex)" :disable="!!props.row.combo_grupo"/>
                         </template>
                         <template v-slot:append>
-                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)"/>
+                          <q-btn style="cursor: pointer" dense flat icon="add_circle_outline" @click="addCantidad(props.row,props.pageIndex)" :disable="!!props.row.combo_grupo"/>
                         </template>
                       </q-input>
                       <div class="text-grey">= Bs {{redondeo(props.row.cantidadVenta*props.row.precioVenta)}}</div>
@@ -394,10 +397,11 @@
                 : 'Mostrar la información en la pantalla del cliente.' }}
             </q-tooltip>
           </q-btn>
-          <q-btn flat round dense icon="close" v-close-popup />
+          <q-btn flat round dense icon="close" :disable="ventaEnviando || !!pendingSale" v-close-popup />
         </q-card-section>
         <q-form @submit.prevent="saleInsert">
-          <q-card-section>
+          <q-banner v-if="pendingSale" class="bg-blue-1 text-indigo q-ma-md"><q-spinner v-if="ventaEnviando" class="q-mr-sm" />{{ saleSubmissionMessage }}<q-btn v-if="!ventaEnviando" flat no-caps label="Comprobar venta" @click="checkPendingSale" /></q-banner>
+          <q-card-section :inert="!!pendingSale || ventaEnviando" :class="{ 'sale-fields-locked': !!pendingSale || ventaEnviando }">
             <div class="row">
               <div class="col-6 col-md-3">
                 <q-input outlined dense label="NIT/CARNET" @keyup="searchClient" required v-model="client.numeroDocumento" :loading="loadingClientSearch" />
@@ -417,7 +421,7 @@
             </div>
           </q-card-section>
           <q-separator/>
-          <q-card-section>
+          <q-card-section :inert="!!pendingSale || ventaEnviando" :class="{ 'sale-fields-locked': !!pendingSale || ventaEnviando }">
             <div class="row">
               <div class="col-6 col-md-2">
                 <q-input outlined dense label="TOTAL A PAGAR:" readonly v-model="totalFinal" :rules="ruleNumber"/>
@@ -428,6 +432,7 @@
               </div>
               <div class="col-6 col-md-2">
                 <q-input outlined dense label="Aporte" v-model="aporte" type="number" step="0.01" :rules="ruleNumber"
+                          :disable="canalVenta === 'trae'"
                           @update:model-value="onAporteChange"/>
               </div>
 
@@ -438,6 +443,7 @@
                   dense
                   label="Descuento (Bs.)"
                   v-model="descuento"
+                  :disable="canalVenta === 'trae'"
                   type="number"
                   step="0.01"
                   :rules="ruleNumber"
@@ -458,6 +464,7 @@
                   dense
                   label="Descuento (%)"
                   v-model="descuentoPorcentaje"
+                  :disable="canalVenta === 'trae'"
                   type="number"
                   step="0.01"
                   min="0"
@@ -584,11 +591,11 @@
             />
             <div class="row">
               <div class="col-6">
-                <q-btn type="submit" class="full-width" icon="o_add_circle" label="Realizar venta" :loading="loading"
-                       :disable="!!qrId" no-caps color="green"  />
+                <q-btn :type="pendingSale ? 'button' : 'submit'" class="full-width" icon="o_add_circle" :label="pendingSale ? 'Reintentar misma venta' : 'Realizar venta'" :loading="ventaEnviando || loading" @click="pendingSale && saleInsert()"
+                       :disable="ventaEnviando || loading || (!!qrId && !pendingSale)" no-caps color="green"  />
               </div>
               <div class="col-6">
-                <q-btn class="full-width" icon="undo" v-close-popup label="Atras" no-caps color="red" :loading="loading" />
+                <q-btn class="full-width" icon="undo" v-close-popup label="Atras" no-caps color="red" :disable="loading || ventaEnviando || !!pendingSale" />
               </div>
             </div>
           </q-card-section>
@@ -680,6 +687,9 @@
 </template>
 
 <script>
+import SaleComboPicker from 'components/SaleComboPicker.vue'
+import { comboLineKey, comboMetadata, createComboGroup } from 'src/utils/internal-combos'
+import { readPendingSale, savePendingSale, clearPendingSale } from 'src/utils/sale-submission'
 import { Imprimir } from 'src/addons/Imprimir'
 import { formatCurrency as formatMoney, formatPayable, roundCurrency, roundPayable, hasProductSavings } from 'src/utils/money'
 
@@ -751,6 +761,7 @@ function redondearMoneda (value) {
 
 export default {
   name: 'SalePage',
+  components: { SaleComboPicker },
   data () {
     return {
       agencia_id: parseInt(localStorage.getItem('agencia_id')),
@@ -768,6 +779,9 @@ export default {
       ],
       saleDialog: false,
       saleCompleted: false,
+      ventaEnviando: false,
+      pendingSale: null,
+      saleSubmissionMessage: '',
       dialogImagenCompleta: false,
       productoImagenSeleccionado: null,
       zoomScale: 1,
@@ -797,6 +811,8 @@ export default {
       per_page: 12,
       perPageOptions: [12, 24, 36, 48],
       loadingPedidoOnline: false,
+      cambiandoCanal: false,
+      ventaDesmontada: false,
       loadingClientSearch: false,
       ruleNumber: [
         val => (val !== null && val !== '') || 'Por favor escriba su cantidad',
@@ -842,6 +858,7 @@ export default {
     }
   },
   watch: {
+    '$store.user.id' (id) { if (id) this.recoverPendingSale() },
     // La agencia del usuario se conoce recién cuando responde 'me', que puede
     // llegar después de montar esta página. Sin esto quedaba seleccionada la
     // agencia guardada en el login anterior y la venta se emitía con la
@@ -898,6 +915,7 @@ export default {
     }
   },
   mounted () {
+    this.recoverPendingSale()
     this.productsGet()
     this.catalogosGet()
     this.verificarConfiguracionTerminal()
@@ -906,6 +924,7 @@ export default {
     window.addEventListener('stock-actualizado', this.handleStockActualizado)
   },
   beforeUnmount () {
+    this.ventaDesmontada = true
     window.removeEventListener('keydown', this.handleSecretTerminalKey)
     window.removeEventListener('storage', this.handleTerminalStorageChange)
     window.removeEventListener('stock-actualizado', this.handleStockActualizado)
@@ -914,6 +933,12 @@ export default {
     this.detenerPollingQr()
   },
   computed: {
+    comboGroups () {
+      const groups = new Map()
+      this.$store.productosVenta.forEach(p => { if (p.combo_grupo && !groups.has(p.combo_grupo)) groups.set(p.combo_grupo, { grupo: p.combo_grupo, nombre: p.combo_nombre, cantidad: Number(p.combo_cantidad) }) })
+      return [...groups.values()]
+    },
+    canalVenta () { return this.$store.canalVenta || 'sucursal' },
     onlineTickets () {
       const tickets = new Map()
       this.$store.productosVenta.forEach(p => {
@@ -937,10 +962,12 @@ export default {
 
       this.$store.productosVenta.forEach(product => {
         const stockDisponible = product.cantidadReal
-        if (product.cantidadVenta > stockDisponible) {
+        const requested = this.basketQuantity(product.id)
+        if (requested > stockDisponible && !productos.some(p => p.id === product.id)) {
           productos.push({
+            id: product.id,
             nombre: product.nombre,
-            cantidadSolicitada: product.cantidadVenta,
+            cantidadSolicitada: requested,
             stockDisponible
           })
         }
@@ -1030,6 +1057,89 @@ export default {
     }
   },
   methods: {
+    comboLineKey,
+    basketQuantity (id) { return this.$store.productosVenta.filter(p => Number(p.id) === Number(id)).reduce((n, p) => n + Number(p.cantidadVenta), 0) },
+    basketPayload (rows) { return rows.map(p => ({ id: p.id, cantidadVenta: p.cantidadVenta, online_order_number: p.online_order_number || null, ...comboMetadata(p) })) },
+    async verifyComboBasket (staged, original) {
+      const userId = this.$store.user?.id
+      const agency = this.agencia_id
+      const { data } = await this.$axios.post('verificar-stock-venta', { canal_venta: 'trae', agencia_id: this.agencia_id, productos: this.basketPayload(staged) })
+      if (this.ventaDesmontada || this.$store.user?.id !== userId || this.$store.productosVenta !== original || Number(this.agencia_id) !== Number(agency)) return false
+      const prices = new Map(data.precios.map(p => [p.line_key || String(p.id), p]))
+      staged.forEach(p => {
+        const price = prices.get(comboLineKey(p))
+        if (!price) throw new Error('No se pudieron verificar todos los precios del combo.')
+        Object.assign(p, { precio: formatMoney(price.precio), precioVenta: formatMoney(price.precioVenta), porcentajeEfectivo: Number(price.porcentajeEfectivo), porcentaje: Number(price.porcentajeEfectivo), promocion: price.promocion, promocion_id: price.promocion_id })
+      })
+      this.$store.productosVenta = staged
+      this.$store.canalVenta = 'trae'
+      this.aporte = 0; this.descuento = 0; this.descuentoPorcentaje = 0
+      this.productsGet()
+      return true
+    },
+    async cargarCombo (combo) {
+      if (this.pendingSale || this.ventaDesmontada || this.cambiandoCanal || this.saleDialog || this.loadingPedidoOnline || this.loading) return
+      if (this.$store.productosVenta.some(p => p.online_order_number)) { this.$alert.error('Finalice o retire el pedido online antes de cargar un combo interno.'); return }
+      const original = this.$store.productosVenta
+      let group
+      try { group = createComboGroup() } catch (e) { this.$alert.error('No se pudo identificar el combo. Actualiza el navegador e inténtalo de nuevo.'); return }
+      const staged = original.map(p => ({ ...p }))
+      combo.items.forEach(item => staged.push({ id: item.product_id, nombre: item.nombre, imagen: item.imagen || 'productDefault.jpg', precio: item.precio_base, precioVenta: item.precio_unitario, cantidadReal: item.stock, cantidad: item.stock, cantidadVenta: item.cantidad, cantidadPedida: item.cantidad, buys: [], combo_id: combo.id, combo_nombre: combo.nombre, combo_grupo: group, combo_cantidad: 1, combo_unidades_producto: item.cantidad, combo_version: combo.version }))
+      this.cambiandoCanal = true
+      try { await this.verifyComboBasket(staged, original) } catch (e) { this.$alert.error(e.response?.data?.message || e.message || 'No se pudo cargar el combo.') } finally { this.cambiandoCanal = false }
+    },
+    async ajustarCombo (group, delta) {
+      if (this.pendingSale || this.cambiandoCanal || this.saleDialog || this.loading) return
+      const original = this.$store.productosVenta
+      const count = group.cantidad + delta
+      if (count <= 0) { this.quitarCombo(group.grupo); return }
+      if (count > 100) return
+      const staged = original.map(p => p.combo_grupo === group.grupo ? { ...p, combo_cantidad: count, cantidadVenta: p.combo_unidades_producto * count, cantidadPedida: p.combo_unidades_producto * count } : { ...p })
+      this.cambiandoCanal = true
+      try { await this.verifyComboBasket(staged, original) } catch (e) { this.$alert.error(e.response?.data?.message || e.message) } finally { this.cambiandoCanal = false }
+    },
+    quitarCombo (group) { if (this.pendingSale || this.cambiandoCanal || this.saleDialog) return; this.$store.productosVenta = this.$store.productosVenta.filter(p => p.combo_grupo !== group) },
+    async cambiarCanalVenta () {
+      if (this.pendingSale || this.cambiandoCanal || this.saleDialog || this.loadingPedidoOnline || this.loading) return
+      const next = this.canalVenta === 'trae' ? 'sucursal' : 'trae'
+      if (next === 'sucursal' && this.$store.productosVenta.some(p => p.combo_grupo)) { this.$alert.error('Retira los combos internos para cambiar a una venta normal.'); return }
+      if (next === 'trae' && this.$store.productosVenta.some(p => p.online_order_number)) {
+        this.$alert.error('Finalice o quite el pedido online antes de activar Venta TRAE.')
+        return
+      }
+      this.cambiandoCanal = true
+      const userId = this.$store.user?.id
+      const agency = this.agencia_id
+      const items = this.$store.productosVenta
+      try {
+        if (items.length) {
+          const { data } = await this.$axios.post('verificar-stock-venta', {
+            canal_venta: next,
+            agencia_id: this.agencia_id,
+            productos: items.map(p => ({ id: p.id, cantidadVenta: p.cantidadVenta }))
+          })
+          if (this.ventaDesmontada || this.$store.user?.id !== userId || this.$store.productosVenta !== items || Number(this.agencia_id) !== Number(agency)) return
+          const prices = new Map(data.precios.map(p => [Number(p.id), p]))
+          if (items.some(p => !prices.has(Number(p.id)))) throw new Error('No se pudieron verificar todos los precios.')
+          items.forEach(p => {
+            const price = prices.get(Number(p.id))
+            p.precio = formatMoney(price.precio)
+            p.precioVenta = formatMoney(price.precioVenta)
+            p.porcentajeEfectivo = Number(price.porcentajeEfectivo)
+            p.porcentaje = p.porcentajeEfectivo
+            p.promocion = price.promocion
+            p.promocion_id = price.promocion_id
+          })
+        }
+        this.$store.canalVenta = next
+        this.aporte = 0
+        this.descuento = 0
+        this.descuentoPorcentaje = 0
+        this.productsGet()
+      } catch (e) {
+        this.$alert.error(e.response?.data?.errores?.[0] || e.response?.data?.message || e.message || 'No se pudo cambiar el canal de venta.')
+      } finally { this.cambiandoCanal = false }
+    },
     hasProductSavings,
     formatCurrency (value) {
       return formatMoney(value)
@@ -1045,10 +1155,12 @@ export default {
 
       this.$store.productosVenta.forEach(product => {
         const stockDisponible = product.cantidadReal
-        if (product.cantidadVenta > stockDisponible) {
+        const requested = this.basketQuantity(product.id)
+        if (requested > stockDisponible && !productosSinStock.some(p => p.id === product.id)) {
           productosSinStock.push({
+            id: product.id,
             nombre: product.nombre,
-            cantidadSolicitada: product.cantidadVenta,
+            cantidadSolicitada: requested,
             stockDisponible
           })
         }
@@ -1168,19 +1280,36 @@ export default {
       this.productsGet()
     },
 
-    saleInsert () {
+    async saleInsert () {
+      if (this.ventaEnviando || this.ventaDesmontada || this.saleCompleted) return
+      if (!this.pendingSale && (!this.saleDialog || !this.$store.productosVenta.length)) return
+      this.ventaEnviando = true
+      this.loading = true
+      try {
+        if (!this.pendingSale) this.prepareSaleRequest()
+        const pending = this.pendingSale
+        this.saleSubmissionMessage = 'Guardando la venta y preparando la factura. No vuelva a enviarla.'
+        const { data } = await this.$axios.post('sales', pending.payload, { timeout: 60000 })
+        if (!data?.id) throw new Error('El servidor no confirmó el número de venta.')
+        if (this.ventaDesmontada || Number(this.$store.user?.id) !== Number(pending.userId)) return
+        await this.completeRegisteredSale(data)
+      } catch (err) {
+        if (!this.pendingSale) this.$alert.error(err.message || 'No se pudo preparar la venta.')
+        else await this.reconcileSaleRequest(err)
+      } finally { this.ventaEnviando = false; this.loading = false }
+    },
+    prepareSaleRequest () {
+      if (!this.$store.user?.id) throw new Error('Espere a que termine de cargar su sesión.')
       const totalVenta = redondearMoneda(this.totalFinal)
       if (this.metodoPago === 'Personalizado') {
         const totalDividido = redondearMoneda(
           redondearMoneda(this.montoEfectivoPersonalizado) + redondearMoneda(this.montoQrPersonalizado)
         )
         if (totalDividido !== totalVenta) {
-          this.$alert.error('La suma del pago en efectivo y QR debe ser igual al total de la venta.')
-          return
+          throw new Error('La suma del pago en efectivo y QR debe ser igual al total de la venta.')
         }
       }
 
-      this.loading = true
       this.detenerPollingQr()
       this.client.codigoTipoDocumentoIdentidad = this.document.codigoClasificador
       this.$store.productosVenta.forEach(p => {
@@ -1188,6 +1317,7 @@ export default {
         p.subTotal = redondearMoneda(p.cantidadPedida * p.precioVenta)
       })
       const data = {
+        request_id: createComboGroup(),
         montoTotal: this.totalFinal,
         client: this.client,
         aporte: redondearMoneda(this.aporte),
@@ -1199,22 +1329,72 @@ export default {
         metodoPago: this.metodoPago,
         montoEfectivo: this.metodoPago === 'Personalizado' ? redondearMoneda(this.montoEfectivoPersonalizado) : null,
         montoQr: this.metodoPago === 'Personalizado' ? redondearMoneda(this.montoQrPersonalizado) : null,
-        agencia_id: this.agencia_id
+        agencia_id: this.agencia_id,
+        canal_venta: this.canalVenta
       }
-      this.$axios.post('sales', data).then(res => {
-        this.loading = false
-        this.$alert.success('Venta realizada con exito')
-        // Indicar que la venta se completó antes de cerrar el diálogo
-        this.saleCompleted = true
-        this.saleDialog = false
+      const pending = JSON.parse(JSON.stringify({ userId: this.$store.user.id, request_id: data.request_id, payload: data }))
+      savePendingSale(pending)
+      this.pendingSale = pending
+    },
+    recoverPendingSale () {
+      if (!this.$store.user?.id || this.pendingSale || this.ventaDesmontada) return
+      try {
+        this.pendingSale = readPendingSale(this.$store.user.id)
+        if (this.pendingSale) { this.saleSubmissionMessage = 'Hay una venta sin confirmar. Compruebe su estado o reintente la misma operación.'; this.checkPendingSale() }
+      } catch (err) { this.$alert.error(err.message) }
+    },
+    async checkPendingSale () {
+      if (!this.pendingSale || this.ventaEnviando) return
+      this.ventaEnviando = true
+      try {
+        const pending = this.pendingSale
+        const { data } = await this.$axios.get(`sale-requests/${pending.request_id}`, { timeout: 15000 })
+        if (!data?.id) throw new Error('No se pudo confirmar el número de venta.')
+        if (this.ventaDesmontada || Number(this.$store.user?.id) !== Number(pending.userId)) return
+        await this.completeRegisteredSale(data)
+      } catch (err) { this.saleSubmissionMessage = 'Todavía no hay confirmación. Reintente la misma venta; se conservará su identificador.'; this.$alert.error(err.response?.data?.message || this.saleSubmissionMessage) } finally { this.ventaEnviando = false }
+    },
+    async reconcileSaleRequest (err) {
+      const pending = this.pendingSale
+      if (!pending || this.ventaDesmontada || Number(this.$store.user?.id) !== Number(pending.userId)) return
+      try {
+        const { data } = await this.$axios.get(`sale-requests/${pending.request_id}`, { timeout: 15000 })
+        if (!data?.id) throw new Error('Respuesta sin venta confirmada.')
+        if (this.ventaDesmontada || Number(this.$store.user?.id) !== Number(pending.userId)) return
+        await this.completeRegisteredSale(data)
+        return
+      } catch (lookupError) {
+        if (lookupError.response?.status === 404 && [400, 422].includes(err.response?.status)) {
+          clearPendingSale(pending.userId)
+          this.pendingSale = null
+          this.saleSubmissionMessage = ''
+          const errors = err.response?.data?.errors
+          this.$alert.error((errors && Object.values(errors).flat()[0]) || err.response?.data?.message || 'Revise los datos de la venta.')
+          return
+        }
+      }
+      this.saleSubmissionMessage = 'No se pudo confirmar el resultado. Compruebe la venta o reintente esta misma operación; no genere otra.'
+      this.$alert.error(this.saleSubmissionMessage)
+    },
+    async completeRegisteredSale (ventaRegistrada) {
+      const pending = this.pendingSale
+      if (!pending) return
+      const vendidos = pending.payload.products.map(p => ({ id: p.id, cantidad: Number(p.cantidadPedida) || 0 }))
+      clearPendingSale(pending.userId)
+      this.pendingSale = null
+      this.saleSubmissionMessage = ''
+      this.$alert.success(`Venta #${ventaRegistrada.id} registrada correctamente.`)
+      // Indicar que la venta se completó antes de cerrar el diálogo
+      this.saleCompleted = true
+      this.saleDialog = false
+      const wasTrae = this.canalVenta === 'trae'
+      this.$store.productosVenta = []
+      this.$store.canalVenta = 'sucursal'
 
-        // Lo vendido (cantidadPedida es lo que descuenta el backend): se corrige
-        // el stock en pantalla y se avisa a las demás cajas sin volver a consultar
-        const vendidos = this.$store.productosVenta.map(p => ({
-          id: p.id,
-          cantidad: Number(p.cantidadPedida) || 0
-        }))
-        productosCacheInvalidar(vendidos.map(p => p.id))
+      // Lo vendido (cantidadPedida es lo que descuenta el backend): se corrige
+      // el stock en pantalla y se avisa a las demás cajas sin volver a consultar
+      productosCacheInvalidar(vendidos.map(p => p.id))
+      if (!ventaRegistrada.solicitud_repetida) {
         vendidos.forEach(v => {
           const enGrid = this.products.find(p => p.id === v.id)
           if (!enGrid) return
@@ -1222,47 +1402,37 @@ export default {
           enGrid.cantidadReal = Math.max(0, Number(enGrid.cantidadReal) - v.cantidad)
           enGrid.cantidad = enGrid.cantidadReal
         })
-        this.notifySocket('stock_actualizado', {
-          agencia_id: this.agencia_id,
-          origen: ORIGEN_VENTA,
-          productos: vendidos
-        })
-
-        // Notificar a la pantalla del cliente: "Gracias por su compra"
-        this.notifySocket('clienteSaleComplete', {
-          timestamp: Date.now().toString(),
-          agencia_id: this.agencia_id,
-          caja: this.caja_numero
-        })
-
-        this.$store.productosVenta = []
-        this.client = {}
-        this.aporte = 0
-        this.qr = false
-        this.efectivo = ''
-        this.descuento = 0
-        this.descuentoPorcentaje = 0
-        this.montoEfectivoPersonalizado = 0
-        this.montoQrPersonalizado = 0
-        this.resetQrState()
-        this.products.forEach(p => {
-          p.cantidadPedida = 0
-        })
-        this.totalProducts = 0
-        // Con factura SIAT (venta 'F' y numeroFactura > 0) se imprime la factura;
-        // si no se facturó (numeroFactura = 0, cliente sin NIT) se imprime la nota de venta.
-        const ventaRegistrada = res.data
-        const tieneFactura = ventaRegistrada.venta === 'F' && Number(ventaRegistrada.numeroFactura) > 0
-        const printAction = tieneFactura
-          ? (this.facturaPequena ? Imprimir.facturaPequena(ventaRegistrada) : Imprimir.factura(ventaRegistrada))
-          : Imprimir.nota(ventaRegistrada)
-        printAction.then(r => {})
-      }).catch(err => {
-        this.loading = false
-        const errores = err.response?.data?.errors
-        const primerError = errores ? Object.values(errores).flat()[0] : null
-        this.$alert.error(primerError || err.response?.data?.message || 'No se pudo registrar la venta.')
+      }
+      try {
+        if (!ventaRegistrada.solicitud_repetida) this.notifySocket('stock_actualizado', { agencia_id: this.agencia_id, origen: ORIGEN_VENTA, productos: vendidos })
+        this.notifySocket('clienteSaleComplete', { timestamp: Date.now().toString(), agencia_id: this.agencia_id, caja: this.caja_numero })
+      } catch (err) { console.warn('Venta registrada; no se pudo actualizar la pantalla remota.', err) }
+      this.client = {}
+      this.aporte = 0
+      this.qr = false
+      this.efectivo = ''
+      this.descuento = 0
+      this.descuentoPorcentaje = 0
+      this.montoEfectivoPersonalizado = 0
+      this.montoQrPersonalizado = 0
+      this.resetQrState()
+      this.products.forEach(p => {
+        p.cantidadPedida = 0
       })
+      this.totalProducts = 0
+      if (wasTrae || ventaRegistrada.solicitud_repetida) this.productsGet()
+      // Con factura SIAT (venta 'F' y numeroFactura > 0) se imprime la factura;
+      // si no se facturó (numeroFactura = 0, cliente sin NIT) se imprime la nota de venta.
+      if (ventaRegistrada.procesamiento_pendiente || ventaRegistrada.advertencia_procesamiento || ventaRegistrada.estado === 'ANULADO' || ventaRegistrada.deleted_at || (Number(ventaRegistrada.numeroFactura) > 0 && ventaRegistrada.venta !== 'F')) {
+        this.$q.notify({ type: 'warning', timeout: 15000, message: `La venta #${ventaRegistrada.id} ya está registrada. Su factura o estado requiere revisión en Movimientos; no registre otra venta.` })
+        return
+      }
+      const tieneFactura = ventaRegistrada.venta === 'F' && Number(ventaRegistrada.numeroFactura) > 0
+      try {
+        await (tieneFactura
+          ? (this.facturaPequena ? Imprimir.facturaPequena(ventaRegistrada) : Imprimir.factura(ventaRegistrada))
+          : Imprimir.nota(ventaRegistrada))
+      } catch (err) { this.$alert.error(`La venta #${ventaRegistrada.id} se registró; falló la impresión. Puede reimprimirla desde Movimientos.`) }
     },
 
     guardarCajaNumero (val) {
@@ -1516,6 +1686,7 @@ export default {
     },
 
     async clickSale () {
+      if (this.cambiandoCanal || this.loading || this.saleDialog) return
       // ✅ VERIFICACIÓN DE STOCK SOLO AL CONFIRMAR
       const productosSinStock = this.verificarStockCanasta()
 
@@ -1542,20 +1713,25 @@ export default {
         this.loading = true
 
         // VERIFICACIÓN EN BACKEND
-        const productos = this.$store.productosVenta.map(p => ({
-          id: p.id,
-          cantidadVenta: p.cantidadVenta,
-          online_order_number: p.online_order_number || null
-        }))
+        const items = this.$store.productosVenta
+        const userId = this.$store.user?.id
+        const agency = this.agencia_id
+        const channel = this.canalVenta
+        const productos = this.basketPayload(items)
+        const signature = JSON.stringify(productos)
 
         const { data: verificacion } = await this.$axios.post('verificar-stock-venta', {
           productos,
+          canal_venta: this.canalVenta,
           agencia_id: this.agencia_id
         })
 
-        const precios = new Map((verificacion.precios || []).map(p => [Number(p.id), p]))
+        if (this.ventaDesmontada || this.$store.user?.id !== userId || this.$store.productosVenta !== items || Number(this.agencia_id) !== Number(agency) ||
+          this.canalVenta !== channel || JSON.stringify(this.basketPayload(items)) !== signature) return
+        const precios = new Map((verificacion.precios || []).map(p => [p.line_key || String(p.id), p]))
+        if (items.some(p => !precios.has(comboLineKey(p)))) throw new Error('No se pudieron verificar todos los precios. Vuelve a intentar cobrar.')
         this.$store.productosVenta.forEach(producto => {
-          const precioActual = precios.get(Number(producto.id))
+          const precioActual = precios.get(comboLineKey(producto))
           if (!precioActual) return
           producto.precio = formatMoney(precioActual.precio)
           producto.precioVenta = formatMoney(precioActual.precioVenta)
@@ -1585,7 +1761,7 @@ export default {
             this.$alert.error(msg)
           })
         } else {
-          this.$alert.error('Error al verificar stock')
+          this.$alert.error(error.response?.data?.message || error.message || 'Error al verificar stock')
         }
       } finally {
         this.loading = false
@@ -1594,6 +1770,7 @@ export default {
 
     // ✅ CORREGIDO: Usa cantidadReal para verificar stock
     async clickAddSale (product) {
+      if (this.cambiandoCanal || this.pendingSale) return
       // Verificación inmediata usando cantidadReal
       if (product.cantidadReal <= 0) {
         this.$q.notify({
@@ -1606,8 +1783,8 @@ export default {
       }
 
       // Verificación de stock considerando lo ya en canasta
-      const productoEnCanasta = this.$store.productosVenta.find(p => p.id === product.id)
-      const cantidadReservada = productoEnCanasta ? productoEnCanasta.cantidadVenta : 0
+      const productoEnCanasta = this.$store.productosVenta.find(p => p.id === product.id && !p.combo_grupo)
+      const cantidadReservada = this.basketQuantity(product.id)
       const stockDisponible = product.cantidadReal - cantidadReservada
 
       if (stockDisponible <= 0) {
@@ -1649,12 +1826,14 @@ export default {
     },
 
     addCantidad (n, i) {
+      if (this.pendingSale || n.combo_grupo || this.cambiandoCanal || this.saleDialog) return
       n.cantidadPedida++
       n.cantidadVenta = parseInt(n.cantidadVenta) + 1
     },
 
     // ✅ PERMITE CUALQUIER VALOR - solo valida al confirmar
     cambioNumero (n, i) {
+      if (this.pendingSale || n.combo_grupo || this.cambiandoCanal || this.saleDialog) return
       if (n.cantidadVenta !== '') {
         const nuevaCantidad = parseInt(n.cantidadVenta)
 
@@ -1672,6 +1851,7 @@ export default {
     },
 
     removeCantidad (n, i) {
+      if (this.pendingSale || n.combo_grupo || this.cambiandoCanal || this.saleDialog) return
       n.cantidadPedida--
       if (n.cantidadVenta > 1) {
         n.cantidadVenta = parseInt(n.cantidadVenta) - 1
@@ -1681,17 +1861,24 @@ export default {
     },
 
     deleteProductosVenta (p, i) {
+      if (this.pendingSale || this.cambiandoCanal || this.saleDialog) return
+      if (p.combo_grupo) { this.quitarCombo(p.combo_grupo); return }
       this.$store.productosVenta.splice(i, 1)
       p.cantidadVenta = 0
       p.cantidadPedida = 0
     },
 
     async vaciarCanasta () {
+      if (this.cambiandoCanal || this.pendingSale) return
       await this.$store.productosVenta.forEach(p => {
         p.cantidadVenta = 0
         p.cantidadPedida = 0
       })
       this.$store.productosVenta = []
+      if (this.canalVenta === 'trae') {
+        this.$store.canalVenta = 'sucursal'
+        this.productsGet()
+      }
     },
 
     cambiarPorPagina () {
@@ -1736,7 +1923,8 @@ export default {
         order: this.order,
         category: this.category,
         agencia: this.agencia_id,
-        subcategory: this.subcategoria
+        subcategory: this.subcategoria,
+        canal_venta: this.canalVenta
       }
       const clave = JSON.stringify(params)
 
@@ -1744,21 +1932,25 @@ export default {
       if (this.productosAbort) this.productosAbort.abort()
       this.productosAbort = null
 
-      const enCache = productosCacheGet(clave)
+      const enCache = this.canalVenta === 'trae' ? null : productosCacheGet(clave)
       if (enCache) {
         this.mostrarProductos(enCache)
         return
       }
 
       const controller = new AbortController()
+      const userId = this.$store.user?.id
+      const sessionToken = localStorage.getItem('tokenSantidad')
       this.productosAbort = controller
       this.loading = true
       this.products = []
       this.$axios.get('productsSale', { params, signal: controller.signal }).then(res => {
-        productosCacheSet(clave, res.data)
+        if (this.productosAbort !== controller || this.ventaDesmontada || localStorage.getItem('tokenSantidad') !== sessionToken ||
+          (userId != null && this.$store.user?.id !== userId) || params.canal_venta !== this.canalVenta || String(params.agencia) !== String(this.agencia_id)) return
+        if (params.canal_venta !== 'trae') productosCacheSet(clave, res.data)
         this.mostrarProductos(res.data)
       }).catch(err => {
-        if (err?.code === 'ERR_CANCELED') return
+        if (err?.code === 'ERR_CANCELED' || this.productosAbort !== controller || this.ventaDesmontada) return
         this.loading = false
         console.log(err)
       }).finally(() => {
@@ -1789,6 +1981,7 @@ export default {
       })
     },
     cargarPedidoOnline () {
+      if (this.canalVenta === 'trae' || this.cambiandoCanal || this.$store.productosVenta.some(p => p.combo_grupo)) return
       this.$q.dialog({
         title: 'Pedido Online',
         message: 'Ingrese el número de pedido',
@@ -1808,6 +2001,7 @@ export default {
     },
 
     async importarPedidoDesdeApi (orderNumber) {
+      if (this.pendingSale || this.canalVenta === 'trae' || this.cambiandoCanal) return
       if (this.loadingPedidoOnline) return
       try {
         this.loadingPedidoOnline = true
@@ -2089,6 +2283,26 @@ export default {
 </script>
 
 <style scoped>
+.sale-toolbar-column { padding: 0 0 6px 10px; }
+.sale-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; min-height: 44px; }
+.sale-toolbar :deep(.q-btn) { min-height: 36px; border-radius: 10px; font-size: 12px; font-weight: 600; letter-spacing: 0; }
+.sale-toolbar :deep(.q-icon.on-left) { font-size: 19px; margin-right: 6px; }
+.sale-refresh { width: 36px; min-width: 36px; color: #7b8596; background: #fff; border: 1px solid #e3e7ee; }
+.sale-refresh :deep(.q-icon) { font-size: 20px; }
+.sale-online { color: #2f6965; background: #edf6f4; padding: 0 12px; }
+.sale-action-divider { width: 1px; height: 24px; margin: 0 2px; background: #dfe4ec; }
+.trae-actions { display: flex; align-items: center; gap: 5px; padding: 4px; border: 1px solid #e7e0f1; border-radius: 14px; background: #f5f2fa; }
+.sale-trae-toggle { color: #665b7c; padding: 0 10px; }
+.sale-trae-toggle.is-active { background: #e7ddfa; color: #6937b4; }
+@media (max-width: 599px) {
+  .sale-toolbar-column { padding: 6px 0; }
+  .sale-toolbar { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 8px; }
+  .sale-online { justify-self: stretch; }
+  .sale-action-divider { display: none; }
+  .trae-actions { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .trae-actions :deep(.sale-combo-control), .trae-actions :deep(.combo-trigger) { width: 100%; }
+}
+.sale-fields-locked { pointer-events: none; opacity: .7; }
 .online-ticket-list { padding: 10px 12px 0; display: grid; gap: 6px; }
 .online-ticket { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid #bce3ed; border-radius: 12px; background: #eff9fc; color: #12627a; }
 .online-ticket strong { display: block; font-size: 11px; letter-spacing: .035em; }

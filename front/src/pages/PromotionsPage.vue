@@ -1,5 +1,5 @@
 <template>
-  <q-page class="promotions-page q-pa-md">
+  <section class="promotions-page q-pa-md">
     <div class="row items-center q-col-gutter-md q-mb-lg">
       <div class="col-12 col-sm">
         <div class="text-overline text-primary text-weight-bold">GESTIÓN COMERCIAL</div>
@@ -318,7 +318,7 @@
         </q-form>
       </q-card>
     </q-dialog>
-  </q-page>
+  </section>
 </template>
 
 <script>

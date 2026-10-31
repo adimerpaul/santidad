@@ -67,6 +67,7 @@ export default boot(({ app, router }) => {
         localStorage.setItem('agencia_id', agenciaId)
       }
     }).catch(() => {
+      useCounterStore().resetTraeSale()
       app.config.globalProperties.$axios.defaults.headers.common.Authorization = ''
       useCounterStore().user = {}
       localStorage.removeItem('tokenSantidad')

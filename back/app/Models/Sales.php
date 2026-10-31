@@ -9,8 +9,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Sales extends Model
 {
     use HasFactory, SoftDeletes;
-    protected $casts = ['online_orders' => 'array'];
+    protected $casts = ['online_orders' => 'array', 'internal_combos' => 'array', 'comision_trae_porcentaje' => 'float', 'comision_trae_monto' => 'float'];
     protected $fillable = [
+        'canal_venta',
+        'comision_trae_porcentaje',
+        'comision_trae_monto',
         "numeroFactura",
         "cuf",
         "cufd",

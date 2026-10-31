@@ -15,6 +15,7 @@ use App\Http\Requests\StoreSalesRequest;
 use App\Http\Requests\UpdateSalesRequest;
 use App\Services\FacturacionSiatService;
 use App\Services\PromotionPricingService;
+use App\Services\SaleRequestService;
 use App\Models\CashClosure;
 use App\Support\Money;
 use Carbon\Carbon;
@@ -63,41 +64,57 @@ class SalesController extends Controller
 
     public function store(StoreSalesRequest $request)
     {
-        // Verificar que la caja esté abierta antes de procesar cualquier venta
-        $user = $request->user();
-        if ($user && $user->agencia_id && (string)$user->id !== '1') {
-            $cajaAbierta = CashClosure::where('agencia_id', $user->agencia_id)
-                ->where('user_id', $user->id)
-                ->where('estado', 'ABIERTO')
-                ->exists();
-
-            if (!$cajaAbierta) {
-                return response()->json([
-                    'message' => 'Usted no cuenta con un turno de caja abierto a su nombre. Debe aperturar su turno para vender.',
-                ], 400);
-            }
+        $requests = app(SaleRequestService::class);
+        if ($previous = $requests->existing($request)) return $previous;
+        $isTrae = $request->input('canal_venta') === 'trae';
+        $hasCombos = collect($request->products)->contains(fn ($p) => !empty($p['combo_id']));
+        if ($hasCombos && (!$isTrae || (float) $request->descuento > 0 || (float) $request->aporte > 0)) {
+            return response()->json(['message' => 'Los combos internos se registran como TRAE, con sus precios propios y sin ajustes adicionales.'], 422);
         }
-
-        error_log('cliente numeroDocumento: ' . $request->client['numeroDocumento']);
-
-        // Con NIT/CI distinto de 0 la venta se factura, así que necesita un CUFD
-        // vigente. El CUFD caduca a diario: si no hay, se pide a SIAT en el
-        // momento en lugar de rechazar la venta.
-        $seFactura = false;
-        if ($request->client['numeroDocumento'] !== '0') {
-            $codigoSucursal = (int) (Agencia::find($this->agenciaDeLaVenta($request))?->sucursal ?? 0);
-            $seFactura = $codigoSucursal > 0;
-
-            // Sucursal 0 = agencia sin habilitación SIAT: sale como nota de venta.
-            if ($codigoSucursal > 0 && !$this->facturacionService->asegurarCufdVigente($codigoSucursal)) {
-                return response()->json([
-                    'message' => 'No se pudo obtener un CUFD vigente desde SIAT para esta sucursal. Verifica la conexión con SIAT o genera el CUFD manualmente.',
-                ], 400);
-            }
+        if ($isTrae && ((float) $request->descuento > 0 || (float) $request->aporte > 0
+            || collect($request->products)->contains(fn ($p) => !empty($p['online_order_number'])))) {
+            return response()->json(['message' => 'TRAE utiliza su precio propio, sin descuentos adicionales, aportes ni pedidos de otros canales.'], 422);
         }
-
         DB::beginTransaction();
         try {
+            if ($previous = $requests->claim($request)) { DB::commit(); return $previous; }
+            // Verificar que la caja esté abierta antes de procesar cualquier venta
+            $user = $request->user();
+            if ($user && $user->agencia_id && (string)$user->id !== '1') {
+                $cajaAbierta = CashClosure::where('agencia_id', $user->agencia_id)
+                    ->where('user_id', $user->id)
+                    ->where('estado', 'ABIERTO')
+                    ->exists();
+
+                if (!$cajaAbierta) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Usted no cuenta con un turno de caja abierto a su nombre. Debe aperturar su turno para vender.',
+                    ], 400);
+                }
+            }
+
+            // Con NIT/CI distinto de 0 la venta se factura, así que necesita un CUFD
+            // vigente. El CUFD caduca a diario: si no hay, se pide a SIAT en el
+            // momento en lugar de rechazar la venta.
+            $seFactura = false;
+            if ($request->client['numeroDocumento'] !== '0') {
+                $codigoSucursal = (int) (Agencia::find($this->agenciaDeLaVenta($request))?->sucursal ?? 0);
+                $seFactura = $codigoSucursal > 0;
+
+                // Sucursal 0 = agencia sin habilitación SIAT: sale como nota de venta.
+                if ($codigoSucursal > 0 && !$this->facturacionService->asegurarCufdVigente($codigoSucursal)) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'No se pudo obtener un CUFD vigente desde SIAT para esta sucursal. Verifica la conexión con SIAT o genera el CUFD manualmente.',
+                    ], 400);
+                }
+            }
+
+            if ($isTrae) {
+                DB::table('trae_settings')->where('id', 1)->lockForUpdate()->first();
+                app(\App\Services\TraePricingService::class)->clearCache();
+            }
             // Lo primero de la transacción: reservar el número de factura. La
             // fila del contador queda bloqueada hasta el commit, así dos ventas
             // simultáneas no pueden tomar el mismo número; si la venta falla,
@@ -114,6 +131,8 @@ class SalesController extends Controller
             $montoBaseCentavos = 0;
             $descuentoProductoCentavos = 0;
             $productIds = collect($request->products)->pluck('id')->sort()->values();
+            $comboPrices = app(\App\Services\InternalComboService::class)->resolveLines($request->products, 'cantidadPedida', $isTrae ? 'trae' : 'sucursal', true);
+            $requestedQuantities = collect($request->products)->groupBy('id')->map(fn ($rows) => $rows->sum('cantidadPedida'));
             $productosBloqueados = Product::whereIn('id', $productIds)
                 ->orderBy('id')
                 ->lockForUpdate()
@@ -122,22 +141,26 @@ class SalesController extends Controller
 
             // La base de datos define el precio unitario efectivo, ya redondeado
             // a Bs 0,10. La canasta y el detalle usan exactamente ese precio.
-            foreach ($request->products as $product) {
+            foreach ($request->products as $lineIndex => $product) {
                 $productModel = $productosBloqueados->get($product['id']);
                 if (!$productModel) {
                     throw new \DomainException('Uno de los productos ya no se encuentra disponible.');
+                }
+                if ($isTrae && $productModel->activo !== 'ACTIVO') {
+                    throw new \DomainException('El producto ya no está activo en el catálogo TRAE.');
                 }
                 $cantidad = (int) $product['cantidadPedida'];
                 $campoStock = "cantidadSucursal{$agencia_id}";
                 $stockDisponible = (float) ($productModel->getAttribute($campoStock) ?? 0);
 
-                if ($stockDisponible < $cantidad || (float) $productModel->cantidad < $cantidad) {
+                if ($stockDisponible < $requestedQuantities[$productModel->id] || (float) $productModel->cantidad < $requestedQuantities[$productModel->id]) {
                     throw new \DomainException('No hay suficiente stock del producto ' . $productModel->nombre);
                 }
 
-                $pricing = $this->promotionPricing->resolveSale($productModel, $agencia_id, $product['online_order_number'] ?? null);
-                if (!empty($product['online_order_number']) && Money::toCents($product['precioVenta']) !== Money::toCents($pricing['precio_venta'])) {
-                    throw new \DomainException('El precio del pedido online cambió. Cierre el cobro y vuelva a verificar la canasta antes de pagar.');
+                $pricing = $comboPrices[$lineIndex] ?? $this->promotionPricing->resolveSale($productModel, $agencia_id, $product['online_order_number'] ?? null, $isTrae ? 'trae' : 'sucursal');
+                if (isset($comboPrices[$lineIndex])) app(\App\Services\InternalComboService::class)->assertPriceAllowed($productModel, $pricing['precio_venta']);
+                if (($isTrae || isset($comboPrices[$lineIndex]) || !empty($product['online_order_number'])) && Money::toCents($product['precioVenta']) !== Money::toCents($pricing['precio_venta'])) {
+                    throw new \DomainException('El precio '.($isTrae ? 'TRAE' : 'del pedido online').' cambió. Cierre el cobro y vuelva a verificar la canasta antes de pagar.');
                 }
                 $precioOriginalCentavos = Money::toCents($pricing['precio_original']);
                 $precioVenta = $pricing['precio_venta'];
@@ -198,6 +221,13 @@ class SalesController extends Controller
             $client = $this->insertUpdateClient($request);
 
             $sale = new Sales();
+            if ($comboPrices) $sale->internal_combos = collect($comboPrices)->pluck('combo_snapshot')->unique('combo_grupo')->values()->all();
+            if ($isTrae) {
+                $percentage = app(\App\Services\TraePricingService::class)->commissionPercentage();
+                $sale->canal_venta = 'trae';
+                $sale->comision_trae_porcentaje = $percentage;
+                $sale->comision_trae_monto = Money::roundToCents($montoTotal * $percentage / 100);
+            }
             $sale->fill([
                 'numeroFactura' => $numeroFactura,
                 'fechaEmision'  => date('Y-m-d H:i:s'),
@@ -239,7 +269,7 @@ class SalesController extends Controller
                     'descripcion'    => $productSale->nombre,
                     'user_id'        => $request->user()->id,
                     'product_id'     => $productSale->id,
-                ]);
+                ] + ($productoProcesado['pricing']['combo_snapshot'] ?? []));
                 $detail->save();
 
                 $concepto .= $cantidad . $productSale->nombre . ',';
@@ -274,6 +304,7 @@ class SalesController extends Controller
                 $onlineOrder->save();
             }
 
+            $requests->record($request, $sale->id);
             DB::commit();
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
@@ -281,27 +312,40 @@ class SalesController extends Controller
         } catch (\DomainException $e) {
             DB::rollBack();
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            DB::rollBack();
+            throw $e;
         } catch (\Throwable $e) {
             DB::rollBack();
             return response()->json(['message' => $e->getMessage()], 500);
         }
 
         // SIAT y correo fuera de la transacción; un fallo no cancela la venta
-        $online = $this->facturacionService->procesar($sale);
-
-        // El correo solo sale cuando la venta llegó a ser factura. Las notas de
-        // venta (cliente sin NIT, o agencia con sucursal 0) no envían nada.
-        if ($sale->venta === 'F' && (int) $sale->numeroFactura > 0) {
-            $this->enviarCorreoFactura($sale, $online);
+        $warning = null;
+        try {
+            $online = $this->facturacionService->procesar($sale);
+            if ($sale->venta === 'F' && (int) $sale->numeroFactura > 0) $this->enviarCorreoFactura($sale, $online);
+        } catch (\Throwable $e) {
+            error_log('Venta ya registrada #'.$sale->id.': error posterior al guardado: '.$e->getMessage());
+            $warning = 'La venta ya está registrada. La facturación requiere revisión en Movimientos; no vuelva a registrar la venta.';
         }
+        $requests->finish($request, $warning);
 
-        return Sales::with(['details.product', 'client', 'agencia'])->find($sale->id);
+        $result = Sales::with(['details.product', 'client', 'agencia'])->findOrFail($sale->id);
+        $result->setAttribute('procesamiento_pendiente', false);
+        $result->setAttribute('advertencia_procesamiento', $warning);
+        return $result;
     }
+
+    public function requestStatus(Request $request, string $id) { return app(SaleRequestService::class)->status($request, $id); }
 
     // ─────────────────────────── Actualizar venta ───────────────────────────
 
     public function update(UpdateSalesRequest $request, Sales $sale)
     {
+        if ($sale->canal_venta === 'trae' || !empty($sale->internal_combos)) {
+            return response()->json(['message' => 'Para corregir una venta TRAE, anúlela y registre una nueva con los precios vigentes.'], 422);
+        }
         try {
             DB::beginTransaction();
             $agencia_id = $sale->agencia_id;
@@ -430,6 +474,20 @@ class SalesController extends Controller
             DB::rollBack();
             return response()->json(['message' => 'El pedido ya se vendió nuevamente o cambió de estado. No se puede revertir esta anulación.'], 422);
         }
+        // Validate the complete quantity per product before touching SIAT or stock.
+        // A product can appear in several combos and also as a loose item.
+        $quantities = $sale->tipoVenta === 'Ingreso'
+            ? Detail::whereSaleId($id)->get()->groupBy('product_id')->map(fn ($rows) => $rows->sum('cantidad'))
+            : collect();
+        $products = Product::whereIn('id', $quantities->keys())->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+        foreach ($quantities as $productId => $quantity) {
+            $product = $products->get($productId);
+            if (!$product || (float) $product->cantidad < $quantity
+                || (float) ($product->{'cantidadSucursal'.$sale->agencia_id} ?? 0) < $quantity) {
+                DB::rollBack();
+                return response()->json(['message' => 'Stock insuficiente para reactivar la venta. Revisa los productos y la sucursal.'], 422);
+            }
+        }
         try {
             $this->facturacionService->revertirAnulacion($sale);
         } catch (\RuntimeException $e) {
@@ -440,13 +498,11 @@ class SalesController extends Controller
         $sale->estado = 'ACTIVO';
         $sale->save();
 
-        if ($sale->tipoVenta === 'Ingreso') {
-            foreach (Detail::whereSaleId($id)->get() as $detail) {
-                $product            = Product::lockForUpdate()->findOrFail($detail->product_id);
-                $product->cantidad -= $detail->cantidad;
-                $this->ajustarStockSucursal($product, $sale->agencia_id, -$detail->cantidad);
-                $product->save();
-            }
+        foreach ($quantities as $productId => $quantity) {
+            $product = $products->get($productId);
+            $product->cantidad -= $quantity;
+            $this->ajustarStockSucursal($product, $sale->agencia_id, -$quantity);
+            $product->save();
         }
 
         foreach ($orders as $order) {

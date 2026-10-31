@@ -131,6 +131,19 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::resource('/agencias', AgenciaController::class);
     Route::get('/promotions/announcements', [PromotionController::class, 'announcements']);
     Route::apiResource('/promotions', PromotionController::class);
+    Route::get('/trae', [\App\Http\Controllers\TraeController::class, 'index']);
+    Route::get('/internal-combos/available', [\App\Http\Controllers\InternalComboController::class, 'available']);
+    Route::post('/internal-combos/preview', [\App\Http\Controllers\InternalComboController::class, 'preview']);
+    Route::post('/internal-combos/{id}/load', [\App\Http\Controllers\InternalComboController::class, 'load'])->whereNumber('id');
+    Route::get('/internal-combos', [\App\Http\Controllers\InternalComboController::class, 'index']);
+    Route::post('/internal-combos', [\App\Http\Controllers\InternalComboController::class, 'store']);
+    Route::put('/internal-combos/{id}', [\App\Http\Controllers\InternalComboController::class, 'update'])->whereNumber('id');
+    Route::delete('/internal-combos/{id}', [\App\Http\Controllers\InternalComboController::class, 'destroy'])->whereNumber('id');
+    Route::put('/trae/settings', [\App\Http\Controllers\TraeController::class, 'settings']);
+    Route::get('/trae/products', [\App\Http\Controllers\TraeController::class, 'products']);
+    Route::get('/trae/sales', [\App\Http\Controllers\TraeController::class, 'sales']);
+    Route::post('/trae/rules', [\App\Http\Controllers\TraeController::class, 'saveRule']);
+    Route::delete('/trae/rules/{id}', [\App\Http\Controllers\TraeController::class, 'destroy'])->whereNumber('id');
     Route::resource('/products', ProductController::class);
     Route::resource('/unids', UnidController::class);
 
@@ -158,6 +171,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('/providers', [ClientController::class,'providers']);
     Route::put('/updatePassword/{user}', [UserController::class,'updatePassword']);
 
+    Route::get('/sale-requests/{id}', [SalesController::class, 'requestStatus'])->whereUuid('id');
     Route::resource('/sales', SalesController::class);
     Route::get('/salesAnular/{id}', [SalesController::class,'salesAnular']);
     Route::get('/salesRevertir/{id}', [SalesController::class,'salesRevertir']);

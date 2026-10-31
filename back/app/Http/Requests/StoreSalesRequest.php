@@ -21,7 +21,10 @@ class StoreSalesRequest extends FormRequest
      */
     public function rules(): array
     {
+        $hasCombos = collect($this->input('products', []))->contains(fn ($p) => !empty($p['combo_id']));
         return [
+            'request_id' => ['nullable', 'uuid'],
+            'canal_venta' => ['nullable', 'in:sucursal,trae'],
             'client' => ['required', 'array'],
             'client.numeroDocumento' => ['required', 'string'],
             'client.nombreRazonSocial' => ['required', 'string'],
@@ -29,7 +32,11 @@ class StoreSalesRequest extends FormRequest
             'client.complemento' => ['nullable', 'string'],
             'client.email' => ['nullable', 'string'],
             'products' => ['required', 'array', 'min:1'],
-            'products.*.id' => ['required', 'integer', 'distinct', 'exists:products,id'],
+            'products.*.id' => ['required', 'integer', ...($hasCombos ? [] : ['distinct']), 'exists:products,id'],
+            'products.*.combo_id' => ['nullable', 'required_with:products.*.combo_grupo', 'integer', 'exists:internal_combos,id'],
+            'products.*.combo_grupo' => ['nullable', 'required_with:products.*.combo_id', 'uuid'],
+            'products.*.combo_cantidad' => ['nullable', 'required_with:products.*.combo_id', 'integer', 'min:1', 'max:100'],
+            'products.*.combo_version' => ['nullable', 'required_with:products.*.combo_id', 'integer', 'min:1'],
             'products.*.online_order_number' => ['nullable', 'string', 'max:100', 'exists:orders,order_number'],
             'products.*.cantidadPedida' => ['required', 'integer', 'min:1'],
             'products.*.precioVenta' => ['required', 'numeric', 'gt:0'],

@@ -22,14 +22,28 @@ class ProductController extends Controller
 
     public function verificarStockVenta(Request $request)
     {
+        $request->validate(['canal_venta' => 'nullable|in:sucursal,trae']);
+        $request->validate([
+            'productos' => 'required|array|min:1|max:1000', 'productos.*.id' => 'required|integer',
+            'productos.*.cantidadVenta' => 'required|integer|min:0',
+            'productos.*.combo_id' => 'nullable|required_with:productos.*.combo_grupo|integer',
+            'productos.*.combo_grupo' => 'nullable|required_with:productos.*.combo_id|uuid',
+            'productos.*.combo_cantidad' => 'nullable|required_with:productos.*.combo_id|integer|min:1|max:100',
+            'productos.*.combo_version' => 'nullable|required_with:productos.*.combo_id|integer|min:1',
+        ]);
         $productos = $request->input('productos', []);
         $agencia_id = $request->input('agencia_id');
 
         $errores = [];
         $precios = [];
+        try {
+            $comboPrices = app(\App\Services\InternalComboService::class)->resolveLines($productos, 'cantidadVenta', $request->input('canal_venta') ?? 'sucursal');
+        } catch (\DomainException $e) { return response()->json(['message' => $e->getMessage(), 'errores' => [$e->getMessage()]], 422); }
+        $models = Product::whereIn('id', array_column($productos, 'id'))->get()->keyBy('id');
+        $quantities = collect($productos)->groupBy('id')->map(fn ($rows) => $rows->sum('cantidadVenta'));
 
-        foreach ($productos as $item) {
-            $producto = Product::find($item['id']);
+        foreach ($productos as $lineIndex => $item) {
+            $producto = $models->get($item['id']);
             if (!$producto) {
                 $errores[] = "Producto con ID {$item['id']} no encontrado.";
                 continue;
@@ -38,13 +52,25 @@ class ProductController extends Controller
             $campoCantidad = $agencia_id ? 'cantidadSucursal' . $agencia_id : 'cantidadAlmacen';
             $stockDisponible = $producto->$campoCantidad ?? 0;
 
-            if ($item['cantidadVenta'] > $stockDisponible) {
-                $errores[] = "Stock insuficiente para '{$producto->nombre}'. Solo hay {$stockDisponible} disponibles.";
+            if ($request->input('canal_venta') === 'trae' && $producto->activo !== 'ACTIVO') {
+                $errores[] = "El producto '{$producto->nombre}' ya no está activo en TRAE.";
             }
 
-            $pricing = $this->promotionPricing->resolveSale($producto, $agencia_id ? (int) $agencia_id : null, $item['online_order_number'] ?? null);
+            if ($quantities[$producto->id] > $stockDisponible) {
+                $errores[] = "Stock insuficiente para '{$producto->nombre}'. Solo hay {$stockDisponible} disponibles.";
+            }
+            if ($quantities[$producto->id] > $producto->cantidad) {
+                $errores[] = "Stock total insuficiente para '{$producto->nombre}'. Actualiza el inventario antes de vender.";
+            }
+
+            $pricing = $comboPrices[$lineIndex] ?? $this->promotionPricing->resolveSale($producto, $agencia_id ? (int) $agencia_id : null, $item['online_order_number'] ?? null, $request->input('canal_venta') ?? 'sucursal');
+            if (isset($comboPrices[$lineIndex])) {
+                try { app(\App\Services\InternalComboService::class)->assertPriceAllowed($producto, $pricing['precio_venta']); }
+                catch (\DomainException $e) { $errores[] = $e->getMessage(); }
+            }
             $precios[] = [
                 'id' => (int) $producto->id,
+                'line_key' => $producto->id.(!empty($item['combo_grupo']) ? ':'.$item['combo_grupo'] : ''),
                 'precio' => $pricing['precio_original'],
                 'precioVenta' => $pricing['precio_venta'],
                 'porcentajeEfectivo' => $pricing['porcentaje'],
@@ -285,6 +311,7 @@ class ProductController extends Controller
 //    }
     public function productsSale(Request $request)
     {
+        $request->validate(['canal_venta' => 'nullable|in:sucursal,trae']);
         // 1) Sanitización y defaults
         $search         = strtoupper((string) $request->input('search', ''));
         $searchLike     = $search === '' ? '%' : '%' . str_replace(' ', '%', $search) . '%';
@@ -331,6 +358,10 @@ class ProductController extends Controller
         // dentro de with() limita el total de lotes de la página, no por producto.
         $query = Product::query()
             ->where('nombre', 'like', $searchLike);
+
+        if ($request->input('canal_venta') === 'trae') {
+            $query->where('activo', 'ACTIVO');
+        }
 
         if ($category_id !== 0) {
             $query->where('category_id', $category_id);
@@ -398,10 +429,12 @@ class ProductController extends Controller
         }
 
         // 8) Post-proceso de imagen
-        $products->getCollection()->transform(function ($product) use ($sucursalColumn, $agencia_id) {
+        $products->getCollection()->transform(function ($product) use ($sucursalColumn, $agencia_id, $request) {
             $product->cantidad = $product->{$sucursalColumn} ?? 0;
 
-            $pricing = $this->promotionPricing->resolve($product, 'physical', $agencia_id ?: null);
+            $pricing = $request->input('canal_venta') === 'trae'
+                ? app(\App\Services\TraePricingService::class)->resolve($product)
+                : $this->promotionPricing->resolve($product, 'physical', $agencia_id ?: null);
             $product->setAttribute('precioVenta', $pricing['precio_venta']);
             $product->setAttribute('porcentajeEfectivo', $pricing['porcentaje']);
             $product->setAttribute('promocion', $pricing['promocion_nombre']);

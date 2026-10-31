@@ -4,17 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Agencia;
 use App\Models\Product;
-use App\Services\PromotionPricingService;
+use App\Services\TraePricingService;
 use Illuminate\Http\Request;
 
 /**
  * API pública para empresas de delivery.
  * Rutas bajo /api/delivery/* sin autenticación (solo throttle).
- * Precios con los descuentos del canal web (mismos que la tienda pública).
+ * Precios de TRAE: reglas propias o el canal de referencia configurado.
  */
 class DeliveryController extends Controller
 {
-    public function __construct(private readonly PromotionPricingService $promotionPricing)
+    public function __construct(private readonly TraePricingService $promotionPricing)
     {
     }
 
@@ -77,7 +77,7 @@ class DeliveryController extends Controller
             fn ($p) => $this->productoDelivery($p, $agencias, $agencia?->id)
         );
 
-        return $productos;
+        return response()->json($productos)->header('Cache-Control', 'no-store');
     }
 
     // GET /delivery/productos/{id}?agencia_id=
@@ -90,7 +90,7 @@ class DeliveryController extends Controller
 
         return response()->json(
             $this->productoDelivery($producto, $agencias, $agencias->firstWhere('id', $agenciaId)?->id)
-        );
+        )->header('Cache-Control', 'no-store');
     }
 
     private function agencias()
@@ -100,7 +100,7 @@ class DeliveryController extends Controller
 
     private function productoDelivery(Product $p, $agencias, ?int $agenciaId): array
     {
-        $pricing = $this->promotionPricing->resolve($p, 'web', $agenciaId);
+        $pricing = $this->promotionPricing->resolve($p);
 
         $disponibilidad = $agencias->map(function ($a) use ($p) {
             $cantidad = max(0, (int) ($p->{'cantidadSucursal' . $a->id} ?? 0));

@@ -257,6 +257,10 @@
                 <p>{{ $filters.dateDmYHis(props.row.fechaEmision) }}</p>
               </q-td>
               <q-td key="egresoingreso" :props="props">
+                <q-chip v-if="props.row.canal_venta === 'trae'" color="deep-purple" text-color="white" dense>
+                  TRAE
+                  <q-tooltip>Comisión {{ props.row.comision_trae_porcentaje }} %: Bs {{ Number(props.row.comision_trae_monto || 0).toFixed(2) }}</q-tooltip>
+                </q-chip>
                 <q-chip :color="`${props.row.tipoVenta=='Ingreso'?'green':'red'}-5`" text-color="white" dense flat :label="props.row.tipoVenta"/>
               </q-td>
               <q-td key="user" :props="props">

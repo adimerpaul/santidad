@@ -775,6 +775,7 @@ export default {
       })
     },
     ejecutarLogout () {
+      this.$store.resetTraeSale()
       if (this.socket) {
         this.socket.disconnect()
         this.socket = null
