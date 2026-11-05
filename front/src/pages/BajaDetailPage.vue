@@ -150,6 +150,8 @@
       </q-badge>
     </div>
 
+    <WithdrawalReportNotes v-if="report" :report="report" @notes-updated="onReportNotesUpdated" />
+
     <!-- Sección de Búsqueda de Productos -->
     <div v-if="report && report.estado === 'ABIERTO'" class="row q-col-gutter-md q-mb-lg">
       <div class="col-12">
@@ -1075,12 +1077,15 @@
 import moment from 'moment'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import WithdrawalReportNotes from 'components/WithdrawalReportNotes.vue'
 
 export default {
+  components: { WithdrawalReportNotes },
   data () {
     return {
       id: this.$route.params.id,
       report: null,
+      reportNotesRevision: 0,
       loading: false,
       search: '',
       searchAgenciaId: null,
@@ -1333,6 +1338,11 @@ export default {
     this.getReport()
   },
   methods: {
+    onReportNotesUpdated (data) {
+      if (!this.report || String(this.report.id) !== String(data.id)) return
+      this.reportNotesRevision++
+      this.report.observaciones = data.observaciones
+    },
     getAgencias () {
       this.$axios.get('agencias').then(res => {
         const otrasAgencias = res.data.filter(a => a.id !== 1)
@@ -1357,7 +1367,12 @@ export default {
     },
     getReport () {
       this.loading = true
+      const notesRevision = this.reportNotesRevision
       this.$axios.get(`withdrawal-reports/${this.id}`).then(res => {
+        // A GET started before saving notes must not restore the previous notes in the page/PDF.
+        if (notesRevision !== this.reportNotesRevision && String(this.report?.id) === String(res.data.id)) {
+          res.data.observaciones = this.report.observaciones
+        }
         this.report = res.data
         this.applyAgencyFilterSettings()
       }).catch(err => {
@@ -2024,29 +2039,37 @@ export default {
           lineWidth: 0.1
         },
         columnStyles: { 0: { cellWidth: 20 }, 1: { cellWidth: 25 }, 3: { cellWidth: 15 }, 4: { cellWidth: 20 } },
-        didDrawPage: drawCommonElements,
         margin: { top: 15, bottom: 25 } // Margen superior reducido para páginas siguientes
       })
 
-      // --- OBSERVACIONES Y FIRMA (Al final de la tabla) ---
-      let finalY = doc.lastAutoTable?.finalY || 80
-      // Si no hay espacio para la firma, añadir página nueva
-      if (finalY > pH - 60) {
+      // Long general notes flow across pages rather than colliding with the signature/footer.
+      autoTable(doc, {
+        startY: (doc.lastAutoTable?.finalY || 80) + 8,
+        head: [['OBSERVACIONES GENERALES DEL INFORME']],
+        body: [[this.report.observaciones || 'Sin observaciones.']],
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak', lineColor: [220, 220, 220], lineWidth: 0.1 },
+        headStyles: { fillColor: [240, 245, 250], textColor: [40, 70, 100], fontStyle: 'bold' },
+        margin: { top: 15, bottom: 40, left: 14, right: 14 }
+      })
+      let finalY = doc.lastAutoTable.finalY
+      if (finalY > pH - 55) {
         doc.addPage()
-        finalY = 30
+        finalY = 20
       }
-
-      doc.setFontSize(9)
-      doc.setFont('helvetica', 'bold')
-      doc.text('OBSERVACIONES ADICIONALES:', 14, finalY + 15)
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(8)
-      doc.text(doc.splitTextToSize(this.report.observaciones || 'Sin observaciones.', pW - 28), 14, finalY + 22)
-
-      const sigY = finalY + 50
+      doc.setTextColor(40, 40, 40)
+      const sigY = finalY + 22
       doc.setDrawColor(150)
       doc.line(pW / 2 - 30, sigY, pW / 2 + 30, sigY)
       doc.text('Firma Responsable', pW / 2, sigY + 5, { align: 'center' })
+
+      const pages = doc.internal.getNumberOfPages()
+      for (let page = 1; page <= pages; page++) {
+        doc.setPage(page)
+        drawCommonElements({ pageNumber: page })
+      }
 
       doc.save(`Informe_Bajas_${this.report.id}.pdf`)
     },

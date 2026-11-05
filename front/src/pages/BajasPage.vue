@@ -34,7 +34,7 @@
       <q-tab v-if="isCentralOrAdmin" name="devoluciones_central" label="Devoluciones a Central" icon="swap_vertical_circle" />
       <q-tab name="inventario" label="Inventario" icon="assignment" />
       <q-tab name="motivos_sanitarios" label="Bajas Motivos Sanitarios" icon="health_and_safety" />
-      <q-tab name="productos" label="Productos Retirados" icon="inventory" />
+      <q-tab v-if="isAdmin" name="productos" label="Productos Retirados" icon="inventory" />
     </q-tabs>
     <q-separator />
 
@@ -112,7 +112,7 @@
             </q-select>
           </div>
 
-          <div v-if="tab === 'productos'" class="col-12 col-sm-3 col-md-2">
+          <div v-if="isAdmin && tab === 'productos'" class="col-12 col-sm-3 col-md-2">
             <q-select
               v-model="filter.tipo_reporte"
               :options="origenesReporteFiltro"
@@ -130,7 +130,7 @@
             </q-select>
           </div>
 
-          <div v-if="tab === 'productos'" class="col-12 col-sm-3 col-md-2">
+          <div v-if="isAdmin && tab === 'productos'" class="col-12 col-sm-3 col-md-2">
             <q-select
               v-model="filter.tipo"
               :options="tiposBajaFiltro"
@@ -148,7 +148,7 @@
             </q-select>
           </div>
 
-          <div v-if="tab === 'productos'" class="col-12 col-sm-4 col-md-3">
+          <div v-if="isAdmin && tab === 'productos'" class="col-12 col-sm-4 col-md-3">
             <q-input
               v-model="filter.search"
               label="Buscar por producto o lote..."
@@ -177,7 +177,7 @@
               <q-tooltip>Actualizar lista</q-tooltip>
             </q-btn>
             <q-btn
-              v-if="tab === 'productos'"
+              v-if="isAdmin && tab === 'productos'"
               flat
               round
               color="green-7"
@@ -187,7 +187,7 @@
               <q-tooltip>Exportar a Excel (CSV)</q-tooltip>
             </q-btn>
             <q-btn
-              v-if="tab === 'productos'"
+              v-if="isAdmin && tab === 'productos'"
               flat
               round
               color="red-7"
@@ -195,6 +195,19 @@
               @click="exportProductosPDF"
             >
               <q-tooltip>Exportar a PDF</q-tooltip>
+            </q-btn>
+            <q-btn
+              v-if="isAdmin && tab === 'productos'"
+              unelevated
+              no-caps
+              color="primary"
+              icon="edit_document"
+              label="Preparar PDF"
+              class="q-ml-sm"
+              :disable="loading || !$store.user?.id"
+              @click="openPdfEditor"
+            >
+              <q-tooltip>Revisar todos los resultados del filtro y ajustar el documento antes de descargarlo</q-tooltip>
             </q-btn>
           </div>
         </div>
@@ -294,7 +307,7 @@
 
       <!-- Tabla de Productos Retirados -->
       <q-table
-        v-else-if="tab === 'productos'"
+        v-else-if="isAdmin && tab === 'productos'"
         :rows="productos"
         :columns="columnsProductos"
         row-key="id"
@@ -445,6 +458,8 @@
       </q-table>
     </div>
 
+    <WithdrawalPdfEditor v-if="isAdmin" v-model="showPdfEditor" :filters="pdfEditorFilters" :scope="pdfEditorScope" />
+
     <q-dialog v-model="showCreateDialog" persistent>
       <q-card style="min-width: 380px">
         <q-card-section class="row items-center bg-primary text-white">
@@ -564,6 +579,8 @@
 import { exportFile } from 'quasar'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import WithdrawalPdfEditor from 'components/WithdrawalPdfEditor.vue'
+import { withdrawalInvoiceNumber } from 'src/utils/withdrawal-pdf'
 
 function getTwoMonthsAgoDate () {
   const d = new Date()
@@ -575,6 +592,7 @@ function getTwoMonthsAgoDate () {
 }
 
 export default {
+  components: { WithdrawalPdfEditor },
   data () {
     const initialTab = localStorage.getItem('bajas_active_tab') || 'informes'
     const twoMonthsAgo = getTwoMonthsAgoDate()
@@ -589,6 +607,9 @@ export default {
       reports: [],
       productos: [],
       agencias: [],
+      showPdfEditor: false,
+      pdfEditorFilters: {},
+      pdfEditorScope: '',
       showCreateDialog: false,
       filter: {
         agencia_id: [],
@@ -638,6 +659,7 @@ export default {
         { name: 'agencia', align: 'left', label: 'Agencia', field: row => row.agencia?.nombre || (row.buy?.agencia?.nombre || 'Almacen') },
         { name: 'producto', align: 'left', label: 'Producto', field: row => row.product?.nombre },
         { name: 'lote', align: 'left', label: 'Lote', field: row => row.buy?.lote || 'N/A' },
+        { name: 'factura', align: 'left', label: 'N.º factura', field: row => this.getInvoiceNumber(row) },
         { name: 'cantidad', align: 'center', label: 'Cantidad', field: 'cantidad', sortable: true },
         { name: 'precio_fact', align: 'right', label: 'Precio Fact.', field: row => row.product?.precio ? (row.product.precio / 1.3).toFixed(2) : '0.00', sortable: true },
         { name: 'total_perdida', align: 'right', label: 'Total', field: row => row.product?.precio ? (row.cantidad * (row.product.precio / 1.3)).toFixed(2) : '0.00', sortable: true },
@@ -705,6 +727,9 @@ export default {
     }
   },
   computed: {
+    isAdmin () {
+      return String(this.$store.user?.id) === '1'
+    },
     mesesFiltro () {
       return [{ label: 'Todos los meses', value: null }, ...this.meses]
     },
@@ -727,6 +752,11 @@ export default {
   watch: {
     '$store.user': {
       handler (newUser) {
+        if (String(newUser?.id) !== '1') {
+          this.productos = []
+          this.showPdfEditor = false
+          if (this.tab === 'productos') this.tab = 'informes'
+        }
         if (newUser && newUser.id) {
           this.applyUserSessionRules()
         }
@@ -741,6 +771,28 @@ export default {
     }
   },
   methods: {
+    getInvoiceNumber: withdrawalInvoiceNumber,
+    openPdfEditor () {
+      if (this.loading || !this.isAdmin) return
+      // Freeze the filter so later changes cannot silently alter an open document.
+      this.pdfEditorFilters = JSON.parse(JSON.stringify({
+        agencia_id: this.filter.agencia_id,
+        mes: this.filter.mes,
+        anio: this.filter.anio,
+        tipo: this.filter.tipo,
+        tipo_reporte: this.filter.tipo_reporte,
+        search: this.filter.search
+      }))
+      const selected = (this.filter.agencia_id || []).map(id => this.agencias.find(agency => String(agency.id) === String(id))?.nombre || 'Sucursal #' + id)
+      this.pdfEditorScope = [
+        selected.length ? selected.join(', ') : 'Todas las sucursales autorizadas',
+        (this.filter.mes ? this.getMesNombre(this.filter.mes) : 'Todos los meses') + ' / ' + this.filter.anio,
+        this.filter.tipo_reporte ? this.formatTipoReporte(this.filter.tipo_reporte) : 'Todos los orígenes',
+        this.filter.tipo || 'Todos los motivos',
+        this.filter.search ? 'Búsqueda: ' + this.filter.search : ''
+      ].filter(Boolean).join(' · ')
+      this.showPdfEditor = true
+    },
     applyUserSessionRules () {
       if (this.$store && this.$store.user && this.$store.user.id) {
         const userId = String(this.$store.user.id)
@@ -778,6 +830,12 @@ export default {
       return ''
     },
     fetchData () {
+      if (!this.$store.user?.id) return
+      if (!this.isAdmin && this.tab === 'productos') {
+        this.tab = 'informes'
+        this.productos = []
+        this.showPdfEditor = false
+      }
       this.pagination.page = 1
       this.paginationProductos.page = 1
       this.paginationDevoluciones.page = 1
@@ -861,6 +919,7 @@ export default {
       })
     },
     getProductos (props) {
+      if (!this.isAdmin) return
       this.loading = true
       const { page, rowsPerPage, sortBy, descending } = props?.pagination || this.paginationProductos
 
@@ -878,6 +937,7 @@ export default {
           search: this.filter.search
         }
       }).then(res => {
+        if (!this.isAdmin) return
         this.productos = res.data.data
         this.paginationProductos.page = res.data.current_page
         this.paginationProductos.rowsPerPage = res.data.per_page
@@ -1089,7 +1149,8 @@ export default {
         })
     },
     exportProductosCSV () {
-      let content = '\ufeffInf. #,Origen,Agencia,Producto,Lote,Cantidad,Precio Fact.,Total,Motivo,Fecha/Hora\n'
+      if (!this.isAdmin) return
+      let content = '\ufeffInf. #,Origen,Agencia,Producto,Lote,Factura,Cantidad,Precio Fact.,Total,Motivo,Fecha/Hora\n'
       this.productos.forEach(row => {
         const reportId = row.withdrawal_report_id || ''
         const origen = this.formatTipoReporte(row.report?.tipo)
@@ -1103,7 +1164,7 @@ export default {
         const fecha = this.formatDate(row.created_at)
 
         const safeStr = (str) => `"${String(str).replace(/"/g, '""')}"`
-        content += `${reportId},${safeStr(origen)},${safeStr(agencia)},${safeStr(producto)},${safeStr(lote)},${cantidad},${precioFact},${total},${tipo},${fecha}\n`
+        content += `${reportId},${safeStr(origen)},${safeStr(agencia)},${safeStr(producto)},${safeStr(lote)},${safeStr(this.getInvoiceNumber(row))},${cantidad},${precioFact},${total},${tipo},${fecha}\n`
       })
 
       const status = exportFile('productos_retirados.csv', content, 'text/csv')
@@ -1112,6 +1173,7 @@ export default {
       }
     },
     exportProductosPDF () {
+      if (!this.isAdmin) return
       const doc = jsPDF({ orientation: 'landscape' })
       const pW = doc.internal.pageSize.getWidth()
       const pH = doc.internal.pageSize.getHeight()
@@ -1132,6 +1194,7 @@ export default {
           row.agencia?.nombre || (row.buy?.agencia?.nombre || 'Almacen'),
           row.product?.nombre,
           row.buy?.lote || 'N/A',
+          this.getInvoiceNumber(row),
           { content: this.formatCantidad(row), styles: { fontStyle: 'bold', halign: 'center', textColor: row.cantidad > 0 ? [46, 204, 113] : [231, 76, 60] } },
           precioFact,
           { content: total, styles: { fontStyle: 'bold', halign: 'right', textColor: row.cantidad > 0 ? [46, 204, 113] : [231, 76, 60] } },
@@ -1142,12 +1205,12 @@ export default {
 
       autoTable(doc, {
         startY: 50,
-        head: [['INF. #', 'ORIGEN', 'AGENCIA', 'PRODUCTO', 'LOTE', 'CANT.', 'PRECIO FACT.', 'TOTAL', 'MOTIVO', 'FECHA/HORA']],
+        head: [['INF. #', 'ORIGEN', 'AGENCIA', 'PRODUCTO', 'LOTE', 'FACTURA', 'CANT.', 'PRECIO FACT.', 'TOTAL', 'MOTIVO', 'FECHA/HORA']],
         body: tableData,
         theme: 'grid',
         headStyles: { fillColor: [41, 128, 185], fontSize: 8, fontStyle: 'bold', halign: 'center', lineColor: [255, 255, 255], lineWidth: 0.1 },
         bodyStyles: { fontSize: 7.5, lineColor: [220, 220, 220], lineWidth: 0.1 },
-        columnStyles: { 5: { cellWidth: 12 }, 6: { cellWidth: 16 }, 7: { cellWidth: 16 }, 8: { cellWidth: 24 }, 9: { cellWidth: 25 } },
+        columnStyles: { 5: { cellWidth: 20 }, 6: { cellWidth: 12 }, 7: { cellWidth: 16 }, 8: { cellWidth: 16 }, 9: { cellWidth: 24 }, 10: { cellWidth: 25 } },
         didDrawPage: (data) => {
           doc.setFontSize(8)
           doc.setTextColor(150)

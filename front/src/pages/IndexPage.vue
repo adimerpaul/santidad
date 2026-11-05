@@ -13,7 +13,7 @@
         <!--        <pre>{{agencias}}</pre>-->
       </div>
       <div class="col-12 col-md-2 bg-white">
-        <q-select dense outlined v-model="user" label="Usuario" :options="users" hint="Usuario de la venta"
+        <q-select dense outlined v-model="user" label="Usuario" :options="usersPorAgencia" hint="Usuario de la venta"
                   emit-value map-options option-value="id" option-label="name" />
         <!--        <pre>{{users}}</pre>-->
       </div>
@@ -467,6 +467,13 @@ export default {
       user: ''
     }
   },
+  watch: {
+    agencia () {
+      if (this.user !== '' && !this.usersPorAgencia.some(user => String(user.id) === String(this.user))) {
+        this.user = ''
+      }
+    }
+  },
   created () {
     this.proveedores = [{ id: 0, nombreRazonSocial: 'Busca o selecciona un proveedor' }]
     const agencia = localStorage.getItem('agencia_id')
@@ -700,6 +707,10 @@ export default {
     }
   },
   computed: {
+    usersPorAgencia () {
+      if (this.agencia === '' || this.agencia == null || Number.isNaN(Number(this.agencia))) return this.users
+      return this.users.filter(user => String(user.agencia_id) === String(this.agencia))
+    },
     // Facturas de la lista que aún no llegaron a SIAT: las mismas que muestran
     // el chip "Pendiente" en la columna SIAT.
     salesPendientes () {

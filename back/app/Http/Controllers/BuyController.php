@@ -292,8 +292,9 @@ class BuyController extends Controller{
             if ($buy['cantidadCompra'] <= 0) {
                 return response()->json(['message' => 'La cantidad de compra no puede ser negativa ni 0'], 400);
             }
-            if ($buy['price'] < 0) {
-                return response()->json(['message' => 'El precio de compra no puede ser negativo'], 400);
+            if (!is_numeric($buy['price']) || round((float) $buy['price'], 2) <= 0) {
+                $nombre = $buy['nombre'] ?? ('#'.($buy['id'] ?? '?'));
+                return response()->json(['message' => "El precio de compra de «{$nombre}» debe ser mayor a 0."], 400);
             }
         }
 

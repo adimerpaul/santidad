@@ -274,8 +274,10 @@
                         <input v-model="props.row.cantidadCompra" type="number" min="1" placeholder="Cantidad" style="width: 170px;"
                                :class="{'invalid-date': props.row._cantidadError}"
                                @input="props.row._cantidadError=false"/><br>
-                        <input v-model="props.row.price" type="number" step="0.01" min="0" placeholder="Precio" style="width: 170px;"
-                               :class="{'invalid-date': props.row._precioError}"
+                        <input v-model="props.row.price" type="number" step="0.01" min="0.01" placeholder="Precio" style="width: 170px;"
+                               :class="{'invalid-date': props.row._precioError || priceError(props.row)}"
+                               :aria-invalid="!!(props.row._precioError || priceError(props.row))"
+                               :aria-label="'Precio de ' + props.row.nombre"
                                @blur="props.row.price = (props.row.price !== '' && props.row.price !== null) ? roundCurrency(props.row.price) : props.row.price"
                                @input="props.row._precioError=false"/><br>
 
@@ -648,6 +650,13 @@ export default {
   methods: {
     hasProductSavings,
     roundCurrency,
+    priceError (row) {
+      if (row.price === '' || row.price == null) return ''
+      const price = roundCurrency(row.price)
+      if (price === 0) return `El precio de «${row.nombre}» no puede ser 0.`
+      if (price < 0) return `El precio de «${row.nombre}» no puede ser negativo.`
+      return ''
+    },
     formatCurrency (value) {
       return formatMoney(value)
     },
@@ -714,9 +723,10 @@ export default {
           this.$alert.error(`La cantidad de compra de "${p.nombre}" debe ser mayor a 0.`)
           return false
         }
-        if (parseFloat(p.price) < 0) {
+        const priceMessage = this.priceError(p)
+        if (priceMessage) {
           p._precioError = true
-          this.$alert.error(`El precio de "${p.nombre}" no puede ser negativo.`)
+          this.$alert.error(priceMessage)
           return false
         }
         if (!/^\d{4}-\d{2}-\d{2}$/.test(p.fechaVencimiento)) {

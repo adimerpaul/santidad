@@ -61,6 +61,11 @@ class Buy extends Model
         return $this->belongsTo(Client::class);
     }
 
+    public function purchaseInvoice()
+    {
+        return $this->belongsTo(Factura::class, 'factura_id');
+    }
+
     public function getDiasPorVencerAttribute()
     {
         $formatted_dt1 = Carbon::parse($this->dateExpiry);

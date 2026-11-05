@@ -117,6 +117,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     // Cash Closures
     Route::get('/cash-closures/current-status', [CashClosureController::class, 'currentStatus']);
     Route::get('/cash-closures/gaps', [CashClosureController::class, 'gaps']);
+    Route::get('/cash-closures/report-options', [CashClosureController::class, 'reportOptions']);
+    Route::get('/cash-closures/report', [CashClosureController::class, 'report']);
     Route::post('/cash-closures/open', [CashClosureController::class, 'open']);
     Route::post('/cash-closures/close', [CashClosureController::class, 'close']);
     Route::post('/cash-closures/{id}/confirm-pending', [CashClosureController::class, 'confirmPending']);

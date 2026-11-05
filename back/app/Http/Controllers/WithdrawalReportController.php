@@ -60,7 +60,8 @@ class WithdrawalReportController extends Controller
     public function allItems(Request $request)
     {
         $user = $request->user();
-        $query = WithdrawalItem::with(['report.agencia', 'report.user', 'product', 'buy.proveedor', 'agencia'])
+        abort_unless((string) $user->id === '1', 403, 'Solo el administrador puede consultar Productos retirados.');
+        $query = WithdrawalItem::with(['report.agencia', 'report.user', 'product', 'buy.proveedor', 'buy.agencia:id,nombre', 'buy.purchaseInvoice:id,numero_factura', 'agencia'])
             ->whereHas('report', function ($q) use ($request, $user) {
                 if ($user->id !== 1) {
                     $q->where('agencia_id', $user->agencia_id);
@@ -168,6 +169,38 @@ class WithdrawalReportController extends Controller
         }
 
         return response()->json($report);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $data = $request->validate([
+            'observaciones' => 'present|nullable|string|max:5000',
+            'observaciones_originales' => 'present|nullable|string',
+        ]);
+
+        return DB::transaction(function () use ($request, $id, $data) {
+            $report = WithdrawalReport::lockForUpdate()->findOrFail($id);
+            $user = $request->user();
+            $isAdmin = (string) $user->id === '1';
+            abort_unless($isAdmin || ($user->agencia_id && (string) $report->agencia_id === (string) $user->agencia_id),
+                403, 'No tiene permiso para editar las observaciones de este informe.');
+            $editableStates = $isAdmin ? ['ABIERTO', 'OBSERVADO', 'PENDIENTE'] : ['ABIERTO', 'OBSERVADO'];
+            abort_unless(in_array($report->estado, $editableStates, true),
+                422, 'Las observaciones no se pueden editar en el estado actual del informe.');
+
+            if ((string) $report->observaciones !== (string) $data['observaciones_originales'] &&
+                (string) $report->observaciones !== (string) $data['observaciones']) {
+                return response()->json([
+                    'message' => 'Otra persona modificó las observaciones. Cargue la versión guardada antes de guardar sus cambios.',
+                    'id' => $report->id,
+                    'observaciones' => $report->observaciones,
+                ], 409);
+            }
+            // Only notes are writable here. Never change stock, items, status, branch or owner.
+            $report->update(['observaciones' => $data['observaciones']]);
+            return response()->json($report->only(['id', 'observaciones', 'updated_at']))
+                ->header('Cache-Control', 'no-store');
+        });
     }
 
     public function close($id)

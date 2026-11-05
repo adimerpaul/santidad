@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\CashClosure;
 use App\Models\Sales;
+use App\Models\User;
+use App\Models\Agencia;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -421,6 +423,106 @@ class CashClosureController extends Controller
         }
 
         return response()->json($closures);
+    }
+
+    /** Options are limited to accounts with shifts visible to the requesting user. */
+    public function reportOptions(Request $request)
+    {
+        $user = $request->user();
+        $isAdmin = (string) $user->id === '1';
+        $scope = CashClosure::query();
+        if (!$isAdmin) {
+            $scope->where('agencia_id', $user->agencia_id ?? 0);
+        }
+        $pairs = $scope->select('user_id', 'agencia_id')->distinct()->get();
+        $accounts = User::whereIn('id', $pairs->pluck('user_id')->unique())
+            ->orderBy('name')->get(['id', 'name'])->map(function ($account) use ($pairs) {
+                return [
+                    'id' => $account->id,
+                    'name' => $account->name,
+                    'agencia_ids' => $pairs->where('user_id', $account->id)->pluck('agencia_id')->values(),
+                ];
+            });
+        $agencies = Agencia::query()->when(!$isAdmin, function ($query) use ($user) {
+            $query->where('id', $user->agencia_id ?? 0);
+        })->orderBy('nombre')->get(['id', 'nombre']);
+
+        return response()->json(['agencias' => $agencies, 'cuentas' => $accounts])
+            ->header('Cache-Control', 'no-store');
+    }
+
+    /** Read-only history. Summary always covers the entire scope, not only the current page. */
+    public function report(Request $request)
+    {
+        $filters = $request->validate([
+            'agencia_id' => 'nullable|integer|min:1',
+            'user_id' => 'nullable|integer|min:1',
+            'desde' => 'nullable|date_format:Y-m-d',
+            'hasta' => 'nullable|date_format:Y-m-d'.($request->filled('desde') ? '|after_or_equal:desde' : ''),
+            'vista' => 'nullable|in:todos,anomalias,faltantes,sobrantes,pendientes,abiertos,cerrados',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|in:15,30,50',
+        ]);
+        $user = $request->user();
+        $isAdmin = (string) $user->id === '1';
+        $query = CashClosure::query();
+        if (!$isAdmin) {
+            $query->where('agencia_id', $user->agencia_id ?? 0);
+        } elseif (!empty($filters['agencia_id'])) {
+            $query->where('agencia_id', $filters['agencia_id']);
+        }
+        if (!empty($filters['user_id'])) {
+            $query->where('user_id', $filters['user_id']);
+        }
+        // Closed/pending shifts belong to their closing date; open shifts to their opening date.
+        if (!empty($filters['desde'])) {
+            $query->whereRaw('COALESCE(fecha_cierre, fecha_apertura) >= ?', [$filters['desde'].' 00:00:00']);
+        }
+        if (!empty($filters['hasta'])) {
+            $query->whereRaw('COALESCE(fecha_cierre, fecha_apertura) < ?', [
+                Carbon::parse($filters['hasta'])->addDay()->format('Y-m-d').' 00:00:00',
+            ]);
+        }
+        // Stored money uses two decimals. ROUND prevents floating-point noise at exact thresholds.
+        $shortage = "estado = 'CERRADO' AND ROUND(diferencia, 2) < -20";
+        $surplus = "estado = 'CERRADO' AND ROUND(diferencia, 2) > 150";
+        $summaryQuery = (clone $query)->selectRaw("COUNT(*) as turnos,
+            SUM(CASE WHEN estado = 'CERRADO' THEN 1 ELSE 0 END) as cerrados,
+            SUM(CASE WHEN estado = 'PENDIENTE' THEN 1 ELSE 0 END) as pendientes,
+            SUM(CASE WHEN estado = 'ABIERTO' THEN 1 ELSE 0 END) as abiertos");
+        if ($isAdmin) {
+            $summaryQuery->selectRaw("SUM(CASE WHEN $shortage THEN 1 ELSE 0 END) as faltantes,
+                SUM(CASE WHEN $surplus THEN 1 ELSE 0 END) as sobrantes,
+                SUM(CASE WHEN $shortage THEN -diferencia ELSE 0 END) as monto_faltante,
+                SUM(CASE WHEN $surplus THEN diferencia ELSE 0 END) as monto_sobrante");
+        }
+        $summary = $summaryQuery->first()->getAttributes();
+        foreach (['turnos', 'cerrados', 'pendientes', 'abiertos', 'faltantes', 'sobrantes'] as $field) {
+            if (array_key_exists($field, $summary)) $summary[$field] = (int) $summary[$field];
+        }
+        if ($isAdmin) {
+            $summary['anomalias'] = $summary['faltantes'] + $summary['sobrantes'];
+            $summary['monto_faltante'] = round((float) $summary['monto_faltante'], 2);
+            $summary['monto_sobrante'] = round((float) $summary['monto_sobrante'], 2);
+        }
+        $view = $filters['vista'] ?? 'todos';
+        if (in_array($view, ['anomalias', 'faltantes', 'sobrantes'], true)) {
+            abort_unless($isAdmin, 403, 'Solo el administrador puede consultar diferencias de caja.');
+            if ($view === 'anomalias') $query->whereRaw("(($shortage) OR ($surplus))");
+            else $query->whereRaw($view === 'faltantes' ? $shortage : $surplus);
+        } elseif (in_array($view, ['pendientes', 'abiertos', 'cerrados'], true)) {
+            $query->where('estado', ['pendientes' => 'PENDIENTE', 'abiertos' => 'ABIERTO', 'cerrados' => 'CERRADO'][$view]);
+        }
+        $closures = $query->with(['user:id,name', 'closedByUser:id,name', 'agencia:id,nombre'])
+            ->orderByRaw('COALESCE(fecha_cierre, fecha_apertura) DESC')->orderByDesc('id')
+            ->paginate($filters['per_page'] ?? 15);
+        if (!$isAdmin) {
+            $closures->getCollection()->each(function ($item) {
+                $item->makeHidden(['monto_sistema_efectivo', 'monto_sistema_digital', 'monto_sistema_total', 'diferencia']);
+            });
+        }
+        return response()->json(['resumen' => $summary, 'cierres' => $closures])
+            ->header('Cache-Control', 'no-store');
     }
 
     /**
