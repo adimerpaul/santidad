@@ -30,6 +30,7 @@ class ProductController extends Controller
             'productos.*.combo_grupo' => 'nullable|required_with:productos.*.combo_id|uuid',
             'productos.*.combo_cantidad' => 'nullable|required_with:productos.*.combo_id|integer|min:1|max:100',
             'productos.*.combo_version' => 'nullable|required_with:productos.*.combo_id|integer|min:1',
+            'productos.*.combo_producto_original_id' => 'nullable|integer|min:1',
         ]);
         $productos = $request->input('productos', []);
         $agencia_id = $request->input('agencia_id');

@@ -8,6 +8,6 @@ class InternalComboItem extends Model
 {
     public $timestamps = false;
     protected $guarded = ['id'];
-    protected $casts = ['cantidad' => 'integer', 'precio_base' => 'float', 'precio_unitario' => 'float'];
+    protected $casts = ['cantidad' => 'integer', 'precio_base' => 'float', 'precio_unitario' => 'float', 'reemplazable' => 'boolean'];
     public function product() { return $this->belongsTo(Product::class); }
 }

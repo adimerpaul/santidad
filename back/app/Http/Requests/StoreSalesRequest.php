@@ -37,6 +37,7 @@ class StoreSalesRequest extends FormRequest
             'products.*.combo_grupo' => ['nullable', 'required_with:products.*.combo_id', 'uuid'],
             'products.*.combo_cantidad' => ['nullable', 'required_with:products.*.combo_id', 'integer', 'min:1', 'max:100'],
             'products.*.combo_version' => ['nullable', 'required_with:products.*.combo_id', 'integer', 'min:1'],
+            'products.*.combo_producto_original_id' => ['nullable', 'integer', 'min:1'],
             'products.*.online_order_number' => ['nullable', 'string', 'max:100', 'exists:orders,order_number'],
             'products.*.cantidadPedida' => ['required', 'integer', 'min:1'],
             'products.*.precioVenta' => ['required', 'numeric', 'gt:0'],

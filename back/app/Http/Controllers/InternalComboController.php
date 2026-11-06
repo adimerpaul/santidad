@@ -60,6 +60,7 @@ class InternalComboController extends Controller
             'version' => 'nullable|integer|min:1', 'items' => 'required|array|min:1|max:50',
             'items.*.product_id' => 'required|integer|distinct|exists:products,id', 'items.*.cantidad' => 'required|integer|min:1|max:1000',
             'items.*.precio_unitario' => 'required_if:modo,producto|numeric|gt:0',
+            'items.*.reemplazable' => 'sometimes|boolean',
         ]);
     }
 
@@ -91,17 +92,50 @@ class InternalComboController extends Controller
         return response()->noContent();
     }
 
+    public function substitutes(Request $request, int $id)
+    {
+        $data = $request->validate([
+            'agencia_id' => 'required|integer|exists:agencias,id',
+            'search' => 'nullable|string|max:100', 'page' => 'nullable|integer|min:1',
+        ]);
+        $combo = InternalCombo::with('items')->findOrFail($id);
+        try { $this->combos->assertAvailable($combo, 'trae'); }
+        catch (\DomainException $e) { abort(422, $e->getMessage()); }
+        abort_unless($combo->items->contains('reemplazable', true), 422, 'El combo no tiene un producto sustituible.');
+        $originalId = (int) $combo->items->firstWhere('reemplazable', true)->product_id;
+        $query = \App\Models\Product::where('activo', 'ACTIVO')->where('precio', '>', 0)
+            ->whereNotIn('id', $combo->items->where('reemplazable', false)->pluck('product_id'));
+        if (!empty($data['search'])) {
+            $query->where(fn ($q) => $q->where('nombre', 'like', '%'.$data['search'].'%')->orWhere('barra', 'like', '%'.$data['search'].'%'));
+        }
+        $agency = $this->agency($request);
+        $products = $query->orderBy('nombre')->orderBy('id')->paginate(20);
+        $products->getCollection()->transform(function ($product) use ($agency, $originalId) {
+            $pricing = app(\App\Services\TraePricingService::class)->resolve($product);
+            return [
+                'id' => $product->id, 'nombre' => $product->nombre, 'precio_trae' => $pricing['precio_venta'],
+                'es_original' => (int) $product->id === $originalId,
+                'stock' => max(0, min((int) $product->cantidad, (int) ($product->{'cantidadSucursal'.$agency} ?? 0))),
+            ];
+        });
+        return response()->json($products)->header('Cache-Control', 'no-store');
+    }
+
     public function load(Request $request, int $id)
     {
-        $data = $request->validate(['agencia_id' => 'required|integer|exists:agencias,id', 'canal_venta' => 'required|in:sucursal,trae', 'cantidad' => 'required|integer|min:1|max:100']);
+        $data = $request->validate(['agencia_id' => 'required|integer|exists:agencias,id', 'canal_venta' => 'required|in:sucursal,trae', 'cantidad' => 'required|integer|min:1|max:100',
+            'reemplazo_product_id' => 'nullable|integer|exists:products,id']);
         return DB::transaction(function () use ($request, $id, $data) {
             $combo = InternalCombo::whereKey($id)->lockForUpdate()->with('items.product')->firstOrFail();
             try { $this->combos->assertAvailable($combo, $data['canal_venta']); } catch (\DomainException $e) { abort(422, $e->getMessage()); }
             foreach ($combo->items as $item) {
+                if ($item->reemplazable && !empty($data['reemplazo_product_id']) && (int) $data['reemplazo_product_id'] !== (int) $item->product_id) continue;
                 abort_unless($item->product, 422, 'Un producto del combo ya no existe. Actualiza el combo.');
                 try { $this->combos->assertPriceAllowed($item->product, $item->precio_unitario); } catch (\DomainException $e) { abort(422, $e->getMessage()); }
             }
-            $result = $this->combos->present($combo, $this->agency($request));
+            try {
+                $result = $this->combos->present($combo, $this->agency($request), $data['reemplazo_product_id'] ?? null);
+            } catch (\DomainException $e) { abort(422, $e->getMessage()); }
             abort_if($result['combos_disponibles'] < $data['cantidad'], 422, 'No hay stock suficiente para cargar este combo en la sucursal.');
             return response()->json($result)->header('Cache-Control', 'no-store');
         });

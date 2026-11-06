@@ -51,6 +51,7 @@ class TraePricingTest extends TestCase
             '2026_10_29_000002_add_trae_sales_indexes.php',
             '2026_10_29_000003_add_validity_to_trae_discount_rules.php',
             '2026_10_29_000004_create_internal_combos.php',
+            '2026_11_05_000001_add_replaceable_internal_combo_item.php',
             '2026_10_30_000001_add_price_source_to_trae_settings.php',
             '2026_10_30_000002_create_sale_requests.php',
             '2026_10_13_000003_create_factura_numeraciones_table.php',
@@ -406,6 +407,109 @@ class TraePricingTest extends TestCase
     {
         return array_replace(['nombre' => 'COMBO CONVITE', 'modo' => 'conjunto', 'porcentaje' => 10, 'activo' => true, 'permanente' => true,
             'items' => [['product_id' => 1, 'cantidad' => 1], ['product_id' => 3, 'cantidad' => 1]]], $override);
+    }
+
+    public function test_fixed_combo_substitution_uses_trae_price_preserves_total_and_sells_actual_stock(): void
+    {
+        $this->rule(['product_ids' => [2]], 80);
+        $data = $this->comboData(['modo' => 'total', 'porcentaje' => 0, 'precio_objetivo' => 100,
+            'items' => [['product_id' => 1, 'cantidad' => 1], ['product_id' => 3, 'cantidad' => 1, 'reemplazable' => true]]]);
+        $combo = $this->postJson('/api/internal-combos', $data)->assertCreated()->json();
+        $variant = $this->postJson('/api/internal-combos/'.$combo['id'].'/load', [
+            'agencia_id' => 1, 'canal_venta' => 'trae', 'cantidad' => 2, 'reemplazo_product_id' => 2,
+        ])->assertOk()->assertJsonPath('precio_total', 100)->json();
+        $byId = collect($variant['items'])->keyBy('product_id');
+        $this->assertEquals(26, $byId[2]['precio_unitario']);
+        $this->assertEquals(74, $byId[1]['precio_unitario']);
+        $this->assertEquals(3, $byId[2]['producto_original_id']);
+        $lines = $this->comboLines($variant, 2);
+        foreach ($lines as &$line) $line['combo_producto_original_id'] = $byId[$line['id']]['producto_original_id'];
+        unset($line);
+        $verify = array_map(fn ($line) => $line + ['cantidadVenta' => $line['cantidadPedida']], $lines);
+        $this->postJson('/api/verificar-stock-venta', ['canal_venta' => 'trae', 'agencia_id' => 1, 'productos' => $verify])
+            ->assertOk()->assertJsonPath('precios.1.precioVenta', 26);
+        $payload = $this->sale(); $payload['products'] = $lines;
+        $sold = $this->postJson('/api/sales', $payload)->assertOk()->assertJsonPath('montoTotal', 200)
+            ->assertJsonPath('comision_trae_monto', 24)->json();
+        $this->assertDatabaseHas('details', ['sale_id' => $sold['id'], 'product_id' => 2, 'precioUnitario' => 26]);
+        $this->assertEquals(8, DB::table('products')->where('id', 2)->value('cantidadSucursal1'));
+        $this->assertEquals(10, DB::table('products')->where('id', 3)->value('cantidadSucursal1'));
+        $this->assertSame(3, $sold['internal_combos'][0]['sustituciones'][0]['producto_original_id']);
+        $this->getJson('/api/salesAnular/'.$sold['id'])->assertOk();
+        $this->assertEquals(10, DB::table('products')->where('id', 2)->value('cantidadSucursal1'));
+        $this->getJson('/api/internal-combos')->assertOk()->assertJsonPath('data.0.items.1.product_id', 3);
+    }
+
+    public function test_substitution_rejects_locked_slots_unbalanced_totals_duplicates_and_missing_flags(): void
+    {
+        $both = $this->comboData(['items' => [
+            ['product_id' => 1, 'cantidad' => 1, 'reemplazable' => true],
+            ['product_id' => 3, 'cantidad' => 1, 'reemplazable' => true],
+        ]]);
+        $this->postJson('/api/internal-combos', $both)->assertUnprocessable();
+        $normal = $this->postJson('/api/internal-combos', $this->comboData())->assertCreated()->json();
+        $this->postJson('/api/internal-combos/'.$normal['id'].'/load', [
+            'agencia_id' => 1, 'canal_venta' => 'trae', 'cantidad' => 1, 'reemplazo_product_id' => 2,
+        ])->assertUnprocessable();
+        $combo = $this->postJson('/api/internal-combos', $this->comboData([
+            'modo' => 'total', 'precio_objetivo' => 100, 'items' => [
+                ['product_id' => 1, 'cantidad' => 1], ['product_id' => 3, 'cantidad' => 1, 'reemplazable' => true],
+            ],
+        ]))->assertCreated()->json();
+        // TRAE price 130 exceeds the entire fixed total.
+        $this->postJson('/api/internal-combos/'.$combo['id'].'/load', [
+            'agencia_id' => 1, 'canal_venta' => 'trae', 'cantidad' => 1, 'reemplazo_product_id' => 2,
+        ])->assertUnprocessable();
+        $lines = $this->comboLines($combo);
+        $lines[0]['combo_producto_original_id'] = 1;
+        $lines[0]['id'] = 2;
+        $payload = $this->sale(); $payload['products'] = $lines;
+        $this->postJson('/api/sales', $payload)->assertUnprocessable();
+        $this->assertDatabaseCount('sales', 0);
+    }
+
+    public function test_substitution_of_nonfixed_combo_changes_total_and_never_changes_public_prices(): void
+    {
+        $this->rule(['product_ids' => [2]], 20);
+        $before = $this->getJson('/api/delivery/productos/2')->json();
+        $combo = $this->postJson('/api/internal-combos', $this->comboData([
+            'items' => [['product_id' => 1, 'cantidad' => 1], ['product_id' => 3, 'cantidad' => 1, 'reemplazable' => true]],
+        ]))->assertCreated()->json();
+        $this->getJson('/api/internal-combos/'.$combo['id'].'/substitutes?agencia_id=1&search=Vitamina')
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', 2)->assertJsonPath('data.0.precio_trae', 104);
+        $this->postJson('/api/internal-combos/'.$combo['id'].'/load', [
+            'agencia_id' => 1, 'canal_venta' => 'trae', 'cantidad' => 1, 'reemplazo_product_id' => 2,
+        ])->assertOk()->assertJsonPath('precio_total', 194);
+        $this->assertSame($before, $this->getJson('/api/delivery/productos/2')->json());
+        $this->postJson('/api/internal-combos/'.$combo['id'].'/load', [
+            'agencia_id' => 1, 'canal_venta' => 'trae', 'cantidad' => 1, 'reemplazo_product_id' => 1,
+        ])->assertUnprocessable();
+    }
+
+    public function test_substituted_combo_rechecks_branch_stock_and_rejects_changed_trae_price_before_sale(): void
+    {
+        $this->rule(['product_ids' => [2]], 80);
+        $combo = $this->postJson('/api/internal-combos', $this->comboData([
+            'modo' => 'total', 'precio_objetivo' => 100,
+            'items' => [['product_id' => 1, 'cantidad' => 1], ['product_id' => 3, 'cantidad' => 1, 'reemplazable' => true]],
+        ]))->assertCreated()->json();
+        $variant = $this->postJson('/api/internal-combos/'.$combo['id'].'/load', [
+            'agencia_id' => 1, 'canal_venta' => 'trae', 'cantidad' => 1, 'reemplazo_product_id' => 2,
+        ])->assertOk()->json();
+        $lines = $this->comboLines($variant);
+        foreach ($lines as &$line) $line['combo_producto_original_id'] = $line['id'] === 2 ? 3 : $line['id'];
+        unset($line);
+        $payload = $this->sale(); $payload['products'] = $lines;
+        $this->rule(['product_ids' => [2]], 70);
+        $this->postJson('/api/sales', $payload)->assertUnprocessable();
+        $this->assertDatabaseCount('sales', 0);
+        DB::table('products')->where('id', 2)->update(['cantidadSucursal1' => 0]);
+        $this->postJson('/api/internal-combos/'.$combo['id'].'/load', [
+            'agencia_id' => 1, 'canal_venta' => 'trae', 'cantidad' => 1, 'reemplazo_product_id' => 2,
+        ])->assertUnprocessable();
+        $this->actingAs((new User())->forceFill(['id' => 2, 'agencia_id' => 2]), 'sanctum');
+        $this->getJson('/api/internal-combos/'.$combo['id'].'/substitutes?agencia_id=1&search=Vitamina')
+            ->assertOk()->assertJsonPath('data.0.stock', 0);
     }
 
     private function comboLines(array $combo, int $count = 1, ?string $group = null): array

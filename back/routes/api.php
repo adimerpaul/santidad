@@ -137,6 +137,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('/internal-combos/available', [\App\Http\Controllers\InternalComboController::class, 'available']);
     Route::post('/internal-combos/preview', [\App\Http\Controllers\InternalComboController::class, 'preview']);
     Route::post('/internal-combos/{id}/load', [\App\Http\Controllers\InternalComboController::class, 'load'])->whereNumber('id');
+    Route::get('/internal-combos/{id}/substitutes', [\App\Http\Controllers\InternalComboController::class, 'substitutes'])->whereNumber('id');
     Route::get('/internal-combos', [\App\Http\Controllers\InternalComboController::class, 'index']);
     Route::post('/internal-combos', [\App\Http\Controllers\InternalComboController::class, 'store']);
     Route::put('/internal-combos/{id}', [\App\Http\Controllers\InternalComboController::class, 'update'])->whereNumber('id');

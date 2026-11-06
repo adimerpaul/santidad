@@ -33,6 +33,9 @@ class InternalComboService
 
     public function buildItems(array $data): array
     {
+        if (collect($data['items'])->where('reemplazable', true)->count() > 1) {
+            throw ValidationException::withMessages(['items' => 'Marca como sustituible solo un producto del combo.']);
+        }
         $products = Product::whereIn('id', array_column($data['items'], 'product_id'))->get()->keyBy('id');
         $excluded = $this->excludedIds();
         $items = [];
@@ -49,7 +52,8 @@ class InternalComboService
             if ($price <= 0 || $price > Money::roundToTenth($base) || ($controlled && Money::toCents($price) !== Money::toCents(Money::roundToTenth($base)))) {
                 throw ValidationException::withMessages(['items' => 'Revisa el precio de '.$product->nombre.'. Debe ser positivo, sin superar el normal; los medicamentos controlados conservan su exclusión.']);
             }
-            $items[] = ['product_id' => $product->id, 'cantidad' => $line['cantidad'], 'precio_base' => $base, 'precio_unitario' => $price, '_fixed' => $controlled];
+            $items[] = ['product_id' => $product->id, 'cantidad' => $line['cantidad'], 'precio_base' => $base, 'precio_unitario' => $price,
+                'reemplazable' => (bool) ($line['reemplazable'] ?? false), '_fixed' => $controlled];
         }
         if ($data['modo'] === 'total') $items = $this->allocateTotal($items, Money::toCents($data['precio_objetivo']));
         return array_map(function ($item) { unset($item['_fixed']); return $item; }, $items);
@@ -60,7 +64,7 @@ class InternalComboService
         if ($target % 10 !== 0) throw ValidationException::withMessages(['precio_objetivo' => 'El total debe ser múltiplo de Bs 0,10.']);
         $fixed = 0; $base = 0; $minimum = 0;
         foreach ($items as $item) {
-            $value = Money::toCents(Money::roundToTenth($item['precio_base'])) * $item['cantidad'];
+            $value = Money::toCents($item['_fixed'] ? $item['precio_unitario'] : Money::roundToTenth($item['precio_base'])) * $item['cantidad'];
             if ($item['_fixed']) $fixed += $value;
             else { $base += $value; $minimum += 10 * $item['cantidad']; }
         }
@@ -116,12 +120,50 @@ class InternalComboService
         return [$x + $dx * $k, $y - $dy * $k];
     }
 
-    public function present(InternalCombo $combo, ?int $agency = null): array
+    public function itemsForSale(InternalCombo $combo, ?int $replacementId = null): \Illuminate\Support\Collection
+    {
+        $items = $combo->items->map(fn ($item) => clone $item);
+        $variable = $items->firstWhere('reemplazable', true);
+        if (!$replacementId || ($variable && $replacementId === (int) $variable->product_id)) return $items;
+        if (!$variable) throw new \DomainException('Este combo no permite sustituir productos.');
+        if ($items->contains('product_id', $replacementId)) throw new \DomainException('El sustituto ya forma parte del combo.');
+        $product = Product::find($replacementId);
+        if (!$product || $product->activo !== 'ACTIVO' || (float) $product->precio <= 0) {
+            throw new \DomainException('Elige un sustituto activo y con precio válido.');
+        }
+        $pricing = app(TraePricingService::class)->resolve($product);
+        if ((float) $pricing['precio_venta'] <= 0) throw new \DomainException('El sustituto debe tener un precio TRAE mayor a cero.');
+        $variable->producto_original_id = $variable->product_id;
+        $variable->product_id = $product->id;
+        $variable->precio_base = $pricing['precio_original'];
+        $variable->precio_unitario = $pricing['precio_venta'];
+        $variable->setRelation('product', $product);
+        if ($combo->modo === 'total') {
+            $target = $combo->items->sum(fn ($item) => Money::toCents($item->precio_unitario) * $item->cantidad);
+            $allocation = $items->map(fn ($item) => [
+                'precio_base' => $item->precio_base, 'precio_unitario' => $item->precio_unitario,
+                'cantidad' => $item->cantidad,
+                '_fixed' => $item === $variable || in_array((int) $item->product?->subcategory_id, $this->excludedIds(), true),
+            ])->all();
+            try { $allocation = $this->allocateTotal($allocation, $target); }
+            catch (ValidationException $e) {
+                throw new \DomainException('Este sustituto no permite mantener el total fijo y los precios válidos de los demás productos. Elige otro.');
+            }
+            foreach ($items as $index => $item) $item->precio_unitario = $allocation[$index]['precio_unitario'];
+        }
+        foreach ($items as $item) {
+            if (!$item->product) throw new \DomainException('Un producto del combo ya no existe.');
+            $this->assertPriceAllowed($item->product, $item->precio_unitario);
+        }
+        return $items;
+    }
+
+    public function present(InternalCombo $combo, ?int $agency = null, ?int $replacementId = null): array
     {
         $base = 0; $total = 0; $available = PHP_INT_MAX;
         $items = [];
         $excluded = $this->excludedIds();
-        foreach ($combo->items as $item) {
+        foreach ($this->itemsForSale($combo, $replacementId) as $item) {
             $p = $item->product;
             $stock = $p && $p->activo === 'ACTIVO' ? max(0, min((int) $p->cantidad, (int) ($p->{'cantidadSucursal'.$agency} ?? 0))) : 0;
             if ($p && in_array((int) $p->subcategory_id, $excluded, true)
@@ -130,6 +172,7 @@ class InternalComboService
             $base += Money::toCents($item->precio_base) * $item->cantidad;
             $total += Money::toCents($item->precio_unitario) * $item->cantidad;
             $items[] = ['product_id' => $item->product_id, 'cantidad' => $item->cantidad, 'precio_base' => $item->precio_base, 'precio_unitario' => $item->precio_unitario,
+                'reemplazable' => (bool) $item->reemplazable, 'producto_original_id' => $item->producto_original_id ?? $item->product_id,
                 'nombre' => $p?->nombre ?? 'Producto eliminado', 'imagen' => $p?->imagen ?? 'productDefault.jpg',
                 'precio_actual' => $p?->precio, 'activo_producto' => $p?->activo === 'ACTIVO', 'stock' => $stock,
                 'excluido' => $p && in_array((int) $p->subcategory_id, $excluded, true)];
@@ -151,7 +194,7 @@ class InternalComboService
         if ($normal->pluck('id')->unique()->count() !== $normal->count()) throw new \DomainException('Hay productos sueltos repetidos en la canasta.');
         $groups = $tagged->groupBy('combo_grupo', true);
         if ($groups->count() > 20 || $groups->has('')) throw new \DomainException('Revisa los grupos de combos de la canasta.');
-        $query = InternalCombo::with('items')->whereIn('id', $tagged->pluck('combo_id')->unique())->orderBy('id');
+        $query = InternalCombo::with('items.product')->whereIn('id', $tagged->pluck('combo_id')->unique())->orderBy('id');
         if ($lock) $query->lockForUpdate();
         $combos = $query->get()->keyBy('id');
         $result = [];
@@ -165,10 +208,28 @@ class InternalComboService
                 || $groupLines->count() !== $combo->items->count() || $groupLines->pluck('id')->unique()->count() !== $groupLines->count()) {
                 throw new \DomainException('El combo '.$combo->nombre.' cambió o está incompleto. Retíralo y vuelve a cargarlo.');
             }
-            $items = $combo->items->keyBy('product_id');
+            $originalIds = $groupLines->map(fn ($line) => (int) ($line['combo_producto_original_id'] ?? $line['id']));
+            if ($originalIds->unique()->count() !== $combo->items->count()) throw new \DomainException('El combo tiene productos repetidos o incompletos.');
+            $replacementId = null;
+            foreach ($groupLines as $line) {
+                $originalId = (int) ($line['combo_producto_original_id'] ?? $line['id']);
+                $originalItem = $combo->items->firstWhere('product_id', $originalId);
+                if (!$originalItem) throw new \DomainException('Un producto no corresponde al combo.');
+                if ($originalId !== (int) $line['id']) {
+                    if (!$originalItem->reemplazable || $replacementId !== null) throw new \DomainException('Solo se puede cambiar el producto marcado como sustituible.');
+                    $replacementId = (int) $line['id'];
+                }
+            }
+            $saleItems = $this->itemsForSale($combo, $replacementId);
+            $items = $saleItems->keyBy(fn ($item) => $item->producto_original_id ?? $item->product_id);
+            $substitutions = $saleItems->filter(fn ($item) => isset($item->producto_original_id))->map(fn ($item) => [
+                'producto_original_id' => $item->producto_original_id, 'product_id' => $item->product_id,
+                'cantidad' => $item->cantidad, 'precio_unitario' => $item->precio_unitario,
+            ])->values()->all();
             foreach ($groupLines as $index => $line) {
-                $item = $items->get($line['id']);
+                $item = $items->get($line['combo_producto_original_id'] ?? $line['id']);
                 if (!$item || (int) ($line['combo_id'] ?? 0) !== $combo->id || (int) ($line['combo_version'] ?? 0) !== $combo->version
+                    || (int) $item->product_id !== (int) $line['id']
                     || (int) ($line['combo_cantidad'] ?? 0) !== $count || (int) $line[$quantityField] !== $item->cantidad * $count) {
                     throw new \DomainException('El combo '.$combo->nombre.' debe venderse completo, con sus cantidades configuradas.');
                 }
@@ -177,7 +238,7 @@ class InternalComboService
                     'porcentaje' => $item->precio_base ? round(max(0, $item->precio_base - $item->precio_unitario) * 100 / $item->precio_base, 4) : 0,
                     'promocion_id' => null, 'promocion_nombre' => 'Combo '.$combo->nombre,
                     'combo_snapshot' => ['combo_id' => $combo->id, 'combo_nombre' => $combo->nombre, 'combo_grupo' => $group,
-                        'combo_cantidad' => $count, 'combo_version' => $combo->version],
+                        'combo_cantidad' => $count, 'combo_version' => $combo->version, 'sustituciones' => $substitutions],
                 ];
             }
         }
