@@ -92,3 +92,49 @@ test('effective discount rounding cannot replace the percentage while it is bein
   assert.equal(state.linePercent(item), 9.4)
   assert.equal(item.precio_unitario, 5.3)
 })
+
+test('editing and saving keeps the selected replaceable slot', () => {
+  const state = editor()
+  const item = state.makeItem({ product_id: 3, nombre: 'Original', precio_base: 20, precio_unitario: 10, reemplazable: true })
+  assert.equal(item.reemplazable, true)
+  state.form.items = [item]
+  assert.equal(state.payload().items[0].reemplazable, true)
+  const line = context.comboMetadata({ id: 9, combo_id: 1, combo_producto_original_id: 3 })
+  assert.equal(line.combo_producto_original_id, 3)
+})
+
+test('replaceable selection survives editing and switches to exactly one slot', () => {
+  const state = editor()
+  const selected = state.form.items[1]
+  state.toggleReplaceable(selected)
+  assert.deepEqual(state.payload().items.map(p => p.reemplazable).join(','), 'false,true')
+  state.form.modo = 'producto'
+  state.edit({ ...state.payload(), items: state.form.items.map(p => ({ ...p })) })
+  assert.equal(state.form.items[1].reemplazable, true)
+  state.toggleReplaceable(state.form.items[0])
+  assert.equal(state.payload().items.map(p => p.reemplazable).join(','), 'true,false')
+  state.toggleReplaceable(state.form.items[0])
+  assert.equal(state.payload().items.map(p => p.reemplazable).join(','), 'false,false')
+})
+
+test('a saved fixed total allows saving substitution alone without redistributing prices', async () => {
+  const state = editor()
+  state.edit({ id: 2, version: 3, nombre: 'COMBO 8', modo: 'total', porcentaje: 0, precio_objetivo: 8, activo: true, permanente: true, items: [
+    { product_id: 1, nombre: 'A', cantidad: 1, precio_base: 5.85, precio_unitario: 4 },
+    { product_id: 2, nombre: 'B', cantidad: 1, precio_base: 4.72, precio_unitario: 4 }
+  ] })
+  assert.equal(state.previewOK, true)
+  state.toggleReplaceable(state.form.items[1])
+  assert.equal(state.previewOK, true)
+  let saved
+  state.$axios.put = async (url, payload) => { saved = payload }
+  state.$axios.get = async () => ({ data: { data: [], last_page: 1 } })
+  await state.save()
+  assert.equal(saved.items[1].reemplazable, true)
+  assert.equal(saved.items.map(p => p.precio_unitario).join(','), '4,4')
+  assert.equal(saved.precio_objetivo, 8)
+  state.quantitiesChanged()
+  assert.equal(state.previewOK, false)
+  state.toggleReplaceable(state.form.items[0])
+  assert.equal(state.previewOK, false)
+})

@@ -11,7 +11,7 @@ export const createComboGroup = () => {
 }
 
 export const comboLineKey = row => `${row.id}${row.combo_grupo ? ':' + row.combo_grupo : ''}`
-export const comboMetadata = row => row.combo_id ? { combo_id: row.combo_id, combo_grupo: row.combo_grupo, combo_cantidad: row.combo_cantidad, combo_version: row.combo_version } : {}
+export const comboMetadata = row => row.combo_id ? { combo_id: row.combo_id, combo_grupo: row.combo_grupo, combo_cantidad: row.combo_cantidad, combo_version: row.combo_version, combo_producto_original_id: row.combo_producto_original_id ?? row.id } : {}
 export const comboTotals = items => {
   const base = roundCurrency(items.reduce((n, p) => n + Number(p.precio_base) * Number(p.cantidad), 0))
   const total = roundCurrency(items.reduce((n, p) => n + Number(p.precio_unitario) * Number(p.cantidad), 0))

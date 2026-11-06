@@ -419,3 +419,23 @@ test('the TRAE session cleanup preserves existing physical sale behavior', () =>
   assert.equal(store.canalVenta, 'sucursal')
   assert.equal(store.productosVenta, items)
 })
+
+test('replacing a cart combo retains its group and count without duplicating the recipe', async () => {
+  const state = sale()
+  state.$store.productosVenta = [
+    { id: 5, cantidadVenta: 1 },
+    { id: 1, combo_id: 7, combo_grupo: 'group', combo_cantidad: 2, cantidadVenta: 2 },
+    { id: 3, combo_id: 7, combo_grupo: 'group', combo_cantidad: 2, cantidadVenta: 4 }
+  ]
+  state.verifyComboBasket = async rows => { state.$store.productosVenta = rows }
+  await state.handleComboSelection({ id: 7, nombre: 'Combo', version: 1, items: [
+    { product_id: 1, cantidad: 1, precio_unitario: 4, stock: 10 },
+    { product_id: 9, producto_original_id: 3, reemplazable: true, cantidad: 2, precio_unitario: 2, stock: 10 }
+  ] }, 'group')
+  assert.equal(state.$store.productosVenta.length, 3)
+  const replacement = state.$store.productosVenta.find(p => p.id === 9)
+  assert.equal(replacement.cantidadVenta, 4)
+  assert.equal(replacement.combo_producto_original_id, 3)
+  assert.equal(replacement.combo_grupo, 'group')
+  assert.equal(state.$store.productosVenta.some(p => p.id === 3), false)
+})

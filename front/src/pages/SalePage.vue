@@ -23,7 +23,7 @@
               <div class="trae-actions" role="group" aria-label="Canal TRAE">
                 <q-btn flat no-caps icon="delivery_dining" label="Venta TRAE" :aria-label="canalVenta === 'trae' ? 'Venta TRAE activa' : 'Venta TRAE'" class="sale-trae-toggle" :class="{ 'is-active': canalVenta === 'trae' }" :aria-pressed="canalVenta === 'trae'"
                        :loading="cambiandoCanal" :disable="loading || saleDialog || loadingPedidoOnline" @click="cambiarCanalVenta" />
-                <SaleComboPicker :agencia-id="agencia_id" :disabled="loading || cambiandoCanal || saleDialog || loadingPedidoOnline" @select="cargarCombo" />
+                <SaleComboPicker ref="comboPicker" :agencia-id="agencia_id" :disabled="loading || cambiandoCanal || saleDialog || loadingPedidoOnline" @select="handleComboSelection" />
               </div>
             </div>
           </div>
@@ -237,6 +237,8 @@
                             <span style="font-size: 10px" class="text-red text-bold" v-if="hasProductSavings(props.row)">{{formatCurrency(props.row.precioVenta)}} Bs</span>
                             )
                           </div>
+                          <div v-if="props.row.combo_grupo && props.row.sustitucion_pendiente" class="text-negative text-caption text-weight-bold q-mt-xs"><q-icon name="error_outline" /> Sin stock suficiente · Sustituir</div>
+                          <q-btn v-if="props.row.combo_reemplazable" flat dense no-caps color="negative" icon="swap_horiz" label="Sustituir" :disable="cambiandoCanal || saleDialog || !!pendingSale" @click="replaceCartCombo(props.row)" />
                           <div class="cart-sale-price-label">
                             <q-icon name="sell" />
                             Precio de venta
@@ -1063,19 +1065,60 @@ export default {
     async verifyComboBasket (staged, original) {
       const userId = this.$store.user?.id
       const agency = this.agencia_id
-      const { data } = await this.$axios.post('verificar-stock-venta', { canal_venta: 'trae', agencia_id: this.agencia_id, productos: this.basketPayload(staged) })
+      const { data } = await this.$axios.post('verificar-stock-venta', { canal_venta: 'trae', agencia_id: this.agencia_id, permitir_sustitucion_pendiente: true, productos: this.basketPayload(staged) })
       if (this.ventaDesmontada || this.$store.user?.id !== userId || this.$store.productosVenta !== original || Number(this.agencia_id) !== Number(agency)) return false
       const prices = new Map(data.precios.map(p => [p.line_key || String(p.id), p]))
       staged.forEach(p => {
         const price = prices.get(comboLineKey(p))
         if (!price) throw new Error('No se pudieron verificar todos los precios del combo.')
-        Object.assign(p, { precio: formatMoney(price.precio), precioVenta: formatMoney(price.precioVenta), porcentajeEfectivo: Number(price.porcentajeEfectivo), porcentaje: Number(price.porcentajeEfectivo), promocion: price.promocion, promocion_id: price.promocion_id })
+        Object.assign(p, { ...(price.stock !== undefined ? { cantidadReal: price.stock, cantidad: price.stock } : {}), combo_reemplazable: !!price.reemplazable, sustitucion_pendiente: !!price.sustitucion_pendiente, precio: formatMoney(price.precio), precioVenta: formatMoney(price.precioVenta), porcentajeEfectivo: Number(price.porcentajeEfectivo), porcentaje: Number(price.porcentajeEfectivo), promocion: price.promocion, promocion_id: price.promocion_id })
       })
       this.$store.productosVenta = staged
       this.$store.canalVenta = 'trae'
       this.aporte = 0; this.descuento = 0; this.descuentoPorcentaje = 0
       this.productsGet()
       return true
+    },
+    async handleComboSelection (combo, group) {
+      if (!group) return this.cargarCombo(combo)
+      if (this.pendingSale || this.cambiandoCanal || this.saleDialog || this.ventaDesmontada) return
+      const original = this.$store.productosVenta
+      const current = original.filter(p => p.combo_grupo === group)
+      if (!current.length || current.some(p => Number(p.combo_id) !== Number(combo.id))) return
+      const count = current[0].combo_cantidad
+      const staged = original.filter(p => p.combo_grupo !== group).map(p => ({ ...p }))
+      combo.items.forEach(item => staged.push({
+        id: item.product_id,
+        nombre: item.nombre,
+        imagen: item.imagen || 'productDefault.jpg',
+        precio: item.precio_base,
+        precioVenta: item.precio_unitario,
+        cantidadReal: item.stock,
+        cantidad: item.stock,
+        cantidadVenta: item.cantidad * count,
+        cantidadPedida: item.cantidad * count,
+        buys: [],
+        combo_id: combo.id,
+        combo_nombre: combo.nombre,
+        combo_grupo: group,
+        combo_cantidad: count,
+        combo_unidades_producto: item.cantidad,
+        combo_reemplazable: !!item.reemplazable,
+        combo_producto_original_id: item.producto_original_id ?? item.product_id,
+        combo_version: combo.version
+      }))
+      this.cambiandoCanal = true
+      try { await this.verifyComboBasket(staged, original) } catch (e) { this.$alert.error(e.response?.data?.message || e.message) } finally { this.cambiandoCanal = false }
+    },
+    replaceCartCombo (row) {
+      if (this.pendingSale || this.cambiandoCanal || this.saleDialog || !row.combo_reemplazable) return
+      const items = this.$store.productosVenta.filter(p => p.combo_grupo === row.combo_grupo)
+      this.$refs.comboPicker.openSubstitutes({
+        id: row.combo_id,
+        nombre: row.combo_nombre,
+        precio_total: items.reduce((sum, p) => sum + Number(p.precioVenta) * Number(p.combo_unidades_producto), 0),
+        items: items.map(p => ({ nombre: p.nombre, cantidad: p.combo_unidades_producto, precio_unitario: p.precioVenta, reemplazable: p.combo_reemplazable }))
+      }, row.combo_grupo)
     },
     async cargarCombo (combo) {
       if (this.pendingSale || this.ventaDesmontada || this.cambiandoCanal || this.saleDialog || this.loadingPedidoOnline || this.loading) return
@@ -1084,7 +1127,7 @@ export default {
       let group
       try { group = createComboGroup() } catch (e) { this.$alert.error('No se pudo identificar el combo. Actualiza el navegador e inténtalo de nuevo.'); return }
       const staged = original.map(p => ({ ...p }))
-      combo.items.forEach(item => staged.push({ id: item.product_id, nombre: item.nombre, imagen: item.imagen || 'productDefault.jpg', precio: item.precio_base, precioVenta: item.precio_unitario, cantidadReal: item.stock, cantidad: item.stock, cantidadVenta: item.cantidad, cantidadPedida: item.cantidad, buys: [], combo_id: combo.id, combo_nombre: combo.nombre, combo_grupo: group, combo_cantidad: 1, combo_unidades_producto: item.cantidad, combo_version: combo.version }))
+      combo.items.forEach(item => staged.push({ id: item.product_id, nombre: item.nombre, imagen: item.imagen || 'productDefault.jpg', precio: item.precio_base, precioVenta: item.precio_unitario, cantidadReal: item.stock, cantidad: item.stock, cantidadVenta: item.cantidad, cantidadPedida: item.cantidad, buys: [], combo_id: combo.id, combo_nombre: combo.nombre, combo_grupo: group, combo_cantidad: 1, combo_unidades_producto: item.cantidad, combo_reemplazable: !!item.reemplazable, combo_producto_original_id: item.producto_original_id ?? item.product_id, combo_version: combo.version }))
       this.cambiandoCanal = true
       try { await this.verifyComboBasket(staged, original) } catch (e) { this.$alert.error(e.response?.data?.message || e.message || 'No se pudo cargar el combo.') } finally { this.cambiandoCanal = false }
     },
