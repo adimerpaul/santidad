@@ -22,7 +22,7 @@ class ProductController extends Controller
 
     public function verificarStockVenta(Request $request)
     {
-        $request->validate(['canal_venta' => 'nullable|in:sucursal,trae']);
+        $request->validate(['canal_venta' => 'nullable|in:sucursal,trae', 'permitir_sustitucion_pendiente' => 'sometimes|boolean']);
         $request->validate([
             'productos' => 'required|array|min:1|max:1000', 'productos.*.id' => 'required|integer',
             'productos.*.cantidadVenta' => 'required|integer|min:0',
@@ -43,6 +43,14 @@ class ProductController extends Controller
         $models = Product::whereIn('id', array_column($productos, 'id'))->get()->keyBy('id');
         $quantities = collect($productos)->groupBy('id')->map(fn ($rows) => $rows->sum('cantidadVenta'));
 
+        // Draft baskets can contain missing replaceable ingredients, never missing loose/fixed items.
+        // Checkout and SalesController remain strict regardless of this preview flag.
+        $draft = $request->boolean('permitir_sustitucion_pendiente') && $request->input('canal_venta') === 'trae';
+        $required = [];
+        foreach ($productos as $index => $line) {
+            if ($draft && !empty($comboPrices[$index]['reemplazable'])) continue;
+            $required[$line['id']] = ($required[$line['id']] ?? 0) + $line['cantidadVenta'];
+        }
         foreach ($productos as $lineIndex => $item) {
             $producto = $models->get($item['id']);
             if (!$producto) {
@@ -57,10 +65,10 @@ class ProductController extends Controller
                 $errores[] = "El producto '{$producto->nombre}' ya no está activo en TRAE.";
             }
 
-            if ($quantities[$producto->id] > $stockDisponible) {
+            if (($required[$producto->id] ?? 0) > $stockDisponible) {
                 $errores[] = "Stock insuficiente para '{$producto->nombre}'. Solo hay {$stockDisponible} disponibles.";
             }
-            if ($quantities[$producto->id] > $producto->cantidad) {
+            if (($required[$producto->id] ?? 0) > $producto->cantidad) {
                 $errores[] = "Stock total insuficiente para '{$producto->nombre}'. Actualiza el inventario antes de vender.";
             }
 
@@ -71,6 +79,9 @@ class ProductController extends Controller
             }
             $precios[] = [
                 'id' => (int) $producto->id,
+                'stock' => max(0, min((int) $stockDisponible, (int) $producto->cantidad)),
+                'reemplazable' => (bool) ($comboPrices[$lineIndex]['reemplazable'] ?? false),
+                'sustitucion_pendiente' => $quantities[$producto->id] > min($stockDisponible, $producto->cantidad),
                 'line_key' => $producto->id.(!empty($item['combo_grupo']) ? ':'.$item['combo_grupo'] : ''),
                 'precio' => $pricing['precio_original'],
                 'precioVenta' => $pricing['precio_venta'],

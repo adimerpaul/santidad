@@ -113,7 +113,7 @@ class InternalComboController extends Controller
         $products->getCollection()->transform(function ($product) use ($agency, $originalId) {
             $pricing = app(\App\Services\TraePricingService::class)->resolve($product);
             return [
-                'id' => $product->id, 'nombre' => $product->nombre, 'precio_trae' => $pricing['precio_venta'],
+                'id' => $product->id, 'nombre' => $product->nombre, 'imagen' => $product->imagen ?: 'productDefault.jpg', 'precio_trae' => $pricing['precio_venta'],
                 'es_original' => (int) $product->id === $originalId,
                 'stock' => max(0, min((int) $product->cantidad, (int) ($product->{'cantidadSucursal'.$agency} ?? 0))),
             ];
@@ -124,7 +124,7 @@ class InternalComboController extends Controller
     public function load(Request $request, int $id)
     {
         $data = $request->validate(['agencia_id' => 'required|integer|exists:agencias,id', 'canal_venta' => 'required|in:sucursal,trae', 'cantidad' => 'required|integer|min:1|max:100',
-            'reemplazo_product_id' => 'nullable|integer|exists:products,id']);
+            'permitir_pendiente' => 'sometimes|boolean', 'reemplazo_product_id' => 'nullable|integer|exists:products,id']);
         return DB::transaction(function () use ($request, $id, $data) {
             $combo = InternalCombo::whereKey($id)->lockForUpdate()->with('items.product')->firstOrFail();
             try { $this->combos->assertAvailable($combo, $data['canal_venta']); } catch (\DomainException $e) { abort(422, $e->getMessage()); }
@@ -136,7 +136,9 @@ class InternalComboController extends Controller
             try {
                 $result = $this->combos->present($combo, $this->agency($request), $data['reemplazo_product_id'] ?? null);
             } catch (\DomainException $e) { abort(422, $e->getMessage()); }
-            abort_if($result['combos_disponibles'] < $data['cantidad'], 422, 'No hay stock suficiente para cargar este combo en la sucursal.');
+            $requiredItems = collect($result['items']);
+            if ($request->boolean('permitir_pendiente')) $requiredItems = $requiredItems->reject(fn ($item) => $item['reemplazable']);
+            abort_if($requiredItems->contains(fn ($item) => $item['stock'] < $item['cantidad'] * $data['cantidad']), 422, 'No hay stock suficiente para cargar este combo en la sucursal.');
             return response()->json($result)->header('Cache-Control', 'no-store');
         });
     }

@@ -27,6 +27,7 @@ use App\Http\Controllers\AppMovilController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\CashClosureController;
 use App\Http\Controllers\PromotionController;
+use App\Http\Controllers\WhatsAppTestWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -43,6 +44,9 @@ Route::get('distribuidoras-list', [ProductController::class, 'getDistribuidoras'
 
 
 // --- Público / pre-auth ---
+Route::get('webhooks/whatsapp', [WhatsAppTestWebhookController::class, 'verify']);
+Route::post('webhooks/whatsapp', [WhatsAppTestWebhookController::class, 'receive']);
+
 Route::post('/login', [UserController::class,'login']);
 Route::post('upload/{id}/{option}', [UploadController::class, 'upload']);
 Route::get('/carouselsPage', [CarouselController::class,'carouselsPage']);
@@ -101,6 +105,16 @@ Route::prefix('delivery')->middleware('throttle:120,1')->group(function () {
 
 // --- PROTEGIDAS ---
 Route::group(['middleware' => 'auth:sanctum'], function () {
+
+    Route::prefix('support')->controller(\App\Http\Controllers\SupportCaseController::class)->group(function () {
+        Route::get('branches', 'branches');
+        Route::get('cases', 'index');
+        Route::post('cases', 'store');
+        Route::get('cases/{id}', 'show')->whereNumber('id');
+        Route::patch('cases/{id}', 'update')->whereNumber('id');
+        Route::post('cases/{id}/messages', 'addMessage')->whereNumber('id');
+        Route::patch('cases/{id}/branch', 'assign')->whereNumber('id');
+    });
 
     Route::apiResource('publicidad', App\Http\Controllers\PublicidadController::class);
     Route::post('publicidad/play', [App\Http\Controllers\PublicidadController::class, 'play']);

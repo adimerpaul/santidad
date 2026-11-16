@@ -615,6 +615,7 @@ export default {
         { to: '/sale', label: 'Venta', icon: 'point_of_sale' },
         { to: '/compras', label: 'Compras', icon: 'shopping_bag' },
         { to: '/pedidos', label: 'Pedidos', icon: 'assignment' },
+        { to: '/atencion-cliente', label: 'Atención al cliente', icon: 'forum' },
         { to: '/historial-pedidos', label: 'Historial de pedidos', icon: 'history' },
         { to: '/transferencias', label: 'Transferencias', icon: 'swap_horiz' },
         { to: '/facturas', label: 'Facturas', icon: 'receipt_long' },

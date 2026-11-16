@@ -131,26 +131,10 @@ class InternalComboService
         if (!$product || $product->activo !== 'ACTIVO' || (float) $product->precio <= 0) {
             throw new \DomainException('Elige un sustituto activo y con precio válido.');
         }
-        $pricing = app(TraePricingService::class)->resolve($product);
-        if ((float) $pricing['precio_venta'] <= 0) throw new \DomainException('El sustituto debe tener un precio TRAE mayor a cero.');
+        // The recipe owns the price and quantity; only the delivered product changes.
         $variable->producto_original_id = $variable->product_id;
         $variable->product_id = $product->id;
-        $variable->precio_base = $pricing['precio_original'];
-        $variable->precio_unitario = $pricing['precio_venta'];
         $variable->setRelation('product', $product);
-        if ($combo->modo === 'total') {
-            $target = $combo->items->sum(fn ($item) => Money::toCents($item->precio_unitario) * $item->cantidad);
-            $allocation = $items->map(fn ($item) => [
-                'precio_base' => $item->precio_base, 'precio_unitario' => $item->precio_unitario,
-                'cantidad' => $item->cantidad,
-                '_fixed' => $item === $variable || in_array((int) $item->product?->subcategory_id, $this->excludedIds(), true),
-            ])->all();
-            try { $allocation = $this->allocateTotal($allocation, $target); }
-            catch (ValidationException $e) {
-                throw new \DomainException('Este sustituto no permite mantener el total fijo y los precios válidos de los demás productos. Elige otro.');
-            }
-            foreach ($items as $index => $item) $item->precio_unitario = $allocation[$index]['precio_unitario'];
-        }
         foreach ($items as $item) {
             if (!$item->product) throw new \DomainException('Un producto del combo ya no existe.');
             $this->assertPriceAllowed($item->product, $item->precio_unitario);
@@ -234,6 +218,7 @@ class InternalComboService
                     throw new \DomainException('El combo '.$combo->nombre.' debe venderse completo, con sus cantidades configuradas.');
                 }
                 $result[$index] = [
+                    'reemplazable' => (bool) $item->reemplazable,
                     'precio_original' => $item->precio_base, 'precio_venta' => $item->precio_unitario,
                     'porcentaje' => $item->precio_base ? round(max(0, $item->precio_base - $item->precio_unitario) * 100 / $item->precio_base, 4) : 0,
                     'promocion_id' => null, 'promocion_nombre' => 'Combo '.$combo->nombre,

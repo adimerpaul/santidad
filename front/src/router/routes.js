@@ -48,6 +48,7 @@ const routes = [
       { path: 'informesBajas/:id', component: BajaDetailPage, meta: { requiresAuth: true } },
       { path: 'subcategorias', component: () => import('pages/SubcategoryPage.vue'), meta: { requiresAuth: true } },
       { path: 'pedidos', component: () => import('pages/PedidosPage.vue'), meta: { requiresAuth: true } },
+      { path: 'atencion-cliente', component: () => import('pages/AtencionClientePage.vue'), meta: { requiresAuth: true } },
       { path: 'historial-pedidos', component: HistorialPedidos, meta: { requiresAuth: true } },
       { path: 'carousel', component: () => import('pages/Carousel/CarouselPage.vue'), meta: { requiresAuth: true } },
       { path: 'vendedores', component: () => import('pages/VendedoresPage.vue'), meta: { requiresAuth: true } },

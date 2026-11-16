@@ -42,4 +42,10 @@ return [
 
     'publicidad' => ['socket_url' => env('SOCKET_SERVER_URL')],
 
+    'whatsapp_webhook' => [
+        'verify_token' => env('WHATSAPP_VERIFY_TOKEN'),
+        'app_secret' => env('WHATSAPP_APP_SECRET'),
+        'test_phone_number_id' => env('WHATSAPP_TEST_PHONE_NUMBER_ID'),
+    ],
+
 ];

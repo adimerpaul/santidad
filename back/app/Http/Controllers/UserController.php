@@ -78,6 +78,7 @@ class UserController extends Controller
         ],200);
     }
     public function store(Request $request){
+        $this->authorizeUserManagement($request);
         $this->validate($request, [
             'name' => 'required',
             'email' => 'required|unique:users',
@@ -96,6 +97,7 @@ class UserController extends Controller
         $user->save();
     }
     public function update(Request $request,User $user){
+        $this->authorizeUserManagement($request);
         $this->validate($request, [
             'name' => 'required',
             'email' => 'required|unique:users,email,'.$user->id,
@@ -107,6 +109,7 @@ class UserController extends Controller
     }
 
     public function updatePassword(Request $request,User $user){
+        $this->authorizeUserManagement($request);
 //        $this->validate($request, [
 //            'password' => 'required|confirmed',
 //            'password_confirmation' => 'required|same:password',
@@ -116,8 +119,14 @@ class UserController extends Controller
         ]);
         return $user;
     }
-    public function destroy(User $user){
+    public function destroy(Request $request, User $user){
+        $this->authorizeUserManagement($request);
         $user->delete();
+    }
+
+    private function authorizeUserManagement(Request $request): void
+    {
+        abort_unless((int) $request->user()->id === 1, 403);
     }
     public function logout(Request $request){
         $request->user()->currentAccessToken()->delete();
