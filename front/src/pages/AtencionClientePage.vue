@@ -13,9 +13,9 @@
     </header>
 
     <div class="connection-notice" role="status">
-      <q-icon :name="demo ? 'science' : 'link_off'" size="22px" />
-      <div><strong>{{ demo ? 'Demostración · datos ficticios' : 'WhatsApp pendiente de conexión' }}</strong>
-        <span>{{ demo ? 'Las respuestas y cambios solo se simulan en esta pantalla. Se borran al salir.' : 'Los casos se guardan en Santidad. El envío de mensajes y el bot estarán disponibles al conectar WhatsApp.' }}</span>
+      <q-icon :name="demo ? 'science' : 'chat'" size="22px" />
+      <div><strong>{{ demo ? 'Demostración · datos ficticios' : 'WhatsApp de prueba · mensajes entrantes' }}</strong>
+        <span>{{ demo ? 'Las respuestas y cambios solo se simulan en esta pantalla. Se borran al salir.' : 'Pulsa Actualizar para ver los mensajes recibidos. Las respuestas que escribas aquí se guardan en Santidad.' }}</span>
       </div>
       <q-badge outline color="teal-8" class="scope-badge">{{ isAdmin ? 'Vista de administrador' : branchName }}</q-badge>
     </div>
@@ -89,7 +89,7 @@
             </q-btn>
           </div>
           <q-input v-model="draft" outlined autogrow :maxlength="2000" :disable="!canCompose" :placeholder="placeholder" :aria-label="composeKind === 'note' ? 'Escribir nota interna' : 'Escribir respuesta'" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit" />
-          <div class="composer-bottom"><span>{{ composeKind === 'note' ? 'Visible para el equipo asignado y el administrador.' : (demo ? 'Ctrl + Enter para simular.' : 'Se guarda en Santidad. WhatsApp está desconectado.') }}</span><q-btn unelevated no-caps color="teal-8" :icon="composeKind === 'note' ? 'note_add' : (demo ? 'send' : 'save')" :label="composeKind === 'note' ? 'Añadir nota' : (demo ? 'Simular respuesta' : 'Guardar respuesta')" :disable="!canCompose || !draft.trim()" @click="submit" /></div>
+          <div class="composer-bottom"><span>{{ composeKind === 'note' ? 'Visible para el equipo asignado y el administrador.' : (demo ? 'Ctrl + Enter para simular.' : 'Se guarda solo en Santidad.') }}</span><q-btn unelevated no-caps color="teal-8" :icon="composeKind === 'note' ? 'note_add' : (demo ? 'send' : 'save')" :label="composeKind === 'note' ? 'Añadir nota' : (demo ? 'Simular respuesta' : 'Guardar respuesta')" :disable="!canCompose || !draft.trim()" @click="submit" /></div>
         </div>
       </section>
 
@@ -205,7 +205,7 @@ const modeTitle = computed(() => {
 const modeHint = computed(() => {
   if (selected.value?.status === 'resolved') return 'Reabre el caso para continuar.'
   if (!demo.value && !selected.value?.branch_id) return 'El administrador puede asignar una sucursal desde Detalles.'
-  if (selected.value?.mode === 'bot') return demo.value ? 'Toma la atención para escribir personalmente.' : 'WhatsApp sigue pendiente de conexión. Puedes pasar a atención manual.'
+  if (selected.value?.mode === 'bot') return demo.value ? 'Toma la atención para escribir personalmente.' : 'Las respuestas automáticas están pendientes. Puedes pasar a atención manual.'
   return demo.value ? 'Puedes simular una respuesta.' : 'Puedes guardar respuestas y notas en el caso.'
 })
 const placeholder = computed(() => {

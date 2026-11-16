@@ -31,6 +31,8 @@ class SupportCaseTest extends TestCase
             '2025_10_18_152547_create_orders_table.php',
             '2025_10_18_152820_create_order_items_table.php',
             '2026_11_15_000001_create_support_cases.php',
+            '2026_11_15_000002_create_whatsapp_test_events_table.php',
+            '2026_11_16_000001_add_whatsapp_thread_key_to_support_cases.php',
         ] as $file) {
             (require database_path('migrations/' . $file))->up();
         }
@@ -108,6 +110,71 @@ class SupportCaseTest extends TestCase
         $this->getJson("/api/support/cases/$id")->assertNotFound();
         $this->authenticate(3);
         $this->getJson("/api/support/cases/$id")->assertJsonPath('messages.0.text', 'Hola');
+    }
+
+    public function test_whatsapp_text_appears_in_one_case_and_respects_branch_visibility(): void
+    {
+        $this->postWhatsAppText('wamid.first', 'Hola, esta es una prueba')->assertOk();
+        $this->postWhatsAppText('wamid.first', 'Hola, esta es una prueba')->assertOk();
+        $this->postWhatsAppText('wamid.other-number', 'Otro canal', '987654321')->assertOk();
+        $this->assertDatabaseCount('support_cases', 1);
+        $this->assertDatabaseCount('support_messages', 1);
+        $this->assertDatabaseCount('whatsapp_test_events', 1);
+
+        $this->authenticate(1);
+        $id = $this->getJson('/api/support/cases?branch=0')->assertOk()
+            ->assertJsonPath('data.0.source', 'whatsapp')
+            ->assertJsonPath('data.0.name', 'Cliente de prueba')
+            ->assertJsonPath('data.0.status', 'pending')
+            ->assertJsonPath('data.0.preview.text', 'Hola, esta es una prueba')->json('data.0.id');
+        $this->getJson("/api/support/cases/$id")->assertJsonPath('messages.0.author', 'customer');
+
+        $this->authenticate(3);
+        $this->getJson("/api/support/cases/$id")->assertNotFound();
+        $this->authenticate(1);
+        $this->patchJson("/api/support/cases/$id/branch", ['agencia_id' => 2])->assertOk();
+        $this->patchJson("/api/support/cases/$id", ['action' => 'resolve'])->assertOk();
+
+        $this->postWhatsAppText('wamid.first', 'Hola, esta es una prueba')->assertOk();
+        $this->getJson("/api/support/cases/$id")->assertJsonPath('status', 'resolved');
+        $this->postWhatsAppText('wamid.second', 'Tengo otra consulta 📦')->assertOk();
+        $this->assertDatabaseCount('support_cases', 1);
+
+        $this->authenticate(2);
+        $this->getJson("/api/support/cases/$id")->assertNotFound();
+        $this->authenticate(3);
+        $this->getJson("/api/support/cases/$id")->assertOk()
+            ->assertJsonPath('branch_id', 2)
+            ->assertJsonPath('status', 'open')
+            ->assertJsonPath('mode', 'manual')
+            ->assertJsonPath('preview.text', 'Tengo otra consulta 📦');
+    }
+
+    private function postWhatsAppText(string $messageId, string $text, string $phoneId = '123456789')
+    {
+        $secret = 'whatsapp-test-secret';
+        config([
+            'services.whatsapp_webhook.app_secret' => $secret,
+            'services.whatsapp_webhook.test_phone_number_id' => '123456789',
+        ]);
+        $body = json_encode([
+            'object' => 'whatsapp_business_account',
+            'entry' => [['changes' => [[
+                'field' => 'messages',
+                'value' => [
+                    'metadata' => ['phone_number_id' => $phoneId],
+                    'contacts' => [['wa_id' => '59170000000', 'profile' => ['name' => 'Cliente de prueba']]],
+                    'messages' => [[
+                        'from' => '59170000000', 'id' => $messageId, 'type' => 'text', 'text' => ['body' => $text],
+                    ]],
+                ],
+            ]]]],
+        ], JSON_THROW_ON_ERROR);
+
+        return $this->call('POST', '/api/webhooks/whatsapp', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_HUB_SIGNATURE_256' => 'sha256=' . hash_hmac('sha256', $body, $secret),
+        ], $body);
     }
 
     private function authenticate(int $id): void

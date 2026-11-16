@@ -147,7 +147,7 @@ class SupportCaseController extends Controller
                 $case->save();
                 $labels = [
                     'manual' => 'Atención manual activada.',
-                    'bot' => 'Modo bot guardado. WhatsApp sigue pendiente de conexión.',
+                    'bot' => 'Modo bot guardado. Las respuestas automáticas están pendientes.',
                     'resolve' => 'Atención resuelta.',
                     'reopen' => 'Atención reabierta en modo manual.',
                 ];

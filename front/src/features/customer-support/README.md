@@ -6,7 +6,7 @@ Ruta autenticada `/atencion-cliente`, accesible desde Operación. La bandeja usa
 
 - **Nuevo caso → Pedido online** abre el caso por número de pedido y toma el origen y la sucursal de la orden guardada. Un pedido tiene como máximo un caso. La sucursal de atención puede cambiar sin editar la orden.
 - El administrador (usuario 1) ve todas las sucursales y registra consultas directas. Los casos sin sucursal aparecen en **Sin asignar** hasta que el administrador los asigne desde **Detalles de atención**. Los operadores consultan y modifican casos de su propia sucursal.
-- Las respuestas guardadas y notas quedan en el historial. El modo bot es una preferencia persistida. El envío y la automatización requieren conectar WhatsApp.
+- Las respuestas guardadas y notas quedan en el historial. El modo bot es una preferencia persistida. El envío y la automatización requieren otra integración.
 - `demo.js` contiene datos ficticios. Los borradores y los cambios de demostración viven en memoria mientras está abierta la pantalla.
 
 ## Webhook de prueba
@@ -21,7 +21,9 @@ Configura en el entorno privado del backend estas tres variables:
 
 Si se cachea la configuración de Laravel, regénérala después de definir las variables. En Meta, abre **Paso 2 → Configurar Webhooks**, pega la URL HTTPS y el identificador de verificación, pulsa **Verificar y guardar** y suscribe el campo `messages`.
 
-El webhook valida la firma sobre el cuerpo original y registra en `whatsapp_test_events` solo el tipo, la hora, el identificador del número de prueba y una huella para deduplicar. Una prueba del panel con un identificador de ejemplo distinto puede recibir HTTP 200 sin dejar un registro. Este paso verifica la recepción en Laravel. La bandeja y las respuestas por Cloud API requieren una integración posterior.
+El webhook valida la firma sobre el cuerpo original y registra en `whatsapp_test_events` el tipo, la hora, el identificador del número de prueba y una huella para deduplicar. Una prueba del panel con un identificador de ejemplo distinto puede recibir HTTP 200 sin dejar un registro.
+
+Para mostrar mensajes de texto en la bandeja, aplica además `php artisan migrate --path=database/migrations/2026_11_16_000001_add_whatsapp_thread_key_to_support_cases.php` desde `back`. Luego envía un mensaje nuevo al número de prueba y pulsa **Actualizar** en **Atención al cliente**. Los mensajes se agrupan por remitente. El primer mensaje queda en **Sin asignar** para el administrador y, después de la asignación, el historial es visible para esa sucursal. Un mensaje nuevo reabre la conversación resuelta en modo manual. Los eventos antiguos solo contienen los datos de diagnóstico. Los adjuntos, las respuestas por Cloud API y el bot siguen pendientes.
 
 ## Integración posterior
 
