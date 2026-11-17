@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SupportCase;
+use App\Services\SupportRealtime;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +29,7 @@ class WhatsAppTestWebhookController extends Controller
         return response($challenge, 200, ['Content-Type' => 'text/plain', 'Cache-Control' => 'no-store']);
     }
 
-    public function receive(Request $request): Response
+    public function receive(Request $request, SupportRealtime $realtime): Response
     {
         $secret = (string) config('services.whatsapp_webhook.app_secret');
         $phoneId = (string) config('services.whatsapp_webhook.test_phone_number_id');
@@ -50,14 +51,15 @@ class WhatsAppTestWebhookController extends Controller
             400
         );
 
-        $this->storeTestEvents($payload['entry'], $phoneId);
+        $realtime->notify($this->storeTestEvents($payload['entry'], $phoneId));
 
         return response('EVENT_RECEIVED', 200, ['Content-Type' => 'text/plain']);
     }
 
-    private function storeTestEvents(array $entries, string $phoneId): void
+    private function storeTestEvents(array $entries, string $phoneId): array
     {
         $events = [];
+        $cases = [];
         $receivedAt = now();
         foreach ($entries as $entry) {
             foreach ((array) ($entry['changes'] ?? []) as $change) {
@@ -78,7 +80,13 @@ class WhatsAppTestWebhookController extends Controller
                     if (($message['type'] ?? null) === 'text' && is_string($sender) && trim($sender) !== ''
                         && is_string($text) && trim($text) !== '') {
                         $name = $this->customerName((array) ($value['contacts'] ?? []), $sender);
-                        $this->storeInboxMessage($event, $sender, $name, $text);
+                        $case = $this->storeInboxMessage($event, $sender, $name, $text, $message['timestamp'] ?? null);
+                        if ($case) {
+                            $cases[$case->id] = [
+                                'id' => $case->id,
+                                'branch' => $case->agencia_id === null ? null : (int) $case->agencia_id,
+                            ];
+                        }
                     } else {
                         $events[$event['event_key']] = $event;
                     }
@@ -98,6 +106,8 @@ class WhatsAppTestWebhookController extends Controller
         foreach (array_chunk($events, 100) as $batch) {
             DB::table('whatsapp_test_events')->upsert($batch, ['event_key'], ['event_key']);
         }
+
+        return $cases;
     }
 
     private function testEvent(string $phoneId, string $kind, mixed $id, \DateTimeInterface $receivedAt): ?array
@@ -126,12 +136,12 @@ class WhatsAppTestWebhookController extends Controller
         return 'Contacto de WhatsApp';
     }
 
-    private function storeInboxMessage(array $event, string $sender, string $name, string $text): void
+    private function storeInboxMessage(array $event, string $sender, string $name, string $text, mixed $timestamp): ?SupportCase
     {
-        DB::transaction(function () use ($event, $sender, $name, $text) {
+        return DB::transaction(function () use ($event, $sender, $name, $text, $timestamp) {
             // El registro del evento y el mensaje se confirman juntos para admitir reintentos de Meta.
             if (!DB::table('whatsapp_test_events')->insertOrIgnore($event)) {
-                return;
+                return null;
             }
 
             $threadKey = hash('sha256', $event['phone_number_id'] . ':' . $sender);
@@ -145,12 +155,21 @@ class WhatsAppTestWebhookController extends Controller
             ]], ['whatsapp_thread_key'], ['whatsapp_thread_key']);
 
             $case = SupportCase::where('whatsapp_thread_key', $threadKey)->lockForUpdate()->firstOrFail();
+            $sentAt = filter_var($timestamp, FILTER_VALIDATE_INT);
+            if (preg_match('/\A[1-9][0-9]{5,14}\z/', $sender) && $sentAt > 0
+                && $sentAt <= $receivedAt->getTimestamp() + 60 && $sentAt > $case->whatsapp_last_inbound) {
+                $case->whatsapp_recipient = $sender;
+                $case->whatsapp_phone_id = $event['phone_number_id'];
+                $case->whatsapp_last_inbound = min($sentAt, $receivedAt->getTimestamp());
+            }
             if ($case->status === 'resolved') {
                 $case->status = $case->agencia_id ? 'open' : 'pending';
                 $case->mode = 'manual';
             }
             $case->touch();
             $case->messages()->create(['author' => 'customer', 'text' => $text]);
+
+            return $case;
         }, 3);
     }
 }

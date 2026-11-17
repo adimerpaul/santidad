@@ -15,7 +15,7 @@
     <div class="connection-notice" role="status">
       <q-icon :name="demo ? 'science' : 'chat'" size="22px" />
       <div><strong>{{ demo ? 'Demostración · datos ficticios' : 'WhatsApp de prueba · mensajes entrantes' }}</strong>
-        <span>{{ demo ? 'Las respuestas y cambios solo se simulan en esta pantalla. Se borran al salir.' : 'Pulsa Actualizar para ver los mensajes recibidos. Las respuestas que escribas aquí se guardan en Santidad.' }}</span>
+        <span>{{ demo ? 'Las respuestas y cambios solo se simulan en esta pantalla. Se borran al salir.' : (liveConnected ? 'La bandeja se actualiza al llegar mensajes.' : 'Puedes usar Actualizar para ver los mensajes recibidos.') }}</span>
       </div>
       <q-badge outline color="teal-8" class="scope-badge">{{ isAdmin ? 'Vista de administrador' : branchName }}</q-badge>
     </div>
@@ -75,7 +75,7 @@
             <div v-if="message.author === 'system'" class="system-message">{{ message.text }} · {{ time(message.at) }}</div>
             <div v-else class="message-row" :class="{ outgoing: message.author !== 'customer' }">
               <div class="message-bubble" :class="{ 'bot-bubble': message.author === 'bot', 'note-bubble': message.author === 'note' }">
-                <strong>{{ authors[message.author] }}</strong><p>{{ message.text }}</p><small>{{ time(message.at) }}{{ message.author === 'agent' ? (demo ? ' · Simulado, no enviado' : ' · Guardado en Santidad') : '' }}</small>
+                <strong>{{ authors[message.author] }}</strong><p>{{ message.text }}</p><small>{{ time(message.at) }}{{ message.author === 'agent' ? ' · ' + (demo ? 'Simulado' : (whatsappStates[message.whatsapp_state] || 'Guardado en Santidad')) : '' }}</small>
               </div>
             </div>
           </template>
@@ -89,7 +89,12 @@
             </q-btn>
           </div>
           <q-input v-model="draft" outlined autogrow :maxlength="2000" :disable="!canCompose" :placeholder="placeholder" :aria-label="composeKind === 'note' ? 'Escribir nota interna' : 'Escribir respuesta'" @keydown.ctrl.enter.prevent="submit" @keydown.meta.enter.prevent="submit" />
-          <div class="composer-bottom"><span>{{ composeKind === 'note' ? 'Visible para el equipo asignado y el administrador.' : (demo ? 'Ctrl + Enter para simular.' : 'Se guarda solo en Santidad.') }}</span><q-btn unelevated no-caps color="teal-8" :icon="composeKind === 'note' ? 'note_add' : (demo ? 'send' : 'save')" :label="composeKind === 'note' ? 'Añadir nota' : (demo ? 'Simular respuesta' : 'Guardar respuesta')" :disable="!canCompose || !draft.trim()" @click="submit" /></div>
+          <div class="composer-bottom">
+            <span>{{ composeKind === 'note' ? 'Visible para el equipo asignado y el administrador.' : (demo ? 'Ctrl + Enter para simular.' : (sendsWhatsApp ? 'Desde el número de WhatsApp de prueba.' : 'Se guarda en Santidad.')) }}</span>
+            <q-btn unelevated no-caps color="teal-8" :icon="composeKind === 'note' ? 'note_add' : (sendsWhatsApp || demo ? 'send' : 'save')"
+                   :label="composeKind === 'note' ? 'Añadir nota' : (sendsWhatsApp ? 'Enviar por WhatsApp' : (demo ? 'Simular respuesta' : 'Guardar respuesta'))"
+                   :disable="!canCompose || !draft.trim()" @click="submit" />
+          </div>
         </div>
       </section>
 
@@ -141,7 +146,7 @@
 </template>
 
 <script setup>
-import { computed, getCurrentInstance, nextTick, ref, watch } from 'vue'
+import { computed, getCurrentInstance, inject, nextTick, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { onBeforeRouteLeave } from 'vue-router'
 import { useCounterStore } from 'stores/example-store'
@@ -150,6 +155,8 @@ import { createDemoConversations, quickReplies } from 'src/features/customer-sup
 const store = useCounterStore()
 const $q = useQuasar()
 const api = getCurrentInstance().appContext.config.globalProperties.$axios
+const socketManager = inject('mainSocketManager', null)
+const liveConnected = ref(false)
 const demo = ref(false)
 const conversations = ref([])
 const selectedId = ref(null)
@@ -173,6 +180,7 @@ let listRequest = 0
 let detailRequest = 0
 let scopeVersion = 0
 const drafts = ref({})
+const replyAttempts = new Map()
 const composeKind = ref('reply')
 const detailsOpen = ref(false)
 const messageList = ref(null)
@@ -192,6 +200,13 @@ const sources = {
 const states = { pending: 'Pendiente', open: 'En atención', resolved: 'Resuelto' }
 const authors = { customer: 'Cliente', bot: 'Asistente', agent: 'Respuesta manual', note: 'Nota interna' }
 const selected = computed(() => demo.value ? conversations.value.find(chat => chat.id === selectedId.value) : detail.value)
+const sendsWhatsApp = computed(() => !demo.value && composeKind.value === 'reply' && selected.value?.source === 'whatsapp')
+const whatsappStates = {
+  sending: 'Pendiente de confirmación',
+  accepted: 'Aceptado por WhatsApp',
+  failed: 'WhatsApp rechazó el envío',
+  unknown: 'Envío sin confirmar. Verifica antes de repetir.'
+}
 const draftKey = computed(() => `${selectedId.value}:${composeKind.value}`)
 const draft = computed({ get: () => drafts.value[draftKey.value] || '', set: value => { drafts.value[draftKey.value] = value } })
 const canCompose = computed(() => !busy.value && selected.value && selected.value.status !== 'resolved' &&
@@ -273,11 +288,22 @@ function setDetail (data) {
   assignedBranch.value = data.branch_id
 }
 
-async function loadDetail (id) {
+async function loadDetail (id, keepHistory = false) {
   const request = ++detailRequest
   try {
     const { data } = await api.get(`support/cases/${id}`)
-    if (request === detailRequest && selectedId.value === id) setDetail(data)
+    if (request !== detailRequest || selectedId.value !== id) return
+    const previous = detail.value
+    const oldest = data.messages[0]?.id
+    if (keepHistory && previous?.id === id && previous.messages.some(message => message.id === oldest)) {
+      const older = previous.messages.filter(message => message.id < oldest)
+      if (older.length > 0) {
+        data.messages = [...older, ...data.messages]
+        data.before = previous.before
+      }
+    }
+    if (keepHistory && detailsOpen.value) detail.value = data
+    else setDetail(data)
   } catch (failure) {
     if (request !== detailRequest || selectedId.value !== id) return
     detail.value = null
@@ -381,6 +407,7 @@ function reset () {
   conversations.value = []
   clearSelection()
   drafts.value = {}
+  replyAttempts.clear()
   search.value = ''
   filter.value = 'all'
   page.value = 1
@@ -475,6 +502,21 @@ function submit () {
   const key = draftKey.value
   const author = composeKind.value === 'note' ? 'note' : 'agent'
   const text = draft.value.trim().slice(0, 2000)
+  if (sendsWhatsApp.value) {
+    const previous = replyAttempts.get(key)
+    const requestId = previous?.text === text ? previous.id : globalThis.crypto.randomUUID()
+    replyAttempts.set(key, { text, id: requestId })
+    runAction(() => api.post(`support/cases/${id}/whatsapp-replies`, { text, request_id: requestId }), message => {
+      replyAttempts.delete(key)
+      if (message.whatsapp_state !== 'failed') delete drafts.value[key]
+      if (selectedId.value !== id || !detail.value) return
+      const index = detail.value.messages.findIndex(item => item.id === message.id)
+      if (index === -1) detail.value.messages.push(message)
+      else detail.value.messages[index] = message
+      if (message.whatsapp_state === 'accepted' && detail.value.status === 'pending') detail.value.status = 'open'
+    })
+    return
+  }
   if (!demo.value) {
     runAction(() => api.post(`support/cases/${id}/messages`, { author, text }), message => {
       delete drafts.value[key]
@@ -502,6 +544,80 @@ watch([search, filter, branchFilter], () => {
   else page.value = 1
 })
 watch(page, loadCases)
+
+watch([() => socketManager?.value, () => store.user?.id, () => store.user?.agencia_id, demo],
+  ([manager, userId, , isDemo], _previous, onCleanup) => {
+    if (!manager || !api || !userId || isDemo) return
+
+    const socket = manager.socket('/support')
+    const changed = new Set()
+    let active = true
+    let catchUp = false
+    let timer
+    let syncing = false
+
+    function schedule () {
+      if (!active || timer || syncing || busy.value || (!catchUp && !changed.size)) return
+      timer = setTimeout(async () => {
+        timer = undefined
+        if (!active || busy.value) return
+        const id = selectedId.value
+        const syncDetail = id !== null && (catchUp || changed.has(Number(id)))
+        catchUp = false
+        changed.clear()
+        syncing = true
+        try {
+          await Promise.all([loadCases(), syncDetail && loadDetail(id, true)])
+        } finally {
+          syncing = false
+          schedule()
+        }
+      }, 300)
+    }
+
+    function receive (ids) {
+      if (!Array.isArray(ids)) return
+      ids.forEach(id => changed.add(Number(id)))
+      schedule()
+    }
+
+    function connect () {
+      liveConnected.value = true
+      catchUp = true
+      schedule()
+    }
+
+    function disconnect () {
+      liveConnected.value = false
+    }
+
+    socket.auth = async sendCredentials => {
+      try {
+        const { data } = await api.get('support/realtime-ticket')
+        if (active) sendCredentials({ ticket: data.ticket })
+      } catch {
+        if (active) sendCredentials({})
+      }
+    }
+    socket.on('support_messages', receive)
+    socket.on('connect', connect)
+    socket.on('disconnect', disconnect)
+    const stopBusyWatch = watch(busy, schedule)
+    socket.connect()
+
+    onCleanup(() => {
+      active = false
+      clearTimeout(timer)
+      stopBusyWatch()
+      socket.off('support_messages', receive)
+      socket.off('connect', connect)
+      socket.off('disconnect', disconnect)
+      socket.disconnect()
+      socket.auth = {}
+      disconnect()
+    })
+  }, { immediate: true })
+
 onBeforeRouteLeave(() => {
   if (!Object.values(drafts.value).some(value => value.trim())) return true
   return new Promise(resolve => {

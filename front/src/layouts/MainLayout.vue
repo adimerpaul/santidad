@@ -520,6 +520,7 @@
 
 <script>
 import { io } from 'socket.io-client'
+import { computed, markRaw } from 'vue'
 import PromotionNotice from 'src/components/PromotionNotice.vue'
 
 // Ventana mínima entre consultas de estado de caja. Acota el gasto pase lo que
@@ -536,8 +537,12 @@ function obtenerCajaTerminal (value) {
 export default {
   name: 'MainLayout',
   components: { PromotionNotice },
+  provide () {
+    return { mainSocketManager: computed(() => this.socket?.io) }
+  },
   data () {
     return {
+      socket: null,
       leftDrawerOpen: false,
       notificaciones: [],
       tabNotificaciones: 'recibidas',
@@ -699,7 +704,7 @@ export default {
     },
     conectarSocket () {
       const socketUrl = import.meta.env.VITE_API_SOCKET || 'http://localhost:3000'
-      this.socket = io(socketUrl)
+      this.socket = markRaw(io(socketUrl, { autoConnect: false }))
       this.socket.on('nueva_notificacion', (data) => {
         if (String(data?.agencia_id) !== String(this.$store.agencia_id)) return
 
@@ -724,6 +729,7 @@ export default {
           this.verificarEstadoCaja({ force: true })
         }
       })
+      this.socket.connect()
     },
     linkIsActive (item) {
       return this.$route.path === item.to

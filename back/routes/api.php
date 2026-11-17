@@ -107,12 +107,14 @@ Route::prefix('delivery')->middleware('throttle:120,1')->group(function () {
 Route::group(['middleware' => 'auth:sanctum'], function () {
 
     Route::prefix('support')->controller(\App\Http\Controllers\SupportCaseController::class)->group(function () {
+        Route::get('realtime-ticket', 'realtimeTicket');
         Route::get('branches', 'branches');
         Route::get('cases', 'index');
         Route::post('cases', 'store');
         Route::get('cases/{id}', 'show')->whereNumber('id');
         Route::patch('cases/{id}', 'update')->whereNumber('id');
         Route::post('cases/{id}/messages', 'addMessage')->whereNumber('id');
+        Route::post('cases/{id}/whatsapp-replies', 'sendWhatsAppReply')->whereNumber('id');
         Route::patch('cases/{id}/branch', 'assign')->whereNumber('id');
     });
 

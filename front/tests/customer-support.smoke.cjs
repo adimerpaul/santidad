@@ -34,6 +34,7 @@ async function main () {
       const request = route.request()
       const pathname = new URL(request.url()).pathname
       const method = request.method()
+      if (pathname.endsWith('/realtime-ticket')) return route.fulfill({ json: { ticket: 'demo-ticket' } })
       if (pathname.endsWith('/cases') && method === 'GET') {
         return route.fulfill({ json: { data: supportCase ? [supportCase] : [], last_page: 1 } })
       }
@@ -55,6 +56,14 @@ async function main () {
         return route.fulfill({ json: supportCase })
       }
       if (pathname.endsWith('/cases/1') && method === 'GET') return route.fulfill({ json: supportCase })
+      if (pathname.endsWith('/cases/1/whatsapp-replies') && method === 'POST') {
+        const body = request.postDataJSON()
+        assert.equal(body.text, 'Respuesta desde Santidad')
+        assert.match(body.request_id, /^[\da-f-]{36}$/)
+        const reply = { id: 4, author: 'agent', text: body.text, whatsapp_state: 'accepted', at: new Date().toISOString() }
+        supportCase.messages.push(reply)
+        return route.fulfill({ status: 201, json: reply })
+      }
       if (pathname.endsWith('/cases/1/messages') && method === 'POST') {
         const body = request.postDataJSON()
         assert.deepEqual(body, { author: 'note', text: 'Nota persistente' })
@@ -65,7 +74,7 @@ async function main () {
       await route.fulfill({ status: 404, json: {} })
     })
     await page.goto(`${base}/tests/fixtures/customer-support.html`)
-    await page.getByText('WhatsApp pendiente de conexión', { exact: true }).waitFor()
+    await page.getByText('La bandeja se actualiza al llegar mensajes.', { exact: true }).waitFor()
     assert.equal(await page.locator('.conversation-item').count(), 0)
     await page.getByRole('button', { name: 'Probar demostración', exact: true }).click()
     assert.equal(await page.locator('.conversation-item').count(), 3)
@@ -119,8 +128,26 @@ async function main () {
     await page.reload()
     await page.locator('.conversation-item').filter({ hasText: 'Cliente web' }).click()
     await page.locator('.note-bubble').filter({ hasText: 'Nota persistente' }).waitFor()
+    supportCase.messages.push({ id: 2, author: 'customer', text: 'Mensaje en vivo', at: new Date().toISOString() })
+    await page.evaluate(() => {
+      window.fixtureSocket.emit('support_messages', [1])
+      window.fixtureSocket.emit('support_messages', [1])
+    })
+    await page.locator('.message-bubble').filter({ hasText: 'Mensaje en vivo' }).waitFor()
+    await page.evaluate(() => window.fixtureSocket.disconnect())
+    supportCase.messages.push({ id: 3, author: 'customer', text: 'Mensaje al reconectar', at: new Date().toISOString() })
+    await page.evaluate(() => window.fixtureSocket.connect())
+    await page.locator('.message-bubble').filter({ hasText: 'Mensaje al reconectar' }).waitFor()
+    supportCase.source = 'whatsapp'
+    supportCase.order = null
+    await page.evaluate(() => window.fixtureSocket.emit('support_messages', [1]))
+    await page.getByRole('button', { name: 'Respuesta', exact: true }).click()
+    await page.getByRole('button', { name: 'Enviar por WhatsApp', exact: true }).waitFor()
+    await page.getByRole('textbox', { name: 'Escribir respuesta', exact: true }).fill('Respuesta desde Santidad')
+    await page.getByRole('button', { name: 'Enviar por WhatsApp', exact: true }).click()
+    await page.locator('.message-bubble').filter({ hasText: 'Respuesta desde Santidad' }).getByText(/Aceptado por WhatsApp/).waitFor()
     assert.deepEqual(errors, [])
-    console.log('OK: demostración, móvil, nuevo caso por pedido y nota recuperada tras recargar.')
+    console.log('OK: demostración, móvil, pedido, nota y mensajes en vivo y al reconectar.')
   } finally {
     if (browser) await browser.close()
     await server.close()

@@ -1,5 +1,5 @@
 // Harness local sin boot de autenticación, API, sockets ni datos de producción.
-import { createApp, h } from 'vue'
+import { createApp, h, shallowRef } from 'vue'
 import { createPinia } from 'pinia'
 import { createRouter, createWebHashHistory, RouterView } from 'vue-router'
 import { Quasar, Dialog, QLayout, QPageContainer } from 'quasar'
@@ -11,6 +11,16 @@ import { useCounterStore } from '../../src/stores/example-store'
 
 const app = createApp({ render: () => h(QLayout, null, { default: () => h(QPageContainer, null, { default: () => h(RouterView) }) }) })
 app.config.globalProperties.$axios = axios.create({ baseURL: '/api/' })
+const listeners = new Map()
+const fixtureSocket = {
+  on (name, listener) { listeners.set(name, listener) },
+  off (name) { listeners.delete(name) },
+  emit (name, data) { listeners.get(name)?.(data) },
+  connect () { this.auth(() => this.emit('connect')) },
+  disconnect () { this.emit('disconnect') }
+}
+window.fixtureSocket = fixtureSocket
+app.provide('mainSocketManager', shallowRef({ socket: () => fixtureSocket }))
 app.use(createPinia())
 app.use(Quasar, { plugins: { Dialog } })
 const store = useCounterStore()

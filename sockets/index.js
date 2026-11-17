@@ -11,6 +11,7 @@ const io = new Server(server, {
 });
 app.use(express.json({ limit: '2mb' }));
 const advertising = require('./publicidad')(io);
+require('./support')(app, io);
 
 // Enable CORS for HTTP requests (like /notify)
 app.use((req, res, next) => {

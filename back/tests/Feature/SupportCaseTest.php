@@ -6,7 +6,9 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -16,6 +18,7 @@ class SupportCaseTest extends TestCase
     {
         parent::setUp();
         config(['database.default' => 'sqlite', 'database.connections.sqlite.database' => ':memory:']);
+        config(['services.support_realtime' => [], 'services.whatsapp_webhook.graph_version' => 'v25.0']);
         DB::purge('sqlite');
 
         Schema::create('agencias', function (Blueprint $table) {
@@ -33,6 +36,7 @@ class SupportCaseTest extends TestCase
             '2026_11_15_000001_create_support_cases.php',
             '2026_11_15_000002_create_whatsapp_test_events_table.php',
             '2026_11_16_000001_add_whatsapp_thread_key_to_support_cases.php',
+            '2026_11_16_000002_add_whatsapp_replies_to_support.php',
         ] as $file) {
             (require database_path('migrations/' . $file))->up();
         }
@@ -114,14 +118,21 @@ class SupportCaseTest extends TestCase
 
     public function test_whatsapp_text_appears_in_one_case_and_respects_branch_visibility(): void
     {
+        config(['services.support_realtime' => ['url' => 'http://socket.test', 'secret' => 'support-test-secret']]);
+        Http::fake(['http://socket.test/support/notify' => Http::response(null, 503)]);
         $this->postWhatsAppText('wamid.first', 'Hola, esta es una prueba')->assertOk();
         $this->postWhatsAppText('wamid.first', 'Hola, esta es una prueba')->assertOk();
         $this->postWhatsAppText('wamid.other-number', 'Otro canal', '987654321')->assertOk();
         $this->assertDatabaseCount('support_cases', 1);
         $this->assertDatabaseCount('support_messages', 1);
         $this->assertDatabaseCount('whatsapp_test_events', 1);
+        $this->getJson('/api/support/realtime-ticket')->assertUnauthorized();
 
         $this->authenticate(1);
+        $ticket = $this->getJson('/api/support/realtime-ticket')->assertOk()->json('ticket');
+        [$body, $signature] = explode('.', $ticket);
+        $this->assertSame('admins', json_decode(base64_decode(strtr($body, '-_', '+/')), true)['room']);
+        $this->assertSame(hash_hmac('sha256', 'support-ticket:' . $body, 'support-test-secret'), $signature);
         $id = $this->getJson('/api/support/cases?branch=0')->assertOk()
             ->assertJsonPath('data.0.source', 'whatsapp')
             ->assertJsonPath('data.0.name', 'Cliente de prueba')
@@ -143,11 +154,69 @@ class SupportCaseTest extends TestCase
         $this->authenticate(2);
         $this->getJson("/api/support/cases/$id")->assertNotFound();
         $this->authenticate(3);
+        $ticket = $this->getJson('/api/support/realtime-ticket')->assertOk()->json('ticket');
+        $this->assertSame('branch:2', json_decode(base64_decode(strtr(explode('.', $ticket)[0], '-_', '+/')), true)['room']);
         $this->getJson("/api/support/cases/$id")->assertOk()
             ->assertJsonPath('branch_id', 2)
             ->assertJsonPath('status', 'open')
             ->assertJsonPath('mode', 'manual')
             ->assertJsonPath('preview.text', 'Tengo otra consulta 📦');
+        Http::assertSentCount(2);
+        foreach ([null, 2] as $branch) {
+            Http::assertSent(fn ($request) => $request->hasHeader('Authorization', 'Bearer support-test-secret')
+                && $request['cases'] === [['id' => $id, 'branch' => $branch]]);
+        }
+    }
+
+    public function test_whatsapp_reply_uses_test_number_once_and_requires_the_assigned_branch_and_recent_text(): void
+    {
+        config(['services.whatsapp_webhook.access_token' => 'test-graph-token']);
+        $url = 'https://graph.facebook.com/v25.0/123456789/messages';
+        Http::fake([$url => Http::response(['messages' => [['id' => 'wamid.outgoing']]], 200)]);
+        $this->postWhatsAppText('wamid.inbound', 'Hola')->assertOk();
+        $id = DB::table('support_cases')->value('id');
+        $payload = ['text' => 'Respuesta de prueba', 'request_id' => (string) Str::uuid()];
+        $route = "/api/support/cases/$id/whatsapp-replies";
+
+        $this->authenticate(1);
+        $this->postJson($route, $payload)->assertUnprocessable();
+        $this->patchJson("/api/support/cases/$id/branch", ['agencia_id' => 2])->assertOk();
+        $this->authenticate(2);
+        $this->postJson($route, $payload)->assertNotFound();
+        $this->authenticate(3);
+        $messageId = $this->postJson($route, $payload)->assertCreated()
+            ->assertJsonPath('whatsapp_state', 'accepted')->json('id');
+        $this->postJson($route, $payload)->assertOk()->assertJsonPath('id', $messageId);
+        $this->postJson($route, array_replace($payload, ['text' => 'Otro texto']))->assertConflict();
+        $this->assertDatabaseHas('support_messages', ['id' => $messageId, 'whatsapp_message_id' => 'wamid.outgoing']);
+        $this->assertNotSame('59170000000', DB::table('support_cases')->where('id', $id)->value('whatsapp_recipient'));
+        $this->getJson("/api/support/cases/$id")->assertJsonMissingPath('whatsapp_recipient');
+        $this->travel(24)->hours();
+        $this->postJson($route, ['text' => 'Fuera de plazo', 'request_id' => (string) Str::uuid()])->assertUnprocessable();
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => $request->url() === $url
+            && $request->hasHeader('Authorization', 'Bearer test-graph-token')
+            && $request['to'] === '59170000000'
+            && $request['text']['body'] === $payload['text']);
+    }
+
+    public function test_whatsapp_keeps_rejected_and_unconfirmed_sends_without_replaying_them(): void
+    {
+        config(['services.whatsapp_webhook.access_token' => 'test-graph-token']);
+        Http::fake(['https://graph.facebook.com/*' => Http::sequence()->push([], 400)->push([], 503)]);
+        $this->postWhatsAppText('wamid.inbound', 'Hola')->assertOk();
+        $id = DB::table('support_cases')->value('id');
+        $this->authenticate(1);
+        $this->patchJson("/api/support/cases/$id/branch", ['agencia_id' => 1])->assertOk();
+
+        foreach (['failed', 'unknown'] as $state) {
+            $payload = ['text' => 'Prueba ' . $state, 'request_id' => (string) Str::uuid()];
+            $route = "/api/support/cases/$id/whatsapp-replies";
+            $this->postJson($route, $payload)->assertCreated()->assertJsonPath('whatsapp_state', $state);
+            $this->postJson($route, $payload)->assertOk()->assertJsonPath('whatsapp_state', $state);
+        }
+        Http::assertSentCount(2);
     }
 
     private function postWhatsAppText(string $messageId, string $text, string $phoneId = '123456789')
@@ -166,6 +235,7 @@ class SupportCaseTest extends TestCase
                     'contacts' => [['wa_id' => '59170000000', 'profile' => ['name' => 'Cliente de prueba']]],
                     'messages' => [[
                         'from' => '59170000000', 'id' => $messageId, 'type' => 'text', 'text' => ['body' => $text],
+                        'timestamp' => (string) now()->timestamp,
                     ]],
                 ],
             ]]]],

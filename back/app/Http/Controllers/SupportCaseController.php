@@ -6,12 +6,20 @@ use App\Models\Agencia;
 use App\Models\Order;
 use App\Models\SupportCase;
 use App\Models\SupportMessage;
+use App\Services\SupportRealtime;
+use App\Services\WhatsAppTestReplies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class SupportCaseController extends Controller
 {
+    public function realtimeTicket(Request $request, SupportRealtime $realtime)
+    {
+        return response()->json(['ticket' => $realtime->ticket($request->user())])
+            ->header('Cache-Control', 'private, no-store');
+    }
+
     public function index(Request $request)
     {
         $data = $request->validate([
@@ -120,6 +128,59 @@ class SupportCaseController extends Controller
         return response()->json($this->message($message), 201);
     }
 
+    public function sendWhatsAppReply(Request $request, int $id, WhatsAppTestReplies $whatsapp, SupportRealtime $realtime)
+    {
+        $data = $request->validate(['text' => 'required|string|max:2000', 'request_id' => 'required|uuid']);
+        [$reply, $recipient] = DB::transaction(function () use ($request, $id, $data, $whatsapp) {
+            $case = $this->lockedCase($request, $id);
+            abort_unless($case->source === 'whatsapp', 422, 'Esta conversación no pertenece a WhatsApp.');
+            $existing = $case->messages()->where('whatsapp_send_key', $data['request_id'])->first();
+            if ($existing) {
+                abort_unless($existing->text === $data['text'], 409, 'Esta solicitud ya se usó para otro texto.');
+                return [$existing, null];
+            }
+
+            abort_unless($case->agencia_id && $case->mode === 'manual' && $case->status !== 'resolved', 422,
+                'Asigna la conversación a una sucursal y abre la atención manual para responder.');
+            abort_unless($whatsapp->isConfigured(), 503, 'Falta configurar el token de envío de WhatsApp de prueba.');
+            abort_unless($case->whatsapp_phone_id === $whatsapp->phoneId() && $case->whatsapp_recipient &&
+                $case->whatsapp_last_inbound > now()->timestamp - 86400, 422,
+                'Pide un mensaje nuevo al número de prueba para abrir la ventana de respuesta de WhatsApp.');
+
+            $reply = $case->messages()->create([
+                'author' => 'agent',
+                'text' => $data['text'],
+                'user_id' => $request->user()->id,
+                'whatsapp_send_key' => $data['request_id'],
+                'whatsapp_state' => 'sending',
+            ]);
+            $case->touch();
+
+            return [$reply, $case->whatsapp_recipient];
+        }, 3);
+
+        if ($recipient === null) {
+            return $this->message($reply);
+        }
+
+        [$state, $messageId] = $whatsapp->send($recipient, $reply->text);
+        $branch = DB::transaction(function () use ($id, $reply, $state, $messageId) {
+            $case = SupportCase::lockForUpdate()->findOrFail($id);
+            $reply->whatsapp_state = $state;
+            $reply->whatsapp_message_id = $messageId;
+            $reply->save();
+            if ($state === 'accepted' && $case->status === 'pending') {
+                $case->status = 'open';
+            }
+            $case->touch();
+
+            return $case->agencia_id === null ? null : (int) $case->agencia_id;
+        }, 3);
+        $realtime->notify([['id' => $id, 'branch' => $branch]]);
+
+        return response()->json($this->message($reply), 201);
+    }
+
     public function update(Request $request, int $id)
     {
         $data = $request->validate(['action' => 'required|in:manual,bot,resolve,reopen']);
@@ -217,6 +278,12 @@ class SupportCaseController extends Controller
 
     private function message(SupportMessage $message): array
     {
-        return ['id' => $message->id, 'author' => $message->author, 'text' => $message->text, 'at' => $message->created_at->toISOString()];
+        return [
+            'id' => $message->id,
+            'author' => $message->author,
+            'text' => $message->text,
+            'at' => $message->created_at->toISOString(),
+            'whatsapp_state' => $message->whatsapp_state,
+        ];
     }
 }
