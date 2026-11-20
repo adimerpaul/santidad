@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\SupportCase;
 use App\Services\SupportRealtime;
+use App\Services\WhatsAppSupportBot;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,8 @@ use JsonException;
 
 class WhatsAppTestWebhookController extends Controller
 {
+    private const UNKNOWN_CONTACT = 'Contacto de WhatsApp';
+
     public function verify(Request $request): Response
     {
         $expected = (string) config('services.whatsapp_webhook.verify_token');
@@ -29,7 +32,7 @@ class WhatsAppTestWebhookController extends Controller
         return response($challenge, 200, ['Content-Type' => 'text/plain', 'Cache-Control' => 'no-store']);
     }
 
-    public function receive(Request $request, SupportRealtime $realtime): Response
+    public function receive(Request $request, SupportRealtime $realtime, WhatsAppSupportBot $bot): Response
     {
         $secret = (string) config('services.whatsapp_webhook.app_secret');
         $phoneId = (string) config('services.whatsapp_webhook.test_phone_number_id');
@@ -51,45 +54,68 @@ class WhatsAppTestWebhookController extends Controller
             400
         );
 
-        $realtime->notify($this->storeTestEvents($payload['entry'], $phoneId));
+        [$cases, $botInputs] = $this->storeTestEvents($payload['entry'], $phoneId, $bot->enabled());
+        $realtime->notify($cases);
+        if ($botInputs) {
+            app()->terminating(function () use ($bot, $botInputs) {
+                foreach ($botInputs as $caseId => $inboundId) {
+                    $bot->respond($caseId, $inboundId);
+                }
+            });
+        }
 
         return response('EVENT_RECEIVED', 200, ['Content-Type' => 'text/plain']);
     }
 
-    private function storeTestEvents(array $entries, string $phoneId): array
+    private function storeTestEvents(array $entries, string $phoneId, bool $botEnabled): array
     {
         $events = [];
         $cases = [];
+        $botInputs = [];
         $receivedAt = now();
         foreach ($entries as $entry) {
             foreach ((array) ($entry['changes'] ?? []) as $change) {
                 $value = $change['value'] ?? [];
-                if (($change['field'] ?? null) !== 'messages' ||
-                    ($value['metadata']['phone_number_id'] ?? null) !== $phoneId) {
+                $field = $change['field'] ?? null;
+                if (($value['metadata']['phone_number_id'] ?? null) !== $phoneId ||
+                    !in_array($field, ['messages', 'smb_message_echoes'], true)) {
                     continue;
                 }
 
-                foreach ((array) ($value['messages'] ?? []) as $message) {
-                    $event = $this->testEvent($phoneId, 'message', $message['id'] ?? null, $receivedAt);
+                $fromApp = $field === 'smb_message_echoes';
+                $messages = $value[$fromApp ? 'message_echoes' : 'messages'] ?? [];
+                foreach ((array) $messages as $message) {
+                    $event = $this->testEvent($phoneId, $fromApp ? 'echo' : 'message', $message['id'] ?? null, $receivedAt);
                     if ($event === null) {
                         continue;
                     }
 
-                    $sender = $message['from'] ?? null;
+                    $contact = $message[$fromApp ? 'to' : 'from'] ?? null;
                     $text = data_get($message, 'text.body');
-                    if (($message['type'] ?? null) === 'text' && is_string($sender) && trim($sender) !== ''
-                        && is_string($text) && trim($text) !== '') {
-                        $name = $this->customerName((array) ($value['contacts'] ?? []), $sender);
-                        $case = $this->storeInboxMessage($event, $sender, $name, $text, $message['timestamp'] ?? null);
-                        if ($case) {
-                            $cases[$case->id] = [
-                                'id' => $case->id,
-                                'branch' => $case->agencia_id === null ? null : (int) $case->agencia_id,
-                            ];
-                        }
-                    } else {
+                    if (($message['type'] ?? null) !== 'text' || !is_string($text) || trim($text) === '' ||
+                        !is_string($contact) || trim($contact) === '' ||
+                        ($fromApp && !preg_match('/\A[1-9][0-9]{5,14}\z/', $contact))) {
                         $events[$event['event_key']] = $event;
+                        continue;
                     }
+
+                    $name = $this->customerName((array) ($value['contacts'] ?? []), $contact);
+                    $stored = $this->storeInboxMessage($event, $contact, $name, $text, $message['timestamp'] ?? null, $botEnabled);
+                    if ($stored === null) {
+                        continue;
+                    }
+                    [$case, $inboundId] = $stored;
+                    $cases[$case->id] = [
+                        'id' => $case->id,
+                        'branch' => $case->agencia_id === null ? null : (int) $case->agencia_id,
+                    ];
+                    if ($inboundId !== null) {
+                        $botInputs[$case->id] = $inboundId;
+                    }
+                }
+
+                if ($fromApp) {
+                    continue;
                 }
                 foreach ((array) ($value['statuses'] ?? []) as $status) {
                     $state = $status['status'] ?? null;
@@ -107,7 +133,7 @@ class WhatsAppTestWebhookController extends Controller
             DB::table('whatsapp_test_events')->upsert($batch, ['event_key'], ['event_key']);
         }
 
-        return $cases;
+        return [$cases, $botInputs];
     }
 
     private function testEvent(string $phoneId, string $kind, mixed $id, \DateTimeInterface $receivedAt): ?array
@@ -133,43 +159,53 @@ class WhatsAppTestWebhookController extends Controller
             }
         }
 
-        return 'Contacto de WhatsApp';
+        return self::UNKNOWN_CONTACT;
     }
 
-    private function storeInboxMessage(array $event, string $sender, string $name, string $text, mixed $timestamp): ?SupportCase
+    private function storeInboxMessage(array $event, string $contact, string $name, string $text, mixed $timestamp, bool $botEnabled): ?array
     {
-        return DB::transaction(function () use ($event, $sender, $name, $text, $timestamp) {
+        return DB::transaction(function () use ($event, $contact, $name, $text, $timestamp, $botEnabled) {
             // El registro del evento y el mensaje se confirman juntos para admitir reintentos de Meta.
             if (!DB::table('whatsapp_test_events')->insertOrIgnore($event)) {
                 return null;
             }
 
-            $threadKey = hash('sha256', $event['phone_number_id'] . ':' . $sender);
+            $threadKey = hash('sha256', $event['phone_number_id'] . ':' . $contact);
             $receivedAt = $event['received_at'];
+            $fromApp = $event['kind'] === 'echo';
             DB::table('support_cases')->upsert([[
                 'whatsapp_thread_key' => $threadKey,
                 'customer_name' => $name,
                 'source' => 'whatsapp',
+                'mode' => $botEnabled && !$fromApp ? 'bot' : 'manual',
                 'created_at' => $receivedAt,
                 'updated_at' => $receivedAt,
             ]], ['whatsapp_thread_key'], ['whatsapp_thread_key']);
 
             $case = SupportCase::where('whatsapp_thread_key', $threadKey)->lockForUpdate()->firstOrFail();
-            $sentAt = filter_var($timestamp, FILTER_VALIDATE_INT);
-            if (preg_match('/\A[1-9][0-9]{5,14}\z/', $sender) && $sentAt > 0
-                && $sentAt <= $receivedAt->getTimestamp() + 60 && $sentAt > $case->whatsapp_last_inbound) {
-                $case->whatsapp_recipient = $sender;
-                $case->whatsapp_phone_id = $event['phone_number_id'];
-                $case->whatsapp_last_inbound = min($sentAt, $receivedAt->getTimestamp());
-            }
-            if ($case->status === 'resolved') {
-                $case->status = $case->agencia_id ? 'open' : 'pending';
-                $case->mode = 'manual';
+            $deliverToBot = false;
+            if (!$fromApp) {
+                $sentAt = filter_var($timestamp, FILTER_VALIDATE_INT);
+                $validTimestamp = preg_match('/\A[1-9][0-9]{5,14}\z/', $contact) && $sentAt > 0
+                    && $sentAt <= $receivedAt->getTimestamp() + 60;
+                $deliverToBot = $botEnabled && $validTimestamp && $sentAt >= $case->whatsapp_last_inbound;
+                if ($validTimestamp && $sentAt > $case->whatsapp_last_inbound) {
+                    $case->whatsapp_recipient = $contact;
+                    $case->whatsapp_phone_id = $event['phone_number_id'];
+                    $case->whatsapp_last_inbound = min($sentAt, $receivedAt->getTimestamp());
+                }
+                if ($case->status === 'resolved') {
+                    $case->status = $case->agencia_id ? 'open' : 'pending';
+                    $case->mode = 'manual';
+                }
+                if ($case->customer_name === self::UNKNOWN_CONTACT) {
+                    $case->customer_name = $name;
+                }
             }
             $case->touch();
-            $case->messages()->create(['author' => 'customer', 'text' => $text]);
+            $message = $case->messages()->create(['author' => $fromApp ? 'whatsapp_app' : 'customer', 'text' => $text]);
 
-            return $case;
+            return [$case, $deliverToBot && $case->mode === 'bot' ? $message->id : null];
         }, 3);
     }
 }

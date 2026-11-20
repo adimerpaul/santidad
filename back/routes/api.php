@@ -113,6 +113,7 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
         Route::post('cases', 'store');
         Route::get('cases/{id}', 'show')->whereNumber('id');
         Route::patch('cases/{id}', 'update')->whereNumber('id');
+        Route::delete('cases/{id}', 'destroy')->whereNumber('id');
         Route::post('cases/{id}/messages', 'addMessage')->whereNumber('id');
         Route::post('cases/{id}/whatsapp-replies', 'sendWhatsAppReply')->whereNumber('id');
         Route::patch('cases/{id}/branch', 'assign')->whereNumber('id');

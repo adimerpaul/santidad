@@ -34,14 +34,20 @@ class WhatsAppTestReplies
                     'text' => ['body' => $text],
                 ]);
         } catch (ConnectionException) {
-            return ['unknown', null];
+            return ['unknown', null, null];
         }
 
         $id = $response->json('messages.0.id');
         if ($response->successful() && is_string($id) && $id !== '') {
-            return ['accepted', $id];
+            return ['accepted', $id, null];
         }
 
-        return [$response->clientError() && $response->status() !== 408 ? 'failed' : 'unknown', null];
+        $diagnostic = [
+            'http_status' => $response->status(),
+            'code' => filter_var($response->json('error.code'), FILTER_VALIDATE_INT) ?: null,
+            'subcode' => filter_var($response->json('error.error_subcode'), FILTER_VALIDATE_INT) ?: null,
+        ];
+
+        return [$response->clientError() && $response->status() !== 408 ? 'failed' : 'unknown', null, $diagnostic];
     }
 }

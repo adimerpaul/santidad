@@ -52,6 +52,7 @@ return [
         'test_phone_number_id' => env('WHATSAPP_TEST_PHONE_NUMBER_ID'),
         'access_token' => env('WHATSAPP_ACCESS_TOKEN'),
         'graph_version' => env('WHATSAPP_GRAPH_VERSION', 'v25.0'),
+        'bot_enabled' => env('WHATSAPP_BOT_ENABLED', false),
     ],
 
 ];

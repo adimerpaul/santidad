@@ -35,6 +35,7 @@ async function main () {
       const pathname = new URL(request.url()).pathname
       const method = request.method()
       if (pathname.endsWith('/realtime-ticket')) return route.fulfill({ json: { ticket: 'demo-ticket' } })
+      if (pathname.endsWith('/branches')) return route.fulfill({ json: [] })
       if (pathname.endsWith('/cases') && method === 'GET') {
         return route.fulfill({ json: { data: supportCase ? [supportCase] : [], last_page: 1 } })
       }
@@ -56,6 +57,10 @@ async function main () {
         return route.fulfill({ json: supportCase })
       }
       if (pathname.endsWith('/cases/1') && method === 'GET') return route.fulfill({ json: supportCase })
+      if (pathname.endsWith('/cases/1') && method === 'DELETE') {
+        supportCase = null
+        return route.fulfill({ status: 204 })
+      }
       if (pathname.endsWith('/cases/1/whatsapp-replies') && method === 'POST') {
         const body = request.postDataJSON()
         assert.equal(body.text, 'Respuesta desde Santidad')
@@ -74,6 +79,10 @@ async function main () {
       await route.fulfill({ status: 404, json: {} })
     })
     await page.goto(`${base}/tests/fixtures/customer-support.html`)
+    await page.getByText('La bandeja se actualiza al llegar mensajes.', { exact: true }).waitFor()
+    await page.getByText('Ir a otra página', { exact: true }).click()
+    await page.getByRole('heading', { name: 'Otra página' }).waitFor()
+    await page.getByText('Abrir Atención al cliente', { exact: true }).click()
     await page.getByText('La bandeja se actualiza al llegar mensajes.', { exact: true }).waitFor()
     assert.equal(await page.locator('.conversation-item').count(), 0)
     await page.getByRole('button', { name: 'Probar demostración', exact: true }).click()
@@ -146,8 +155,34 @@ async function main () {
     await page.getByRole('textbox', { name: 'Escribir respuesta', exact: true }).fill('Respuesta desde Santidad')
     await page.getByRole('button', { name: 'Enviar por WhatsApp', exact: true }).click()
     await page.locator('.message-bubble').filter({ hasText: 'Respuesta desde Santidad' }).getByText(/Aceptado por WhatsApp/).waitFor()
+    supportCase.messages.push({ id: 5, author: 'whatsapp_app', text: 'Respuesta desde el celular', at: new Date().toISOString() })
+    await page.evaluate(() => window.fixtureSocket.emit('support_messages', [1]))
+    await page.locator('.message-row.outgoing').filter({ hasText: 'Respuesta desde el celular' })
+      .getByText('Enviado desde WhatsApp Business', { exact: true }).waitFor()
+    await page.getByRole('textbox', { name: 'Escribir respuesta', exact: true }).fill('Borrador antes de navegar')
+    await page.getByText('Ir a otra página', { exact: true }).click()
+    const leaveDialog = page.getByRole('dialog').filter({ hasText: 'Hay borradores pendientes' })
+    await leaveDialog.getByRole('button', { name: 'Quedarme', exact: true }).click()
+    await leaveDialog.waitFor({ state: 'hidden' })
+    assert.equal(await page.getByRole('textbox', { name: 'Escribir respuesta', exact: true }).inputValue(), 'Borrador antes de navegar')
+    await page.getByText('Ir a otra página', { exact: true }).click()
+    await leaveDialog.getByRole('button', { name: 'Salir', exact: true }).click()
+    await page.getByRole('heading', { name: 'Otra página' }).waitFor()
+    await page.evaluate(() => window.fixtureSignInAsAdmin())
+    await page.getByText('Abrir Atención al cliente', { exact: true }).click()
+    await page.locator('.conversation-item').filter({ hasText: 'Cliente web' }).click()
+    const deleteButton = page.getByRole('button', { name: 'Eliminar chat', exact: true })
+    await deleteButton.click()
+    const deleteDialog = page.getByRole('dialog').filter({ hasText: 'Esta acción es permanente.' })
+    await deleteDialog.getByRole('button', { name: 'Cancelar', exact: true }).click()
+    await deleteDialog.waitFor({ state: 'hidden' })
+    await page.setViewportSize({ width: 390, height: 844 })
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true)
+    await deleteButton.click()
+    await deleteDialog.getByRole('button', { name: 'Eliminar chat', exact: true }).click()
+    await page.getByText('Todavía no hay casos', { exact: true }).waitFor()
     assert.deepEqual(errors, [])
-    console.log('OK: demostración, móvil, pedido, nota y mensajes en vivo y al reconectar.')
+    console.log('OK: demostración, móvil, pedido, nota, mensajes en vivo y navegación con y sin borrador.')
   } finally {
     if (browser) await browser.close()
     await server.close()

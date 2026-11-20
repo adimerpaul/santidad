@@ -10,6 +10,7 @@ use App\Services\SupportRealtime;
 use App\Services\WhatsAppTestReplies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class SupportCaseController extends Controller
@@ -163,7 +164,7 @@ class SupportCaseController extends Controller
             return $this->message($reply);
         }
 
-        [$state, $messageId] = $whatsapp->send($recipient, $reply->text);
+        [$state, $messageId, $diagnostic] = $whatsapp->send($recipient, $reply->text);
         $branch = DB::transaction(function () use ($id, $reply, $state, $messageId) {
             $case = SupportCase::lockForUpdate()->findOrFail($id);
             $reply->whatsapp_state = $state;
@@ -176,9 +177,28 @@ class SupportCaseController extends Controller
 
             return $case->agencia_id === null ? null : (int) $case->agencia_id;
         }, 3);
+        if ($diagnostic !== null) {
+            Log::warning('Respuesta inesperada al enviar por WhatsApp', [
+                'case_id' => $id,
+                'reply_id' => $reply->id,
+                'state' => $state,
+            ] + $diagnostic);
+        }
         $realtime->notify([['id' => $id, 'branch' => $branch]]);
 
-        return response()->json($this->message($reply), 201);
+        $result = $this->message($reply);
+        if ($state === 'failed') {
+            $code = $diagnostic['code'];
+            $hint = match ($code) {
+                190 => 'Meta rechazó el token de acceso. Revisa si sigue vigente y pertenece a la app de prueba.',
+                10, 200, 131005 => 'Meta rechazó los permisos de envío. Revisa whatsapp_business_messaging para el número de prueba.',
+                131047 => 'La ventana de respuesta se cerró. Envía un mensaje nuevo desde el celular al número de prueba.',
+                default => 'Meta rechazó el envío. Revisa la configuración de WhatsApp de prueba.',
+            };
+            $result['whatsapp_error'] = $code === null ? $hint : $hint . " Código de Meta $code.";
+        }
+
+        return response()->json($result, 201);
     }
 
     public function update(Request $request, int $id)
@@ -197,6 +217,9 @@ class SupportCaseController extends Controller
                 return;
             }
             $case->mode = $action === 'bot' ? 'bot' : 'manual';
+            if ($case->isDirty('mode') && $case->source === 'whatsapp') {
+                $case->whatsapp_bot_step = null;
+            }
             if ($action === 'resolve') {
                 $case->status = 'resolved';
             } elseif ($case->agencia_id) {
@@ -208,7 +231,9 @@ class SupportCaseController extends Controller
                 $case->save();
                 $labels = [
                     'manual' => 'Atención manual activada.',
-                    'bot' => 'Modo bot guardado. Las respuestas automáticas están pendientes.',
+                    'bot' => $this->botEnabled($case)
+                        ? 'Bot activado para los próximos mensajes.'
+                        : 'Modo bot guardado. Las respuestas automáticas están pendientes.',
                     'resolve' => 'Atención resuelta.',
                     'reopen' => 'Atención reabierta en modo manual.',
                 ];
@@ -241,6 +266,22 @@ class SupportCaseController extends Controller
         return $this->show($request, $id);
     }
 
+    public function destroy(Request $request, int $id, SupportRealtime $realtime)
+    {
+        abort_unless($this->isAdmin($request), 403);
+
+        $branch = DB::transaction(function () use ($request, $id) {
+            $case = $this->lockedCase($request, $id);
+            $branch = $case->agencia_id;
+            $case->delete();
+
+            return $branch === null ? null : (int) $branch;
+        }, 3);
+        $realtime->notify([['id' => $id, 'branch' => $branch]]);
+
+        return response()->noContent();
+    }
+
     private function lockedCase(Request $request, int $id): SupportCase
     {
         return SupportCase::visibleTo($request->user())->lockForUpdate()->findOrFail($id);
@@ -264,6 +305,7 @@ class SupportCaseController extends Controller
             'source' => $case->source,
             'status' => $case->status,
             'mode' => $case->mode,
+            'bot_enabled' => $this->botEnabled($case),
             'at' => $case->updated_at->toISOString(),
             'preview' => $case->lastMessage ? $this->message($case->lastMessage) : null,
             'order' => $order ? [
@@ -274,6 +316,11 @@ class SupportCaseController extends Controller
                     : [],
             ] : null,
         ];
+    }
+
+    private function botEnabled(SupportCase $case): bool
+    {
+        return $case->source === 'whatsapp' && app(\App\Services\WhatsAppSupportBot::class)->enabled();
     }
 
     private function message(SupportMessage $message): array

@@ -15,7 +15,7 @@
     <div class="connection-notice" role="status">
       <q-icon :name="demo ? 'science' : 'chat'" size="22px" />
       <div><strong>{{ demo ? 'Demostración · datos ficticios' : 'WhatsApp de prueba · mensajes entrantes' }}</strong>
-        <span>{{ demo ? 'Las respuestas y cambios solo se simulan en esta pantalla. Se borran al salir.' : (liveConnected ? 'La bandeja se actualiza al llegar mensajes.' : 'Puedes usar Actualizar para ver los mensajes recibidos.') }}</span>
+        <span>{{ demo ? 'Las respuestas y cambios solo se simulan en esta pantalla. Se borran al salir.' : (liveConnected ? 'La bandeja se actualiza al llegar mensajes.' : liveFallback) }}</span>
       </div>
       <q-badge outline color="teal-8" class="scope-badge">{{ isAdmin ? 'Vista de administrador' : branchName }}</q-badge>
     </div>
@@ -54,15 +54,20 @@
           <q-btn flat round dense icon="arrow_back" class="mobile-back" aria-label="Volver a conversaciones" @click="clearSelection" />
           <q-avatar color="teal-1" text-color="teal-9" size="40px">{{ selected.initials }}</q-avatar>
           <div class="chat-person"><strong>{{ selected.name }}</strong><span>{{ selected.branch }} · {{ sources[selected.source].label }}</span></div>
-          <q-btn flat round icon="info_outline" aria-label="Ver detalles del pedido" @click="detailsOpen = true"><q-tooltip>Detalles de atención</q-tooltip></q-btn>
-          <q-btn v-if="selected.status !== 'resolved'" outline no-caps dense color="teal-8" icon="task_alt" label="Resolver" :disable="busy" @click="resolveChat" />
-          <q-btn v-else outline no-caps dense color="teal-8" icon="refresh" label="Reabrir" :disable="busy" @click="reopenChat" />
+          <div class="chat-actions">
+            <q-btn flat round icon="info_outline" aria-label="Ver detalles del pedido" @click="detailsOpen = true"><q-tooltip>Detalles de atención</q-tooltip></q-btn>
+            <q-btn v-if="selected.status !== 'resolved'" outline no-caps color="teal-8" icon="task_alt" label="Resolver" :disable="busy" @click="resolveChat" />
+            <q-btn v-else outline no-caps color="teal-8" icon="refresh" label="Reabrir" :disable="busy" @click="reopenChat" />
+            <q-btn v-if="isAdmin && !demo" flat no-caps icon="delete_outline" color="negative" aria-label="Eliminar chat" :disable="busy" @click="confirmDeleteChat">
+              <span class="delete-label">Eliminar chat</span><q-tooltip>Eliminar chat</q-tooltip>
+            </q-btn>
+          </div>
         </header>
 
         <div class="mode-bar">
           <q-icon :name="selected.mode === 'bot' ? 'smart_toy' : 'support_agent'" size="21px" />
           <div><strong>{{ modeTitle }}</strong><span>{{ modeHint }}</span></div>
-          <q-btn v-if="selected.status !== 'resolved' && (demo || selected.branch_id)" unelevated no-caps dense :disable="busy" :color="selected.mode === 'bot' ? 'teal-8' : 'grey-3'" :text-color="selected.mode === 'bot' ? 'white' : 'grey-9'" :label="selected.mode === 'bot' ? 'Atender yo' : (demo ? 'Activar bot' : 'Elegir modo bot')" @click="toggleMode" />
+          <q-btn v-if="selected.status !== 'resolved' && (demo || selected.mode === 'bot' || selected.branch_id)" unelevated no-caps dense :disable="busy" :color="selected.mode === 'bot' ? 'teal-8' : 'grey-3'" :text-color="selected.mode === 'bot' ? 'white' : 'grey-9'" :label="selected.mode === 'bot' ? 'Atender yo' : (demo || selected.bot_enabled ? 'Activar bot' : 'Elegir modo bot')" @click="toggleMode" />
         </div>
 
         <button v-if="selected.order" type="button" class="order-strip" @click="detailsOpen = true"><q-icon :name="sources[selected.source].icon" size="18px" /><strong>{{ selected.order.number }}</strong><span>{{ selected.branch }}</span><q-icon name="chevron_right" /></button>
@@ -75,7 +80,7 @@
             <div v-if="message.author === 'system'" class="system-message">{{ message.text }} · {{ time(message.at) }}</div>
             <div v-else class="message-row" :class="{ outgoing: message.author !== 'customer' }">
               <div class="message-bubble" :class="{ 'bot-bubble': message.author === 'bot', 'note-bubble': message.author === 'note' }">
-                <strong>{{ authors[message.author] }}</strong><p>{{ message.text }}</p><small>{{ time(message.at) }}{{ message.author === 'agent' ? ' · ' + (demo ? 'Simulado' : (whatsappStates[message.whatsapp_state] || 'Guardado en Santidad')) : '' }}</small>
+                <strong>{{ authors[message.author] }}</strong><p>{{ message.text }}</p><small>{{ time(message.at) }}{{ messageStatus(message) }}</small>
               </div>
             </div>
           </template>
@@ -101,9 +106,7 @@
       <section v-else class="welcome-panel">
         <div class="welcome-icon"><q-icon name="forum" size="44px" /></div>
         <h2>{{ demo ? 'Elige una conversación' : 'Bandeja de atención' }}</h2>
-        <p>{{ demo ? 'Prueba la atención manual, las notas internas y el cambio al bot con datos de ejemplo.' : 'Pedidos de la web y la aplicación, consultas y respuestas en un solo lugar.' }}</p>
-        <div class="welcome-features"><div><q-icon name="storefront" /><strong>La sucursal ya viene en el pedido</strong><span>El equipo recibe el contexto del cliente.</span></div><div><q-icon name="support_agent" /><strong>Bot y atención manual</strong><span>Toma la conversación cuando te necesiten.</span></div><div><q-icon name="receipt_long" /><strong>Todo a mano</strong><span>Historial, pedido y notas del equipo.</span></div></div>
-        <q-btn v-if="!demo" unelevated no-caps color="teal-8" label="Explorar con ejemplos" icon="play_arrow" @click="startDemo" />
+        <p>{{ demo ? 'Elige un caso de ejemplo para probar las respuestas y notas.' : 'Selecciona una conversación para ver el historial o abre un caso nuevo.' }}</p>
       </section>
     </div>
 
@@ -157,6 +160,7 @@ const $q = useQuasar()
 const api = getCurrentInstance().appContext.config.globalProperties.$axios
 const socketManager = inject('mainSocketManager', null)
 const liveConnected = ref(false)
+const liveFallback = ref('Puedes usar Actualizar para ver los mensajes recibidos.')
 const demo = ref(false)
 const conversations = ref([])
 const selectedId = ref(null)
@@ -198,7 +202,13 @@ const sources = {
   whatsapp: { label: 'WhatsApp', icon: 'chat' }
 }
 const states = { pending: 'Pendiente', open: 'En atención', resolved: 'Resuelto' }
-const authors = { customer: 'Cliente', bot: 'Asistente', agent: 'Respuesta manual', note: 'Nota interna' }
+const authors = {
+  customer: 'Cliente',
+  bot: 'Asistente',
+  agent: 'Respuesta manual',
+  whatsapp_app: 'Enviado desde WhatsApp Business',
+  note: 'Nota interna'
+}
 const selected = computed(() => demo.value ? conversations.value.find(chat => chat.id === selectedId.value) : detail.value)
 const sendsWhatsApp = computed(() => !demo.value && composeKind.value === 'reply' && selected.value?.source === 'whatsapp')
 const whatsappStates = {
@@ -207,18 +217,25 @@ const whatsappStates = {
   failed: 'WhatsApp rechazó el envío',
   unknown: 'Envío sin confirmar. Verifica antes de repetir.'
 }
+function messageStatus (message) {
+  if (message.whatsapp_state && whatsappStates[message.whatsapp_state]) return ' · ' + whatsappStates[message.whatsapp_state]
+  if (message.author === 'agent') return demo.value ? ' · Simulado' : ' · Guardado en Santidad'
+  return ''
+}
 const draftKey = computed(() => `${selectedId.value}:${composeKind.value}`)
 const draft = computed({ get: () => drafts.value[draftKey.value] || '', set: value => { drafts.value[draftKey.value] = value } })
 const canCompose = computed(() => !busy.value && selected.value && selected.value.status !== 'resolved' &&
   (composeKind.value === 'note' || (selected.value.mode === 'manual' && (demo.value || selected.value.branch_id))))
 const modeTitle = computed(() => {
   if (selected.value?.status === 'resolved') return 'Atención resuelta'
+  if (selected.value?.mode === 'bot' && selected.value.bot_enabled) return 'Bot de WhatsApp activo'
   if (!demo.value && !selected.value?.branch_id) return 'Pendiente de asignación'
   if (selected.value?.mode === 'bot') return demo.value ? 'Modo bot · simulación' : 'Modo bot guardado'
   return 'Atención manual · bot pausado'
 })
 const modeHint = computed(() => {
   if (selected.value?.status === 'resolved') return 'Reabre el caso para continuar.'
+  if (selected.value?.mode === 'bot' && selected.value.bot_enabled) return 'El bot responde a mensajes nuevos. Pulsa «Atender yo» para tomar la conversación.'
   if (!demo.value && !selected.value?.branch_id) return 'El administrador puede asignar una sucursal desde Detalles.'
   if (selected.value?.mode === 'bot') return demo.value ? 'Toma la atención para escribir personalmente.' : 'Las respuestas automáticas están pendientes. Puedes pasar a atención manual.'
   return demo.value ? 'Puedes simular una respuesta.' : 'Puedes guardar respuestas y notas en el caso.'
@@ -306,6 +323,10 @@ async function loadDetail (id, keepHistory = false) {
     else setDetail(data)
   } catch (failure) {
     if (request !== detailRequest || selectedId.value !== id) return
+    if (keepHistory && failure.response?.status === 404) {
+      removeChatFromInbox(id)
+      return
+    }
     detail.value = null
     detailsOpen.value = false
     showError(failure)
@@ -316,6 +337,32 @@ function clearSelection () {
   selectedId.value = null
   detail.value = null
   detailsOpen.value = false
+}
+
+function removeChatFromInbox (id) {
+  conversations.value = conversations.value.filter(chat => chat.id !== id)
+  for (const kind of ['reply', 'note']) {
+    const key = `${id}:${kind}`
+    delete drafts.value[key]
+    replyAttempts.delete(key)
+  }
+  if (selectedId.value === id) clearSelection()
+}
+
+function confirmDeleteChat () {
+  const chat = selected.value
+  if (!chat || !isAdmin.value || demo.value || busy.value) return
+  const version = scopeVersion
+  $q.dialog({
+    title: 'Eliminar chat',
+    message: `Se eliminará de Santidad toda la conversación con ${chat.name}, incluidos mensajes y notas. Esta acción es permanente.`,
+    cancel: { label: 'Cancelar', flat: true },
+    ok: { label: 'Eliminar chat', color: 'negative' },
+    focus: 'cancel'
+  }).onOk(() => {
+    if (version !== scopeVersion) return
+    runAction(() => api.delete(`support/cases/${chat.id}`), () => removeChatFromInbox(chat.id))
+  })
 }
 
 function refresh () {
@@ -451,7 +498,8 @@ function toggleMode () {
   if (!demo.value) {
     if (chat.mode === 'bot') changeState('manual', chat.id)
     else {
-      $q.dialog({ title: 'Elegir modo bot', message: 'Se guardará este modo. Las respuestas automáticas requieren conectar WhatsApp.', cancel: { label: 'Cancelar', flat: true }, ok: { label: 'Guardar modo', color: 'teal-8' } })
+      const enabled = chat.bot_enabled
+      $q.dialog({ title: enabled ? 'Activar bot de WhatsApp' : 'Elegir modo bot', message: enabled ? 'El bot responderá a los próximos mensajes de este chat.' : 'Se guardará este modo. Las respuestas automáticas están pendientes.', cancel: { label: 'Cancelar', flat: true }, ok: { label: enabled ? 'Activar bot' : 'Guardar modo', color: 'teal-8' } })
         .onOk(() => changeState('bot', chat.id))
     }
     return
@@ -508,6 +556,7 @@ function submit () {
     replyAttempts.set(key, { text, id: requestId })
     runAction(() => api.post(`support/cases/${id}/whatsapp-replies`, { text, request_id: requestId }), message => {
       replyAttempts.delete(key)
+      if (message.whatsapp_error) error.value = message.whatsapp_error
       if (message.whatsapp_state !== 'failed') delete drafts.value[key]
       if (selectedId.value !== id || !detail.value) return
       const index = detail.value.messages.findIndex(item => item.id === message.id)
@@ -544,6 +593,10 @@ watch([search, filter, branchFilter], () => {
   else page.value = 1
 })
 watch(page, loadCases)
+
+// Vue limpia este watcher junto con la página al salir de la bandeja.
+let scheduleLiveSync = null
+watch(busy, () => scheduleLiveSync?.())
 
 watch([() => socketManager?.value, () => store.user?.id, () => store.user?.agencia_id, demo],
   ([manager, userId, , isDemo], _previous, onCleanup) => {
@@ -589,6 +642,15 @@ watch([() => socketManager?.value, () => store.user?.id, () => store.user?.agenc
 
     function disconnect () {
       liveConnected.value = false
+      liveFallback.value = 'Puedes usar Actualizar para ver los mensajes recibidos.'
+    }
+
+    function connectionError (failure) {
+      if (failure.message === 'Invalid namespace') {
+        liveFallback.value = 'El servidor de sockets aún no ofrece actualizaciones de Atención al cliente. Usa Actualizar.'
+      } else if (failure.message === 'Atención en vivo no autorizada') {
+        liveFallback.value = 'El servidor de sockets no autorizó la conexión. Usa Actualizar.'
+      }
     }
 
     socket.auth = async sendCredentials => {
@@ -602,16 +664,18 @@ watch([() => socketManager?.value, () => store.user?.id, () => store.user?.agenc
     socket.on('support_messages', receive)
     socket.on('connect', connect)
     socket.on('disconnect', disconnect)
-    const stopBusyWatch = watch(busy, schedule)
+    socket.on('connect_error', connectionError)
+    scheduleLiveSync = schedule
     socket.connect()
 
     onCleanup(() => {
       active = false
       clearTimeout(timer)
-      stopBusyWatch()
+      scheduleLiveSync = null
       socket.off('support_messages', receive)
       socket.off('connect', connect)
       socket.off('disconnect', disconnect)
+      socket.off('connect_error', connectionError)
       socket.disconnect()
       socket.auth = {}
       disconnect()
@@ -627,33 +691,33 @@ onBeforeRouteLeave(() => {
 </script>
 
 <style scoped>
-.support-page { padding: 24px; background: #f3f6f9; color: #243747; }
-.support-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.support-page { padding: 20px clamp(16px, 2vw, 32px); background: #f3f6f9; color: #243747; }
+.support-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
 h1, h2, h3, p { margin: 0; }
-h1 { font-size: 24px; line-height: 1.35; font-weight: 700; letter-spacing: -.5px; }
-h2 { font-size: 17px; line-height: 1.4; font-weight: 600; }
+h1 { font-size: 28px; line-height: 1.25; font-weight: 700; letter-spacing: -.5px; }
+h2 { font-size: 19px; line-height: 1.4; font-weight: 600; }
 h3 { font-size: 15px; line-height: 1.4; font-weight: 600; }
-.support-heading p { color: #667b8b; font-size: 13px; margin-top: 4px; }
-.connection-notice { display: flex; align-items: center; gap: 12px; padding: 13px 16px; background: #e8f3f2; border: 1px solid #cee5e1; border-radius: 12px; color: #285d58; margin-bottom: 18px; }
-.connection-notice strong, .connection-notice span:not(.q-badge) { display: block; font-size: 12px; }
-.connection-notice strong { font-size: 13px; margin-bottom: 3px; }
+.support-heading p { color: #526778; font-size: 14px; margin-top: 4px; }
+.connection-notice { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: #e8f3f2; border: 1px solid #cee5e1; border-radius: 12px; color: #285d58; margin-bottom: 14px; }
+.connection-notice strong, .connection-notice span:not(.q-badge) { display: block; font-size: 13px; }
+.connection-notice strong { font-size: 14px; }
 .scope-badge { margin-left: auto; flex-shrink: 0; max-width: 230px; white-space: normal; }
-.support-workspace { display: flex; height: calc(100vh - 245px); min-height: 560px; max-height: 960px; border: 1px solid #dfe7ec; border-radius: 16px; background: white; overflow: hidden; box-shadow: 0 8px 30px #1a465508; }
-.inbox-panel { display: flex; flex-direction: column; width: 330px; flex-shrink: 0; border-right: 1px solid #e4ebef; }
+.support-workspace { display: flex; height: max(505px, calc(100dvh - 200px)); border: 1px solid #dfe7ec; border-radius: 16px; background: white; overflow: hidden; box-shadow: 0 8px 30px #1a46550d; }
+.inbox-panel { display: flex; flex-direction: column; width: clamp(290px, 30%, 420px); flex-shrink: 0; border-right: 1px solid #e4ebef; }
 .inbox-top { padding: 20px 16px 0; }
-.inbox-scope { font-size: 12px; color: #71818e; margin: 12px 0; }
+.inbox-scope { font-size: 13px; color: #526778; margin: 12px 0; }
 .inbox-tabs { margin: 0 -12px; }
-.inbox-tabs :deep(.q-tab) { padding: 0 8px; min-height: 40px; }
-.inbox-tabs :deep(.q-tab__label) { font-size: 12px; }
+.inbox-tabs :deep(.q-tab) { padding: 0 8px; min-height: 44px; }
+.inbox-tabs :deep(.q-tab__label) { font-size: 13px; }
 .conversation-list { flex: 1; overflow-y: auto; }
 .conversation-item { display: flex; gap: 10px; width: 100%; padding: 18px 14px; text-align: left; border: 0; border-bottom: 1px solid #edf1f4; border-left: 3px solid transparent; background: white; color: inherit; cursor: pointer; font: inherit; }
 .conversation-item:hover { background: #f5faf9; }
 .conversation-item.active { background: #edf7f5; border-left-color: #148979; }
 .conversation-copy { flex: 1; min-width: 0; }
-.conversation-copy strong { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.conversation-copy small { font-size: 10px; color: #758692; margin-left: 6px; }
-.conversation-copy p { font-size: 12px; color: #71818e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 6px 0 10px; }
-.source-label, .state-label { font-size: 10px; padding: 2px 6px; border-radius: 5px; background: #f0f3f7; color: #526778; }
+.conversation-copy strong { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conversation-copy small { font-size: 12px; color: #526778; margin-left: 6px; white-space: nowrap; }
+.conversation-copy p { font-size: 14px; color: #526778; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 4px 0 8px; }
+.source-label, .state-label { font-size: 12px; padding: 2px 8px; border-radius: 6px; background: #f0f3f7; color: #526778; }
 .state-label { background: #e5eeeb; color: #346454; }
 .inbox-empty { display: flex; align-items: center; flex-direction: column; text-align: center; gap: 9px; padding: 60px 24px; color: #7a8b97; font-size: 12px; }
 .inbox-empty strong { color: #425a6a; font-size: 14px; }
@@ -661,40 +725,39 @@ h3 { font-size: 15px; line-height: 1.4; font-weight: 600; }
 .welcome-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; background: radial-gradient(ellipse at top, #f2faf7, white 70%); }
 .welcome-icon { display: grid; place-items: center; width: 88px; height: 88px; background: #e0f0ec; color: #258673; border-radius: 28px; margin-bottom: 24px; }
 .welcome-panel h2 { font-size: 25px; letter-spacing: -.5px; }
-.welcome-panel > p { font-size: 14px; color: #758692; max-width: 400px; margin: 12px 0 25px; }
-.welcome-features { display: grid; gap: 18px; margin-bottom: 28px; text-align: left; }
-.welcome-features > div { display: grid; grid-template-columns: 30px 1fr; align-items: center; column-gap: 12px; }
-.welcome-features .q-icon { grid-row: span 2; font-size: 22px; color: #509387; }
-.welcome-features strong { font-size: 13px; font-weight: 500; }
-.welcome-features span { font-size: 12px; color: #7a8b97; }
+.welcome-panel > p { font-size: 15px; color: #526778; max-width: 360px; margin-top: 10px; }
 .chat-panel { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .chat-header { display: flex; align-items: center; gap: 10px; padding: 16px; border-bottom: 1px solid #edf1f4; }
 .chat-person { flex: 1; min-width: 0; }
 .chat-person strong, .chat-person span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chat-person strong { font-size: 14px; }
-.chat-person span { font-size: 11px; color: #71818e; margin-top: 3px; }
+.chat-person strong { font-size: 17px; }
+.chat-person span { font-size: 13px; color: #526778; margin-top: 3px; }
+.chat-actions { display: flex; align-items: center; gap: 6px; }
+.chat-actions .q-btn { min-height: 40px; }
+.delete-label { margin-left: 6px; }
 .mode-bar { display: flex; align-items: center; gap: 10px; padding: 11px 16px; background: #f1f7f6; color: #366c62; }
 .mode-bar > div { flex: 1; }
-.mode-bar strong, .mode-bar span { display: block; font-size: 11px; }
-.mode-bar strong { font-size: 12px; }
+.mode-bar strong, .mode-bar span { display: block; font-size: 13px; }
+.mode-bar strong { font-size: 14px; }
 .order-strip { display: flex; gap: 8px; align-items: center; border: 0; border-bottom: 1px solid #e6edf3; background: #f6f8fc; padding: 10px 16px; color: #596f91; font-size: 11px; cursor: pointer; text-align: left; }
 .order-strip span { flex: 1; }
-.message-list { flex: 1; min-height: 150px; overflow-y: auto; padding: 20px; background: #f7f9fb; }
+.message-list { flex: 1; min-height: 100px; overflow-y: auto; padding: 12px clamp(16px, 2.5vw, 36px); background: #f4f7fa; }
 .demo-divider { font-size: 10px; letter-spacing: 1px; text-align: center; color: #95a1ac; margin-bottom: 22px; }
 .message-row { display: flex; margin: 12px 0; }
 .message-row.outgoing { justify-content: flex-end; }
-.message-bubble { max-width: 82%; padding: 12px 15px; border: 1px solid #e4ebef; background: white; border-radius: 0 14px 14px; overflow-wrap: anywhere; }
+.message-bubble { max-width: min(90%, 66ch); padding: 12px 16px; border: 1px solid #e4ebef; background: white; border-radius: 4px 16px 16px; overflow-wrap: anywhere; }
 .outgoing .message-bubble { background: #e7f4ef; border-color: #d8eae3; border-radius: 14px 0 14px 14px; }
 .outgoing .bot-bubble { background: #eef0fa; border-color: #e1e5f4; }
 .outgoing .note-bubble { background: #fff5d9; border-color: #f1e4bf; }
-.message-bubble strong { font-size: 10px; color: #68807b; }
-.message-bubble p { font-size: 13px; line-height: 1.6; white-space: pre-wrap; margin: 5px 0; }
-.message-bubble small { display: block; text-align: right; font-size: 10px; color: #7a8b97; }
+.message-bubble strong { font-size: 12px; color: #3d655e; }
+.message-bubble p { font-size: 16px; line-height: 1.5; white-space: pre-wrap; margin: 4px 0; }
+.message-bubble small { display: block; text-align: right; font-size: 12px; color: #526778; }
 .system-message { text-align: center; font-size: 11px; color: #788996; margin: 18px 0; }
 .composer { padding: 14px 16px; border-top: 1px solid #e4ebef; }
-.composer :deep(textarea) { max-height: 120px; overflow-y: auto !important; }
+.composer :deep(textarea) { min-height: 66px; max-height: 144px; font-size: 16px; overflow-y: auto !important; }
+.composer-bottom .q-btn { min-height: 42px; }
 .composer-bottom { display: flex; gap: 12px; justify-content: space-between; align-items: center; margin-top: 10px; }
-.composer-bottom > span { font-size: 10px; color: #83929e; }
+.composer-bottom > span { font-size: 12px; color: #526778; }
 .support-details { width: 380px; max-width: 95vw; }
 .support-details dl { margin: 22px 0; }
 .support-details dt { font-size: 11px; color: #7a8b97; margin-top: 16px; }
@@ -708,20 +771,23 @@ h3 { font-size: 15px; line-height: 1.4; font-weight: 600; }
   .inbox-panel { width: 280px; }
   .scope-badge { display: none; }
   .support-heading { flex-wrap: wrap; }
+  .delete-label { display: none; }
 }
 @media (max-width: 750px) {
   .support-page { padding: 12px; }
-  h1 { font-size: 21px; }
-  .support-workspace { height: 75vh; min-height: 580px; }
+  h1 { font-size: 23px; }
+  .support-workspace { height: max(475px, calc(100dvh - 215px)); }
   .inbox-panel { width: 100%; border-right: 0; }
   .welcome-panel { display: none; }
   .has-selection .inbox-panel { display: none; }
   .mobile-back { display: inline-flex; }
   .chat-header { padding: 12px 8px; gap: 6px; }
   .chat-header > .q-avatar { display: none; }
-  .chat-person strong { font-size: 12px; }
+  .chat-person strong { font-size: 15px; }
+  .chat-actions { gap: 3px; }
+  .chat-actions .q-btn { padding-inline: 7px; }
   .mode-bar { padding: 10px; }
-  .mode-bar span { font-size: 10px; }
+  .mode-bar span { font-size: 12px; }
   .message-list { padding: 12px; }
   .message-bubble { max-width: 92%; }
   .composer { padding: 10px; }
