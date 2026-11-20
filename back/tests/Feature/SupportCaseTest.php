@@ -308,24 +308,35 @@ class SupportCaseTest extends TestCase
 
         $this->postWhatsAppText('wamid.greet', 'Hola')->assertOk();
         $this->postWhatsAppText('wamid.greet', 'Hola')->assertOk();
-        Http::assertSentCount(1);
-        $this->postWhatsAppText('wamid.branches', '1')->assertOk();
-        $this->postWhatsAppText('wamid.details', '1')->assertOk();
+        Http::assertSentCount(2);
+        Http::assertSent(fn ($request) => $request['type'] === 'interactive'
+            && $request['interactive']['type'] === 'button'
+            && array_column(array_column($request['interactive']['action']['buttons'], 'reply'), 'id')
+                === ['support:menu:1', 'support:menu:2', 'support:menu:3']);
+        Http::assertSent(fn ($request) => $request['type'] === 'interactive'
+            && $request['interactive']['type'] === 'button'
+            && array_column(array_column($request['interactive']['action']['buttons'], 'reply'), 'id') === ['support:menu:4']);
+        $this->postWhatsAppText('wamid.branches', 'Horarios y ubicación', choice: 'support:menu:1')->assertOk();
+        $this->postWhatsAppText('wamid.details', '1. Central', choice: 'support:branch:1')->assertOk();
+        Http::assertSent(fn ($request) => $request['type'] === 'interactive'
+            && $request['interactive']['type'] === 'list'
+            && $request['interactive']['action']['button'] === 'Ver sucursales'
+            && $request['interactive']['action']['sections'][0]['rows'][0]['id'] === 'support:branch:1');
         $this->postWhatsAppText('wamid.menu', '0')->assertOk();
         $this->postWhatsAppText('wamid.product', '2')->assertOk();
         $this->postWhatsAppText('wamid.request', 'Busco alcohol en gel en Central')->assertOk();
         $this->postWhatsAppText('wamid.followup', 'Gracias')->assertOk();
 
-        Http::assertSentCount(6);
+        Http::assertSentCount(8);
         $messages = DB::table('support_messages')->where('author', 'bot')->orderBy('id')->pluck('text');
-        $this->assertStringContainsString('4. Hablar con una persona', $messages[0]);
-        $this->assertStringContainsString('1. Central', $messages[1]);
-        $this->assertStringNotContainsString('Norte', $messages[1]);
-        $this->assertStringContainsString('Lunes a sábado · 08:00 a 20:00', $messages[2]);
-        $this->assertStringContainsString('Calle Velasco 100', $messages[2]);
-        $this->assertStringContainsString('https://www.google.com/maps/', $messages[2]);
-        $this->assertStringContainsString('nombre del producto', $messages[4]);
-        $this->assertStringContainsString('equipo continuará la conversación', $messages[5]);
+        $this->assertStringContainsString('4. Hablar con persona', $messages[1]);
+        $this->assertStringContainsString('1. Central', $messages[2]);
+        $this->assertStringNotContainsString('Norte', $messages[2]);
+        $this->assertStringContainsString('Lunes a sábado · 08:00 a 20:00', $messages[3]);
+        $this->assertStringContainsString('Calle Velasco 100', $messages[3]);
+        $this->assertStringContainsString('https://www.google.com/maps/', $messages[3]);
+        $this->assertStringContainsString('nombre del producto', $messages[6]);
+        $this->assertStringContainsString('equipo continuará la conversación', $messages[7]);
         $this->assertDatabaseHas('support_cases', ['mode' => 'manual', 'status' => 'pending']);
         $this->assertDatabaseHas('support_messages', ['author' => 'customer', 'text' => 'Busco alcohol en gel en Central']);
     }
@@ -337,20 +348,24 @@ class SupportCaseTest extends TestCase
         Http::fake(['https://graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.bot']]])]);
 
         $this->postWhatsAppText('wamid.hello', 'Hola')->assertOk();
-        $this->postWhatsAppText('wamid.order', '3')->assertOk();
+        $this->postWhatsAppText('wamid.order', 'Hacer un pedido', choice: 'support:menu:3')->assertOk();
         $this->postWhatsAppText('wamid.mobile', 'Le atiendo en un momento', fromApp: true)->assertOk();
-        Http::assertSentCount(2);
+        Http::assertSentCount(3);
         $this->postWhatsAppText('wamid.details', 'Dos unidades para Central')->assertOk();
 
-        Http::assertSentCount(3);
+        Http::assertSentCount(4);
         $this->assertDatabaseHas('support_cases', ['mode' => 'manual', 'order_id' => null]);
         $this->assertDatabaseHas('support_messages', ['author' => 'customer', 'text' => 'Dos unidades para Central']);
         $this->assertDatabaseCount('orders', 0);
     }
 
-    private function postWhatsAppText(string $messageId, string $text, string $phoneId = '123456789', bool $fromApp = false)
+    private function postWhatsAppText(string $messageId, string $text, string $phoneId = '123456789', bool $fromApp = false, ?string $choice = null)
     {
         $secret = 'whatsapp-test-secret';
+        $replyType = str_starts_with($choice ?? '', 'support:menu:') ? 'button_reply' : 'list_reply';
+        $content = $choice === null
+            ? ['type' => 'text', 'text' => ['body' => $text]]
+            : ['type' => 'interactive', 'interactive' => ['type' => $replyType, $replyType => ['id' => $choice, 'title' => $text]]];
         config([
             'services.whatsapp_webhook.app_secret' => $secret,
             'services.whatsapp_webhook.test_phone_number_id' => '123456789',
@@ -365,9 +380,9 @@ class SupportCaseTest extends TestCase
                     ($fromApp ? 'message_echoes' : 'messages') => [[
                         'from' => $fromApp ? '59170000001' : '59170000000',
                         'to' => $fromApp ? '59170000000' : '59170000001',
-                        'id' => $messageId, 'type' => 'text', 'text' => ['body' => $text],
+                        'id' => $messageId,
                         'timestamp' => (string) now()->timestamp,
-                    ]],
+                    ] + $content],
                 ],
             ]]]],
         ], JSON_THROW_ON_ERROR);

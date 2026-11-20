@@ -58,8 +58,8 @@ class WhatsAppTestWebhookController extends Controller
         $realtime->notify($cases);
         if ($botInputs) {
             app()->terminating(function () use ($bot, $botInputs) {
-                foreach ($botInputs as $caseId => $inboundId) {
-                    $bot->respond($caseId, $inboundId);
+                foreach ($botInputs as $caseId => [$inboundId, $choice]) {
+                    $bot->respond($caseId, $inboundId, $choice);
                 }
             });
         }
@@ -91,8 +91,16 @@ class WhatsAppTestWebhookController extends Controller
                     }
 
                     $contact = $message[$fromApp ? 'to' : 'from'] ?? null;
-                    $text = data_get($message, 'text.body');
-                    if (($message['type'] ?? null) !== 'text' || !is_string($text) || trim($text) === '' ||
+                    $type = $message['type'] ?? null;
+                    $reply = !$fromApp && $type === 'interactive' ? match (data_get($message, 'interactive.type')) {
+                        'list_reply' => data_get($message, 'interactive.list_reply'),
+                        'button_reply' => data_get($message, 'interactive.button_reply'),
+                        default => null,
+                    } : null;
+                    $choice = $reply['id'] ?? null;
+                    $choice = is_string($choice) && preg_match('/\Asupport:(?:menu:[1-4]|branch:[1-9][0-9]{0,17})\z/', $choice) ? $choice : null;
+                    $text = $choice !== null ? ($reply['title'] ?? null) : data_get($message, 'text.body');
+                    if (($type !== 'text' && $choice === null) || !is_string($text) || trim($text) === '' ||
                         !is_string($contact) || trim($contact) === '' ||
                         ($fromApp && !preg_match('/\A[1-9][0-9]{5,14}\z/', $contact))) {
                         $events[$event['event_key']] = $event;
@@ -110,7 +118,7 @@ class WhatsAppTestWebhookController extends Controller
                         'branch' => $case->agencia_id === null ? null : (int) $case->agencia_id,
                     ];
                     if ($inboundId !== null) {
-                        $botInputs[$case->id] = $inboundId;
+                        $botInputs[$case->id] = [$inboundId, $choice];
                     }
                 }
 

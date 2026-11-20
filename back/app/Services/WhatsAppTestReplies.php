@@ -19,10 +19,14 @@ class WhatsAppTestReplies
             && trim((string) config('services.whatsapp_webhook.access_token')) !== '';
     }
 
-    public function send(string $recipient, string $text): array
+    public function send(string $recipient, string $text, ?array $interactive = null): array
     {
         $version = config('services.whatsapp_webhook.graph_version');
         $url = 'https://graph.facebook.com/' . $version . '/' . $this->phoneId() . '/messages';
+
+        $message = $interactive === null
+            ? ['type' => 'text', 'text' => ['body' => $text]]
+            : ['type' => 'interactive', 'interactive' => $interactive];
 
         try {
             $response = Http::withToken(config('services.whatsapp_webhook.access_token'))
@@ -30,9 +34,7 @@ class WhatsAppTestReplies
                     'messaging_product' => 'whatsapp',
                     'recipient_type' => 'individual',
                     'to' => $recipient,
-                    'type' => 'text',
-                    'text' => ['body' => $text],
-                ]);
+                ] + $message);
         } catch (ConnectionException) {
             return ['unknown', null, null];
         }

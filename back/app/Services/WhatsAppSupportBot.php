@@ -9,7 +9,12 @@ use Illuminate\Support\Str;
 
 class WhatsAppSupportBot
 {
-    private const MENU = "Responde con el número de tu opción:\n1. Horarios y direcciones\n2. Consultar un producto\n3. Hacer un pedido\n4. Hablar con una persona";
+    private const MENU = [
+        1 => 'Horarios y ubicación',
+        2 => 'Consultar producto',
+        3 => 'Hacer un pedido',
+        4 => 'Hablar con persona',
+    ];
     private const HANDOFF = 'Tu mensaje quedó en la bandeja de atención. Una persona de nuestro equipo continuará la conversación.';
 
     public function __construct(private WhatsAppTestReplies $whatsapp, private SupportRealtime $realtime)
@@ -21,9 +26,9 @@ class WhatsAppSupportBot
         return config('services.whatsapp_webhook.bot_enabled', false) && $this->whatsapp->isConfigured();
     }
 
-    public function respond(int $caseId, int $inboundId): void
+    public function respond(int $caseId, int $inboundId, ?string $choice = null): void
     {
-        $updated = DB::transaction(function () use ($caseId, $inboundId) {
+        $updated = DB::transaction(function () use ($caseId, $inboundId, $choice) {
             $case = SupportCase::lockForUpdate()->find($caseId);
             if (!$this->enabled() || !$case || $case->mode !== 'bot' || $case->status === 'resolved' ||
                 $case->whatsapp_phone_id !== $this->whatsapp->phoneId() || !$case->whatsapp_recipient ||
@@ -36,12 +41,12 @@ class WhatsAppSupportBot
                 return null;
             }
 
-            [$text, $step] = $this->nextReply($case->whatsapp_bot_step, $inbound->text);
+            [$text, $step, $interactive, $followUp] = $this->nextReply($case->whatsapp_bot_step, $inbound->text, $choice) + [2 => null, 3 => null];
             // El bloqueo ordena el envío con los cambios a atención manual. No se reintenta la transacción después del envío.
-            [$state, $messageId] = $this->whatsapp->send($case->whatsapp_recipient, $text);
-            $reply = $case->messages()->make(['author' => 'bot', 'text' => $text, 'whatsapp_state' => $state]);
-            $reply->whatsapp_message_id = $messageId;
-            $reply->save();
+            $state = $this->sendReply($case, $text, $interactive);
+            if ($followUp !== null && $state !== 'failed') {
+                $this->sendReply($case, ...$followUp);
+            }
 
             if ($step === null) {
                 $case->mode = 'manual';
@@ -59,17 +64,34 @@ class WhatsAppSupportBot
         }
     }
 
-    private function nextReply(?string $step, string $message): array
+    private function sendReply(SupportCase $case, string $text, ?array $interactive): string
+    {
+        [$state, $messageId] = $this->whatsapp->send($case->whatsapp_recipient, $text, $interactive);
+        if ($interactive !== null && $state === 'failed') {
+            [$state, $messageId] = $this->whatsapp->send($case->whatsapp_recipient, $text);
+        }
+
+        $reply = $case->messages()->make(['author' => 'bot', 'text' => $text, 'whatsapp_state' => $state]);
+        $reply->whatsapp_message_id = $messageId;
+        $reply->save();
+
+        return $state;
+    }
+
+    private function nextReply(?string $step, string $message, ?string $choice): array
     {
         $option = Str::lower(Str::ascii(trim($message)));
         if (in_array($option, ['persona', 'asesor', 'humano'], true)) {
             return [self::HANDOFF, null];
         }
-        if ($step === null) {
-            return ["Hola, somos Farmacias Santidad Divina.\n\n" . self::MENU, 'menu'];
+        if ($choice !== null) {
+            [, $type, $option] = explode(':', $choice);
+            $step = $type === 'branch' ? 'branch' : 'menu';
+        } elseif ($step === null) {
+            return $this->menu("Hola, somos Farmacias Santidad Divina.\n\n");
         }
         if ($option === '0' || $option === 'menu') {
-            return [self::MENU, 'menu'];
+            return $this->menu();
         }
 
         return match ($step) {
@@ -80,21 +102,65 @@ class WhatsAppSupportBot
                 '2' => ["Indícanos el nombre del producto, su presentación, la cantidad y la sucursal que prefieres.\n\nEscribe 0 para volver al menú.", 'product'],
                 '3' => ["Escribe los productos, las cantidades y la sucursal que prefieres. El equipo revisará tu solicitud contigo.\n\nEscribe 0 para volver al menú.", 'order'],
                 '4' => [self::HANDOFF, null],
-                default => [self::MENU, 'menu'],
+                default => $this->menu(),
             },
         };
+    }
+
+    private function menu(string $intro = ''): array
+    {
+        $body = $intro . '¿En qué podemos ayudarte?';
+        $first = $this->menuButtons($body, [1, 2, 3]);
+        $second = $this->menuButtons('¿Prefieres hablar con una persona?', [4]);
+
+        return [$first[0], 'menu', $first[1], $second];
+    }
+
+    private function menuButtons(string $body, array $options): array
+    {
+        $lines = [];
+        $buttons = [];
+        foreach ($options as $option) {
+            $title = self::MENU[$option];
+            $lines[] = "$option. $title";
+            $buttons[] = ['type' => 'reply', 'reply' => ['id' => "support:menu:$option", 'title' => $title]];
+        }
+
+        return [
+            $body . "\n\nResponde con el número de tu opción:\n" . implode("\n", $lines),
+            ['type' => 'button', 'body' => ['text' => $body], 'action' => ['buttons' => $buttons]],
+        ];
     }
 
     private function branchList(): array
     {
         $branches = Agencia::where('status', 'ACTIVO')->orderBy('nombre')->orderBy('id')->get(['id', 'nombre']);
         if ($branches->isEmpty()) {
-            return ["Por el momento no tenemos sucursales disponibles en el menú.\n\n" . self::MENU, 'menu'];
+            return $this->menu("Por el momento no tenemos sucursales disponibles en el menú.\n\n");
         }
 
         $options = $branches->map(fn (Agencia $branch) => "$branch->id. $branch->nombre")->implode("\n");
 
-        return ["Elige una sucursal por su número:\n$options\n\nEscribe 0 para volver al menú.", 'branch'];
+        $interactive = null;
+        if ($branches->count() <= 10) {
+            $rows = $branches->map(fn (Agencia $branch) => [
+                'id' => "support:branch:$branch->id",
+                'title' => mb_substr("$branch->id. $branch->nombre", 0, 24),
+                'description' => mb_substr($branch->nombre, 0, 72),
+            ])->all();
+            $interactive = $this->listMessage("Elige una sucursal para ver su horario y dirección.\n\nEscribe 0 para volver al menú.", 'Ver sucursales', 'Sucursales', $rows);
+        }
+
+        return ["Elige una sucursal por su número:\n$options\n\nEscribe 0 para volver al menú.", 'branch', $interactive];
+    }
+
+    private function listMessage(string $body, string $button, string $section, array $rows): array
+    {
+        return [
+            'type' => 'list',
+            'body' => ['text' => $body],
+            'action' => ['button' => $button, 'sections' => [['title' => $section, 'rows' => $rows]]],
+        ];
     }
 
     private function branchDetails(string $option): array
