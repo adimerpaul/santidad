@@ -37,19 +37,63 @@ Define un valor aleatorio de al menos 32 bytes para `SUPPORT_SOCKET_SECRET` en e
 
 El administrador recibe los avisos de todas las conversaciones. Cada sucursal recibe los avisos de sus casos. La bandeja carga los cambios cuando recibe un aviso y al reconectar. El botón **Actualizar** permite sincronizar manualmente.
 
-## Integración posterior
+## Asistente de WhatsApp
 
-- Un número general de WhatsApp para todas las sucursales. El teléfono del cliente identifica el hilo externo, y el caso interno identifica sucursal/pedido. Evitar distribuir automáticamente todo el historial externo entre sucursales distintas.
-- Resolver la referencia recibida usando la orden y el caso correspondiente. Aplicar los mismos permisos a envíos y eventos nuevos. Las notas internas y las respuestas guardadas antes de conectar WhatsApp quedan en el historial interno.
-- El cambio a manual debe ser atómico y detener las respuestas automáticas pendientes del caso. Revalidar el modo antes de enviar desde un worker. Resolver pausa el bot; reabrir inicia en manual. Registrar auditoría y evitar que dos operadores se apropien del caso a la vez.
-- Al ampliar la integración, sincronizar los estados de entrega y lectura de Meta y definir el flujo de plantillas fuera de la ventana de atención.
-- Reutilizar la validación de firmas y deduplicación del webhook de prueba al conectar el número comercial. Implementar la recuperación del historial tras reconexión y los eventos autorizados por sucursal.
-- Confirmar la disponibilidad de coexistencia con WhatsApp Business para el número antes de implementar la sincronización de respuestas del administrador desde su teléfono.
-- Añadir adjuntos y consulta real de stock al conectar sus servicios.
+El asistente reutiliza el número configurado, el webhook, las conversaciones y los avisos en vivo. `WHATSAPP_TEST_PHONE_NUMBER_ID` conserva su nombre por compatibilidad y acepta el **Phone Number ID** activo. El token queda en `WHATSAPP_ACCESS_TOKEN`. Para coexistencia, suscribe `smb_message_echoes` junto a `messages` para que una respuesta desde WhatsApp Business aparezca en la bandeja y pause el bot. [Guía de coexistencia de Meta](https://developers.facebook.com/documentation/business-messaging/whatsapp/embedded-signup/onboarding-business-app-users)
+
+En un entorno de prueba, desde `back`, revisa `php artisan migrate:status` y aplica las migraciones pendientes con `php artisan migrate`. Las dos migraciones nuevas agregan memoria, estados, horarios, clasificación, límites y una cola dedicada. Configura el entorno privado de Laravel.
+
+| Variable | Uso |
+| --- | --- |
+| `WHATSAPP_BOT_ENABLED` | `true` permite respuestas automáticas. El valor por defecto es `false`. Los casos manuales requieren **Activar bot** desde la bandeja. |
+| `WHATSAPP_BOT_QUEUE` | `sync` ejecuta solo reglas locales después de responder al webhook. Usa `database` con un proceso permanente para trabajo en segundo plano. |
+| `WHATSAPP_CONTEXT_HOURS` | 48 horas por defecto. Admite de 1 a 168 horas. |
+| `WHATSAPP_CATALOG_PRICE_CHANNEL` | Vacía omite precios. `physical` permite cotizar el precio vigente de mostrador en la sucursal identificada. |
+| `AI_ENABLED`, `AI_ADULT_ONLY_CHANNEL` | Ambas quedan en `false` por defecto. Mantén Gemini apagado en un número público de farmacia. Solo considera activarlo en un canal que cumpla los términos de Google para acceso de adultos y usos de IA. |
+| `AI_PROVIDER`, `AI_MODEL`, `AI_API_KEY` | `gemini`, el ID de un modelo que admita salida estructurada y una clave privada del backend. |
+| `AI_TIMEOUT`, `AI_MAX_INPUT_TOKENS`, `AI_MAX_OUTPUT_TOKENS` | 4 segundos, 4096 y 256 por defecto. El límite de entrada aplica en bytes al cuerpo completo como cota conservadora. |
+| `AI_PER_USER_PER_MINUTE`, `AI_CONCURRENCY` | 2 solicitudes por conversación y minuto y 2 solicitudes simultáneas por defecto. Usa una caché compartida entre procesos para mantener el límite global. |
+| `AI_MONTHLY_BUDGET_MICROUSD`, `AI_REQUEST_RESERVE_MICROUSD` | Con cero se bloquean las llamadas. Define un cupo mensual y una reserva conservadora por llamada en millonésimas de USD, según el modelo y sus límites de entrada y salida. Controla también el gasto en el proveedor. |
+
+Con `WHATSAPP_BOT_QUEUE=database`, ejecuta el proceso desde `back` con `php artisan queue:work whatsapp_support --queue=whatsapp-support --timeout=60`. Gestiona su arranque y reinicio con el supervisor de procesos del servidor. Recarga la configuración cacheada y reinicia el worker después de cambiarla. La tarea se almacena junto con el mensaje. La cola revisa el modo del caso, el último mensaje y la ventana de 24 horas antes del envío. Si llegan varios mensajes antes de que el proceso responda, se conserva el historial y se prioriza el último. Un envío sin confirmación queda en el historial para revisión.
+
+### Horarios y catálogo
+
+Registra horarios verificados mediante `php artisan whatsapp:branch-hours <ID_SUCURSAL> <ARCHIVO_JSON>`. Los días `1` a `7` corresponden a lunes a domingo. Cada sucursal tiene sus propias fechas de excepción. Un arreglo vacío para un feriado significa cierre programado ese día.
+
+```json
+{
+  "weekly": {
+    "1": [{"start": "08:00", "end": "20:00"}],
+    "2": [{"start": "08:00", "end": "20:00"}],
+    "3": [{"start": "08:00", "end": "20:00"}],
+    "4": [{"start": "08:00", "end": "20:00"}],
+    "5": [{"start": "20:00", "end": "04:00"}],
+    "6": [{"start": "09:00", "end": "12:00"}, {"start": "15:00", "end": "20:00"}],
+    "7": []
+  },
+  "exceptions": {"2026-12-25": []}
+}
+```
+
+El bot usa la hora de Bolivia. Un cierre anterior a la apertura continúa al día siguiente, salvo que una excepción de ese día indique otro horario. Si solo existe texto libre, lo muestra como información registrada y evita afirmar si la sucursal está abierta. Un horario programado no verifica que la sucursal esté operando ni que haya empleados libres.
+
+El catálogo queda cerrado al aplicar la migración. Clasifica cada producto revisado con `php artisan whatsapp:classify-product <ID_PRODUCTO> <CATEGORÍA>`. Categorías admitidas `non_regulated`, `otc`, `prescription`, `controlled` y `pending`. Para registrar un OTC, verifica la clasificación oficial y añade `--verified-otc`. Solo `non_regulated` permite consultas automáticas de catálogo. La política también bloquea las subcategorías de medicamentos controlados y otros indicios de restricción, aunque un producto tenga una clasificación incorrecta. El bot no tramita compras de medicamentos. Los pedidos de productos permitidos quedan como solicitudes para revisión humana. La política de Meta también aplica a respuestas del personal. [Política de mensajería de WhatsApp](https://whatsappbusiness.com/es-la/policy/)
+
+### Ejemplos y operación
+
+- «¿Hasta qué hora atienden?» → pide la sucursal. «Casco» → muestra el horario registrado. «¿Y mañana a las 3?» → confirma a. m. o p. m. antes de consultar el horario de esa fecha.
+- «¿Cuál me queda más cerca?» → permite compartir la ubicación para comparar distancias en línea recta. El chat guarda «Ubicación compartida» y la cola cifra las coordenadas necesarias durante el trabajo.
+- «¿Tienen Umbrela de 50 ml?» → busca presentaciones autorizadas y comprueba el inventario de la sucursal elegida. La disponibilidad es informativa y no implica una reserva.
+- «Quiero hablar con alguien de Ex Terminal» → pasa a atención manual. Si el caso estaba sin asignar y la sucursal es inequívoca, queda allí y se avisa por la conexión en vivo. La bandeja muestra el motivo interno.
+
+Gemini recibe únicamente palabras de logística seleccionadas de una lista permitida. No recibe historial, coordenadas, teléfono, marcas ni el texto original. Laravel valida el esquema, la confianza y las sucursales detectadas, consulta los datos y redacta la respuesta. Si el servicio falla o supera límites, el flujo pide claridad o pasa al equipo. [Salidas estructuradas de Gemini](https://ai.google.dev/gemini-api/docs/structured-output) · [Términos de Gemini](https://ai.google.dev/gemini-api/terms)
+
+`php artisan whatsapp:assistant metrics` muestra los últimos estados agregados de los casos. `php artisan whatsapp:assistant prune` elimina la memoria conversacional y los límites de IA vencidos. El programador de Laravel ejecuta esa tarea diariamente. El historial de atención y los registros de deduplicación siguen la retención del sistema. Quedan pendientes la sincronización de estados de entrega, imágenes de producto, plantillas para fuera de la ventana de atención y el ingreso automático de pedidos de la web o la app.
 
 ## Validación local
 
-En `back`, `php artisan test --filter=SupportCaseTest` verifica la separación de sucursales, el vínculo con pedidos y las reasignaciones en SQLite en memoria.
+En `back`, `php artisan test --filter='SupportCaseTest|WhatsAppTestWebhookTest'` verifica el asistente, los permisos por sucursal, el vínculo con pedidos y los webhooks en SQLite en memoria. Las llamadas a Meta y Gemini se simulan.
 
 `node tests/customer-support.smoke.cjs` utiliza Playwright y las dependencias Vite/Quasar existentes. Inicia un servidor temporal, monta la página con una sesión ficticia y simula las respuestas de Laravel. Comprueba que se pueda abrir un caso por pedido, guardar una nota y recuperarla al volver a entrar. Cierra servidor y navegador al terminar.
 

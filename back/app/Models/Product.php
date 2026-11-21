@@ -11,6 +11,7 @@ class Product extends Model
     use HasFactory;
 
     protected $appends = ['precioVenta'];
+    protected $hidden = ['whatsapp_classification'];
 
     protected $fillable = [
         'nombre',

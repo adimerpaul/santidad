@@ -103,6 +103,7 @@ class SupportCaseController extends Controller
             ->orderByDesc('id')->limit(51)->get();
         $more = $messages->count() > 50;
         $messages = $messages->take(50)->reverse()->values();
+        $messages->where('author', 'agent')->load('operator:id,name');
 
         return $this->present($case) + [
             'messages' => $messages->map(fn (SupportMessage $message) => $this->message($message)),
@@ -126,7 +127,7 @@ class SupportCaseController extends Controller
             return $case->messages()->create($data + ['user_id' => $request->user()->id]);
         });
 
-        return response()->json($this->message($message), 201);
+        return response()->json($this->message($message, true), 201);
     }
 
     public function sendWhatsAppReply(Request $request, int $id, WhatsAppTestReplies $whatsapp, SupportRealtime $realtime)
@@ -161,7 +162,7 @@ class SupportCaseController extends Controller
         }, 3);
 
         if ($recipient === null) {
-            return $this->message($reply);
+            return $this->message($reply, true);
         }
 
         [$state, $messageId, $diagnostic] = $whatsapp->send($recipient, $reply->text);
@@ -186,7 +187,7 @@ class SupportCaseController extends Controller
         }
         $realtime->notify([['id' => $id, 'branch' => $branch]]);
 
-        $result = $this->message($reply);
+        $result = $this->message($reply, true);
         if ($state === 'failed') {
             $code = $diagnostic['code'];
             $hint = match ($code) {
@@ -219,6 +220,10 @@ class SupportCaseController extends Controller
             $case->mode = $action === 'bot' ? 'bot' : 'manual';
             if ($case->isDirty('mode') && $case->source === 'whatsapp') {
                 $case->whatsapp_bot_step = null;
+                $case->whatsapp_context = null;
+                $case->whatsapp_context_expires_at = null;
+                $case->whatsapp_indicator = $action === 'bot' ? 'automatic' : null;
+                $case->whatsapp_handoff_reason = null;
             }
             if ($action === 'resolve') {
                 $case->status = 'resolved';
@@ -298,14 +303,15 @@ class SupportCaseController extends Controller
         return [
             'id' => $case->id,
             'name' => $case->customer_name,
-            'initials' => collect(preg_split('/\s+/u', $case->customer_name, -1, PREG_SPLIT_NO_EMPTY))
-                ->take(2)->map(fn ($word) => mb_strtoupper(mb_substr($word, 0, 1)))->implode(''),
+            'initials' => $this->initials($case->customer_name),
             'branch_id' => $case->agencia_id,
             'branch' => $case->agencia?->nombre ?? 'Sin asignar',
             'source' => $case->source,
             'status' => $case->status,
             'mode' => $case->mode,
             'bot_enabled' => $this->botEnabled($case),
+            'bot_indicator' => $case->whatsapp_indicator,
+            'bot_handoff_reason' => $case->whatsapp_handoff_reason,
             'at' => $case->updated_at->toISOString(),
             'preview' => $case->lastMessage ? $this->message($case->lastMessage) : null,
             'order' => $order ? [
@@ -323,11 +329,26 @@ class SupportCaseController extends Controller
         return $case->source === 'whatsapp' && app(\App\Services\WhatsAppSupportBot::class)->enabled();
     }
 
-    private function message(SupportMessage $message): array
+    private function initials(string $name): string
     {
+        return collect(preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY))
+            ->take(2)->map(fn ($word) => mb_strtoupper(mb_substr($word, 0, 1)))->implode('');
+    }
+
+    private function message(SupportMessage $message, bool $loadOperator = false): array
+    {
+        $operator = null;
+        if ($message->author === 'agent') {
+            if ($loadOperator) {
+                $message->loadMissing('operator:id,name');
+            }
+            $operator = $message->relationLoaded('operator') ? $message->operator : null;
+        }
+
         return [
             'id' => $message->id,
             'author' => $message->author,
+            'author_initials' => $operator?->name ? $this->initials($operator->name) : null,
             'text' => $message->text,
             'at' => $message->created_at->toISOString(),
             'whatsapp_state' => $message->whatsapp_state,

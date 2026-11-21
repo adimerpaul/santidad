@@ -53,6 +53,24 @@ return [
         'access_token' => env('WHATSAPP_ACCESS_TOKEN'),
         'graph_version' => env('WHATSAPP_GRAPH_VERSION', 'v25.0'),
         'bot_enabled' => env('WHATSAPP_BOT_ENABLED', false),
+        'bot_queue' => env('WHATSAPP_BOT_QUEUE', 'sync'),
+        'catalog_price_channel' => env('WHATSAPP_CATALOG_PRICE_CHANNEL'),
+        'context_hours' => env('WHATSAPP_CONTEXT_HOURS', 48),
+    ],
+
+    'whatsapp_ai' => [
+        'enabled' => env('AI_ENABLED', false),
+        'provider' => env('AI_PROVIDER', 'gemini'),
+        'model' => env('AI_MODEL'),
+        'api_key' => env('AI_API_KEY'),
+        'adult_only_channel' => env('AI_ADULT_ONLY_CHANNEL', false),
+        'timeout' => env('AI_TIMEOUT', 4),
+        'max_input_tokens' => env('AI_MAX_INPUT_TOKENS', 4096),
+        'max_output_tokens' => env('AI_MAX_OUTPUT_TOKENS', 256),
+        'per_user_per_minute' => env('AI_PER_USER_PER_MINUTE', 2),
+        'concurrency' => env('AI_CONCURRENCY', 2),
+        'monthly_budget_microusd' => env('AI_MONTHLY_BUDGET_MICROUSD', 0),
+        'request_reserve_microusd' => env('AI_REQUEST_RESERVE_MICROUSD', 0),
     ],
 
 ];

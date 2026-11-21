@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Models\Agencia;
 use App\Models\SupportCase;
+use App\Models\SupportMessage;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class WhatsAppSupportBot
 {
@@ -15,9 +15,8 @@ class WhatsAppSupportBot
         3 => 'Hacer un pedido',
         4 => 'Hablar con persona',
     ];
-    private const HANDOFF = 'Tu mensaje quedó en la bandeja de atención. Una persona de nuestro equipo continuará la conversación.';
-
-    public function __construct(private WhatsAppTestReplies $whatsapp, private SupportRealtime $realtime)
+    public function __construct(private WhatsAppTestReplies $whatsapp, private SupportRealtime $realtime,
+        private WhatsAppConversation $conversation)
     {
     }
 
@@ -26,33 +25,56 @@ class WhatsAppSupportBot
         return config('services.whatsapp_webhook.bot_enabled', false) && $this->whatsapp->isConfigured();
     }
 
-    public function respond(int $caseId, int $inboundId, ?string $choice = null): void
+    public function respond(int $caseId, int $inboundId, ?string $choice = null, ?array $location = null, bool $allowAi = false): void
     {
-        $updated = DB::transaction(function () use ($caseId, $inboundId, $choice) {
+        $original = SupportCase::find($caseId);
+        $inbound = $original && $this->canRespond($original) ? $this->currentInbound($original, $inboundId) : null;
+        if (!$inbound) {
+            return;
+        }
+        $plan = $this->conversation->plan($original, $inbound->text, $choice, $location, $allowAi);
+
+        $updated = DB::transaction(function () use ($caseId, $inboundId, $choice, $original, $plan, $inbound) {
             $case = SupportCase::lockForUpdate()->find($caseId);
-            if (!$this->enabled() || !$case || $case->mode !== 'bot' || $case->status === 'resolved' ||
-                $case->whatsapp_phone_id !== $this->whatsapp->phoneId() || !$case->whatsapp_recipient ||
-                $case->whatsapp_last_inbound <= now()->timestamp - 86400) {
+            if (!$case || !$this->canRespond($case) || !$this->currentInbound($case, $inboundId) ||
+                $case->getRawOriginal('whatsapp_context') !== $original->getRawOriginal('whatsapp_context') ||
+                $case->whatsapp_bot_step !== $original->whatsapp_bot_step || $case->agencia_id !== $original->agencia_id) {
                 return null;
             }
 
-            $inbound = $case->messages()->where('author', 'customer')->latest('id')->first();
-            if ($inbound?->id !== $inboundId || $case->messages()->where('author', 'bot')->where('id', '>', $inboundId)->exists()) {
-                return null;
+            [$text, $step, $interactive, $followUp] = ($plan['reply'] ?? $this->nextReply($case->whatsapp_bot_step, $inbound->text, $choice)) + [2 => null, 3 => null];
+            if ($plan && $case->whatsapp_bot_step === null) {
+                $text = "Hola, soy el asistente virtual de Farmacias Santidad Divina.\n\n" . $text;
             }
-
-            [$text, $step, $interactive, $followUp] = $this->nextReply($case->whatsapp_bot_step, $inbound->text, $choice) + [2 => null, 3 => null];
             // El bloqueo ordena el envío con los cambios a atención manual. No se reintenta la transacción después del envío.
             $state = $this->sendReply($case, $text, $interactive);
-            if ($followUp !== null && $state !== 'failed') {
+            if ($followUp !== null && $state === 'accepted') {
                 $this->sendReply($case, ...$followUp);
             }
 
+            $case->whatsapp_indicator = $plan['indicator'] ?? (in_array($step, ['branch', 'product', 'order'], true) ? 'waiting' : 'automatic');
+            $case->whatsapp_handoff_reason = $plan['reason'] ?? null;
             if ($step === null) {
                 $case->mode = 'manual';
                 $case->whatsapp_bot_step = null;
-            } elseif ($state !== 'failed') {
+                $case->status = 'pending';
+                $branchId = $plan['branch'] ?? null;
+                if (!$case->agencia_id && $branchId && Agencia::where('status', 'ACTIVO')->whereKey($branchId)->exists()) {
+                    $case->agencia_id = $branchId;
+                }
+            } elseif ($state === 'accepted') {
                 $case->whatsapp_bot_step = $step;
+            }
+            if ($state === 'accepted' || $step === null) {
+                $context = $plan['context'] ?? match ($step) {
+                    'branch' => ['intents' => ['horario', 'direccion'], 'pending' => 'branch'],
+                    'product' => ['intents' => ['producto'], 'pending' => 'product'],
+                    'order' => ['intents' => ['pedido'], 'pending' => 'product'],
+                    default => [],
+                };
+                $case->whatsapp_context = $context ?: null;
+                $retention = max(1, min(168, (int) config('services.whatsapp_webhook.context_hours', 24)));
+                $case->whatsapp_context_expires_at = $context ? now()->addHours($retention) : null;
             }
             $case->touch();
 
@@ -62,6 +84,21 @@ class WhatsAppSupportBot
         if ($updated) {
             $this->realtime->notify([$updated]);
         }
+    }
+
+    private function canRespond(SupportCase $case): bool
+    {
+        return $this->enabled() && $case->mode === 'bot' && $case->status !== 'resolved'
+            && $case->whatsapp_phone_id === $this->whatsapp->phoneId() && $case->whatsapp_recipient
+            && $case->whatsapp_last_inbound > now()->timestamp - 86400;
+    }
+
+    private function currentInbound(SupportCase $case, int $inboundId): ?SupportMessage
+    {
+        $inbound = $case->messages()->where('author', 'customer')->latest('id')->first();
+
+        return $inbound?->id === $inboundId && !$case->messages()->where('author', 'bot')->where('id', '>', $inboundId)->exists()
+            ? $inbound : null;
     }
 
     private function sendReply(SupportCase $case, string $text, ?array $interactive): string
@@ -80,30 +117,13 @@ class WhatsAppSupportBot
 
     private function nextReply(?string $step, string $message, ?string $choice): array
     {
-        $option = Str::lower(Str::ascii(trim($message)));
-        if (in_array($option, ['persona', 'asesor', 'humano'], true)) {
-            return [self::HANDOFF, null];
-        }
-        if ($choice !== null) {
-            [, $type, $option] = explode(':', $choice);
-            $step = $type === 'branch' ? 'branch' : 'menu';
-        } elseif ($step === null) {
-            return $this->menu("Hola, somos Farmacias Santidad Divina.\n\n");
-        }
-        if ($option === '0' || $option === 'menu') {
-            return $this->menu();
-        }
+        $option = $choice ? substr($choice, -1) : trim($message);
 
-        return match ($step) {
-            'product', 'order' => [self::HANDOFF, null],
-            'branch' => $this->branchDetails($option),
-            default => match ($option) {
-                '1' => $this->branchList(),
-                '2' => ["Indícanos el nombre del producto, su presentación, la cantidad y la sucursal que prefieres.\n\nEscribe 0 para volver al menú.", 'product'],
-                '3' => ["Escribe los productos, las cantidades y la sucursal que prefieres. El equipo revisará tu solicitud contigo.\n\nEscribe 0 para volver al menú.", 'order'],
-                '4' => [self::HANDOFF, null],
-                default => $this->menu(),
-            },
+        return match ($option) {
+            '1' => $this->branchList(),
+            '2' => ['Indícanos el nombre del producto, su presentación y la sucursal que prefieres.', 'product'],
+            '3' => ['Dime el nombre, la presentación y la cantidad de un producto no regulado para que el equipo revise tu solicitud.', 'order'],
+            default => $this->menu($step === null ? "Hola, soy el asistente virtual de Farmacias Santidad Divina.\n\n" : ''),
         };
     }
 
@@ -163,30 +183,4 @@ class WhatsAppSupportBot
         ];
     }
 
-    private function branchDetails(string $option): array
-    {
-        $branch = preg_match('/\A[1-9][0-9]{0,17}\z/', $option)
-            ? Agencia::where('status', 'ACTIVO')->find($option)
-            : null;
-        if (!$branch) {
-            return $this->branchList();
-        }
-
-        $schedule = implode(' · ', array_filter([trim((string) $branch->atencion), trim((string) $branch->horario)]));
-        $address = trim((string) $branch->direccion);
-        $map = trim((string) $branch->gps);
-        if (!filter_var($map, FILTER_VALIDATE_URL) || parse_url($map, PHP_URL_SCHEME) !== 'https') {
-            $map = is_numeric($branch->latitud) && is_numeric($branch->longitud)
-                && abs((float) $branch->latitud) <= 90 && abs((float) $branch->longitud) <= 180
-                ? 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode("$branch->latitud,$branch->longitud")
-                : null;
-        }
-
-        $text = "*$branch->nombre*\nHorario: " . ($schedule ?: 'Por confirmar') . "\nDirección: " . ($address ?: 'Por confirmar');
-        if ($map) {
-            $text .= "\nMapa: $map";
-        }
-
-        return [$text . "\n\nEscribe otro número de sucursal o 0 para volver al menú.", 'branch'];
-    }
 }

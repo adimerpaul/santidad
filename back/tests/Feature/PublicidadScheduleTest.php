@@ -58,7 +58,8 @@ class PublicidadScheduleTest extends TestCase
         $service = app(PublicidadSyncService::class);
         $this->assertSame($service->snapshot(1)['epoch_ms'], $service->snapshot(2)['epoch_ms']);
         Http::assertSentCount(2);
-        $events = app(\Illuminate\Console\Scheduling\Schedule::class)->events();
+        $events = array_values(array_filter(app(\Illuminate\Console\Scheduling\Schedule::class)->events(),
+            fn ($event) => str_contains($event->command ?? '', 'publicidad:publish-pending')));
         $this->assertCount(1, $events);
         $this->assertSame('0 9 * * *', $events[0]->expression);
         $this->assertSame('America/La_Paz', $events[0]->timezone);

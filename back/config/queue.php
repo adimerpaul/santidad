@@ -30,6 +30,14 @@ return [
 
     'connections' => [
 
+        'whatsapp_support' => [
+            'driver' => 'database',
+            'table' => 'whatsapp_support_jobs',
+            'queue' => 'whatsapp-support',
+            'retry_after' => 90,
+            'after_commit' => false,
+        ],
+
         'sync' => [
             'driver' => 'sync',
         ],

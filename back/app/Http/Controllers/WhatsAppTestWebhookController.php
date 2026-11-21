@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\RespondToWhatsAppSupportMessage;
 use App\Models\SupportCase;
 use App\Services\SupportRealtime;
 use App\Services\WhatsAppSupportBot;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use JsonException;
 
@@ -58,8 +60,8 @@ class WhatsAppTestWebhookController extends Controller
         $realtime->notify($cases);
         if ($botInputs) {
             app()->terminating(function () use ($bot, $botInputs) {
-                foreach ($botInputs as $caseId => [$inboundId, $choice]) {
-                    $bot->respond($caseId, $inboundId, $choice);
+                foreach ($botInputs as $caseId => [$inboundId, $choice, $location]) {
+                    $bot->respond($caseId, $inboundId, $choice, $location);
                 }
             });
         }
@@ -99,8 +101,9 @@ class WhatsAppTestWebhookController extends Controller
                     } : null;
                     $choice = $reply['id'] ?? null;
                     $choice = is_string($choice) && preg_match('/\Asupport:(?:menu:[1-4]|branch:[1-9][0-9]{0,17})\z/', $choice) ? $choice : null;
-                    $text = $choice !== null ? ($reply['title'] ?? null) : data_get($message, 'text.body');
-                    if (($type !== 'text' && $choice === null) || !is_string($text) || trim($text) === '' ||
+                    $location = !$fromApp && $type === 'location' ? $this->location($message['location'] ?? null) : null;
+                    $text = $location !== null ? 'Ubicación compartida' : ($choice !== null ? ($reply['title'] ?? null) : data_get($message, 'text.body'));
+                    if (($type !== 'text' && $choice === null && $location === null) || !is_string($text) || trim($text) === '' ||
                         !is_string($contact) || trim($contact) === '' ||
                         ($fromApp && !preg_match('/\A[1-9][0-9]{5,14}\z/', $contact))) {
                         $events[$event['event_key']] = $event;
@@ -108,7 +111,7 @@ class WhatsAppTestWebhookController extends Controller
                     }
 
                     $name = $this->customerName((array) ($value['contacts'] ?? []), $contact);
-                    $stored = $this->storeInboxMessage($event, $contact, $name, $text, $message['timestamp'] ?? null, $botEnabled);
+                    $stored = $this->storeInboxMessage($event, $contact, $name, $text, $message['timestamp'] ?? null, $botEnabled, $choice, $location);
                     if ($stored === null) {
                         continue;
                     }
@@ -118,7 +121,7 @@ class WhatsAppTestWebhookController extends Controller
                         'branch' => $case->agencia_id === null ? null : (int) $case->agencia_id,
                     ];
                     if ($inboundId !== null) {
-                        $botInputs[$case->id] = [$inboundId, $choice];
+                        $botInputs[$case->id] = [$inboundId, $choice, $location];
                     }
                 }
 
@@ -142,6 +145,17 @@ class WhatsAppTestWebhookController extends Controller
         }
 
         return [$cases, $botInputs];
+    }
+
+    private function location(mixed $location): ?array
+    {
+        if (!is_array($location) || !is_numeric($location['latitude'] ?? null) || !is_numeric($location['longitude'] ?? null)) {
+            return null;
+        }
+        $lat = (float) $location['latitude'];
+        $lng = (float) $location['longitude'];
+
+        return is_finite($lat) && is_finite($lng) && abs($lat) <= 90 && abs($lng) <= 180 ? [$lat, $lng] : null;
     }
 
     private function testEvent(string $phoneId, string $kind, mixed $id, \DateTimeInterface $receivedAt): ?array
@@ -170,9 +184,10 @@ class WhatsAppTestWebhookController extends Controller
         return self::UNKNOWN_CONTACT;
     }
 
-    private function storeInboxMessage(array $event, string $contact, string $name, string $text, mixed $timestamp, bool $botEnabled): ?array
+    private function storeInboxMessage(array $event, string $contact, string $name, string $text, mixed $timestamp, bool $botEnabled,
+        ?string $choice, ?array $location): ?array
     {
-        return DB::transaction(function () use ($event, $contact, $name, $text, $timestamp, $botEnabled) {
+        return DB::transaction(function () use ($event, $contact, $name, $text, $timestamp, $botEnabled, $choice, $location) {
             // El registro del evento y el mensaje se confirman juntos para admitir reintentos de Meta.
             if (!DB::table('whatsapp_test_events')->insertOrIgnore($event)) {
                 return null;
@@ -209,11 +224,24 @@ class WhatsAppTestWebhookController extends Controller
                 if ($case->customer_name === self::UNKNOWN_CONTACT) {
                     $case->customer_name = $name;
                 }
+            } elseif ($case->mode === 'bot') {
+                $case->mode = 'manual';
+                $case->whatsapp_bot_step = null;
+                $case->whatsapp_context = null;
+                $case->whatsapp_context_expires_at = null;
+                $case->whatsapp_indicator = 'human';
+                $case->whatsapp_handoff_reason = 'El equipo respondió desde WhatsApp Business';
             }
             $case->touch();
             $message = $case->messages()->create(['author' => $fromApp ? 'whatsapp_app' : 'customer', 'text' => $text]);
 
-            return [$case, $deliverToBot && $case->mode === 'bot' ? $message->id : null];
+            $inboundId = $deliverToBot && $case->mode === 'bot' ? $message->id : null;
+            if ($inboundId !== null && config('services.whatsapp_webhook.bot_queue') === 'database') {
+                Bus::dispatch((new RespondToWhatsAppSupportMessage($case->id, $inboundId, $choice, $location))->onConnection('whatsapp_support'));
+                $inboundId = null;
+            }
+
+            return [$case, $inboundId];
         }, 3);
     }
 }

@@ -14,6 +14,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('publicidad:publish-pending --daily')
             ->dailyAt('09:00')->timezone('America/La_Paz')->withoutOverlapping();
+        $schedule->command('whatsapp:assistant prune')->daily()->withoutOverlapping();
     }
 
     /**

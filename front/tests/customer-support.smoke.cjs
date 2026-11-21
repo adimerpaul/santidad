@@ -65,7 +65,7 @@ async function main () {
         const body = request.postDataJSON()
         assert.equal(body.text, 'Respuesta desde Santidad')
         assert.match(body.request_id, /^[\da-f-]{36}$/)
-        const reply = { id: 4, author: 'agent', text: body.text, whatsapp_state: 'accepted', at: new Date().toISOString() }
+        const reply = { id: 4, author: 'agent', author_initials: 'AR', text: body.text, whatsapp_state: 'accepted', at: new Date().toISOString() }
         supportCase.messages.push(reply)
         return route.fulfill({ status: 201, json: reply })
       }
@@ -88,6 +88,8 @@ async function main () {
     await page.getByRole('button', { name: 'Probar demostración', exact: true }).click()
     assert.equal(await page.locator('.conversation-item').count(), 3)
     await page.locator('.conversation-item').filter({ hasText: 'Ana' }).click()
+    assert.equal(await page.locator('.message-row:not(.outgoing) .customer-avatar').first().textContent(), 'AC')
+    await page.locator('.message-row.outgoing .bot-avatar').waitFor()
     const response = page.getByRole('textbox', { name: 'Escribir respuesta', exact: true })
     assert.equal(await response.isDisabled(), true)
     await page.getByRole('button', { name: 'Atender yo', exact: true }).click()
@@ -149,16 +151,22 @@ async function main () {
     await page.locator('.message-bubble').filter({ hasText: 'Mensaje al reconectar' }).waitFor()
     supportCase.source = 'whatsapp'
     supportCase.order = null
+    supportCase.bot_indicator = 'human'
+    supportCase.bot_handoff_reason = 'Solicitó atención humana'
     await page.evaluate(() => window.fixtureSocket.emit('support_messages', [1]))
+    await page.locator('.mode-bar').getByText('Atención humana', { exact: true }).waitFor()
+    await page.locator('.mode-bar').getByText('Solicitó atención humana', { exact: true }).waitFor()
     await page.getByRole('button', { name: 'Respuesta', exact: true }).click()
     await page.getByRole('button', { name: 'Enviar por WhatsApp', exact: true }).waitFor()
     await page.getByRole('textbox', { name: 'Escribir respuesta', exact: true }).fill('Respuesta desde Santidad')
     await page.getByRole('button', { name: 'Enviar por WhatsApp', exact: true }).click()
     await page.locator('.message-bubble').filter({ hasText: 'Respuesta desde Santidad' }).getByText(/Aceptado por WhatsApp/).waitFor()
+    assert.equal(await page.locator('.message-row.outgoing .agent-avatar').textContent(), 'AR')
     supportCase.messages.push({ id: 5, author: 'whatsapp_app', text: 'Respuesta desde el celular', at: new Date().toISOString() })
     await page.evaluate(() => window.fixtureSocket.emit('support_messages', [1]))
     await page.locator('.message-row.outgoing').filter({ hasText: 'Respuesta desde el celular' })
       .getByText('Enviado desde WhatsApp Business', { exact: true }).waitFor()
+    await page.waitForFunction(() => document.querySelector('.business-avatar img')?.naturalWidth > 0)
     await page.getByRole('textbox', { name: 'Escribir respuesta', exact: true }).fill('Borrador antes de navegar')
     await page.getByText('Ir a otra página', { exact: true }).click()
     const leaveDialog = page.getByRole('dialog').filter({ hasText: 'Hay borradores pendientes' })

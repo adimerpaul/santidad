@@ -11,8 +11,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class SupportCase extends Model
 {
     protected $fillable = ['agencia_id', 'order_id', 'customer_name', 'source', 'status', 'mode'];
-    protected $casts = ['whatsapp_recipient' => 'encrypted', 'whatsapp_last_inbound' => 'integer'];
-    protected $hidden = ['whatsapp_thread_key', 'whatsapp_recipient', 'whatsapp_phone_id'];
+    protected $casts = [
+        'whatsapp_recipient' => 'encrypted',
+        'whatsapp_last_inbound' => 'integer',
+        'whatsapp_context' => 'encrypted:array',
+        'whatsapp_context_expires_at' => 'datetime',
+    ];
+    protected $hidden = ['whatsapp_thread_key', 'whatsapp_recipient', 'whatsapp_phone_id', 'whatsapp_context'];
 
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {

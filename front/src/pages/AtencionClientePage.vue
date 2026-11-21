@@ -67,6 +67,7 @@
         <div class="mode-bar">
           <q-icon :name="selected.mode === 'bot' ? 'smart_toy' : 'support_agent'" size="21px" />
           <div><strong>{{ modeTitle }}</strong><span>{{ modeHint }}</span></div>
+          <q-badge v-if="assistantIndicator" outline :color="selected.bot_indicator === 'interpretation_error' ? 'deep-orange-9' : 'teal-9'">{{ assistantIndicator }}</q-badge>
           <q-btn v-if="selected.status !== 'resolved' && (demo || selected.mode === 'bot' || selected.branch_id)" unelevated no-caps dense :disable="busy" :color="selected.mode === 'bot' ? 'teal-8' : 'grey-3'" :text-color="selected.mode === 'bot' ? 'white' : 'grey-9'" :label="selected.mode === 'bot' ? 'Atender yo' : (demo || selected.bot_enabled ? 'Activar bot' : 'Elegir modo bot')" @click="toggleMode" />
         </div>
 
@@ -79,6 +80,12 @@
           <template v-for="message in selected.messages" :key="message.id">
             <div v-if="message.author === 'system'" class="system-message">{{ message.text }} · {{ time(message.at) }}</div>
             <div v-else class="message-row" :class="{ outgoing: message.author !== 'customer' }">
+              <q-avatar v-if="message.author !== 'note'" class="message-avatar" :class="avatarClasses[message.author]" aria-hidden="true">
+                <img v-if="message.author === 'whatsapp_app'" :src="businessAvatar" alt="" draggable="false" />
+                <template v-else-if="message.author === 'customer' && selected.initials">{{ selected.initials }}</template>
+                <template v-else-if="message.author === 'agent' && message.author_initials">{{ message.author_initials }}</template>
+                <q-icon v-else :name="avatarIcons[message.author] || 'person_outline'" />
+              </q-avatar>
               <div class="message-bubble" :class="{ 'bot-bubble': message.author === 'bot', 'note-bubble': message.author === 'note' }">
                 <strong>{{ authors[message.author] }}</strong><p>{{ message.text }}</p><small>{{ time(message.at) }}{{ messageStatus(message) }}</small>
               </div>
@@ -209,6 +216,9 @@ const authors = {
   whatsapp_app: 'Enviado desde WhatsApp Business',
   note: 'Nota interna'
 }
+const businessAvatar = `${import.meta.env.BASE_URL}icons/favicon-96x96.png`
+const avatarClasses = { customer: 'customer-avatar', agent: 'agent-avatar', bot: 'bot-avatar', whatsapp_app: 'business-avatar' }
+const avatarIcons = { agent: 'support_agent', bot: 'smart_toy' }
 const selected = computed(() => demo.value ? conversations.value.find(chat => chat.id === selectedId.value) : detail.value)
 const sendsWhatsApp = computed(() => !demo.value && composeKind.value === 'reply' && selected.value?.source === 'whatsapp')
 const whatsappStates = {
@@ -233,8 +243,20 @@ const modeTitle = computed(() => {
   if (selected.value?.mode === 'bot') return demo.value ? 'Modo bot · simulación' : 'Modo bot guardado'
   return 'Atención manual · bot pausado'
 })
+const assistantIndicator = computed(() => {
+  if (demo.value || selected.value?.status === 'resolved' || selected.value?.source !== 'whatsapp') return ''
+  const indicators = {
+    automatic: 'Atención automática',
+    ai: 'Interpretación con IA',
+    waiting: 'Esperando al cliente',
+    human: 'Atención humana',
+    interpretation_error: 'Error de interpretación'
+  }
+  return indicators[selected.value.bot_indicator] || (selected.value.mode === 'bot' && selected.value.bot_enabled ? indicators.automatic : '')
+})
 const modeHint = computed(() => {
   if (selected.value?.status === 'resolved') return 'Reabre el caso para continuar.'
+  if (selected.value?.bot_handoff_reason) return selected.value.bot_handoff_reason
   if (selected.value?.mode === 'bot' && selected.value.bot_enabled) return 'El bot responde a mensajes nuevos. Pulsa «Atender yo» para tomar la conversación.'
   if (!demo.value && !selected.value?.branch_id) return 'El administrador puede asignar una sucursal desde Detalles.'
   if (selected.value?.mode === 'bot') return demo.value ? 'Toma la atención para escribir personalmente.' : 'Las respuestas automáticas están pendientes. Puedes pasar a atención manual.'
@@ -743,9 +765,17 @@ h3 { font-size: 15px; line-height: 1.4; font-weight: 600; }
 .order-strip span { flex: 1; }
 .message-list { flex: 1; min-height: 100px; overflow-y: auto; padding: 12px clamp(16px, 2.5vw, 36px); background: #f4f7fa; }
 .demo-divider { font-size: 10px; letter-spacing: 1px; text-align: center; color: #95a1ac; margin-bottom: 22px; }
-.message-row { display: flex; margin: 12px 0; }
-.message-row.outgoing { justify-content: flex-end; }
-.message-bubble { max-width: min(90%, 66ch); padding: 12px 16px; border: 1px solid #e4ebef; background: white; border-radius: 4px 16px 16px; overflow-wrap: anywhere; }
+.message-row { display: flex; align-items: flex-start; gap: 9px; margin: 12px 0; --message-avatar-size: 30px; }
+.message-row.outgoing { flex-direction: row-reverse; }
+.message-avatar { flex: none; margin-top: 3px; font-size: var(--message-avatar-size); background: #e9eef3; color: #456078; }
+.message-avatar :deep(.q-avatar__content) { font-size: 11px; font-weight: 700; }
+.message-avatar :deep(.q-icon) { font-size: 16px; }
+.customer-avatar { background: #e3eff4; color: #29546a; }
+.agent-avatar { background: #dcefe7; color: #216650; }
+.bot-avatar { background: #e6e8f8; color: #484a82; }
+.business-avatar { background: #fff; border: 1px solid #deebe7; }
+.business-avatar img { width: 84%; height: 84%; object-fit: contain; }
+.message-bubble { max-width: min(calc(100% - var(--message-avatar-size) - 9px), 66ch); padding: 12px 16px; border: 1px solid #e4ebef; background: white; border-radius: 4px 16px 16px; overflow-wrap: anywhere; }
 .outgoing .message-bubble { background: #e7f4ef; border-color: #d8eae3; border-radius: 14px 0 14px 14px; }
 .outgoing .bot-bubble { background: #eef0fa; border-color: #e1e5f4; }
 .outgoing .note-bubble { background: #fff5d9; border-color: #f1e4bf; }
@@ -786,10 +816,11 @@ h3 { font-size: 15px; line-height: 1.4; font-weight: 600; }
   .chat-person strong { font-size: 15px; }
   .chat-actions { gap: 3px; }
   .chat-actions .q-btn { padding-inline: 7px; }
-  .mode-bar { padding: 10px; }
+  .mode-bar { padding: 10px; flex-wrap: wrap; }
   .mode-bar span { font-size: 12px; }
   .message-list { padding: 12px; }
-  .message-bubble { max-width: 92%; }
+  .message-row { --message-avatar-size: 26px; }
+  .message-bubble { padding: 10px 12px; }
   .composer { padding: 10px; }
   .composer-bottom > span { max-width: 130px; }
   .order-strip span { display: none; }
